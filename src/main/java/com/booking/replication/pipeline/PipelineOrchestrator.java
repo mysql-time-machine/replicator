@@ -5,7 +5,6 @@ import java.net.URISyntaxException;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -13,16 +12,15 @@ import java.util.regex.Pattern;
 import com.booking.replication.Configuration;
 import com.booking.replication.Constants;
 import com.booking.replication.applier.Applier;
-import com.booking.replication.applier.STDOUTJSONApplier;
 import com.booking.replication.audit.CheckPointTests;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.augmenter.EventAugmenter;
 import com.booking.replication.metrics.ReplicatorMetrics;
+import com.booking.replication.queues.ReplicatorQueues;
 import com.booking.replication.schema.TableNameMapper;
 import com.booking.replication.schema.HBaseSchemaManager;
 import com.booking.replication.schema.exception.TableMapException;
-import com.booking.replication.applier.HBaseApplier;
 import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.impl.event.*;
 import com.google.code.or.common.util.MySQLConstants;
@@ -39,19 +37,16 @@ import org.slf4j.LoggerFactory;
  */
 public class PipelineOrchestrator extends Thread {
 
-    private static EventAugmenter eventAugmenter;
-
+    public  final  Configuration      configuration;
+    private final  Applier            applier;
+    private final  ReplicatorQueues   queues;
+    private static EventAugmenter     eventAugmenter;
     private static HBaseSchemaManager hBaseSchemaManager;
-
-    private final LinkedBlockingQueue<BinlogEventV4> queue;
-
-    private final ConcurrentHashMap<Integer,Object> binlogPositionLastKnownInfo;
-
-    // private final ConcurrentHashMap<Integer, HashMap<Integer, MutableLong>> pipelineStats;
-
-    private final ReplicatorMetrics replicatorMetrics;
+    private final  ReplicatorMetrics  replicatorMetrics;
 
     public CurrentTransactionMetadata currentTransactionMetadata;
+
+    private final ConcurrentHashMap<Integer,Object> binlogPositionLastKnownInfo;
 
     private volatile boolean running = false;
 
@@ -59,12 +54,8 @@ public class PipelineOrchestrator extends Thread {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PipelineOrchestrator.class);
 
-    public final Configuration configuration;
-    private final Applier applier;
 
     private final CheckPointTests checkPointTests;
-
-    private final long timeStarted;
 
     private static final int BUFFER_FLUSH_INTERVAL = 30000; // <- force buffer flush every 30 sec
 
@@ -111,17 +102,16 @@ public class PipelineOrchestrator extends Thread {
     }
 
     public PipelineOrchestrator(
-            LinkedBlockingQueue<BinlogEventV4> q,
+            ReplicatorQueues                  repQueues,
             ConcurrentHashMap<Integer,Object> chm,
-            Configuration repcfg,
-            ReplicatorMetrics replicatorMetrics
+            Configuration                     repcfg,
+            ReplicatorMetrics                 replicatorMetrics,
+            Applier                           applier
         ) throws SQLException, URISyntaxException, IOException {
 
-        // this.pipelineStats = pStats;
-
+        this.queues            = repQueues;
         this.replicatorMetrics = replicatorMetrics;
-
-        this.configuration = repcfg;
+        this.configuration     = repcfg;
 
         eventAugmenter = new EventAugmenter(repcfg, replicatorMetrics);
 
@@ -131,18 +121,7 @@ public class PipelineOrchestrator extends Thread {
             hBaseSchemaManager = new HBaseSchemaManager(repcfg.getZOOKEEPER_QUORUM());
         }
 
-        queue = q;
-
-        if (repcfg.getApplierType().equals("STDOUT")) {
-            applier = new STDOUTJSONApplier(replicatorMetrics, configuration);
-        }
-        else if (repcfg.getApplierType().toLowerCase().equals("hbase")) {
-            applier = new HBaseApplier(repcfg.getZOOKEEPER_QUORUM(), replicatorMetrics, configuration);
-        }
-        else {
-            LOGGER.warn("Unknown applier type. Defaulting to STDOUT");
-            applier = new STDOUTJSONApplier(replicatorMetrics, configuration);
-        }
+        this.applier = applier;
 
         binlogPositionLastKnownInfo = chm;
 
@@ -153,8 +132,6 @@ public class PipelineOrchestrator extends Thread {
                 +   ((BinlogPositionInfo) binlogPositionLastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION)).getBinlogPosition()
                 + " }"
         );
-
-        timeStarted = System.currentTimeMillis();
 
         checkPointTests = new CheckPointTests(this.configuration, this.replicatorMetrics);
     }
@@ -180,10 +157,10 @@ public class PipelineOrchestrator extends Thread {
 
         while (isRunning()) {
             try {
-                if (queue.size() > 0) {
+                if (queues.rawQueue.size() > 0) {
 
                     BinlogEventV4 event =
-                            queue.poll(100, TimeUnit.MILLISECONDS);
+                            queues.rawQueue.poll(100, TimeUnit.MILLISECONDS);
 
                     if (event != null) {
 
@@ -200,7 +177,7 @@ public class PipelineOrchestrator extends Thread {
                             replicatorMetrics.incEventsSkippedCounter();
                         }
                         if (eventCounter % 5000 == 0) {
-                            LOGGER.info("Pipeline report: producer queue size => " + queue.size());
+                            LOGGER.info("Pipeline report: producer rawQueue size => " + queues.rawQueue.size());
                         }
                     } else {
                         LOGGER.warn("Poll timeout. Will sleep for 1s and try again.");
@@ -208,7 +185,7 @@ public class PipelineOrchestrator extends Thread {
                     }
                 }
                 else {
-                    LOGGER.info("Pipeline report: no items in producer event queue. Will sleep for 0.5s and check again.");
+                    LOGGER.info("Pipeline report: no items in producer event rawQueue. Will sleep for 0.5s and check again.");
                     Thread.sleep(500);
                     long currentTime = System.currentTimeMillis();
                     long tDiff = currentTime - timeOfLastEvent;
@@ -242,11 +219,11 @@ public class PipelineOrchestrator extends Thread {
      *
      *  2. if DDL:
      *      a. pass to eventAugmenter which will update the schema
-     *      b. calculateAndPropagateChanges event to HBase
+     *      b. calculateAndPropagateChanges event to AugmentedQueue
      *
      *  3. if DATA:
      *      a. match column names and types
-     *      b. calculateAndPropagateChanges event to HBase
+     *      b. calculateAndPropagateChanges event to AugmentedQueue
      */
     public void calculateAndPropagateChanges(BinlogEventV4 event) throws IOException, TableMapException {
 
@@ -273,15 +250,16 @@ public class PipelineOrchestrator extends Thread {
                 fakeMicrosecondCounter++;
                 doTimestampOverride(event);
                 String querySQL = ((QueryEvent) event).getSql().toString();
-                if (isCOMMIT(querySQL)) {
+                boolean isDDL = isDDL(querySQL);
+                if (isCOMMIT(querySQL, isDDL)) {
                     replicatorMetrics.incCommitQueryCounter();
                     applier.applyCommitQueryEvent((QueryEvent) event);
                 }
-                else if (isBEGIN(querySQL)) {
+                else if (isBEGIN(querySQL, isDDL)) {
                     currentTransactionMetadata = null;
                     currentTransactionMetadata = new CurrentTransactionMetadata();
                 }
-                else if (isDDL(querySQL)) {
+                else if (isDDL) {
                     long tStart5 = System.currentTimeMillis();
                     augmentedSchemaChangeEvent = eventAugmenter.transitionSchemaToNextVersion(event);
                     long tEnd5 = System.currentTimeMillis();
@@ -326,19 +304,25 @@ public class PipelineOrchestrator extends Thread {
                             // This should not happen in tableMapEvent, unless we are
                             // replaying the binlog.
                             // TODO: load hbase tables on start-up so this never happens
-                            hBaseSchemaManager.createHBaseTableIfNotExists(hbaseTableName, DEFAULT_VERSIONS_FOR_MIRRORED_TABLES);
+                            hBaseSchemaManager.createMirroredTableIfNotExists(hbaseTableName, DEFAULT_VERSIONS_FOR_MIRRORED_TABLES);
                         }
                         if(configuration.isWriteRecentChangesToDeltaTables()) {
                             String replicantSchema = ((TableMapEvent) event).getDatabaseName().toString();
                             String mysqlTableName = ((TableMapEvent) event).getTableName().toString();
-                            long eventTimestampMicroSec = event.getHeader().getTimestamp();
-                            String deltaTableName = TableNameMapper.getCurrentDeltaTableName(
-                                    eventTimestampMicroSec,
-                                    replicantSchema,
-                                    mysqlTableName,
-                                    configuration.isInitialSnapshotMode());
-                            if (!hBaseSchemaManager.isTableKnownToHBase(deltaTableName)) {
-                                hBaseSchemaManager.createHBaseTableIfNotExists(deltaTableName, 1);
+
+                            if (configuration.getTablesForWhichToTrackDailyChanges().contains(mysqlTableName)) {
+
+                                long eventTimestampMicroSec = event.getHeader().getTimestamp();
+
+                                String deltaTableName = TableNameMapper.getCurrentDeltaTableName(
+                                        eventTimestampMicroSec,
+                                        replicantSchema,
+                                        mysqlTableName,
+                                        configuration.isInitialSnapshotMode());
+                                if (!hBaseSchemaManager.isTableKnownToHBase(deltaTableName)) {
+                                    boolean isInitialSnapshotMode = configuration.isInitialSnapshotMode();
+                                    hBaseSchemaManager.createDeltaTableIfNotExists(deltaTableName, isInitialSnapshotMode);
+                                }
                             }
                         }
                     }
@@ -360,7 +344,7 @@ public class PipelineOrchestrator extends Thread {
                 tEnd = System.currentTimeMillis();
                 tDelta = tEnd - tStart;
                 consumerTimeM1 += tDelta;
-                applier.bufferData(augmentedRowsEvent,this);
+                applier.applyAugmentedRowsEvent(augmentedRowsEvent,this);
                 updateLastKnownPosition((AbstractRowEvent) event);
                 replicatorMetrics.incUpdateEventCounter();
                 break;
@@ -374,7 +358,7 @@ public class PipelineOrchestrator extends Thread {
                 tEnd = System.currentTimeMillis();
                 tDelta = tEnd - tStart;
                 consumerTimeM1 += tDelta;
-                applier.bufferData(augmentedRowsEvent,this);
+                applier.applyAugmentedRowsEvent(augmentedRowsEvent,this);
                 updateLastKnownPosition((AbstractRowEvent) event);
                 replicatorMetrics.incInsertEventCounter();
                 break;
@@ -388,7 +372,7 @@ public class PipelineOrchestrator extends Thread {
                 tEnd = System.currentTimeMillis();
                 tDelta = tEnd - tStart;
                 consumerTimeM1 += tDelta;
-                applier.bufferData(augmentedRowsEvent,this);
+                applier.applyAugmentedRowsEvent(augmentedRowsEvent,this);
                 updateLastKnownPosition((AbstractRowEvent) event);
                 replicatorMetrics.incDeleteEventCounter();
                 break;
@@ -416,7 +400,7 @@ public class PipelineOrchestrator extends Thread {
                 applier.applyRotateEvent((RotateEvent) event);
                 LOGGER.info("End of binlog file. Waiting for all tasks to finish before moving forward...");
                 applier.waitUntilAllRowsAreCommitted(checkPointTests);
-                LOGGER.info("All rows commited");
+                LOGGER.info("All rows committed");
                 String currentBinlogFileName =
                         ((BinlogPositionInfo) binlogPositionLastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION)).getBinlogFilename();
                 if (currentBinlogFileName.equals(configuration.getLastBinlogFileName())){
@@ -465,13 +449,13 @@ public class PipelineOrchestrator extends Thread {
         return isDDL;
     }
 
-    public boolean isBEGIN(String querySQL) {
+    public boolean isBEGIN(String querySQL, boolean isDDL) {
 
-        boolean isBEGIN;
+        boolean hasBEGIN;
 
         // optimization
         if (querySQL.equals("COMMIT")) {
-            isBEGIN = false;
+            hasBEGIN = false;
         }
         else {
 
@@ -481,17 +465,21 @@ public class PipelineOrchestrator extends Thread {
 
             Matcher m = p.matcher(querySQL);
 
-            isBEGIN = m.find();
+            hasBEGIN = m.find();
         }
+
+        boolean isBEGIN = (hasBEGIN && !isDDL);
+
         return isBEGIN;
     }
 
-    public boolean isCOMMIT(String querySQL) {
+    public boolean isCOMMIT(String querySQL, boolean isDDL) {
 
-        boolean isCOMMIT;
+        boolean hasCOMMIT;
+
         // optimization
         if (querySQL.equals("BEGIN")) {
-            isCOMMIT = false;
+            hasCOMMIT = false;
         }
         else {
 
@@ -501,8 +489,11 @@ public class PipelineOrchestrator extends Thread {
 
             Matcher m = p.matcher(querySQL);
 
-            isCOMMIT = m.find();
+            hasCOMMIT = m.find();
         }
+
+        boolean isCOMMIT = (hasCOMMIT && !isDDL);
+
         return isCOMMIT;
     }
 
@@ -552,20 +543,18 @@ public class PipelineOrchestrator extends Thread {
     public boolean skipEvent(BinlogEventV4 event) throws TableMapException {
 
         long tStart = System.currentTimeMillis();
-
         boolean eventIsTracked      = false;
-
         switch (event.getHeader().getEventType()) {
             // Query Event:
             case MySQLConstants.QUERY_EVENT:
                 String querySQL  = ((QueryEvent) event).getSql().toString();
                 boolean isDDL    = isDDL(querySQL);
-                boolean isCOMMIT = isCOMMIT(querySQL);
-                boolean isBEGIN  = isBEGIN(querySQL);
+                boolean isCOMMIT = isCOMMIT(querySQL, isDDL);
+                boolean isBEGIN  = isBEGIN(querySQL, isDDL);
                 if (isCOMMIT) {
                     // COMMIT does not always contain database name so we get it
                     // from current transaction metadata.
-                    // There is an asuumption that all tables in the transaction
+                    // There is an assumption that all tables in the transaction
                     // are from the same database. Cross database transactions
                     // are not supported.
                     TableMapEvent firstMapEvent = currentTransactionMetadata.getFirstMapEventInTransaction();
@@ -592,7 +581,7 @@ public class PipelineOrchestrator extends Thread {
                     eventIsTracked = true;
                 }
                 else if (isDDL) {
-                    // DDL event should alwyas contain db name
+                    // DDL event should always contain db name
                     String dbName = ((QueryEvent) event).getDatabaseName().toString();
                     if (isReplicant(dbName)) {
                         eventIsTracked = true;
@@ -605,7 +594,7 @@ public class PipelineOrchestrator extends Thread {
                 }
                 else {
                     // TODO: handle View statement
-                    // LOGGER.warn("Received non-DDL, non-COMMIT, non-BEGIN query");
+                    // LOGGER.warn("Received non-DDL, non-COMMIT, non-BEGIN query: " + querySQL);
                 }
                 break;
 
@@ -671,6 +660,7 @@ public class PipelineOrchestrator extends Thread {
 
             default:
                 eventIsTracked = false;
+                LOGGER.warn("Unexpected event type => " + event.getHeader().getEventType());
                 break;
         }
 

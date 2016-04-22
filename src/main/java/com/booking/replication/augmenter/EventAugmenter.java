@@ -11,7 +11,9 @@ import com.booking.replication.schema.exception.SchemaTransitionException;
 import com.booking.replication.schema.exception.TableMapException;
 import com.booking.replication.schema.table.TableSchema;
 import com.google.code.or.binlog.BinlogEventV4;
+import com.google.code.or.binlog.StatusVariable;
 import com.google.code.or.binlog.impl.event.*;
+import com.google.code.or.binlog.impl.variable.status.QTimeZoneCode;
 import com.google.code.or.common.glossary.Column;
 import com.google.code.or.common.glossary.Pair;
 import com.google.code.or.common.glossary.Row;
@@ -21,6 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.URISyntaxException;
 import java.sql.SQLException;
+import java.util.HashMap;
 
 /**
  * EventAugmenter
@@ -89,13 +92,15 @@ public class EventAugmenter {
                 new SchemaVersionSnapshot(this.activeSchemaVersion);
 
         // 2. transition to the new schema
-        String schemaTransitionDDL = this.getDDLFromEvent(event);
-        if (schemaTransitionDDL != null) {
+        HashMap<String, String> schemaTransitionSequence = this.getDDLFromEvent(event);
+        if (schemaTransitionSequence != null) {
             // since active schema has a postfix, we need to make sure that queires that
             // specify schema explictly are rewriten so they work properly on active schema
-            String activeSchemaTransitionDDL = rewriteActiveSchemaName(schemaTransitionDDL);
+            String ddl = schemaTransitionSequence.get("ddl"); // TODO: FIX sometimes null!!!
+            String activeSchemaTransitionDDL = rewriteActiveSchemaName(ddl);
 
-            futureSchemaVersion = activeSchemaVersion.applyDDL(activeSchemaTransitionDDL);
+            schemaTransitionSequence.put("ddl", activeSchemaTransitionDDL);
+            futureSchemaVersion = activeSchemaVersion.applyDDL(schemaTransitionSequence);
             if (futureSchemaVersion != null) {
                 this.activeSchemaVersion = futureSchemaVersion;
             }
@@ -116,7 +121,7 @@ public class EventAugmenter {
 
         AugmentedSchemaChangeEvent augmentedSchemaChangeEvent = new AugmentedSchemaChangeEvent(
                 schemaVersionSnapshotBeforeTransition,
-                schemaTransitionDDL,
+                schemaTransitionSequence,
                 schemaVersionSnapshotAfterTransition,
                 _dbName
         );
@@ -125,11 +130,32 @@ public class EventAugmenter {
         return augmentedSchemaChangeEvent;
     }
 
-    private String getDDLFromEvent(BinlogEventV4 event) throws SchemaTransitionException {
+    private HashMap<String,String> getDDLFromEvent(BinlogEventV4 event) throws SchemaTransitionException {
 
         if (event instanceof QueryEvent) {
-            String sql = ((QueryEvent) event).getSql().toString();
-            return sql;
+            String ddl = ((QueryEvent) event).getSql().toString();
+
+            // query
+            HashMap<String, String> sqlCommands = new HashMap<>();
+            sqlCommands.put("ddl", ddl);
+
+            // status variables
+            for(StatusVariable av : ((QueryEvent) event).getStatusVariables()) {
+
+                // handle timezone overrides during schema changes
+                if (av instanceof QTimeZoneCode) {
+                    QTimeZoneCode tzCode = (QTimeZoneCode) av;
+
+                    LOGGER.info("This DDL query has specified timezone override: " + tzCode.getTimeZone());
+                    String timezone = tzCode.getTimeZone().toString();
+                    String timezoneSetCommand = "SET @@session.time_zone='" + timezone + "'";
+                    String timezoneSetBackToSystem = "SET @@session.time_zone='SYSTEM'";
+
+                    sqlCommands.put("timezonePre", timezoneSetCommand);
+                    sqlCommands.put("timezonePost", timezoneSetBackToSystem);
+                }
+            }
+            return sqlCommands;
         }
         else {
             throw new SchemaTransitionException("Not a valid query event!");
@@ -144,6 +170,11 @@ public class EventAugmenter {
         String dbNamePattern = "( " + replicantDbName + ".)|(`" + replicantDbName + "`.)";
         String newDbNameTerm = " `" + activeSchemaName + "`.";
 
+        LOGGER.info("bla => " + dbNamePattern);
+
+        LOGGER.info("la => " + newDbNameTerm);
+
+        LOGGER.info("qla => " + query);
         query = query.replaceAll(dbNamePattern, newDbNameTerm);
 
         return query;
@@ -212,6 +243,7 @@ public class EventAugmenter {
         }
 
         AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent();
+        augEventGroup.setMysqlTableName(tableName);
 
         int numberOfColumns = writeRowsEvent.getColumnCount().intValue();
 
@@ -270,6 +302,7 @@ public class EventAugmenter {
         int numberOfColumns = writeRowsEvent.getColumnCount().intValue();
 
         AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent();
+        augEventGroup.setMysqlTableName(tableName);
         
         for (Row row : writeRowsEvent.getRows()) {
 
@@ -311,10 +344,11 @@ public class EventAugmenter {
         return augEventGroup;
     }
 
-    private AugmentedRowsEvent augmentDeleteRowsEvent(DeleteRowsEvent deleteRowsEvent, PipelineOrchestrator caller) throws TableMapException {
+    private AugmentedRowsEvent augmentDeleteRowsEvent(DeleteRowsEvent deleteRowsEvent, PipelineOrchestrator pipeline)
+            throws TableMapException {
 
         // table name
-        String tableName = caller.currentTransactionMetadata.getTableNameFromID(deleteRowsEvent.getTableId());
+        String tableName = pipeline.currentTransactionMetadata.getTableNameFromID(deleteRowsEvent.getTableId());
 
         // getValue schema for that table from activeSchemaVersion
         TableSchema tableSchema = activeSchemaVersion.getActiveSchemaTables().get(tableName);
@@ -324,6 +358,7 @@ public class EventAugmenter {
             throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.");
         }
         AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent();
+        augEventGroup.setMysqlTableName(tableName);
 
         int numberOfColumns = deleteRowsEvent.getColumnCount().intValue();
 
@@ -339,7 +374,7 @@ public class EventAugmenter {
             augEvent.setEventType("DELETE");
             augEvent.setEventV4Header(deleteRowsEvent.getHeader());
 
-            caller.consumerStatsNumberOfProcessedRows++;
+            pipeline.consumerStatsNumberOfProcessedRows++;
 
             //column index counting starts with 1
             for (int columnIndex = 1; columnIndex <= numberOfColumns ; columnIndex++ ) {
@@ -358,7 +393,7 @@ public class EventAugmenter {
             }
             augEventGroup.addSingleRowEvent(augEvent);
         }
-        caller.consumerStatsNumberOfProcessedEvents++;
+        pipeline.consumerStatsNumberOfProcessedEvents++;
 
         return augEventGroup;
     }
@@ -377,6 +412,7 @@ public class EventAugmenter {
         }
 
         AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent();
+        augEventGroup.setMysqlTableName(tableName);
 
         int numberOfColumns = deleteRowsEvent.getColumnCount().intValue();
 
@@ -431,6 +467,7 @@ public class EventAugmenter {
         }
 
         AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent();
+        augEventGroup.setMysqlTableName(tableName);
 
         int numberOfColumns = upEvent.getColumnCount().intValue();
 
@@ -489,6 +526,7 @@ public class EventAugmenter {
         }
 
         AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent();
+        augEventGroup.setMysqlTableName(tableName);
 
         int numberOfColumns = upEvent.getColumnCount().intValue();
 

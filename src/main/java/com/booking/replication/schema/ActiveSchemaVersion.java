@@ -180,21 +180,35 @@ public class ActiveSchemaVersion {
      * Changes the active schema by executing ddl on active schema db
      * and then reloading the activeSchema objects
      *
-     * @param ddlSQL
+     * @param sequence
      * @return
      */
-    public ActiveSchemaVersion applyDDL(String ddlSQL) {
+    public ActiveSchemaVersion applyDDL(HashMap<String,String> sequence) {
 
-        LOGGER.info("GOT DDL => " + ddlSQL);
+        LOGGER.info("GOT DDL => " + sequence.get("ddl"));
 
         Connection con = null;
 
         try {
-            // bufferData DDL
+            // applyAugmentedRowsEvent DDL
             con = activeSchemaDataSource.getConnection();
+
+            if (sequence.containsKey("timezonePre")) {
+                Statement timezonePre = con.createStatement();
+                timezonePre.execute(sequence.get("timezonePre"));
+                timezonePre.close();
+            }
+
             Statement ddlStatement = con.createStatement();
-            ddlStatement.execute(ddlSQL);
+            ddlStatement.execute(sequence.get("ddl"));
             ddlStatement.close();
+
+            if (sequence.containsKey("timezonePost")) {
+                Statement timezonePost = con.createStatement();
+                timezonePost.execute(sequence.get("timezonePost"));
+                timezonePost.close();
+            }
+
             con.close();
             LOGGER.info("Successfully altered active schema");
 
@@ -204,10 +218,10 @@ public class ActiveSchemaVersion {
 
         } catch (SQLException e) {
             e.printStackTrace();
-            LOGGER.error("FATAL: failed to execute DDL statement on active schema.");
+            LOGGER.error("FATAL: failed to execute DDL statement on active schema.", e);
         } catch (URISyntaxException e) {
             e.printStackTrace();
-            LOGGER.error("FATAL: failed to execute DDL statement on active schema.");
+            LOGGER.error("FATAL: failed to execute DDL statement on active schema.", e);
         } finally{
             try {
                 if(con != null) con.close();

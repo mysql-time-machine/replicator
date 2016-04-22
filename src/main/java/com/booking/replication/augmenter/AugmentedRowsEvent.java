@@ -8,6 +8,8 @@ import java.util.List;
  */
 public class AugmentedRowsEvent {
 
+    private String mysqlTableName;
+
     private List<AugmentedRow> singleRowEvents = new ArrayList<AugmentedRow>();
 
     public void addSingleRowEvent(AugmentedRow au) {
@@ -16,5 +18,13 @@ public class AugmentedRowsEvent {
 
     public List<AugmentedRow> getSingleRowEvents() {
         return singleRowEvents;
+    }
+
+    public String getMysqlTableName() {
+        return mysqlTableName;
+    }
+
+    public void setMysqlTableName(String mysqlTableName) {
+        this.mysqlTableName = mysqlTableName;
     }
 }

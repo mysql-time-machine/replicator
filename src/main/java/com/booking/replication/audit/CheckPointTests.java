@@ -142,10 +142,17 @@ public class CheckPointTests {
         }
         else {
             // 1 MySQL row ==> 1 HBase Row
-            if (mysqlTotalRowsProccessed == mysqlTotalRowsProccessed) {
+            LOGGER.info("Running check point test:" +
+                        "\n    " + "mysqlTotalRowsProccessed" + " == " + "hbaseTotalRowsCommitted");
+            LOGGER.info("\n    " +  mysqlTotalRowsProccessed  + " == " +  hbaseTotalRowsCommitted);
+
+
+            if (mysqlTotalRowsProccessed == hbaseTotalRowsCommitted) {
+                LOGGER.info("PASS");
                 return true;
             }
             else {
+                LOGGER.info("FAIL");
                 return false;
             }
         }

@@ -85,7 +85,7 @@ public class ReplicatorMetrics {
         }
     }
 
-    private void initTotalForTable(String table, Integer totalID) {
+    private synchronized void initTotalForTable(String table, Integer totalID) {
         if (totalsPerTable.get(table) != null) {
             totalsPerTable.get(table).put(totalID, new MutableLong());
         }
@@ -376,18 +376,21 @@ public class ReplicatorMetrics {
     public void incTableTotal(String table, Integer totalID, Long delta) {
 
         if (totalsPerTable.get(table) == null) {
-            LOGGER.warn("Missing table " + table + " from totalsPerTable; delta value => " + delta);
             initTotalForTable(table, totalID);
         }
-
-        if (totalsPerTable.get(table).get(totalID) == null) {
-            LOGGER.warn("Missing metrics buckets for " + table + " from totalsPerTable; delta value => " + delta);
-            initTotalForTable(table, totalID);
+        else {
+            if (totalsPerTable.get(table).get(totalID) == null) {
+                initTotalForTable(table, totalID);
+            }
         }
 
+        if (totalsPerTable.get(table) == null) {
+            LOGGER.error("Failed to init metrics for table => " + table);
+            System.exit(-1);
+        }
         if (totalsPerTable.get(table).get(totalID) == null) {
-            LOGGER.error("Failed to initialize metrics for table " + table);
-            System.exit(1);
+            LOGGER.error("Failed to init totalID [" + totalID + "] for table => " + table);
+            System.exit(-1);
         }
 
         totalsPerTable.get(table).get(totalID).addValue(delta);

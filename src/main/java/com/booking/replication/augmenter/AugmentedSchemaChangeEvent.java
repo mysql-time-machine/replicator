@@ -3,6 +3,8 @@ package com.booking.replication.augmenter;
 import com.booking.replication.schema.SchemaVersionSnapshot;
 import com.booking.replication.util.JSONBuilder;
 
+import java.util.HashMap;
+
 /**
  * This class has all extra info needed for
  * sorting DDL events.
@@ -10,19 +12,19 @@ import com.booking.replication.util.JSONBuilder;
 public class AugmentedSchemaChangeEvent {
 
     private String database_name;
-    private String schemaTransitionDDLStatement;
+    private HashMap<String,String> schemaTransitionSequence;
 
     private SchemaVersionSnapshot preTransitionSchemaSnapshot;
     private SchemaVersionSnapshot postTransitionSchemaSnapshot;
 
     public AugmentedSchemaChangeEvent(
             SchemaVersionSnapshot snapshotBefore,
-            String ddlSQL,
+            HashMap<String,String> transitionSequence,
             SchemaVersionSnapshot snapshotAfter,
             String databaseName) {
 
         preTransitionSchemaSnapshot  = snapshotBefore;
-        schemaTransitionDDLStatement = ddlSQL;
+        schemaTransitionSequence = transitionSequence;
         postTransitionSchemaSnapshot = snapshotAfter;
         database_name = databaseName;
     }
@@ -38,12 +40,12 @@ public class AugmentedSchemaChangeEvent {
         this.database_name = database_name;
     }
 
-    public String getSchemaTransitionDDLStatement() {
-        return schemaTransitionDDLStatement;
+    public HashMap<String,String> getSchemaTransitionSequence() {
+        return schemaTransitionSequence;
     }
 
-    public void setSchemaTransitionDDLStatement(String schemaTransitionDDLStatement) {
-        this.schemaTransitionDDLStatement = schemaTransitionDDLStatement;
+    public void setSchemaTransitionSequence(HashMap<String,String> schemaTransitionSequence) {
+        this.schemaTransitionSequence = schemaTransitionSequence;
     }
 
     public SchemaVersionSnapshot getPreTransitionSchemaSnapshot() {

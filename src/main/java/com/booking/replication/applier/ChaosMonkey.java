@@ -2,7 +2,7 @@ package com.booking.replication.applier;
 
 /**
  * This class implements the ChaosMonkey concept for tasks.
- * It decides to fail write tasks in 1% of cases at different code points.
+ * It decides to fail write tasks in 1% of cases at different code point.
  */
 public class ChaosMonkey {
 

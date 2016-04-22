@@ -1,21 +1,21 @@
 package com.booking.replication;
 
+import com.booking.replication.applier.Applier;
+import com.booking.replication.applier.HBaseApplier;
+import com.booking.replication.applier.STDOUTJSONApplier;
 import com.booking.replication.metrics.ReplicatorMetrics;
 import com.booking.replication.pipeline.BinlogEventProducer;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.pipeline.BinlogPositionInfo;
 import com.booking.replication.monitor.Overseer;
 
-import com.booking.replication.util.MutableLong;
-import com.google.code.or.binlog.BinlogEventV4;
+import com.booking.replication.queues.ReplicatorQueues;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -30,41 +30,82 @@ import java.util.concurrent.ConcurrentHashMap;
 public class Replicator {
 
     private final Configuration        configuration;
+    private final ReplicatorQueues     replicatorQueues;
+    private final ReplicatorMetrics    replicatorMetrics;
     private final BinlogEventProducer  binlogEventProducer;
     private final PipelineOrchestrator pipelineOrchestrator;
     private final Overseer             overseer;
-
-    private static final int MAX_QUEUE_SIZE = Constants.MAX_QUEUE_SIZE;
-
-    private final LinkedBlockingQueue<BinlogEventV4> binlogEventQueue =
-            new LinkedBlockingQueue<BinlogEventV4>(MAX_QUEUE_SIZE);
+    private final Applier              applier;
 
     private final ConcurrentHashMap<Integer,Object> lastKnownInfo =
             new ConcurrentHashMap<Integer, Object>();
-
-    //private final  ConcurrentHashMap<Integer, HashMap<Integer, MutableLong>> pipelineStats =
-    //        new  ConcurrentHashMap<Integer, HashMap<Integer, MutableLong>>();
-
-    private final ReplicatorMetrics replicatorMetrics;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Replicator.class);
 
     // Replicator()
     public Replicator(Configuration conf) throws SQLException, URISyntaxException, IOException {
+
+        // Configuration
         configuration  = conf;
 
+        // Queues
+        replicatorQueues = new ReplicatorQueues();
+
+        // Position Tracking
+        lastKnownInfo.put(Constants.LAST_KNOWN_BINLOG_POSITION,
+                new BinlogPositionInfo(
+                    conf.getStartingBinlogFileName(),
+                    conf.getStartingBinlogPosition()
+                ));
+
+        // Producer
+        binlogEventProducer = new BinlogEventProducer(replicatorQueues.rawQueue, lastKnownInfo, configuration);
+
+        // Metrics
         replicatorMetrics = new ReplicatorMetrics(configuration);
 
-        BinlogPositionInfo lastKnownPosition = new BinlogPositionInfo(
-            conf.getStartingBinlogFileName(),
-            conf.getStartingBinlogPosition()
+        // Applier
+        if (configuration.getApplierType().equals("STDOUT")) {
+            applier = new STDOUTJSONApplier(
+                    replicatorQueues,
+                    replicatorMetrics,
+                    configuration
+            );
+        }
+        else if (configuration.getApplierType().toLowerCase().equals("hbase")) {
+            applier = new HBaseApplier(
+                    replicatorQueues,
+                    configuration.getZOOKEEPER_QUORUM(),
+                    replicatorMetrics,
+                    configuration
+            );
+        }
+        else {
+            LOGGER.warn("Unknown applier type. Defaulting to STDOUT");
+            applier = new STDOUTJSONApplier(
+                    replicatorQueues,
+                    replicatorMetrics,
+                    configuration
+            );
+        }
+
+        // Orchestrator
+        pipelineOrchestrator = new PipelineOrchestrator(
+                replicatorQueues,
+                lastKnownInfo,
+                configuration,
+                replicatorMetrics,
+                applier
         );
-        lastKnownInfo.put(Constants.LAST_KNOWN_BINLOG_POSITION, lastKnownPosition);
 
-        binlogEventProducer = new BinlogEventProducer(binlogEventQueue, lastKnownInfo, configuration);
-        pipelineOrchestrator = new PipelineOrchestrator(binlogEventQueue, lastKnownInfo, configuration, replicatorMetrics);
+        // Overseer
+        overseer = new Overseer(
+                binlogEventProducer,
+                pipelineOrchestrator,
+                replicatorMetrics,
+                lastKnownInfo
+        );
 
-        overseer = new Overseer(binlogEventProducer, pipelineOrchestrator, replicatorMetrics ,lastKnownInfo);
     }
 
     // start()
@@ -126,19 +167,5 @@ public class Replicator {
         }
 
         System.exit(0);
-    }
-
-    // stop()
-    public void stop(long timeout, TimeUnit unit) throws Exception {
-        try {
-            binlogEventProducer.stop(timeout,unit);
-            pipelineOrchestrator.stopRunning();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    public BinlogEventProducer getBinlogEventProducer() {
-        return binlogEventProducer;
     }
 }

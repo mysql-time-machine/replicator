@@ -9,6 +9,7 @@ import org.yaml.snakeyaml.Yaml;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -64,6 +65,11 @@ public class YAML {
 
         // dc
         rc.setReplicantDC(dc);
+
+        //if (useDeltaTables == true && initialSnapshot == true) {
+        //    LOGGER.error("delta tables and initial snapshots are mutually exclusive!");
+        //    System.exit(1);
+        //}
 
         // delta tables
         rc.setWriteRecentChangesToDeltaTables(useDeltaTables);
@@ -136,6 +142,13 @@ public class YAML {
                     }
                 }
             }
+
+            // optional config keys
+            if (rc.getTablesForWhichToTrackDailyChanges() == null) {
+                List<String> tableList = new ArrayList<>();
+                rc.setTablesForWhichToTrackDailyChanges(tableList);
+            }
+
         } catch (Exception e){
             e.printStackTrace();
         }

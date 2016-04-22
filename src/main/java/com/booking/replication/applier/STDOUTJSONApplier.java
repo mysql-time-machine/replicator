@@ -8,6 +8,7 @@ import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.metrics.Metric;
 import com.booking.replication.metrics.ReplicatorMetrics;
 import com.booking.replication.pipeline.PipelineOrchestrator;
+import com.booking.replication.queues.ReplicatorQueues;
 import com.booking.replication.util.MutableLong;
 import com.google.code.or.binlog.impl.event.FormatDescriptionEvent;
 import com.google.code.or.binlog.impl.event.QueryEvent;
@@ -17,8 +18,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-public class STDOUTJSONApplier implements Applier {
+public class STDOUTJSONApplier implements Applier  {
 
     private static long totalEventsCounter = 0;
     private static long totalRowsCounter = 0;
@@ -33,11 +35,20 @@ public class STDOUTJSONApplier implements Applier {
     private static final HashMap<String, MutableLong> stats = new HashMap<String, MutableLong>();
 
     private final ReplicatorMetrics replicatorMetrics;
+
     private final com.booking.replication.Configuration replicatorConfiguration;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(STDOUTJSONApplier.class);
 
-    public STDOUTJSONApplier(ReplicatorMetrics repMetrics, Configuration configuration) {
+
+    private final ReplicatorQueues queues;
+
+    public STDOUTJSONApplier(
+            ReplicatorQueues repQueues,
+            ReplicatorMetrics repMetrics,
+            Configuration configuration
+        ) {
+        queues = repQueues;
         replicatorMetrics = repMetrics;
         replicatorConfiguration = configuration;
     }
@@ -62,7 +73,7 @@ public class STDOUTJSONApplier implements Applier {
     }
 
     @Override
-    public void bufferData(AugmentedRowsEvent augmentedRowsEvent, PipelineOrchestrator caller) {
+    public void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedRowsEvent, PipelineOrchestrator caller) {
         totalEventsCounter++;
 
         if (VERBOSE) {
@@ -118,8 +129,6 @@ public class STDOUTJSONApplier implements Applier {
             } else {
                 LOGGER.error("table name in a row event can not be null");
             }
-
-
         }
     }
 

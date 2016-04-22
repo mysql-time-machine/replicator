@@ -6,7 +6,11 @@ public class Constants {
     public static final int LAST_KNOWN_MAP_EVENT_POSITION = 2;
     public static final int LAST_KNOWN_MAP_EVENT_POSITION_FAKE_MICROSECONDS_COUNTER = 3;
 
-    public static final int MAX_QUEUE_SIZE = 10000;
+    // Queue sizes
+    // TODO: move this to config
+    public static final int MAX_RAW_QUEUE_SIZE       = 10000;
+    public static final int MAX_PREPARED_QUEUE_SIZE  = 50000;
+    public static final int MAX_AUGMENTED_QUEUE_SIZE = 50000;
 
     public static final String BLACKLISTED_DB = "meta"; // TODO: make this a list & add to config
 

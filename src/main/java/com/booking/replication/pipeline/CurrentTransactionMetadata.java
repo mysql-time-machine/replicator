@@ -6,8 +6,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TimeZone;
 
 /**
  * Created by bosko on 11/10/15.
@@ -85,4 +88,5 @@ public class CurrentTransactionMetadata {
     public Map<String, TableMapEvent> getCurrentTransactionTableMapEvents() {
         return currentTransactionTableMapEvents;
     }
+
 }

@@ -120,7 +120,7 @@ public class BinlogEventProducer {
 
         int qSize = queue.size();
 
-        int qPercent = (int) (100 * ((float) qSize / Constants.MAX_QUEUE_SIZE));
+        int qPercent = (int) (100 * ((float) qSize / Constants.MAX_RAW_QUEUE_SIZE));
 
         // LOGGER.info("qPercent => " + qPercent + "%");
 

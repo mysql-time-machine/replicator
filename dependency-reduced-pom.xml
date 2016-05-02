@@ -4,7 +4,7 @@
   <groupId>com.booking</groupId>
   <artifactId>hbrepl</artifactId>
   <name>hbrepl</name>
-  <version>0.9.8</version>
+  <version>0.9.9</version>
   <description>MySQL to HBase replicator.</description>
   <build>
     <plugins>

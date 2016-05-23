@@ -12,7 +12,6 @@ public class CMD {
 
         OptionParser parser = new OptionParser();
 
-        parser.accepts("dc").withRequiredArg().ofType(String.class);
         parser.accepts("hbase-namespace").withRequiredArg().ofType(String.class);
         parser.accepts("schema").withRequiredArg().ofType(String.class);
         parser.accepts("applier").withRequiredArg().ofType(String.class);

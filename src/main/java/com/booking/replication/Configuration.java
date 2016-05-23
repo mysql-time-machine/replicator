@@ -24,7 +24,6 @@ public class Configuration {
     private String metaDataDBName;
 
     // Replicant DB
-    private String  replicantDC;
     private String  hbaseNamespace;
     private String  replicantSchemaName;
     private String  replicantDBUserName;
@@ -88,6 +87,9 @@ public class Configuration {
                     .append("\tactiveSchemaHost                  : ")
                     .append(activeSchemaHost)
                     .append("\n")
+                    .append("\tactiveSchemaDB                    : ")
+                    .append(activeSchemaDB)
+                    .append("\n")
                     .append("\tgraphiteStatsNamesapce            : ")
                     .append(graphiteStatsNamesapce)
                     .append("\n")
@@ -111,9 +113,6 @@ public class Configuration {
                     .append("\n")
                     .append("\tdeltaTables                       : ")
                     .append(writeRecentChangesToDeltaTables)
-                    .append("\n")
-                    .append("\treplicantDC                       : ")
-                    .append(replicantDC)
                     .append("\n")
                     .append("\treplicantSchemaName               : ")
                     .append(replicantSchemaName)
@@ -337,11 +336,6 @@ public class Configuration {
     }
 
     public void setHbaseNamespace(String hbaseNamespace) {
-        if (hbaseNamespace == null) {
-            System.exit(-1);
-        }
-        else {
-            this.hbaseNamespace = hbaseNamespace;
-        }
+        this.hbaseNamespace = hbaseNamespace;
     }
 }

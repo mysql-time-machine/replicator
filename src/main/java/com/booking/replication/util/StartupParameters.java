@@ -4,6 +4,7 @@ import joptsimple.OptionSet;
 import org.apache.commons.cli.MissingArgumentException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Created by bdevetak on 01/12/15.
@@ -11,7 +12,6 @@ import org.apache.log4j.Logger;
 public class StartupParameters {
 
     private String  configPath;
-    private String  dc;
     private String  schema;
     private String  applier;
     private String  binlogFileName;
@@ -24,23 +24,10 @@ public class StartupParameters {
 
     private static final String DEFAULT_BINLOG_FILENAME_PATERN = "mysql-bin.";
 
+    private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(StartupParameters.class);
+
     public void init(OptionSet o) throws MissingArgumentException {
 
-        // dc
-        if (o.hasArgument("dc")) {
-            dc = o.valueOf("dc").toString();
-        }
-        else {
-            dc = "dc1";
-        }
-
-        // hbase namespace
-        if (o.hasArgument("hbase-namespace")) {
-            hbaseNamespace = o.valueOf("hbase-namespace").toString();
-        }
-        else {
-            dc = "dc1";
-        }
         // use delta tables
         if (o.has("delta")) {
             deltaTables = true;
@@ -90,6 +77,14 @@ public class StartupParameters {
             applier = "STDOUT";
         }
 
+        // setup hbase namespace
+        if (o.hasArgument("hbase-namespace")) {
+            hbaseNamespace = o.valueOf("hbase-namespace").toString();
+        }
+        else {
+            LOGGER.error("Must specify hbase namespace");
+        }
+
         // binlog-filename
         if (o.hasArgument("binlog-filename")) {
             binlogFileName = o.valueOf("binlog-filename").toString();
@@ -112,16 +107,15 @@ public class StartupParameters {
         }
 
         System.out.println("----------------------------------------------");
-        System.out.println("Parsed params:          ");
-        System.out.println("\tconfig-path:          " + configPath);
-        System.out.println("\tdc:                   " + dc);
-        System.out.println("\tschema:               " + schema);
-        System.out.println("\tapplier:              " + applier);
-        System.out.println("\tbinlog-filename:      " + binlogFileName);
-        System.out.println("\tposition:             " + binlogPosition);
-        System.out.println("\tlast-binlog-filename: " + lastBinlogFileName);
-        System.out.println("\tinitial-snapshot:     " + initialSnapshot);
-        System.out.println("\thbase-namespace:      " + hbaseNamespace);
+        System.out.println("Parsed params:           ");
+        System.out.println("\tconfig-path:           " + configPath);
+        System.out.println("\tschema:                " + schema);
+        System.out.println("\tapplier:               " + applier);
+        System.out.println("\tbinlog-filename:       " + binlogFileName);
+        System.out.println("\tposition:              " + binlogPosition);
+        System.out.println("\tlast-binlog-filename:  " + lastBinlogFileName);
+        System.out.println("\tinitial-snapshot:      " + initialSnapshot);
+        System.out.println("\thbase-namespace:       " + hbaseNamespace);
         System.out.println("----------------------------------------------\n");
 
     }
@@ -170,20 +164,8 @@ public class StartupParameters {
         this.binlogPosition = binlogPosition;
     }
 
-    public String getDc() {
-        return dc;
-    }
-
-    public void setDc(String dc) {
-        this.dc = dc;
-    }
-
     public Integer getShard() {
         return shard;
-    }
-
-    public void setShard(Integer shard) {
-        this.shard = shard;
     }
 
     public boolean isDeltaTables() {

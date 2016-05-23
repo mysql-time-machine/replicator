@@ -39,24 +39,21 @@ import java.util.Map;
  */
 public class YAML {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(YAML.class);
-
     private static final String SCHEMA_TRACKER  = "metadata_store";
     private static final String HIVE_IMPORT_KEY = "hive_imports";
 
     public static Configuration loadReplicatorConfiguration(StartupParameters startupParameters){
 
-        String  dc                     = startupParameters.getDc();
-        String  schema                 = startupParameters.getSchema();
-        String  applier                = startupParameters.getApplier();
-        String  startingBinlogFilename = startupParameters.getBinlogFileName();
-        Long    binlogPosition         = startupParameters.getBinlogPosition();
-        String  lastBinlogFilename     = startupParameters.getLastBinlogFileName();
-        String  configPath             = startupParameters.getConfigPath();
-        Integer shard                  = startupParameters.getShard();
-        Boolean useDeltaTables         = startupParameters.isDeltaTables();
-        Boolean initialSnapshot        = startupParameters.isInitialSnapshot();
-        String  hbaseNamespace         = startupParameters.getHbaseNamespace();
+        String  schema                  = startupParameters.getSchema();
+        String  applier                 = startupParameters.getApplier();
+        String  startingBinlogFilename  = startupParameters.getBinlogFileName();
+        Long    binlogPosition          = startupParameters.getBinlogPosition();
+        String  lastBinlogFilename      = startupParameters.getLastBinlogFileName();
+        String  configPath              = startupParameters.getConfigPath();
+        Integer shard                   = startupParameters.getShard();
+        Boolean useDeltaTables          = startupParameters.isDeltaTables();
+        Boolean initialSnapshot         = startupParameters.isInitialSnapshot();
+        String  hbaseNamespace          = startupParameters.getHbaseNamespace();
 
         Configuration rc = new Configuration();
 
@@ -112,12 +109,13 @@ public class YAML {
                     rc.setActiveSchemaPassword((String) value.get("password"));
                     rc.setActiveSchemaHosts((List<String>) value.get("hosts"));
                     rc.setActiveSchemaHost(rc.getActiveSchemaHosts().get(0));
-                    if (shard > 0) {
-                        rc.setActiveSchemaDB(schema + shard + "_" + Constants.ACTIVE_SCHEMA_SUFIX);
-                    }
-                    else {
-                        rc.setActiveSchemaDB(schema + "_" + Constants.ACTIVE_SCHEMA_SUFIX);
-                    }
+                    rc.setActiveSchemaDB((String) value.get("schema_name"));
+//                    if (shard > 0) {
+//                        rc.setActiveSchemaDB(schema + shard + "_" + Constants.ACTIVE_SCHEMA_SUFIX);
+//                    }
+//                    else {
+//                        rc.setActiveSchemaDB(schema + "_" + Constants.ACTIVE_SCHEMA_SUFIX);
+//                    }
                 }
 
                 if (configCategoryKey.equals("zookeepers")) {

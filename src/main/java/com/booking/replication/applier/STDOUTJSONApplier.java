@@ -29,8 +29,8 @@ public class STDOUTJSONApplier implements Applier  {
     public static final String FILTERED_TABLE_NAME = null;
     public static final Boolean VERBOSE = false;
     public static final Boolean STATS_OUT = true;
-    public static final Boolean DATA_OUT = false;
-    public static final Boolean SCHEMA_OUT = false;
+    public static final Boolean DATA_OUT = true;
+    public static final Boolean SCHEMA_OUT = true;
 
     private static final HashMap<String, MutableLong> stats = new HashMap<String, MutableLong>();
 

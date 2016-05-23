@@ -290,7 +290,7 @@ public class HBaseApplierMutationGenerator {
         return tableKeyPut;
     }
 
-    public String getHBaseRowKey(AugmentedRow row) {
+    public static String getHBaseRowKey(AugmentedRow row) {
         // RowID
         List<String> pkColumnNames  = row.getPrimaryKeyColumns(); // <- this is sorted by column OP (from information schema)
         List<String> pkColumnValues = new ArrayList<String>();
@@ -321,7 +321,7 @@ public class HBaseApplierMutationGenerator {
      * Salting the row keys with hex representation of first two bytes of md5:
      *      hbaseRowID = md5(hbaseRowID)[0] + md5(hbaseRowID)[1] + "-" + hbaseRowID;
      */
-    private String saltRowKey(String hbaseRowID, String firstPartOfRowKey) {
+    private static String saltRowKey(String hbaseRowID, String firstPartOfRowKey) {
 
         byte[] bytesOfSaltingPartOfRowKey = firstPartOfRowKey.getBytes(StandardCharsets.US_ASCII);
 

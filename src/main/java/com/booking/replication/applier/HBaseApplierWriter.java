@@ -122,7 +122,7 @@ public class HBaseApplierWriter {
 
     private final ReplicatorQueues queues;
 
-    private final HBaseApplierMutationGenerator hBaseApplierMutationGenerator;
+    private final  com.booking.replication.Configuration configuration;
 
     // ================================================
     // Constructor
@@ -143,8 +143,7 @@ public class HBaseApplierWriter {
         hbaseConf         = hbaseConfiguration;
         replicatorMetrics = repMetrics;
 
-        hBaseApplierMutationGenerator =
-                new HBaseApplierMutationGenerator(repCfg);
+        configuration     = repCfg;
 
         try {
             hbaseConnection = ConnectionFactory.createConnection(hbaseConf);
@@ -218,7 +217,7 @@ public class HBaseApplierWriter {
             taskTransactionBuffer.get(currentTaskUUID).get(currentTransactionUUID).get(mySQLTableName).add(augmentedRow);
 
             // calculate the hbRowKey
-            String hbRowKey = hBaseApplierMutationGenerator.getHBaseRowKey(augmentedRow);
+            String hbRowKey = HBaseApplierMutationGenerator.getHBaseRowKey(augmentedRow);
             taskRowIDS.get(currentTaskUUID).get(currentTransactionUUID).get(mySQLTableName).add(hbRowKey);
 
             rowsBufferedInCurrentTask.incrementAndGet();
@@ -668,9 +667,13 @@ public class HBaseApplierWriter {
                                             TaskResult taskResult = new TaskResult(taskUUID, false, numberOfRowsInTask, tableStats);
                                             return taskResult;
                                         } else {
+
                                             try {
 
                                                 List<AugmentedRow> rowOps = taskTransactionBuffer.get(taskUUID).get(transactionUUID).get(bufferedMySQLTableName);
+
+                                                HBaseApplierMutationGenerator hBaseApplierMutationGenerator =
+                                                        new HBaseApplierMutationGenerator(configuration);
 
                                                 HashMap<String,HashMap<String,List<Triple<String,String,Put>>>> preparedMutations =
                                                         hBaseApplierMutationGenerator.generateMutationsFromAugmentedRows(rowOps);

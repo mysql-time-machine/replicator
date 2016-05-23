@@ -20,6 +20,7 @@ public class StartupParameters {
     private Integer shard;
     private boolean deltaTables;
     private boolean initialSnapshot;
+    private String  hbaseNamespace;
 
     private static final String DEFAULT_BINLOG_FILENAME_PATERN = "mysql-bin.";
 
@@ -33,6 +34,13 @@ public class StartupParameters {
             dc = "dc1";
         }
 
+        // hbase namespace
+        if (o.hasArgument("hbase-namespace")) {
+            hbaseNamespace = o.valueOf("hbase-namespace").toString();
+        }
+        else {
+            dc = "dc1";
+        }
         // use delta tables
         if (o.has("delta")) {
             deltaTables = true;
@@ -113,6 +121,7 @@ public class StartupParameters {
         System.out.println("\tposition:             " + binlogPosition);
         System.out.println("\tlast-binlog-filename: " + lastBinlogFileName);
         System.out.println("\tinitial-snapshot:     " + initialSnapshot);
+        System.out.println("\thbase-namespace:      " + hbaseNamespace);
         System.out.println("----------------------------------------------\n");
 
     }
@@ -183,5 +192,9 @@ public class StartupParameters {
 
     public boolean isInitialSnapshot() {
         return initialSnapshot;
+    }
+
+    public String getHbaseNamespace() {
+        return hbaseNamespace;
     }
 }

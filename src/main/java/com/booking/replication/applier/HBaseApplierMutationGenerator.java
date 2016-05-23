@@ -95,9 +95,8 @@ public class HBaseApplierMutationGenerator {
         // RowID
         String hbaseRowID = getHBaseRowKey(row);
 
-        // TODO: add namespace to config
         String hbaseTableName =
-                configuration.getReplicantSchemaName().toLowerCase() + ":" +
+                configuration.getHbaseNamespace() + ":" +
                 row.getTableName().toString().toLowerCase();
 
         Put p = new Put(Bytes.toBytes(hbaseRowID));
@@ -199,14 +198,14 @@ public class HBaseApplierMutationGenerator {
 
         String hbaseRowID = getHBaseRowKey(row);
 
-        String  replicantSchema   = configuration.getReplicantSchemaName().toLowerCase();
+        // String  replicantSchema   = configuration.getReplicantSchemaName().toLowerCase();
         String  mySQLTableName    = row.getTableName();
         Long    timestampMicroSec = row.getEventV4Header().getTimestamp();
         boolean isInitialSnapshot = configuration.isInitialSnapshotMode();
 
         String deltaTableName = TableNameMapper.getCurrentDeltaTableName(
                 timestampMicroSec,
-                replicantSchema,
+                configuration.getHbaseNamespace(),
                 mySQLTableName,
                 isInitialSnapshot
         );

@@ -21,7 +21,7 @@ public class TableNameMapper {
 
     public static String getCurrentDeltaTableName(
             long    eventTimestampMicroSec,
-            String  replicantSchema,
+            String  replicantNamespace,
             String  mysqlTableName,
             boolean isInitialSnapshot) {
 
@@ -44,8 +44,7 @@ public class TableNameMapper {
             suffix = sdf.format(resultDate);
         }
 
-        // TODO: read namespace from config
-        String currentDeltaTable = "delta:" + replicantSchema.toLowerCase() + "_" + mysqlTableName.toLowerCase() + "_" + suffix;
+        String currentDeltaTable = "delta:" + replicantNamespace.toLowerCase() + "_" + mysqlTableName.toLowerCase() + "_" + suffix;
         return currentDeltaTable;
     }
 

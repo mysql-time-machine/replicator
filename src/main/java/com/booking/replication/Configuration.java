@@ -2,7 +2,6 @@ package com.booking.replication;
 
 import com.google.common.base.Joiner;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -19,13 +18,14 @@ public class Configuration {
     private String activeSchemaHost;
     private String activeSchemaDB;
 
-    private Map<String,String> activeSchemaHostsByDC;
+    List<String> activeSchemaHosts;
 
     // Metadata DB
     private String metaDataDBName;
 
     // Replicant DB
     private String  replicantDC;
+    private String  hbaseNamespace;
     private String  replicantSchemaName;
     private String  replicantDBUserName;
     private String  replicantDBPassword;
@@ -38,7 +38,7 @@ public class Configuration {
     private String  startingBinlogFileName;
     private String  endingBinlogFileName;
     private String  replicantDBActiveHost; // <- by default first slave in the list
-    private Map<String,List<String>> replicantDBSlavesByDC;
+    private List<String> replicantDBSlaves;
     private List<String> tablesForWhichToTrackDailyChanges;
 
     private String ZOOKEEPER_QUORUM;
@@ -59,13 +59,6 @@ public class Configuration {
 
     public String toString() {
 
-        List<String> dc_list = new ArrayList<String>();
-
-        for (String dc : replicantDBSlavesByDC.keySet()){
-            String x = dc + ": " + Joiner.on(",").join(replicantDBSlavesByDC.get(dc));
-            dc_list.add(x);
-        }
-
         Joiner joiner = Joiner.on(", ");
 
         if (tablesForWhichToTrackDailyChanges != null) {
@@ -77,17 +70,14 @@ public class Configuration {
                     .append("\tdeltaTables                       : ")
                     .append(writeRecentChangesToDeltaTables)
                     .append("\n")
-                    .append("\treplicantDC                       : ")
-                    .append(replicantDC)
-                    .append("\n")
                     .append("\treplicantSchemaName               : ")
                     .append(replicantSchemaName)
                     .append("\n")
                     .append("\tuser name                         : ")
                     .append(replicantDBUserName)
                     .append("\n")
-                    .append("\treplicantDBSlavesByDC             : ")
-                    .append(Joiner.on(" | ").join(dc_list))
+                    .append("\treplicantDBSlaves             : ")
+                    .append(Joiner.on(" | ").join(replicantDBSlaves))
                     .append("\n")
                     .append("\treplicantDBActiveHost             : ")
                     .append(replicantDBActiveHost)
@@ -131,8 +121,8 @@ public class Configuration {
                     .append("\tuser name                         : ")
                     .append(replicantDBUserName)
                     .append("\n")
-                    .append("\treplicantDBSlavesByDC             : ")
-                    .append(Joiner.on(" | ").join(dc_list))
+                    .append("\treplicantDBSlaves             : ")
+                    .append(Joiner.on(" | ").join(replicantDBSlaves))
                     .append("\n")
                     .append("\treplicantDBActiveHost             : ")
                     .append(replicantDBActiveHost)
@@ -238,12 +228,12 @@ public class Configuration {
         this.replicantSchemaName = replicantSchemaName;
     }
 
-    public Map<String, List<String>> getReplicantDBSlavesByDC() {
-        return replicantDBSlavesByDC;
+    public List<String> getReplicantDBSlaves() {
+        return replicantDBSlaves;
     }
 
-    public void setReplicantDBSlavesByDC(Map<String, List<String>> replicantDBSlavesByDC) {
-        this.replicantDBSlavesByDC = replicantDBSlavesByDC;
+    public void setReplicantDBSlaves(List<String> replicantDBSlaves) {
+        this.replicantDBSlaves = replicantDBSlaves;
     }
 
     public String getApplierType() {
@@ -294,20 +284,12 @@ public class Configuration {
         this.replicantShardID = replicantShardID;
     }
 
-    public String getReplicantDC() {
-        return replicantDC;
+    public List<String> getActiveSchemaHosts() {
+        return activeSchemaHosts;
     }
 
-    public void setReplicantDC(String replicantDC) {
-        this.replicantDC = replicantDC;
-    }
-
-    public Map<String, String> getActiveSchemaHostsByDC() {
-        return activeSchemaHostsByDC;
-    }
-
-    public void setActiveSchemaHostsByDC(Map<String, String> activeSchemaHostsByDC) {
-        this.activeSchemaHostsByDC = activeSchemaHostsByDC;
+    public void setActiveSchemaHosts(List<String> activeSchemaHosts) {
+        this.activeSchemaHosts = activeSchemaHosts;
     }
 
     public String getZOOKEEPER_QUORUM() {
@@ -348,5 +330,18 @@ public class Configuration {
 
     public void setInitialSnapshotMode(boolean initialSnapshotMode) {
         this.initialSnapshotMode = initialSnapshotMode;
+    }
+
+    public String getHbaseNamespace() {
+        return hbaseNamespace;
+    }
+
+    public void setHbaseNamespace(String hbaseNamespace) {
+        if (hbaseNamespace == null) {
+            System.exit(-1);
+        }
+        else {
+            this.hbaseNamespace = hbaseNamespace;
+        }
     }
 }

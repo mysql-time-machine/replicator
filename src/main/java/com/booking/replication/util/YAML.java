@@ -2,6 +2,7 @@ package com.booking.replication.util;
 
 import com.booking.replication.Configuration;
 import com.booking.replication.Constants;
+import com.google.common.base.Joiner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
@@ -40,7 +41,7 @@ public class YAML {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(YAML.class);
 
-    private static final String SCHEMA_TRACKER  = "schema_history";
+    private static final String SCHEMA_TRACKER  = "metadata_store";
     private static final String HIVE_IMPORT_KEY = "hive_imports";
 
     public static Configuration loadReplicatorConfiguration(StartupParameters startupParameters){
@@ -55,6 +56,7 @@ public class YAML {
         Integer shard                  = startupParameters.getShard();
         Boolean useDeltaTables         = startupParameters.isDeltaTables();
         Boolean initialSnapshot        = startupParameters.isInitialSnapshot();
+        String  hbaseNamespace         = startupParameters.getHbaseNamespace();
 
         Configuration rc = new Configuration();
 
@@ -63,13 +65,8 @@ public class YAML {
         rc.setStartingBinlogPosition(binlogPosition);
         rc.setLastBinlogFileName(lastBinlogFilename);
 
-        // dc
-        rc.setReplicantDC(dc);
-
-        //if (useDeltaTables == true && initialSnapshot == true) {
-        //    LOGGER.error("delta tables and initial snapshots are mutually exclusive!");
-        //    System.exit(1);
-        //}
+        // hbase namespace
+        rc.setHbaseNamespace(hbaseNamespace);
 
         // delta tables
         rc.setWriteRecentChangesToDeltaTables(useDeltaTables);
@@ -85,7 +82,7 @@ public class YAML {
             Map<String, Map<String,Object>> config =
                     (Map<String, Map<String,Object>>) yaml.load(in);
 
-            for (String shardConfigKey : config.keySet()) {
+            for (String configCategoryKey : config.keySet()) {
 
                 String shardName;
 
@@ -95,26 +92,26 @@ public class YAML {
                     shardName = schema;
                 }
 
-                if (shardConfigKey.equals(shardName)) {
+                if (configCategoryKey.equals(shardName)) {
 
                     // configs
-                    Map<String, Object> value = config.get(shardConfigKey);
+                    Map<String, Object> value = config.get(configCategoryKey);
 
-                    rc.setReplicantSchemaName(shardConfigKey);
+                    rc.setReplicantSchemaName(configCategoryKey);
                     rc.setReplicantDBUserName((String) value.get("username"));
                     rc.setReplicantDBPassword((String) value.get("password"));
-                    rc.setReplicantDBSlavesByDC((Map<String, List<String>>) value.get("slaves"));
+                    rc.setReplicantDBSlaves((List<String>) value.get("slaves"));
                     rc.setReplicantSchemaName(schema);
                     rc.setReplicantShardID(shard);
                 }
 
-                if (shardConfigKey.equals(SCHEMA_TRACKER)) {
-                    Map<String, Object> value = config.get(shardConfigKey);
+                if (configCategoryKey.equals(SCHEMA_TRACKER)) {
+                    Map<String, Object> value = config.get(configCategoryKey);
 
                     rc.setActiveSchemaUserName((String) value.get("username"));
                     rc.setActiveSchemaPassword((String) value.get("password"));
-                    rc.setActiveSchemaHostsByDC((Map<String, String>) value.get("host"));
-                    rc.setActiveSchemaHost(rc.getActiveSchemaHostsByDC().get(dc));
+                    rc.setActiveSchemaHosts((List<String>) value.get("hosts"));
+                    rc.setActiveSchemaHost(rc.getActiveSchemaHosts().get(0));
                     if (shard > 0) {
                         rc.setActiveSchemaDB(schema + shard + "_" + Constants.ACTIVE_SCHEMA_SUFIX);
                     }
@@ -123,19 +120,19 @@ public class YAML {
                     }
                 }
 
-                if (shardConfigKey.equals("zookeepers")) {
-                    Map<String, Object> value = config.get(shardConfigKey);
-                    rc.setZOOKEEPER_QUORUM((String) value.get(dc));
+                if (configCategoryKey.equals("zookeepers")) {
+                    Map<String, Object> value = config.get(configCategoryKey);
+                    rc.setZOOKEEPER_QUORUM(Joiner.on(",").join((List<String>) value.get("quorum")));
                 }
 
-                if (shardConfigKey.equals("graphite")) {
-                    Map<String, Object> value = config.get(shardConfigKey);
+                if (configCategoryKey.equals("graphite")) {
+                    Map<String, Object> value = config.get(configCategoryKey);
                     String graphiteStatsNamespace = (String) value.get("namespace");
                     rc.setGraphiteStatsNamesapce(graphiteStatsNamespace);
                 }
 
-                if (shardConfigKey.equals(HIVE_IMPORT_KEY)) {
-                    Map<String, Object> value = config.get(shardConfigKey);
+                if (configCategoryKey.equals(HIVE_IMPORT_KEY)) {
+                    Map<String, Object> value = config.get(configCategoryKey);
                     if (value.containsKey(shardName)) {
                         List<String> tableList = (List<String>) value.get(shardName);
                         rc.setTablesForWhichToTrackDailyChanges(tableList);
@@ -160,7 +157,7 @@ public class YAML {
         // TODO: Currently just take first slave from the list;
         //       later implement active slave tracking and slave fail-over
 
-        rc.setReplicantDBActiveHost(rc.getReplicantDBSlavesByDC().get(rc.getReplicantDC()).iterator().next().toString());
+        rc.setReplicantDBActiveHost(rc.getReplicantDBSlaves().get(0));
 
         return rc;
     }

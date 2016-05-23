@@ -307,7 +307,7 @@ public class PipelineOrchestrator extends Thread {
                             hBaseSchemaManager.createMirroredTableIfNotExists(hbaseTableName, DEFAULT_VERSIONS_FOR_MIRRORED_TABLES);
                         }
                         if(configuration.isWriteRecentChangesToDeltaTables()) {
-                            String replicantSchema = ((TableMapEvent) event).getDatabaseName().toString();
+                            //String replicantSchema = ((TableMapEvent) event).getDatabaseName().toString();
                             String mysqlTableName = ((TableMapEvent) event).getTableName().toString();
 
                             if (configuration.getTablesForWhichToTrackDailyChanges().contains(mysqlTableName)) {
@@ -316,7 +316,7 @@ public class PipelineOrchestrator extends Thread {
 
                                 String deltaTableName = TableNameMapper.getCurrentDeltaTableName(
                                         eventTimestampMicroSec,
-                                        replicantSchema,
+                                        configuration.getHbaseNamespace(),
                                         mysqlTableName,
                                         configuration.isInitialSnapshotMode());
                                 if (!hBaseSchemaManager.isTableKnownToHBase(deltaTableName)) {

@@ -11,6 +11,7 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 
+import org.apache.hadoop.hbase.util.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
@@ -40,24 +42,26 @@ public class HBaseApplierMutationGenerator {
         configuration = repCfg;
     }
 
-    public List<Put> generateMutationsFromAugmentedRows(List<AugmentedRow> augmentedRows) {
+    public HashMap<String,HashMap<String,List<Triple<String,String,Put>>>> generateMutationsFromAugmentedRows(List<AugmentedRow> augmentedRows) {
 
-        String  replicantSchema = configuration.getReplicantSchemaName();
+        // { $type => $tableName => @AugmentedMutations }
+        HashMap<String,HashMap<String,List<Triple<String,String,Put>>>> preparedMutations = new HashMap<>();
 
-        List<Put> preparedMutations = new ArrayList<>();
+        preparedMutations.put("mirrored", new HashMap<String, List<Triple<String, String, Put>>>());
+        preparedMutations.put("delta", new HashMap<String, List<Triple<String, String, Put>>>());
 
         for (AugmentedRow row : augmentedRows) {
 
             // ==============================================================================
             // I. Mirrored table
+            Triple<String,String,Put> mirroredTableKeyPut = getPutForMirroredTable(row);
 
-            // get table_name from event
-            String mySQLTableName = row.getTableName();
-            Pair<String,Put> rowIDPutPair = getPutForMirroredTable(row);
+            String mirroredTableName = mirroredTableKeyPut.getFirst();
 
-            Put p = rowIDPutPair.getSecond();
-
-            preparedMutations.add(p);
+            if (preparedMutations.get("mirrored").get(mirroredTableName) == null) {
+                preparedMutations.get("mirrored").put(mirroredTableName, new ArrayList<Triple<String, String, Put>>());
+            }
+            preparedMutations.get("mirrored").get(mirroredTableName).add(mirroredTableKeyPut);
 
             // ==============================================================================
             // II. Optional Delta table used for incremental imports to Hive
@@ -69,37 +73,32 @@ public class HBaseApplierMutationGenerator {
             // 2. we are storing the entire row (instead only the changes columns - since 1.)
             //
             List<String> tablesForDelta = configuration.getTablesForWhichToTrackDailyChanges();
+            String mySQLTableName = row.getTableName();
 
-            if (configuration.isWriteRecentChangesToDeltaTables()
-                    && tablesForDelta.contains(mySQLTableName)) {
+            if (configuration.isWriteRecentChangesToDeltaTables() && tablesForDelta.contains(mySQLTableName)) {
 
-                boolean isInitialSnapshot = configuration.isInitialSnapshotMode();
-                String  mysqlTableName    = row.getTableName();
-                Long    timestampMicroSec = row.getEventV4Header().getTimestamp();
+                Triple<String,String,Put> deltaTableKeyPut = getPutForDeltaTable(row);
 
-                String deltaTableName = TableNameMapper.getCurrentDeltaTableName(
-                        timestampMicroSec,
-                        replicantSchema,
-                        mysqlTableName,
-                        isInitialSnapshot
-                );
-
-                Pair<String, Put> deltaPair = getPutForDeltaTable(row);
-                // String deltaRowID           = deltaPair.getFirst(); // todo <- refactor and remove
-                Put deltaPut                = deltaPair.getSecond();
-
-                preparedMutations.add(deltaPut);
+                String deltaTableName = deltaTableKeyPut.getFirst();
+                if (preparedMutations.get("delta").get(deltaTableName) == null) {
+                    preparedMutations.get("delta").put(deltaTableName, new ArrayList<Triple<String, String, Put>>());
+                }
+                preparedMutations.get("delta").get(deltaTableName).add(deltaTableKeyPut);
             }
-
         } // next row
 
         return preparedMutations;
     }
 
-    private Pair<String,Put> getPutForMirroredTable(AugmentedRow row) {
+    private Triple<String,String,Put> getPutForMirroredTable(AugmentedRow row) {
 
         // RowID
         String hbaseRowID = getHBaseRowKey(row);
+
+        // TODO: add namespace to config
+        String hbaseTableName =
+                configuration.getReplicantSchemaName().toLowerCase() + ":" +
+                row.getTableName().toString().toLowerCase();
 
         Put p = new Put(Bytes.toBytes(hbaseRowID));
 
@@ -192,13 +191,25 @@ public class HBaseApplierMutationGenerator {
             System.exit(1);
         }
 
-        Pair<String,Put> idPut = new Pair<>(hbaseRowID,p);
-        return idPut;
+        Triple<String,String,Put> tableKeyPut = new Triple<>(hbaseTableName,hbaseRowID,p);
+        return tableKeyPut;
     }
 
-    private Pair<String,Put> getPutForDeltaTable(AugmentedRow row) {
+    private Triple<String,String,Put> getPutForDeltaTable(AugmentedRow row) {
 
         String hbaseRowID = getHBaseRowKey(row);
+
+        String  replicantSchema   = configuration.getReplicantSchemaName().toLowerCase();
+        String  mySQLTableName    = row.getTableName();
+        Long    timestampMicroSec = row.getEventV4Header().getTimestamp();
+        boolean isInitialSnapshot = configuration.isInitialSnapshotMode();
+
+        String deltaTableName = TableNameMapper.getCurrentDeltaTableName(
+                timestampMicroSec,
+                replicantSchema,
+                mySQLTableName,
+                isInitialSnapshot
+        );
 
         Put p = new Put(Bytes.toBytes(hbaseRowID));
 
@@ -275,8 +286,8 @@ public class HBaseApplierMutationGenerator {
             System.exit(1);
         }
 
-        Pair<String,Put> idPut = new Pair<>(hbaseRowID,p);
-        return idPut;
+        Triple<String,String,Put> tableKeyPut = new Triple<>(deltaTableName,hbaseRowID,p);
+        return tableKeyPut;
     }
 
     public String getHBaseRowKey(AugmentedRow row) {

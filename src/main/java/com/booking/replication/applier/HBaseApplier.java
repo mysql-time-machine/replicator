@@ -38,7 +38,7 @@ import java.util.concurrent.*;
 public class HBaseApplier implements Applier {
 
     // TODO: move configuration vars to Configuration
-    private static final int POOL_SIZE = 100;
+    private static final int POOL_SIZE = 50;
 
     private static final int UUID_BUFFER_SIZE = 1000; // <- max number of rows in one uuid buffer
 
@@ -162,11 +162,11 @@ public class HBaseApplier implements Applier {
         String hbaseNamespace = getHBaseNamespace(pipeline);
         if (hbaseNamespace == null) return;
 
-        HBasePreparedAugmentedRowsEvent hBasePreparedAugmentedRowsEvent =
-                new HBasePreparedAugmentedRowsEvent(hbaseNamespace, augmentedRowsEvent);
+        //HBasePreparedAugmentedRowsEvent hBasePreparedAugmentedRowsEvent =
+        //        new HBasePreparedAugmentedRowsEvent(hbaseNamespace, augmentedRowsEvent);
 
         // buffer
-        hbaseApplierWriter.pushToCurrentTaskBuffer(hBasePreparedAugmentedRowsEvent);
+        hbaseApplierWriter.pushToCurrentTaskBuffer(augmentedRowsEvent);
 
         // flush on buffer size or time limit
         long currentTime = System.currentTimeMillis();

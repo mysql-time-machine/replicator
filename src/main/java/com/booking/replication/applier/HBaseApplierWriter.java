@@ -1,12 +1,14 @@
 package com.booking.replication.applier;
 
 import com.booking.replication.augmenter.AugmentedRow;
+import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.metrics.ReplicatorMetrics;
 import com.booking.replication.queues.ReplicatorQueues;
 import com.booking.replication.util.MutableLong;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.util.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,24 +40,24 @@ public class HBaseApplierWriter {
      *  {
      *      "874c3466-3bf0-422f-a3e3-148289226b6c" => { // <- transaction UUID
      *
-     *        table_1 => [@table_1_mutations]
+     *        table_1 => [@table_1_augmented_row_changes]
      *        ,...,
-     *        table_N => [@table_N_mutations]
+     *        table_N => [@table_N_augmented_row_changes]
      *
      *      },
      *
      *      "187433e5-7b05-47ff-a3bd-633897cd2b4f" => {
      *
-     *        table_1 => [@table_1_mutations]
+     *        table_1 => [@table_1_augmented_row_changes]
      *        ,...,
-     *        table_N => [@table_N_mutations]
+     *        table_N => [@table_N_augmented_row_changes]
      *
      *      },
      *  }
      *
      * Or in short, Perl-like syntax:
      *
-     *  $taskBuffer = { $taskUUID => { $transactionUUID => { $tableName => [@Mutations] }}}
+     *  $taskBuffer = { $taskUUID => { $transactionUUID => { $tableName => [@AugmentedRows] }}}
      *
      * This works asynchronously for maximum performance. Since transactions are timestamped and they are from RBR
      * we can buffer them in any order. In HBase all of them will be present with corresponding timestamp. And RBR
@@ -64,12 +66,13 @@ public class HBaseApplierWriter {
      * different transactions does not influence the end result since data will be timestamped with timestamps
      * from the binlog and if there are multiple operations on the same row all versions are kept in HBase.
      */
-
     private final
             ConcurrentHashMap<String, Map<String, Map<String,List<AugmentedRow>>>>
             taskTransactionBuffer = new ConcurrentHashMap<String, Map<String, Map<String,List<AugmentedRow>>>>();
 
-
+    /**
+     * helper buffer of the same structure for row-ids only
+     */
     private final
             ConcurrentHashMap<String, Map<String, Map<String,List<String>>>>
             taskRowIDS = new ConcurrentHashMap<String, Map<String, Map<String,List<String>>>>();
@@ -84,10 +87,9 @@ public class HBaseApplierWriter {
     /**
      * Status tracking helper structures
      */
-    private final ConcurrentHashMap<String, Integer> taskStatus        = new ConcurrentHashMap<String,Integer>();
-    private final ConcurrentHashMap<String, Integer> transactionStatus = new ConcurrentHashMap<String,Integer>();
-
-    private final ConcurrentHashMap<String, List<String>> taskMessages = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Integer>      taskStatus        = new ConcurrentHashMap<String,Integer>();
+    private final ConcurrentHashMap<String, Integer>      transactionStatus = new ConcurrentHashMap<String,Integer>();
+    private final ConcurrentHashMap<String, List<String>> taskMessages      = new ConcurrentHashMap<>();
 
     /**
      * Shared connection used by all tasks in applier
@@ -171,10 +173,11 @@ public class HBaseApplierWriter {
     // ================================================
     // Buffering util
     // ================================================
-    public synchronized void pushToCurrentTaskBuffer(HBasePreparedAugmentedRowsEvent hBasePreparedAugmentedRowsEvent) {
+    public synchronized void pushToCurrentTaskBuffer(AugmentedRowsEvent augmentedRowsEvent) {
 
-        String             hbaseTableName = hBasePreparedAugmentedRowsEvent.getHbaseTableName();
-        List<AugmentedRow> augmentedRows  = hBasePreparedAugmentedRowsEvent.getAugmentedRowsEvent().getSingleRowEvents();
+        //String             hbaseTableName = hBasePreparedAugmentedRowsEvent.getHbaseTableName();
+        String             mySQLTableName = augmentedRowsEvent.getMysqlTableName();
+        List<AugmentedRow> augmentedRows  = augmentedRowsEvent.getSingleRowEvents();
 
         // Verify that task_uuid exists
         if (taskTransactionBuffer.get(currentTaskUUID) == null) {
@@ -202,21 +205,21 @@ public class HBaseApplierWriter {
         // Verify that table exists. If not, add to transaction. In case of delta
         // tables, delta table key will belong to the same task and transaction
         // as corresponding mirrored table
-        if (taskTransactionBuffer.get(currentTaskUUID).get(currentTransactionUUID).get(hbaseTableName) == null) {
-            taskTransactionBuffer.get(currentTaskUUID).get(currentTransactionUUID).put(hbaseTableName, new ArrayList<AugmentedRow>());
+        if (taskTransactionBuffer.get(currentTaskUUID).get(currentTransactionUUID).get(mySQLTableName) == null) {
+            taskTransactionBuffer.get(currentTaskUUID).get(currentTransactionUUID).put(mySQLTableName, new ArrayList<AugmentedRow>());
         }
-        if (taskRowIDS.get(currentTaskUUID).get(currentTransactionUUID).get(hbaseTableName) == null) {
-            taskRowIDS.get(currentTaskUUID).get(currentTransactionUUID).put(hbaseTableName, new ArrayList<String>());
+        if (taskRowIDS.get(currentTaskUUID).get(currentTransactionUUID).get(mySQLTableName) == null) {
+            taskRowIDS.get(currentTaskUUID).get(currentTransactionUUID).put(mySQLTableName, new ArrayList<String>());
         }
 
         // Add to buffer
         for(AugmentedRow augmentedRow : augmentedRows) {
 
-            taskTransactionBuffer.get(currentTaskUUID).get(currentTransactionUUID).get(hbaseTableName).add(augmentedRow);
+            taskTransactionBuffer.get(currentTaskUUID).get(currentTransactionUUID).get(mySQLTableName).add(augmentedRow);
 
             // calculate the hbRowKey
             String hbRowKey = hBaseApplierMutationGenerator.getHBaseRowKey(augmentedRow);
-            taskRowIDS.get(currentTaskUUID).get(currentTransactionUUID).get(hbaseTableName).add(hbRowKey);
+            taskRowIDS.get(currentTaskUUID).get(currentTransactionUUID).get(mySQLTableName).add(hbRowKey);
 
             rowsBufferedInCurrentTask.incrementAndGet();
         }
@@ -656,10 +659,7 @@ public class HBaseApplierWriter {
 
                                     int numberOfFlushedTablesInCurrentTransaction = 0;
 
-                                    for (final String bufferedTableName : taskTransactionBuffer.get(taskUUID).get(transactionUUID).keySet()) {
-
-                                        TableName TABLE = TableName.valueOf(bufferedTableName);
-                                        Table hbaseTable = hbaseConnection.getTable(TABLE);
+                                    for (final String bufferedMySQLTableName : taskTransactionBuffer.get(taskUUID).get(transactionUUID).keySet()) {
 
                                         if (chaosMonkey.feelsLikeThrowingExceptionBeforeFlushingData()) {
                                             throw new Exception("Chaos monkey is here to prevent call to flush!!!");
@@ -670,16 +670,51 @@ public class HBaseApplierWriter {
                                         } else {
                                             try {
 
-                                                List<AugmentedRow> rowOps = taskTransactionBuffer.get(taskUUID).get(transactionUUID).get(bufferedTableName);
+                                                List<AugmentedRow> rowOps = taskTransactionBuffer.get(taskUUID).get(transactionUUID).get(bufferedMySQLTableName);
 
-                                                List<Put> puts = hBaseApplierMutationGenerator.generateMutationsFromAugmentedRows(rowOps);
+                                                HashMap<String,HashMap<String,List<Triple<String,String,Put>>>> preparedMutations =
+                                                        hBaseApplierMutationGenerator.generateMutationsFromAugmentedRows(rowOps);
 
-                                                hbaseTable.put(puts);
+                                                // mirrored
+                                                if (preparedMutations.containsKey("mirrored")) {
+                                                    for (String mirroredHbaseTableName : preparedMutations.get("mirrored").keySet()) {
 
-                                                numberOfFlushedTablesInCurrentTransaction++;
+                                                        TableName TABLE = TableName.valueOf(mirroredHbaseTableName);
+                                                        Table hbaseTable = hbaseConnection.getTable(TABLE);
+
+                                                        List<Put> puts = new ArrayList<Put>();
+                                                        for (Triple<String,String,Put> augmentedMutation :
+                                                                preparedMutations.get("mirrored").get(mirroredHbaseTableName) ) {
+                                                            puts.add(augmentedMutation.getThird());
+                                                        }
+                                                        hbaseTable.put(puts);
+
+                                                        numberOfFlushedTablesInCurrentTransaction++;
+                                                    }
+                                                }
+                                                else {
+                                                    LOGGER.error("Missing mirrored key from preparedMutations!");
+                                                    System.exit(-1);
+                                                }
+
+                                                // delta
+                                                if (preparedMutations.containsKey("delta")) {
+                                                    for (String deltaHbaseTableName : preparedMutations.get("delta").keySet()) {
+
+                                                        TableName TABLE = TableName.valueOf(deltaHbaseTableName);
+                                                        Table hbaseTable = hbaseConnection.getTable(TABLE);
+
+                                                        List<Put> puts = new ArrayList<Put>();
+                                                        for (Triple<String,String,Put> augmentedMutation :
+                                                                preparedMutations.get("delta").get(deltaHbaseTableName) ) {
+                                                            puts.add(augmentedMutation.getThird());
+                                                        }
+                                                        hbaseTable.put(puts);
+                                                    }
+                                                }
                                             }
                                             catch (Exception e) {
-                                                LOGGER.error("Exception on put for table " + bufferedTableName, e);
+                                                LOGGER.error("Exception on put for table " + bufferedMySQLTableName, e);
                                                 e.printStackTrace();
                                             }
                                         }

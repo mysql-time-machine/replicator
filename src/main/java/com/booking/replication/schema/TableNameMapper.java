@@ -19,8 +19,6 @@ import java.util.TimeZone;
  */
 public class TableNameMapper {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(TableNameMapper.class);
-
     public static String getCurrentDeltaTableName(
             long    eventTimestampMicroSec,
             String  replicantSchema,
@@ -46,6 +44,7 @@ public class TableNameMapper {
             suffix = sdf.format(resultDate);
         }
 
+        // TODO: read namespace from config
         String currentDeltaTable = "delta:" + replicantSchema.toLowerCase() + "_" + mysqlTableName.toLowerCase() + "_" + suffix;
         return currentDeltaTable;
     }

@@ -40,6 +40,7 @@ import java.util.Map;
 public class YAML {
 
     private static final String SCHEMA_TRACKER  = "metadata_store";
+    private static final String REPLICATION_SCHEMA_KEY = "replication_schema";
     private static final String HIVE_IMPORT_KEY = "hive_imports";
 
     public static Configuration loadReplicatorConfiguration(StartupParameters startupParameters){
@@ -81,15 +82,7 @@ public class YAML {
 
             for (String configCategoryKey : config.keySet()) {
 
-                String shardName;
-
-                if (shard > 0) {
-                    shardName = schema + shard.toString();
-                } else {
-                    shardName = schema;
-                }
-
-                if (configCategoryKey.equals(shardName)) {
+                if (configCategoryKey.equals(REPLICATION_SCHEMA_KEY)) {
 
                     // configs
                     Map<String, Object> value = config.get(configCategoryKey);
@@ -97,9 +90,21 @@ public class YAML {
                     rc.setReplicantSchemaName(configCategoryKey);
                     rc.setReplicantDBUserName((String) value.get("username"));
                     rc.setReplicantDBPassword((String) value.get("password"));
+
                     rc.setReplicantDBSlaves((List<String>) value.get("slaves"));
+
+                    schema = (String) value.get("name");
                     rc.setReplicantSchemaName(schema);
+
                     rc.setReplicantShardID(shard);
+                }
+
+                String shardName;
+
+                if (shard > 0) {
+                    shardName = schema + shard.toString();
+                } else {
+                    shardName = schema;
                 }
 
                 if (configCategoryKey.equals(SCHEMA_TRACKER)) {

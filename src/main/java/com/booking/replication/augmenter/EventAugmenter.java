@@ -52,7 +52,7 @@ public class EventAugmenter {
      * Constructor
      *
      * @param  replicatorConfiguration Replicator configuration object
-     * @param repMetrics
+     * @param repMetrics Replicator metrics object
      * @throws SQLException
      * @throws URISyntaxException
      */
@@ -119,15 +119,13 @@ public class EventAugmenter {
         // 4. create augmentedSchemaChangeEvent
         String _dbName = ((QueryEvent) event).getDatabaseName().toString();
 
-        AugmentedSchemaChangeEvent augmentedSchemaChangeEvent = new AugmentedSchemaChangeEvent(
+        // 5. send augmentedSchemaChangeEvent to applier
+        return new AugmentedSchemaChangeEvent(
                 schemaVersionSnapshotBeforeTransition,
                 schemaTransitionSequence,
                 schemaVersionSnapshotAfterTransition,
                 _dbName
         );
-
-        // 5. send augmentedSchemaChangeEvent to applier
-        return augmentedSchemaChangeEvent;
     }
 
     private HashMap<String,String> getDDLFromEvent(BinlogEventV4 event) throws SchemaTransitionException {
@@ -191,7 +189,7 @@ public class EventAugmenter {
      */
     public AugmentedRowsEvent mapDataEventToSchema (AbstractRowEvent event, PipelineOrchestrator caller) throws TableMapException {
 
-        AugmentedRowsEvent au = null;
+        AugmentedRowsEvent au;
 
         switch (event.getHeader().getEventType()){
 

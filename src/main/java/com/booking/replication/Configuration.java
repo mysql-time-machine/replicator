@@ -258,14 +258,6 @@ public class Configuration {
         this.activeSchemaDSN = activeSchemaDSN;
     }
 
-    public void setActiveSchemaDB(String activeSchemaDB) {
-        this.activeSchemaDB = activeSchemaDB;
-    }
-
-    public String getActiveSchemaDB() {
-        return activeSchemaDB;
-    }
-
     public int getReplicantShardID() {
         return replicantShardID;
     }

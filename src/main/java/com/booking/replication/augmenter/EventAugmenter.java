@@ -97,7 +97,9 @@ public class EventAugmenter {
             // since active schema has a postfix, we need to make sure that queires that
             // specify schema explictly are rewriten so they work properly on active schema
             String ddl = schemaTransitionSequence.get("ddl"); // TODO: FIX sometimes null!!!
-            String activeSchemaTransitionDDL = rewriteActiveSchemaName(ddl);
+
+            String replicatedSchema = schemaTransitionSequence.get("databaseName");
+            String activeSchemaTransitionDDL = rewriteActiveSchemaName(ddl, replicatedSchema);
 
             schemaTransitionSequence.put("ddl", activeSchemaTransitionDDL);
             futureSchemaVersion = activeSchemaVersion.applyDDL(schemaTransitionSequence);
@@ -160,20 +162,9 @@ public class EventAugmenter {
         }
     }
 
-    public String rewriteActiveSchemaName(String query) {
-
-        String replicantDbName = this.configuration.getReplicantSchemaName();
-        String activeSchemaName = this.configuration.getActiveSchemaDB();
-
+    public String rewriteActiveSchemaName(String query, String replicantDbName) {
         String dbNamePattern = "( " + replicantDbName + ".)|(`" + replicantDbName + "`.)";
-        String newDbNameTerm = " `" + activeSchemaName + "`.";
-
-        LOGGER.info("bla => " + dbNamePattern);
-
-        LOGGER.info("la => " + newDbNameTerm);
-
-        LOGGER.info("qla => " + query);
-        query = query.replaceAll(dbNamePattern, newDbNameTerm);
+        query = query.replaceAll(dbNamePattern, " ");
 
         return query;
     }

@@ -45,13 +45,10 @@ public class ActiveSchemaVersion {
         activeSchemaDataSource = new BasicDataSource();
 
         activeSchemaDataSource.setDriverClassName("com.mysql.jdbc.Driver");
-        activeSchemaDataSource.setUrl(
-                "jdbc:mysql://" +
-                replicatorConfiguration.getActiveSchemaHost() +
-                "/" +
-                replicatorConfiguration.getActiveSchemaDB() +
-                "?useUnicode=true&characterEncoding=UTF-8"
-        );
+        activeSchemaDataSource.setUrl(replicatorConfiguration.getActiveSchemaDSN());
+
+        activeSchemaDataSource.addConnectionProperty("useUnicode", "true");
+        activeSchemaDataSource.addConnectionProperty("characterEncoding", "UTF-8");
         activeSchemaDataSource.setUsername(replicatorConfiguration.getActiveSchemaUserName());
         activeSchemaDataSource.setPassword(replicatorConfiguration.getActiveSchemaPassword());
 

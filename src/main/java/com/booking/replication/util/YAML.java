@@ -112,8 +112,8 @@ public class YAML {
 
                     rc.setActiveSchemaUserName((String) value.get("username"));
                     rc.setActiveSchemaPassword((String) value.get("password"));
-                    rc.setActiveSchemaHosts((List<String>) value.get("hosts"));
-                    rc.setActiveSchemaHost(rc.getActiveSchemaHosts().get(0));
+                    rc.setActiveSchemaDSN((String) value.get("dsn"));
+
                     rc.setActiveSchemaDB((String) value.get("schema_name"));
 //                    if (shard > 0) {
 //                        rc.setActiveSchemaDB(schema + shard + "_" + Constants.ACTIVE_SCHEMA_SUFIX);

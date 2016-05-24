@@ -3,7 +3,6 @@ package com.booking.replication;
 import com.google.common.base.Joiner;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * Stores configuration properties
@@ -15,10 +14,8 @@ public class Configuration {
     // ActiveSchemaVersion DB
     private String activeSchemaUserName;
     private String activeSchemaPassword;
-    private String activeSchemaHost;
+    private String activeSchemaDSN;
     private String activeSchemaDB;
-
-    List<String> activeSchemaHosts;
 
     // Metadata DB
     private String metaDataDBName;
@@ -61,7 +58,7 @@ public class Configuration {
         Joiner joiner = Joiner.on(", ");
 
         if (tablesForWhichToTrackDailyChanges != null) {
-            String str = new StringBuilder()
+            return new StringBuilder()
                     .append("\n")
                     .append("\tapplierType                       : ")
                     .append(applierType)
@@ -84,8 +81,8 @@ public class Configuration {
                     .append("\tactiveSchemaUserName              : ")
                     .append(activeSchemaUserName)
                     .append("\n")
-                    .append("\tactiveSchemaHost                  : ")
-                    .append(activeSchemaHost)
+                    .append("\tactiveSchemaDSN                  : ")
+                    .append(activeSchemaDSN)
                     .append("\n")
                     .append("\tactiveSchemaDB                    : ")
                     .append(activeSchemaDB)
@@ -103,10 +100,9 @@ public class Configuration {
                     .append(joiner.join(tablesForWhichToTrackDailyChanges))
                     .append("\n")
                     .toString();
-            return str;
         }
         else {
-            String str = new StringBuilder()
+            return new StringBuilder()
                     .append("\n")
                     .append("\tapplierType                       : ")
                     .append(applierType)
@@ -129,9 +125,6 @@ public class Configuration {
                     .append("\tactiveSchemaUserName              : ")
                     .append(activeSchemaUserName)
                     .append("\n")
-                    .append("\tactiveSchemaHost                  : ")
-                    .append(activeSchemaHost)
-                    .append("\n")
                     .append("\tgraphiteStatsNamesapce            : ")
                     .append(graphiteStatsNamesapce)
                     .append("\n")
@@ -142,8 +135,6 @@ public class Configuration {
                     .append(initialSnapshotMode)
                     .append("\n")
                     .toString();
-
-            return str;
         }
     }
 
@@ -259,12 +250,12 @@ public class Configuration {
         this.activeSchemaPassword = activeSchemaPassword;
     }
 
-    public String getActiveSchemaHost() {
-        return activeSchemaHost;
+    public String getActiveSchemaDSN() {
+        return activeSchemaDSN;
     }
 
-    public void setActiveSchemaHost(String activeSchemaHost) {
-        this.activeSchemaHost = activeSchemaHost;
+    public void setActiveSchemaDSN(String activeSchemaDSN) {
+        this.activeSchemaDSN = activeSchemaDSN;
     }
 
     public void setActiveSchemaDB(String activeSchemaDB) {
@@ -281,14 +272,6 @@ public class Configuration {
 
     public void setReplicantShardID(int replicantShardID) {
         this.replicantShardID = replicantShardID;
-    }
-
-    public List<String> getActiveSchemaHosts() {
-        return activeSchemaHosts;
-    }
-
-    public void setActiveSchemaHosts(List<String> activeSchemaHosts) {
-        this.activeSchemaHosts = activeSchemaHosts;
     }
 
     public String getZOOKEEPER_QUORUM() {

@@ -119,7 +119,7 @@ public class ActiveSchemaVersion {
 
                 PreparedStatement getTableInfo_Statement =
                         con.prepareStatement(INFORMATION_SCHEMA_SQL);
-                getTableInfo_Statement.setString(1, con.getSchema());
+                getTableInfo_Statement.setString(1, this.configuration.getActiveSchemaDB());
                 getTableInfo_Statement.setString(2, tableName);
 
                 ResultSet getTableInfo_ResultSet =

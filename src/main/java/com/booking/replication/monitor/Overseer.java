@@ -206,18 +206,25 @@ public class Overseer extends Thread {
 
         DatagramSocket sock = null;
         int port = 3002;
+        InetAddress host;
+
+        String graphitUrl = pipelineOrchestrator.configuration.getGraphiteUrl();
 
         try {
 
-           sock = new DatagramSocket();
+            sock = new DatagramSocket();
 
-           InetAddress host = InetAddress.getByName("localhost");
+            if(graphitUrl.contains(":")) {
+                host = InetAddress.getByName(graphitUrl.split(":")[0]);
+                port = Integer.parseInt(graphitUrl.split(":")[1]);
+            } else {
+                host = InetAddress.getByName(graphitUrl);
+            }
 
-           // send
-           byte[] b = message.getBytes();
-           DatagramPacket  dp = new DatagramPacket(b , b.length , host , port);
-           sock.send(dp);
-            
+            // send
+            byte[] b = message.getBytes();
+            DatagramPacket  dp = new DatagramPacket(b , b.length , host , port);
+            sock.send(dp);
         }
         catch(IOException e) {
             LOGGER.warn("Graphite IOException ", e);

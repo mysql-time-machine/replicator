@@ -80,6 +80,14 @@ public class YAML {
             Map<String, Map<String,Object>> config =
                     (Map<String, Map<String,Object>>) yaml.load(in);
 
+            if(! config.keySet().contains(REPLICATION_SCHEMA_KEY)) {
+                throw new Exception("Configuration key missing: %s".format(REPLICATION_SCHEMA_KEY));
+            }
+
+            if(! config.keySet().contains(SCHEMA_TRACKER)) {
+                throw new Exception("Configuration key missing: %s".format(SCHEMA_TRACKER));
+            }
+
             for (String configCategoryKey : config.keySet()) {
 
                 if (configCategoryKey.equals(REPLICATION_SCHEMA_KEY)) {
@@ -112,7 +120,8 @@ public class YAML {
 
                     rc.setActiveSchemaUserName((String) value.get("username"));
                     rc.setActiveSchemaPassword((String) value.get("password"));
-                    rc.setActiveSchemaDSN((String) value.get("dsn"));
+                    rc.setActiveSchemaHost((String) value.get("host"));
+                    rc.setActiveSchemaDB((String) value.get("database"));
 
 //                    if (shard > 0) {
 //                        rc.setActiveSchemaDB(schema + shard + "_" + Constants.ACTIVE_SCHEMA_SUFIX);
@@ -129,8 +138,12 @@ public class YAML {
 
                 if (configCategoryKey.equals("graphite")) {
                     Map<String, Object> value = config.get(configCategoryKey);
+
                     String graphiteStatsNamespace = (String) value.get("namespace");
                     rc.setGraphiteStatsNamesapce(graphiteStatsNamespace);
+
+                    String graphiteUrl = (String) value.get("url");
+                    rc.setGraphiteUrl(graphiteUrl);
                 }
 
                 if (configCategoryKey.equals(HIVE_IMPORT_KEY)) {

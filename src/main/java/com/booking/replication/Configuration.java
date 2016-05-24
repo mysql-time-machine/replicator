@@ -14,7 +14,7 @@ public class Configuration {
     // ActiveSchemaVersion DB
     private String activeSchemaUserName;
     private String activeSchemaPassword;
-    private String activeSchemaDSN;
+    private String activeSchemaHost;
     private String activeSchemaDB;
 
     // Metadata DB
@@ -40,6 +40,7 @@ public class Configuration {
     private String ZOOKEEPER_QUORUM;
 
     private String graphiteStatsNamesapce;
+    private String graphiteUrl;
 
     /**
      * Constructor
@@ -72,7 +73,7 @@ public class Configuration {
                     .append("\tuser name                         : ")
                     .append(replicantDBUserName)
                     .append("\n")
-                    .append("\treplicantDBSlaves             : ")
+                    .append("\treplicantDBSlaves                 : ")
                     .append(Joiner.on(" | ").join(replicantDBSlaves))
                     .append("\n")
                     .append("\treplicantDBActiveHost             : ")
@@ -81,14 +82,17 @@ public class Configuration {
                     .append("\tactiveSchemaUserName              : ")
                     .append(activeSchemaUserName)
                     .append("\n")
-                    .append("\tactiveSchemaDSN                  : ")
-                    .append(activeSchemaDSN)
+                    .append("\tactiveSchemaHost                  : ")
+                    .append(activeSchemaHost)
                     .append("\n")
                     .append("\tactiveSchemaDB                    : ")
                     .append(activeSchemaDB)
                     .append("\n")
                     .append("\tgraphiteStatsNamesapce            : ")
                     .append(graphiteStatsNamesapce)
+                    .append("\n")
+                    .append("\tgraphiteStatsUrl                  : ")
+                    .append(graphiteUrl)
                     .append("\n")
                     .append("\tdeltaTables                       : ")
                     .append(writeRecentChangesToDeltaTables)
@@ -234,6 +238,18 @@ public class Configuration {
         this.applierType = applierType;
     }
 
+    public String getActiveSchemaDSN() {
+        return String.format("jdbc:mysql://%s/%s", this.activeSchemaHost, this.activeSchemaDB);
+    }
+
+    public String getActiveSchemaHost() {
+        return this.activeSchemaHost;
+    }
+
+    public void setActiveSchemaHost(String activeSchemaHost) {
+        this.activeSchemaHost = activeSchemaHost;
+    }
+
     public String getActiveSchemaUserName() {
         return activeSchemaUserName;
     }
@@ -250,12 +266,12 @@ public class Configuration {
         this.activeSchemaPassword = activeSchemaPassword;
     }
 
-    public String getActiveSchemaDSN() {
-        return activeSchemaDSN;
+    public String getActiveSchemaDB() {
+        return this.activeSchemaDB;
     }
 
-    public void setActiveSchemaDSN(String activeSchemaDSN) {
-        this.activeSchemaDSN = activeSchemaDSN;
+    public void setActiveSchemaDB(String activeSchemaDB) {
+        this.activeSchemaDB = activeSchemaDB;
     }
 
     public int getReplicantShardID() {
@@ -280,6 +296,14 @@ public class Configuration {
 
     public void setGraphiteStatsNamesapce(String graphiteStatsNamesapce) {
         this.graphiteStatsNamesapce = graphiteStatsNamesapce;
+    }
+
+    public String getGraphiteUrl() {
+        return this.graphiteUrl;
+    }
+
+    public void setGraphiteUrl(String graphiteUrl) {
+        this.graphiteUrl = graphiteUrl;
     }
 
     public boolean isWriteRecentChangesToDeltaTables() {

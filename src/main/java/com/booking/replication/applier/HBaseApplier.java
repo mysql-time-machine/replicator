@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.util.*;
 
 /**
@@ -37,7 +38,7 @@ import java.util.*;
 public class HBaseApplier implements Applier {
 
     // TODO: move configuration vars to Configuration
-    private static final int POOL_SIZE = 50;
+    private static final int POOL_SIZE = 30;
 
     private static final int UUID_BUFFER_SIZE = 1000; // <- max number of rows in one uuid buffer
 
@@ -249,13 +250,10 @@ public class HBaseApplier implements Applier {
 
         while (wait) {
 
-            long committedRows = totals.getMetricValue(Metric.TOTAL_ROW_OPS_SUCCESSFULLY_COMMITED).longValue();
-            long processedRows = totals.getMetricValue(Metric.TOTAL_ROWS_PROCESSED).longValue();
+            BigInteger totalHBaseRowsAffected  = totals.getMetricValue(Metric.TOTAL_HBASE_ROWS_AFFECTED);
+            BigInteger totalMySQLRowsProcessed = totals.getMetricValue(Metric.TOTAL_ROWS_PROCESSED);
 
-            LOGGER.info("hbaseTotalRowsCommited  => " + committedRows);
-            LOGGER.info("mysqlTotalRowsProcessed => " + processedRows);
-
-            if (checkPointTests.verifyConsistentCountersOnRotateEvent(committedRows, processedRows)) {
+            if (checkPointTests.verifyConsistentCountersOnRotateEvent(totalHBaseRowsAffected, totalMySQLRowsProcessed)) {
                 wait = false;
             }
             else {

@@ -5,6 +5,7 @@ import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.metrics.ReplicatorMetrics;
 import com.booking.replication.queues.ReplicatorQueues;
 import com.booking.replication.util.MutableLong;
+import org.apache.commons.lang.mutable.Mutable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
@@ -145,10 +146,12 @@ public class HBaseApplierWriter {
 
         configuration     = repCfg;
 
-        try {
-            hbaseConnection = ConnectionFactory.createConnection(hbaseConf);
-        } catch (IOException e) {
-            LOGGER.error("Failed to create hbase connection", e);
+        if (! DRY_RUN) {
+            try {
+                hbaseConnection = ConnectionFactory.createConnection(hbaseConf);
+            } catch (IOException e) {
+                LOGGER.error("Failed to create hbase connection", e);
+            }
         }
 
         initBuffers();
@@ -400,7 +403,8 @@ public class HBaseApplierWriter {
 
                     TaskResult taskResult = taskFuture.get(); // raise exceptions if any
                     boolean taskSucceeded = taskResult.isTaskSucceeded();
-                    long numberOfRowsInTask = taskResult.getNumberOfRowsInTask();
+                    long numberOfAugmentedRowsInTask = taskResult.getNumberOfAugmentedRowsInTask();
+                    long numberOfHBaseRowsAffected = taskResult.getNumberOfAffectedHBaseRowsInTask();
 
                     int statusOfDoneTask = taskStatus.get(submittedTaskUUID);
 
@@ -410,13 +414,23 @@ public class HBaseApplierWriter {
                         }
 
                         replicatorMetrics.incApplierTasksSucceededCounter();
-                        replicatorMetrics.addToRowOpsSuccessfullyCommited(numberOfRowsInTask);
+
+                        replicatorMetrics.incCurrentTimeBucketForRowOpsSuccessfullyCommittedToHBase(numberOfHBaseRowsAffected);
 
                         if (taskResult.getTableStats() != null) {
-                            for (String table : taskResult.getTableStats().keySet()) {
-                                long rowOpsCommitedForTable = taskResult.getTableStats().get(table).getValue();
-                                LOGGER.info("Row ops committed for table " + table + " => " + rowOpsCommitedForTable);
-                                replicatorMetrics.incTotalRowOpsSuccessfullyCommited(rowOpsCommitedForTable, table);
+                            for (String tableType: taskResult.getTableStats().keySet()) {
+                                for (String table : taskResult.getTableStats().get(tableType).keySet()) {
+                                    if (tableType.equals("delta")) {
+                                        long rowOpsCommitedForTable = taskResult.getTableStats().get(tableType).get(table).getValue();
+                                        LOGGER.info("Row ops committed for delta table " + table + " => " + rowOpsCommitedForTable);
+                                        replicatorMetrics.incTotalRowOpsSuccessfullyCommitedToHBase(rowOpsCommitedForTable, table);
+                                    }
+                                    if (tableType.equals("mirrored")) {
+                                        long rowOpsCommitedForTable = taskResult.getTableStats().get(tableType).get(table).getValue();
+                                        LOGGER.info("Row ops committed for delta table " + table + " => " + rowOpsCommitedForTable);
+                                        replicatorMetrics.incTotalRowOpsSuccessfullyCommitedToHBase(rowOpsCommitedForTable, table);
+                                    }
+                                }
                             }
                         }
                         else {
@@ -523,7 +537,7 @@ public class HBaseApplierWriter {
      */
     public void submitTasksThatAreReadyForPickUp() {
 
-        if (hbaseConnection == null) {
+        if ((! DRY_RUN) && (hbaseConnection == null)) {
             LOGGER.info("HBase connection is gone. Will try to recreate new connection...");
             int retry = 10;
             while (retry > 0) {
@@ -542,7 +556,7 @@ public class HBaseApplierWriter {
             }
         }
 
-        if (hbaseConnection == null) {
+        if ((! DRY_RUN) && (hbaseConnection == null)) {
             LOGGER.error("Could not create HBase connection, all retry attempts failed. Exiting...");
             System.exit(-1);
         }
@@ -555,6 +569,7 @@ public class HBaseApplierWriter {
 
             Map<String, Map<String, List<AugmentedRow>>> task = taskTransactionBuffer.get(taskUUID);
 
+            // validate task
             if (task != null) {
                 Set<String> transactionIDs = task.keySet();
                 if (transactionIDs != null) {
@@ -585,6 +600,7 @@ public class HBaseApplierWriter {
                 LOGGER.warn("task is null");
             }
 
+            // submit task
             if ((taskStatus.get(taskUUID) == TaskStatusCatalog.READY_FOR_PICK_UP)) {
                 if (taskHasTransactions && taskHasRows) {
 
@@ -600,29 +616,32 @@ public class HBaseApplierWriter {
                         public TaskResult call() throws Exception {
 
                             try {
-                                long numberOfRowsInTask = 0;
+                                long numberOfMySQLRowsInTask = 0;
 
-                                HashMap<String, MutableLong> tableStats = new HashMap<String, MutableLong>();
+                                // for unique rows tracking
+                                HashMap<String, HashMap<String, MutableLong>> hbaseMirroredRowsAffectedPerTable = new HashMap<String, HashMap<String, MutableLong>>();
+                                HashMap<String, HashMap<String, MutableLong>> hbaseDeltaRowsAffectedPerTable = new HashMap<String, HashMap<String, MutableLong>>();
+
+                                HashMap<String, HashMap<String, MutableLong>> taskStatsPerTable = new HashMap<String, HashMap<String, MutableLong>>();
 
                                 for (String transactionUUID : taskRowIDS.get(taskUUID).keySet()) {
+
                                     for (String tableName : taskRowIDS.get(taskUUID).get(transactionUUID).keySet()) {
-                                        List<String> bufferedIDs = taskRowIDS.get(taskUUID).get(transactionUUID).get(tableName);
-                                        long numberOfBufferedIDsForTable = bufferedIDs.size();
-                                        numberOfRowsInTask += numberOfBufferedIDsForTable;
-                                        if (tableStats.get(tableName) == null) {
-                                            tableStats.put(tableName, new MutableLong(numberOfBufferedIDsForTable));
+
+                                        List<String> bufferedMySQLIDs = taskRowIDS.get(taskUUID).get(transactionUUID).get(tableName);
+
+                                        long numberOfBufferedMySQLIDsForTable = bufferedMySQLIDs.size();
+
+                                        if (taskStatsPerTable.get("mysql") == null) {
+                                            taskStatsPerTable.put("mysql", new HashMap<String, MutableLong>());
+                                            taskStatsPerTable.get("mysql").put(tableName, new MutableLong(numberOfBufferedMySQLIDsForTable));
+                                        } else if (taskStatsPerTable.get("mysql").get(tableName) == null) {
+                                            taskStatsPerTable.get("mysql").put(tableName, new MutableLong(numberOfBufferedMySQLIDsForTable));
                                         } else {
-                                            tableStats.get(tableName).addValue(numberOfBufferedIDsForTable);
+                                            taskStatsPerTable.get("mysql").get(tableName).addValue(numberOfBufferedMySQLIDsForTable);
                                         }
+                                        numberOfMySQLRowsInTask += numberOfBufferedMySQLIDsForTable;
                                     }
-                                }
-
-                                LOGGER.info("Number of rows in task " + taskUUID + " => " + numberOfRowsInTask);
-
-                                if (DRY_RUN) {
-                                    taskStatus.put(taskUUID, TaskStatusCatalog.WRITE_SUCCEEDED);
-                                    TaskResult taskResult = new TaskResult(taskUUID, true, numberOfRowsInTask, tableStats);
-                                    return taskResult;
                                 }
 
                                 if (taskMessages.get(taskUUID) == null) {
@@ -636,7 +655,7 @@ public class HBaseApplierWriter {
                                 }
                                 if (chaosMonkey.feelsLikeFailingSubmitedTaskWithoutException()) {
                                     taskStatus.put(taskUUID, TaskStatusCatalog.WRITE_FAILED);
-                                    TaskResult taskResult = new TaskResult(taskUUID, false, numberOfRowsInTask, tableStats);
+                                    TaskResult taskResult = new TaskResult(taskUUID, false, numberOfMySQLRowsInTask, 0L, taskStatsPerTable);
                                     return taskResult;
                                 }
 
@@ -648,7 +667,7 @@ public class HBaseApplierWriter {
                                 }
                                 if (chaosMonkey.feelsLikeFailingTaskInProgessWithoutException()) {
                                     taskStatus.put(taskUUID, TaskStatusCatalog.WRITE_FAILED);
-                                    TaskResult taskResult = new TaskResult(taskUUID, false, numberOfRowsInTask, tableStats);
+                                    TaskResult taskResult = new TaskResult(taskUUID, false, numberOfMySQLRowsInTask, 0L, taskStatsPerTable);
                                     return taskResult;
                                 }
 
@@ -664,7 +683,7 @@ public class HBaseApplierWriter {
                                             throw new Exception("Chaos monkey is here to prevent call to flush!!!");
                                         } else if (chaosMonkey.feelsLikeFailingDataFlushWithoutException()) {
                                             taskStatus.put(taskUUID, TaskStatusCatalog.WRITE_FAILED);
-                                            TaskResult taskResult = new TaskResult(taskUUID, false, numberOfRowsInTask, tableStats);
+                                            TaskResult taskResult = new TaskResult(taskUUID, false, numberOfMySQLRowsInTask, 0L, taskStatsPerTable);
                                             return taskResult;
                                         } else {
 
@@ -675,27 +694,40 @@ public class HBaseApplierWriter {
                                                 HBaseApplierMutationGenerator hBaseApplierMutationGenerator =
                                                         new HBaseApplierMutationGenerator(configuration);
 
-                                                HashMap<String,HashMap<String,List<Triple<String,String,Put>>>> preparedMutations =
+                                                HashMap<String, HashMap<String, List<Triple<String, String, Put>>>> preparedMutations =
                                                         hBaseApplierMutationGenerator.generateMutationsFromAugmentedRows(rowOps);
 
                                                 // mirrored
                                                 if (preparedMutations.containsKey("mirrored")) {
+
                                                     for (String mirroredHbaseTableName : preparedMutations.get("mirrored").keySet()) {
 
-                                                        TableName TABLE = TableName.valueOf(mirroredHbaseTableName);
-                                                        Table hbaseTable = hbaseConnection.getTable(TABLE);
-
                                                         List<Put> puts = new ArrayList<Put>();
-                                                        for (Triple<String,String,Put> augmentedMutation :
-                                                                preparedMutations.get("mirrored").get(mirroredHbaseTableName) ) {
+
+                                                        for (Triple<String, String, Put> augmentedMutation : preparedMutations.get("mirrored").get(mirroredHbaseTableName)) {
+
                                                             puts.add(augmentedMutation.getThird());
+
+                                                            if (hbaseMirroredRowsAffectedPerTable.get(mirroredHbaseTableName) == null) {
+                                                                hbaseMirroredRowsAffectedPerTable.put(mirroredHbaseTableName, new HashMap<String, MutableLong>());
+                                                            }
+
+                                                            if (hbaseMirroredRowsAffectedPerTable.get(mirroredHbaseTableName).get(augmentedMutation.getSecond()) == null) {
+                                                                hbaseMirroredRowsAffectedPerTable.get(mirroredHbaseTableName).put(augmentedMutation.getSecond(), new MutableLong(1L));
+                                                            } else {
+                                                                hbaseMirroredRowsAffectedPerTable.get(mirroredHbaseTableName).get(augmentedMutation.getSecond()).addValue(1L);
+                                                            }
                                                         }
-                                                        hbaseTable.put(puts);
+
+                                                        if (!DRY_RUN) {
+                                                            TableName TABLE = TableName.valueOf(mirroredHbaseTableName);
+                                                            Table hbaseTable = hbaseConnection.getTable(TABLE);
+                                                            hbaseTable.put(puts);
+                                                        }
 
                                                         numberOfFlushedTablesInCurrentTransaction++;
                                                     }
-                                                }
-                                                else {
+                                                } else {
                                                     LOGGER.error("Missing mirrored key from preparedMutations!");
                                                     System.exit(-1);
                                                 }
@@ -704,19 +736,30 @@ public class HBaseApplierWriter {
                                                 if (preparedMutations.containsKey("delta")) {
                                                     for (String deltaHbaseTableName : preparedMutations.get("delta").keySet()) {
 
-                                                        TableName TABLE = TableName.valueOf(deltaHbaseTableName);
-                                                        Table hbaseTable = hbaseConnection.getTable(TABLE);
-
                                                         List<Put> puts = new ArrayList<Put>();
-                                                        for (Triple<String,String,Put> augmentedMutation :
-                                                                preparedMutations.get("delta").get(deltaHbaseTableName) ) {
-                                                            puts.add(augmentedMutation.getThird());
+
+                                                        for (Triple<String, String, Put> preparedMutation : preparedMutations.get("delta").get(deltaHbaseTableName)) {
+                                                            puts.add(preparedMutation.getThird());
+
+                                                            if (hbaseMirroredRowsAffectedPerTable.get(deltaHbaseTableName) == null) {
+                                                                hbaseMirroredRowsAffectedPerTable.put(deltaHbaseTableName, new HashMap<String, MutableLong>());
+                                                            }
+
+                                                            if (hbaseMirroredRowsAffectedPerTable.get(deltaHbaseTableName).get(preparedMutation.getSecond()) == null) {
+                                                                hbaseMirroredRowsAffectedPerTable.get(deltaHbaseTableName).put(preparedMutation.getSecond(), new MutableLong(1L));
+                                                            } else {
+                                                                hbaseMirroredRowsAffectedPerTable.get(deltaHbaseTableName).get(preparedMutation.getSecond()).addValue(1L);
+                                                            }
                                                         }
-                                                        hbaseTable.put(puts);
+
+                                                        if (!DRY_RUN) {
+                                                            TableName TABLE = TableName.valueOf(deltaHbaseTableName);
+                                                            Table hbaseTable = hbaseConnection.getTable(TABLE);
+                                                            hbaseTable.put(puts);
+                                                        }
                                                     }
                                                 }
-                                            }
-                                            catch (Exception e) {
+                                            } catch (Exception e) {
                                                 LOGGER.error("Exception on put for table " + bufferedMySQLTableName, e);
                                                 e.printStackTrace();
                                             }
@@ -726,21 +769,73 @@ public class HBaseApplierWriter {
                                     // exception listener callback report
                                     if (taskMessages.get(taskUUID).size() > 0) {
                                         taskStatus.put(taskUUID, TaskStatusCatalog.WRITE_FAILED);
-                                        TaskResult taskResult = new TaskResult(taskUUID, false, numberOfRowsInTask, tableStats);
+                                        TaskResult taskResult = new TaskResult(taskUUID, false, numberOfMySQLRowsInTask, 0L, taskStatsPerTable);
                                         return taskResult;
                                     }
 
                                     // data integrity check
                                     if (numberOfTablesInCurrentTransaction != numberOfFlushedTablesInCurrentTransaction) {
                                         taskStatus.put(taskUUID, TaskStatusCatalog.WRITE_FAILED);
-                                        TaskResult taskResult = new TaskResult(taskUUID, false, numberOfRowsInTask, tableStats);
+                                        TaskResult taskResult = new TaskResult(taskUUID, false, numberOfMySQLRowsInTask, 0L, taskStatsPerTable);
                                         return taskResult;
                                     }
                                 } // next transaction
 
                                 taskStatus.put(taskUUID, TaskStatusCatalog.WRITE_SUCCEEDED);
-                                TaskResult taskResult = new TaskResult(taskUUID, true, numberOfRowsInTask, tableStats);
+
+                                long numberOfHBaseRowsAffected = 0;
+
+                                // mirrored
+                                for (String mirroredHbaseTableName : hbaseMirroredRowsAffectedPerTable.keySet()) {
+
+                                    // update mirrored stats
+                                    if (taskStatsPerTable.get("mirrored") == null) {
+                                        taskStatsPerTable.put("mirrored", new HashMap<String, MutableLong>());
+                                    }
+
+                                    if (taskStatsPerTable.get("mirrored").get(mirroredHbaseTableName) == null) {
+                                        taskStatsPerTable.get("mirrored").put(mirroredHbaseTableName, new MutableLong());
+                                    }
+
+                                    for (String rowKey : hbaseMirroredRowsAffectedPerTable.get(mirroredHbaseTableName).keySet()) {
+                                        long inc = hbaseMirroredRowsAffectedPerTable.get(mirroredHbaseTableName).get(rowKey).getValue();
+
+                                        taskStatsPerTable.get("mirrored").get(mirroredHbaseTableName).addValue(inc);
+                                        numberOfHBaseRowsAffected += hbaseMirroredRowsAffectedPerTable.get(mirroredHbaseTableName).get(rowKey).getValue();
+                                    }
+                                }
+
+                                // delta
+                                for (String deltaHbaseTableName : hbaseDeltaRowsAffectedPerTable.keySet()) {
+
+                                    // update mirrored stats
+                                    if (taskStatsPerTable.get("delta") == null) {
+                                        taskStatsPerTable.put("delta", new HashMap<String, MutableLong>());
+                                    }
+
+                                    if (taskStatsPerTable.get("delta").get(deltaHbaseTableName) == null) {
+                                        taskStatsPerTable.get("delta").put(deltaHbaseTableName, new MutableLong());
+                                    }
+
+                                    for (String rowKey : hbaseDeltaRowsAffectedPerTable.get(deltaHbaseTableName).keySet()) {
+                                        long inc = hbaseDeltaRowsAffectedPerTable.get(deltaHbaseTableName).get(rowKey).getValue();
+
+                                        taskStatsPerTable.get("delta").get(deltaHbaseTableName).addValue(inc);
+                                        numberOfHBaseRowsAffected += hbaseDeltaRowsAffectedPerTable.get(deltaHbaseTableName).get(rowKey).getValue();
+                                    }
+                                }
+
+                                // task result
+                                TaskResult taskResult = new TaskResult(
+                                        taskUUID,
+                                        true,
+                                        numberOfMySQLRowsInTask,
+                                        numberOfHBaseRowsAffected,
+                                        taskStatsPerTable
+                                );
+
                                 return taskResult;
+
                             } catch (NullPointerException e) {
                                 LOGGER.error("NullPointerException in future", e);
                                 e.printStackTrace();

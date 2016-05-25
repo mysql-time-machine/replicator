@@ -49,7 +49,7 @@ public class ReplicatorMetrics {
             initTotalForTable(table, Metric.TOTAL_ROWS_FOR_UPDATE_PROCESSED);
             initTotalForTable(table, Metric.TOTAL_ROWS_FOR_DELETE_PROCESSED);
 
-            initTotalForTable(table, Metric.TOTAL_ROW_OPS_SUCCESSFULLY_COMMITED);
+            initTotalForTable(table, Metric.TOTAL_HBASE_ROWS_AFFECTED);
         }
     }
 
@@ -95,7 +95,7 @@ public class ReplicatorMetrics {
 
             this.replicatorMetrics.get(currentTimeSeconds).put(Metric.REPLICATION_DELAY_MS, new MutableLong());
 
-            this.replicatorMetrics.get(currentTimeSeconds).put(Metric.ROW_OPS_SUCCESSFULLY_COMMITED, new MutableLong());
+            this.replicatorMetrics.get(currentTimeSeconds).put(Metric.HBASE_ROWS_AFFECTED, new MutableLong());
 
             this.replicatorMetrics.get(currentTimeSeconds).put(Metric.TASK_QUEUE_SIZE, new MutableLong());
 
@@ -115,7 +115,7 @@ public class ReplicatorMetrics {
             initTimebucketForTotal(currentTimeSeconds, Metric.TOTAL_ROWS_FOR_UPDATE_PROCESSED);
             initTimebucketForTotal(currentTimeSeconds, Metric.TOTAL_ROWS_FOR_DELETE_PROCESSED);
 
-            initTimebucketForTotal(currentTimeSeconds, Metric.TOTAL_ROW_OPS_SUCCESSFULLY_COMMITED);
+            initTimebucketForTotal(currentTimeSeconds, Metric.TOTAL_HBASE_ROWS_AFFECTED);
 
             initTimebucketForTotal(currentTimeSeconds, Metric.TOTAL_HEART_BEAT_COUNTER);
 
@@ -261,13 +261,13 @@ public class ReplicatorMetrics {
     }
 
     // ADD:
-    public void addToRowOpsSuccessfullyCommited(Long delta) {
+    public void incCurrentTimeBucketForRowOpsSuccessfullyCommittedToHBase(Long delta) {
         int currentTimeSeconds = (int) (System.currentTimeMillis() / 1000L);
         if (this.replicatorMetrics.get(currentTimeSeconds) == null) {
             initTimebucket(currentTimeSeconds);
         }
-        if (this.replicatorMetrics.get(currentTimeSeconds).get(Metric.ROW_OPS_SUCCESSFULLY_COMMITED) != null) {
-            this.replicatorMetrics.get(currentTimeSeconds).get(Metric.ROW_OPS_SUCCESSFULLY_COMMITED).addValue(delta);
+        if (this.replicatorMetrics.get(currentTimeSeconds).get(Metric.HBASE_ROWS_AFFECTED) != null) {
+            this.replicatorMetrics.get(currentTimeSeconds).get(Metric.HBASE_ROWS_AFFECTED).addValue(delta);
         }
         else {
             LOGGER.warn("Failed to properly initialize timebucket " + currentTimeSeconds);
@@ -275,10 +275,10 @@ public class ReplicatorMetrics {
     }
 
     // TOTALS:
-    public void incTotalRowOpsSuccessfullyCommited(Long delta, String tableName) {
+    public void incTotalRowOpsSuccessfullyCommitedToHBase(Long delta, String tableName) {
         int currentTimeSeconds = (int) (System.currentTimeMillis() / 1000L);
-        incTotal(currentTimeSeconds, Metric.TOTAL_ROW_OPS_SUCCESSFULLY_COMMITED, delta);
-        incTableTotal(tableName, Metric.TOTAL_ROW_OPS_SUCCESSFULLY_COMMITED, delta);
+        incTotal(currentTimeSeconds, Metric.TOTAL_HBASE_ROWS_AFFECTED, delta);
+        incTableTotal(tableName, Metric.TOTAL_HBASE_ROWS_AFFECTED, delta);
     }
 
     public void initTimebucketForTotal(int currentTimeSeconds, int totalID) {

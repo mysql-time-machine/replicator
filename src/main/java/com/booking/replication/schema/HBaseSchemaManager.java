@@ -35,16 +35,20 @@ public class HBaseSchemaManager {
 
     private static final int MIRRORED_TABLE_DEFAULT_REGIONS = 16;
 
+    private static final boolean DRY_RUN = false;
+
     public HBaseSchemaManager(String ZOOKEEPER_QUORUM) {
 
         hbaseConf.set("hbase.zookeeper.quorum",ZOOKEEPER_QUORUM);
 
-        try {
-            connection = ConnectionFactory.createConnection(hbaseConf);
-            LOGGER.info("HBaseSchemaManager successfully established connection to HBase.");
-        } catch (IOException e) {
-            LOGGER.error("HBaseSchemaManager could not connect to HBase");
-            e.printStackTrace();
+        if (! DRY_RUN) {
+            try {
+                connection = ConnectionFactory.createConnection(hbaseConf);
+                LOGGER.info("HBaseSchemaManager successfully established connection to HBase.");
+            } catch (IOException e) {
+                LOGGER.error("HBaseSchemaManager could not connect to HBase");
+                e.printStackTrace();
+            }
         }
     }
 
@@ -54,34 +58,34 @@ public class HBaseSchemaManager {
 
         try {
 
-            if (connection == null) {
-                connection = ConnectionFactory.createConnection(hbaseConf);
+            if (!DRY_RUN) {
+                if (connection == null) {
+                    connection = ConnectionFactory.createConnection(hbaseConf);
+                }
+
+                Admin admin = connection.getAdmin();
+                TableName TABLE_NAME = TableName.valueOf(hbaseTableName);
+
+                if (!admin.tableExists(TABLE_NAME)) {
+
+                    LOGGER.info("table " + hbaseTableName + " does not exist in HBase. Creating...");
+
+                    HTableDescriptor tableDescriptor = new HTableDescriptor(TABLE_NAME);
+                    HColumnDescriptor cd = new HColumnDescriptor("d");
+                    cd.setMaxVersions(versions);
+                    tableDescriptor.addFamily(cd);
+
+                    // presplit into 16 regions
+                    RegionSplitter.HexStringSplit splitter = new RegionSplitter.HexStringSplit();
+                    byte[][] splitKeys = splitter.split(MIRRORED_TABLE_DEFAULT_REGIONS);
+
+                    admin.createTable(tableDescriptor, splitKeys);
+                } else {
+                    LOGGER.info("Table " + hbaseTableName + " allready exists in HBase. Probably a case of replaying the binlog.");
+                }
+
+                knownHBaseTables.put(hbaseTableName, 1);
             }
-
-            Admin admin = connection.getAdmin();
-            TableName TABLE_NAME = TableName.valueOf(hbaseTableName);
-
-            if (!admin.tableExists(TABLE_NAME)) {
-
-                LOGGER.info("table " + hbaseTableName + " does not exist in HBase. Creating...");
-
-                HTableDescriptor tableDescriptor = new HTableDescriptor(TABLE_NAME);
-                HColumnDescriptor cd = new HColumnDescriptor("d");
-                cd.setMaxVersions(versions);
-                tableDescriptor.addFamily(cd);
-
-                // presplit into 16 regions
-                RegionSplitter.HexStringSplit splitter = new RegionSplitter.HexStringSplit();
-                byte[][] splitKeys = splitter.split(MIRRORED_TABLE_DEFAULT_REGIONS);
-
-                admin.createTable(tableDescriptor, splitKeys);
-            }
-            else {
-                LOGGER.info("Table " + hbaseTableName + " allready exists in HBase. Probably a case of replaying the binlog.");
-            }
-
-            knownHBaseTables.put(hbaseTableName,1);
-
         } catch (IOException e) {
             LOGGER.info("Failed to create table in HBase.");
             // TODO: wait and retry if failed. After a while set status of applier
@@ -93,40 +97,39 @@ public class HBaseSchemaManager {
     public void createDeltaTableIfNotExists(String hbaseTableName, boolean isInitialSnapshotMode)  {
 
         try {
+            if (! DRY_RUN) {
 
-            if (connection == null) {
-                connection = ConnectionFactory.createConnection(hbaseConf);
-            }
-
-            Admin admin = connection.getAdmin();
-            TableName TABLE_NAME = TableName.valueOf(hbaseTableName);
-
-            if (!admin.tableExists(TABLE_NAME)) {
-
-                LOGGER.info("table " + hbaseTableName + " does not exist in HBase. Creating...");
-
-                HTableDescriptor tableDescriptor = new HTableDescriptor(TABLE_NAME);
-                HColumnDescriptor cd = new HColumnDescriptor("d");
-                cd.setMaxVersions(DELTA_TABLE_MAX_VERSIONS);
-                tableDescriptor.addFamily(cd);
-
-                // if daily table pre-split to 16 regions;
-                // if initial snapshot pre-split to 256 regions
-                if (isInitialSnapshotMode) {
-                    RegionSplitter.HexStringSplit splitter = new RegionSplitter.HexStringSplit();
-                    byte[][] splitKeys = splitter.split(INITIAL_SNAPSHOT_DEFAULT_REGIONS);
-                    admin.createTable(tableDescriptor, splitKeys);
+                if (connection == null) {
+                    connection = ConnectionFactory.createConnection(hbaseConf);
                 }
-                else {
-                    RegionSplitter.HexStringSplit splitter = new RegionSplitter.HexStringSplit();
-                    byte[][] splitKeys = splitter.split(DAILY_DELTA_TABLE_DEFAULT_REGIONS);
-                    admin.createTable(tableDescriptor, splitKeys);
+
+                Admin admin = connection.getAdmin();
+                TableName TABLE_NAME = TableName.valueOf(hbaseTableName);
+
+                if (!admin.tableExists(TABLE_NAME)) {
+
+                    LOGGER.info("table " + hbaseTableName + " does not exist in HBase. Creating...");
+
+                    HTableDescriptor tableDescriptor = new HTableDescriptor(TABLE_NAME);
+                    HColumnDescriptor cd = new HColumnDescriptor("d");
+                    cd.setMaxVersions(DELTA_TABLE_MAX_VERSIONS);
+                    tableDescriptor.addFamily(cd);
+
+                    // if daily table pre-split to 16 regions;
+                    // if initial snapshot pre-split to 256 regions
+                    if (isInitialSnapshotMode) {
+                        RegionSplitter.HexStringSplit splitter = new RegionSplitter.HexStringSplit();
+                        byte[][] splitKeys = splitter.split(INITIAL_SNAPSHOT_DEFAULT_REGIONS);
+                        admin.createTable(tableDescriptor, splitKeys);
+                    } else {
+                        RegionSplitter.HexStringSplit splitter = new RegionSplitter.HexStringSplit();
+                        byte[][] splitKeys = splitter.split(DAILY_DELTA_TABLE_DEFAULT_REGIONS);
+                        admin.createTable(tableDescriptor, splitKeys);
+                    }
+                } else {
+                    LOGGER.info("Table " + hbaseTableName + " allready exists in HBase. Probably a case of replaying the binlog.");
                 }
             }
-            else {
-                LOGGER.info("Table " + hbaseTableName + " allready exists in HBase. Probably a case of replaying the binlog.");
-            }
-
             knownHBaseTables.put(hbaseTableName,1);
 
         } catch (IOException e) {

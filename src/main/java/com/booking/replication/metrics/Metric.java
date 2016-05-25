@@ -29,7 +29,7 @@ public class Metric {
     public static final int TOTAL_EVENTS_SKIPPED            = 56;
     public static final int TOTAL_EVENTS_RECEIVED           = 57;
 
-    // I.b Row counters
+    // I.b MySQL Row counters
     public static final int ROWS_PROCESSED                  = 101;
     public static final int ROWS_FOR_INSERT_PROCESSED       = 102;
     public static final int ROWS_FOR_UPDATE_PROCESSED       = 103;
@@ -55,11 +55,11 @@ public class Metric {
     public static final int TOTAL_APPLIER_TASKS_SUCCEEDED   = 4004;
     public static final int TOTAL_APPLIER_TASKS_FAILED      = 4005;
 
-    public static final int TASK_QUEUE_SIZE                = 5002;
+    public static final int TASK_QUEUE_SIZE                 = 5002;
 
     // III.b Row stats
-    public static final int ROW_OPS_SUCCESSFULLY_COMMITED       = 6001;
-    public static final int TOTAL_ROW_OPS_SUCCESSFULLY_COMMITED = 6002;
+    public static final int HBASE_ROWS_AFFECTED             = 6001;
+    public static final int TOTAL_HBASE_ROWS_AFFECTED       = 6002;
 
 
     // ============================================================
@@ -110,8 +110,8 @@ public class Metric {
         else if (metricID == ROWS_FOR_DELETE_PROCESSED) {
             return "ROWS_FOR_DELETE_PROCESSED";
         }
-        else if (metricID == ROW_OPS_SUCCESSFULLY_COMMITED) {
-            return "ROW_OPS_SUCCESSFULLY_COMMITED";
+        else if (metricID == HBASE_ROWS_AFFECTED) {
+            return "HBASE_ROWS_AFFECTED";
         }
         else if (metricID == HEART_BEAT_COUNTER ) {
             return "HEART_BEAT_COUNTER";
@@ -167,8 +167,8 @@ public class Metric {
         else if (metricID == TOTAL_ROWS_FOR_DELETE_PROCESSED) {
             return "TOTAL_ROWS_FOR_DELETE_PROCESSED";
         }
-        else if (metricID == TOTAL_ROW_OPS_SUCCESSFULLY_COMMITED) {
-            return "TOTAL_ROW_OPS_SUCCESSFULLY_COMMITED";
+        else if (metricID == TOTAL_HBASE_ROWS_AFFECTED) {
+            return "TOTAL_HBASE_ROWS_AFFECTED";
         }
         else if (metricID == TOTAL_HEART_BEAT_COUNTER ) {
             return "TOTAL_HEART_BEAT_COUNTER";

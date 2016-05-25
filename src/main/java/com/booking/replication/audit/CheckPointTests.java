@@ -1,13 +1,12 @@
 package com.booking.replication.audit;
 
-import com.booking.replication.Configuration;
-import com.booking.replication.Replicator;
 import com.booking.replication.metrics.Metric;
 import com.booking.replication.metrics.ReplicatorMetrics;
 import com.booking.replication.util.MutableLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.math.BigInteger;
 import java.util.HashMap;
 
 /**
@@ -25,7 +24,7 @@ public class CheckPointTests {
         this.replicatorMetrics  = replicatorMetrics;
     }
 
-    public boolean verifyConsistentCountersOnRotateEvent(long hbaseTotalRowsCommitted, long mysqlTotalRowsProccessed) {
+    public boolean verifyConsistentCountersOnRotateEvent(BigInteger hbaseTotalRowsCommitted, BigInteger mysqlTotalRowsProccessed) {
 
         boolean isDelta = replicatorConfiguration.isWriteRecentChangesToDeltaTables();
 
@@ -41,8 +40,8 @@ public class CheckPointTests {
             //
             //    mysqlTotalRowsProcessed == SUM_PER_MIRRORED_TABLE(hbaseRowsCommitted)
 
-            long sumOfRowsCommitedForDeltaTables    = 0;
-            long sumOfRowsCommitedForMirroredTables = 0;
+            BigInteger sumOfRowsCommitedForDeltaTables    = BigInteger.ZERO;
+            BigInteger sumOfRowsCommitedForMirroredTables = BigInteger.ZERO;
 
             if (replicatorMetrics.getTotalsPerTable() != null) {
                 for (String tableName : replicatorMetrics.getTotalsPerTable().keySet()) {
@@ -56,17 +55,18 @@ public class CheckPointTests {
 
                             if (tableTotals != null) {
                                 for (Integer metricID : tableTotals.keySet()) {
-                                    LOGGER.info("    checking " + Metric.getCounterName(metricID));
                                     if (tableTotals.get(metricID) != null) {
-                                        LOGGER.info(
-                                                "\n\t\t" + Metric.getCounterName(metricID)
-                                                        + " => "
-                                                        + tableTotals.get(metricID).getValue()
-                                                        + "\n");
+                                        LOGGER.info("\t [" +
+                                                tableName +
+                                                "." +
+                                                Metric.getCounterName(metricID) +
+                                                "]" +
+                                                " => " +
+                                                tableTotals.get(metricID).getValue());
 
-                                        if (metricID == Metric.TOTAL_ROW_OPS_SUCCESSFULLY_COMMITED) {
-                                            Long deltaCommitedForTable = tableTotals.get(Metric.TOTAL_ROW_OPS_SUCCESSFULLY_COMMITED).getValue();
-                                            sumOfRowsCommitedForDeltaTables += deltaCommitedForTable;
+                                        if (metricID == Metric.TOTAL_HBASE_ROWS_AFFECTED) {
+                                            BigInteger deltaCommitedForTable = BigInteger.valueOf(tableTotals.get(Metric.TOTAL_HBASE_ROWS_AFFECTED).getValue());
+                                            sumOfRowsCommitedForDeltaTables = sumOfRowsCommitedForDeltaTables.add(deltaCommitedForTable);
                                         }
                                     }
                                 }
@@ -80,18 +80,22 @@ public class CheckPointTests {
 
                             if (tableTotals != null) {
                                 for (Integer metricID : tableTotals.keySet()) {
-                                    LOGGER.info("    checking " + Metric.getCounterName(metricID));
                                     if (tableTotals.get(metricID) != null) {
-                                        LOGGER.info(
-                                                "\n\t\t" + Metric.getCounterName(metricID)
-                                                        + " => "
-                                                        + tableTotals.get(metricID).getValue()
-                                                        + "\n");
+                                        LOGGER.info("\t [" +
+                                                tableName +
+                                                "." +
+                                                Metric.getCounterName(metricID) +
+                                                "]" +
+                                                " => " +
+                                                tableTotals.get(metricID).getValue());
 
-                                        if (metricID == Metric.TOTAL_ROW_OPS_SUCCESSFULLY_COMMITED) {
-                                            Long mirroredCommitedForTable = tableTotals.get(Metric.TOTAL_ROW_OPS_SUCCESSFULLY_COMMITED).getValue();
-                                            sumOfRowsCommitedForMirroredTables += mirroredCommitedForTable;
+                                        if (metricID == Metric.TOTAL_HBASE_ROWS_AFFECTED) {
+                                            BigInteger mirroredCommitedForTable = BigInteger.valueOf(tableTotals.get(Metric.TOTAL_HBASE_ROWS_AFFECTED).getValue());
+                                            sumOfRowsCommitedForMirroredTables = sumOfRowsCommitedForMirroredTables.add(mirroredCommitedForTable);
                                         }
+                                    }
+                                    else {
+                                        LOGGER.info("No writes for this table were made");
                                     }
                                 }
                             }
@@ -112,7 +116,7 @@ public class CheckPointTests {
 
             LOGGER.info("(" + hbaseTotalRowsCommitted + " - " + mysqlTotalRowsProccessed + ") == " + sumOfRowsCommitedForDeltaTables);
 
-            if ((hbaseTotalRowsCommitted - mysqlTotalRowsProccessed) == sumOfRowsCommitedForDeltaTables) {
+            if ((hbaseTotalRowsCommitted.subtract(mysqlTotalRowsProccessed)) == sumOfRowsCommitedForDeltaTables) {
                 LOGGER.info("PASS");
                 testsPassed++;
             }

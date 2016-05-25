@@ -9,16 +9,22 @@ import java.util.HashMap;
  */
 public class TaskResult {
 
-    private final String  taskUUID;
-    private final boolean taskSucceeded;
-    private final long    numberOfRowsInTask;
-    private final HashMap<String, MutableLong> tableStats;
+    private final String                                        taskUUID;
+    private final boolean                                       taskSucceeded;
+    private final long                                          numberOfAugmentedRowsInTask;
+    private final long                                          numberOfAffectedHBaseRowsInTask;
+    private final HashMap<String, HashMap<String, MutableLong>> tableStats;
 
-    public TaskResult(String uuid, boolean success, long numRowsInTask, HashMap<String, MutableLong> tableStats) {
-        numberOfRowsInTask = numRowsInTask;
-        taskSucceeded = success;
-        taskUUID = uuid;
-        this.tableStats = tableStats;
+    public TaskResult(String uuid,
+                      boolean success,
+                      long numOfAugmentedRowsInTask,
+                      long numberOfAffectedHBaseRowsInTask,
+                      HashMap<String, HashMap<String, MutableLong>> tableStats) {
+        numberOfAugmentedRowsInTask          = numOfAugmentedRowsInTask;
+        taskSucceeded                        = success;
+        taskUUID                             = uuid;
+        this.tableStats                      = tableStats;
+        this.numberOfAffectedHBaseRowsInTask = numberOfAffectedHBaseRowsInTask;
     }
 
     public String getTaskUUID() {
@@ -29,11 +35,15 @@ public class TaskResult {
         return taskSucceeded;
     }
 
-    public long getNumberOfRowsInTask() {
-        return numberOfRowsInTask;
+    public long getNumberOfAugmentedRowsInTask() {
+        return numberOfAugmentedRowsInTask;
     }
 
-    public HashMap<String, MutableLong> getTableStats() {
+    public HashMap<String, HashMap<String, MutableLong>> getTableStats() {
         return tableStats;
+    }
+
+    public long getNumberOfAffectedHBaseRowsInTask() {
+        return numberOfAffectedHBaseRowsInTask;
     }
 }

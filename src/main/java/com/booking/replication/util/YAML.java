@@ -148,10 +148,8 @@ public class YAML {
 
                 if (configCategoryKey.equals(HIVE_IMPORT_KEY)) {
                     Map<String, Object> value = config.get(configCategoryKey);
-                    if (value.containsKey(shardName)) {
-                        List<String> tableList = (List<String>) value.get(shardName);
-                        rc.setTablesForWhichToTrackDailyChanges(tableList);
-                    }
+                    List<String> tableList = (List<String>) value.get("tables");
+                    rc.setTablesForWhichToTrackDailyChanges(tableList);
                 }
             }
 

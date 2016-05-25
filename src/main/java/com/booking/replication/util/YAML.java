@@ -54,7 +54,6 @@ public class YAML {
         Integer shard                   = startupParameters.getShard();
         Boolean useDeltaTables          = startupParameters.isDeltaTables();
         Boolean initialSnapshot         = startupParameters.isInitialSnapshot();
-        String  hbaseNamespace          = startupParameters.getHbaseNamespace();
 
         Configuration rc = new Configuration();
 
@@ -62,9 +61,6 @@ public class YAML {
         rc.setStartingBinlogFileName(startingBinlogFilename);
         rc.setStartingBinlogPosition(binlogPosition);
         rc.setLastBinlogFileName(lastBinlogFilename);
-
-        // hbase namespace
-        rc.setHbaseNamespace(hbaseNamespace);
 
         // delta tables
         rc.setWriteRecentChangesToDeltaTables(useDeltaTables);
@@ -131,9 +127,14 @@ public class YAML {
 //                    }
                 }
 
-                if (configCategoryKey.equals("zookeepers")) {
+                if (configCategoryKey.equals("hbase")) {
                     Map<String, Object> value = config.get(configCategoryKey);
-                    rc.setZOOKEEPER_QUORUM(Joiner.on(",").join((List<String>) value.get("quorum")));
+                    rc.setZOOKEEPER_QUORUM(Joiner.on(",").join((List<String>) value.get("zookeeper_quorum")));
+                    rc.setHbaseNamespace((String) value.get("namespace"));
+
+                    if (startupParameters.getHbaseNamespace() != null) {
+                        rc.setHbaseNamespace(startupParameters.getHbaseNamespace());
+                    }
                 }
 
                 if (configCategoryKey.equals("graphite")) {

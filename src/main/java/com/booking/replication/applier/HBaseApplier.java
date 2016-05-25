@@ -7,6 +7,7 @@ import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.metrics.Metric;
 import com.booking.replication.metrics.ReplicatorMetrics;
+import com.booking.replication.metrics.SetOfMetrics;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 
 import com.booking.replication.queues.ReplicatorQueues;
@@ -22,8 +23,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
-
-import java.util.concurrent.*;
 
 /**
  * This class abstracts the HBase store.
@@ -244,36 +243,29 @@ public class HBaseApplier implements Applier {
     @Override
     public void waitUntilAllRowsAreCommitted(CheckPointTests checkPointTests) {
 
-        ConcurrentHashMap<Integer, MutableLong> totals = replicatorMetrics.getTotals();
+        SetOfMetrics totals = replicatorMetrics.getTotals();
 
-        if (totals != null) {
+        boolean wait = true;
 
-            boolean wait = true;
+        while (wait) {
 
-            while (wait) {
+            long committedRows = totals.getMetricValue(Metric.TOTAL_ROW_OPS_SUCCESSFULLY_COMMITED).longValue();
+            long processedRows = totals.getMetricValue(Metric.TOTAL_ROWS_PROCESSED).longValue();
 
-                long committedRows = totals.get(Metric.TOTAL_ROW_OPS_SUCCESSFULLY_COMMITED).getValue();
-                long processedRows = totals.get(Metric.TOTAL_ROWS_PROCESSED).getValue();
+            LOGGER.info("hbaseTotalRowsCommited  => " + committedRows);
+            LOGGER.info("mysqlTotalRowsProcessed => " + processedRows);
 
-                LOGGER.info("hbaseTotalRowsCommited  => " + committedRows);
-                LOGGER.info("mysqlTotalRowsProcessed => " + processedRows);
-
-                if (checkPointTests.verifyConsistentCountersOnRotateEvent(committedRows, processedRows)) {
-                    wait = false;
-                }
-                else {
-                    resubmitIfThereAreFailedTasks();
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
+            if (checkPointTests.verifyConsistentCountersOnRotateEvent(committedRows, processedRows)) {
+                wait = false;
+            }
+            else {
+                resubmitIfThereAreFailedTasks();
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
             }
-        }
-        else {
-            LOGGER.error("Could not retrieve totals metrics. Internal monitoring lost. Exiting...");
-            System.exit(1);
         }
     }
 

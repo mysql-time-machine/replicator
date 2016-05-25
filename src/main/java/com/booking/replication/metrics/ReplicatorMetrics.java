@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+
 /**
  * Created by bosko on 1/19/16.
  */
@@ -17,8 +18,7 @@ public class ReplicatorMetrics {
 
     private final ConcurrentHashMap<Integer, HashMap<Integer, MutableLong>> replicatorMetrics;
 
-    private final ConcurrentHashMap<Integer, MutableLong> totals;
-
+    private final SetOfMetrics totals;
 
     private final ConcurrentHashMap<String, HashMap<Integer, MutableLong>> totalsPerTable;
 
@@ -33,43 +33,11 @@ public class ReplicatorMetrics {
         beginTime = (int) (System.currentTimeMillis() / 1000L);
         replicatorMetrics = new  ConcurrentHashMap<Integer, HashMap<Integer, MutableLong>>();
 
-        totals = new ConcurrentHashMap<Integer, MutableLong>();
-        initTotals();
+        totals = new SetOfMetrics();
 
         List<String> deltaTables = configuration.getTablesForWhichToTrackDailyChanges();
         totalsPerTable = new ConcurrentHashMap<String, HashMap<Integer, MutableLong>>();
         initTotalsPerTable(deltaTables);
-    }
-
-    private void initTotals() {
-        initTotal(Metric.TOTAL_EVENTS_RECEIVED);
-        initTotal(Metric.TOTAL_EVENTS_SKIPPED);
-        initTotal(Metric.TOTAL_EVENTS_PROCESSED);
-
-        initTotal(Metric.TOTAL_INSERT_EVENTS_COUNTER);
-        initTotal(Metric.TOTAL_UPDATE_EVENTS_COUNTER);
-        initTotal(Metric.TOTAL_DELETE_EVENTS_COUNTER);
-        initTotal(Metric.TOTAL_COMMIT_COUNTER);
-        initTotal(Metric.TOTAL_XID_COUNTER);
-
-        initTotal(Metric.TOTAL_ROWS_PROCESSED);
-        initTotal(Metric.TOTAL_ROWS_FOR_INSERT_PROCESSED);
-        initTotal(Metric.TOTAL_ROWS_FOR_UPDATE_PROCESSED);
-        initTotal(Metric.TOTAL_ROWS_FOR_DELETE_PROCESSED);
-
-        initTotal(Metric.TOTAL_ROW_OPS_SUCCESSFULLY_COMMITED);
-
-        initTotal(Metric.TOTAL_HEART_BEAT_COUNTER);
-
-        initTotal(Metric.TOTAL_APPLIER_TASKS_SUBMITTED);
-        initTotal(Metric.TOTAL_APPLIER_TASKS_IN_PROGRESS);
-        initTotal(Metric.TOTAL_APPLIER_TASKS_SUCCEEDED);
-        initTotal(Metric.TOTAL_APPLIER_TASKS_FAILED);
-
-    }
-
-    private void initTotal(Integer totalID) {
-        totals.put(totalID, new MutableLong());
     }
 
     private void initTotalsPerTable(List<String> tables) {
@@ -314,7 +282,7 @@ public class ReplicatorMetrics {
     }
 
     public void initTimebucketForTotal(int currentTimeSeconds, int totalID) {
-        long currentTotalValue = totals.get(totalID).getValue();
+        long currentTotalValue = totals.getMetricValue(totalID).longValue();
         this.replicatorMetrics.get(currentTimeSeconds).put(totalID, new MutableLong(currentTotalValue));
     }
 
@@ -424,15 +392,15 @@ public class ReplicatorMetrics {
 
     private void deltaIncTotal(Integer currentTimeSeconds, Integer metricID, Long delta) {
         if (this.replicatorMetrics.get(currentTimeSeconds).get(metricID) != null) {
-            totals.get(metricID).addValue(delta);
-            replicatorMetrics.get(currentTimeSeconds).get(metricID).setValue(totals.get(metricID).getValue());
+            totals.incrementMetric(metricID, delta);
+            replicatorMetrics.get(currentTimeSeconds).get(metricID).setValue(totals.getMetricValue(metricID).longValue());
         }
         else {
             LOGGER.warn("Failed to properly initialize timebucket " + currentTimeSeconds);
         }
     }
 
-    public ConcurrentHashMap<Integer, MutableLong> getTotals() {
+    public SetOfMetrics getTotals(){
         return totals;
     }
 }

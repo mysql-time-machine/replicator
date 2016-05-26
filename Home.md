@@ -68,16 +68,15 @@ hive_imports:
     tables: ['sometable']
 ````
 
+## 3. HBaseSnapshotter
 
-## III. HBaseSnapshotter
-
-### III.1 Overview
+### 3.1 Overview
 HBaseSnapshotter is a Spark application that takes a snapshot of an HBase table at a given point in time and store it to a Hive table.
 Usually you can export from HBase to Hive but you can only get the latest version, as Hive doesn't have enough flexibility
 to access different versions of an HBase table. Spark framework allows this flexibility since it has the ability and the API
 to access and manipulate both HBase and Hive.
 
-### III.2 Configuration
+### 3.2 Configuration
 HBaseSnapshotter needs a yaml configuration file to be provided through the option
 ```
 --config <CONFIG-PATH>
@@ -100,13 +99,13 @@ null value will be "NULL".
 
 To write a configuration file, you can start by copying the file config-default.yml and customise it to your own needs.
 
-### Hive Schema
+### 3.3 Hive Schema
 The resulted Hive table will have the same schema as the source HBase table, but the column names will be formatted
 as *'Familyname_Qualifiername'*. A new column will be added to the Hive table named *"k_hbase_key"* for storing the HBase key
 of this row. For now, the columns in Hive will be of type *string* only, but in the future you might be able to provide the
 types in the config file.
 
-### Usage:
+### 3.4 Usage:
 ```
 hbase-snapshotter [options] <source table> <dest table>
 
@@ -124,7 +123,8 @@ Arguments:
   <dest table>
         The destination Hive table you are copying to. It should be in the format DATABASE.TABLENAME
 ```
-### Build
+### 3.5 Build
+````
 1. First you need to build a fat jar containing all the dependencies needed by this app. Inside the project's folder, execute the command:
     sbt assembly
 
@@ -143,4 +143,4 @@ Arguments:
 
 4. Finally, from the docker or hadoop box, you can run the spark app via the bash script
     ~/hbase-snapshotter [options] <source table> <dest table>
-
+````

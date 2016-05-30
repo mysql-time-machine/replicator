@@ -118,7 +118,7 @@ public class PipelineOrchestrator extends Thread {
         currentTransactionMetadata = new CurrentTransactionMetadata();
 
         if (configuration.getApplierType().equals("hbase")) {
-            hBaseSchemaManager = new HBaseSchemaManager(repcfg.getZOOKEEPER_QUORUM());
+            hBaseSchemaManager = new HBaseSchemaManager(repcfg.getHBaseQuorum());
         }
 
         this.applier = applier;

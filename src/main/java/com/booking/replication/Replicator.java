@@ -75,7 +75,7 @@ public class Replicator {
         else if (configuration.getApplierType().toLowerCase().equals("hbase")) {
             applier = new HBaseApplier(
                     replicatorQueues,
-                    configuration.getZOOKEEPER_QUORUM(),
+                    configuration.getHBaseQuorum(),
                     replicatorMetrics,
                     configuration
             );

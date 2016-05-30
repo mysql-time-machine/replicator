@@ -94,7 +94,7 @@ public class HBaseApplier implements Applier {
                 repCfg
             );
 
-        hBaseSchemaManager = new HBaseSchemaManager(configuration.getZOOKEEPER_QUORUM());
+        hBaseSchemaManager = new HBaseSchemaManager(configuration.getHBaseQuorum());
     }
 
     /**

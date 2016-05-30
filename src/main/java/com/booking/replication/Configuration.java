@@ -1,7 +1,12 @@
 package com.booking.replication;
 
+import com.booking.replication.util.StartupParameters;
 import com.google.common.base.Joiner;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+
+import java.io.Serializable;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -9,99 +14,145 @@ import java.util.List;
  */
 public class Configuration {
 
-    private String applierType;
-
-    // ActiveSchemaVersion DB
-    private String activeSchemaUserName;
-    private String activeSchemaPassword;
-    private String activeSchemaHost;
-    private String activeSchemaDB;
-
-    // Metadata DB
-    private String metaDataDBName;
-
-    // Replicant DB
-    private String  hbaseNamespace;
-    private String  replicantSchemaName;
-    private String  replicantDBUserName;
-    private String  replicantDBPassword;
-    private int     replicantDBServerID;
-    private int     replicantPort;
-    private Integer replicantShardID;
-    private boolean writeRecentChangesToDeltaTables;
-    private boolean initialSnapshotMode;
-    private long    startingBinlogPosition;
-    private String  startingBinlogFileName;
-    private String  endingBinlogFileName;
-    private String  replicantDBActiveHost; // <- by default first slave in the list
-    private List<String> replicantDBSlaves;
-    private List<String> tablesForWhichToTrackDailyChanges;
-
-    private String ZOOKEEPER_QUORUM;
-
-    private String graphiteStatsNamesapce;
-    private String graphiteUrl;
-
     /**
      * Constructor
      */
-    public Configuration() {
+    public Configuration() {}
 
-        // TODO: add to config file for consistency
-        this.replicantPort = 3306;
+    private String          applierType;
 
-        // TODO: obtain dynamically from the active slave replicantDBActiveHost
-        this.replicantDBServerID = 1;
+    @JsonDeserialize
+    private ReplicationSchema replication_schema;
+
+    private static class ReplicationSchema implements Serializable {
+        public String       name;
+        public String       username;
+        public String       password;
+        public List<String> slaves;
+        public int          port        = 3306;
+        public int          server_id   = 1;
+        public int          shard_id;
+    }
+
+    @JsonDeserialize
+    private HBaseConfiguration hbase;
+
+    private static class HBaseConfiguration {
+        public String       namespace;
+        public List<String> zookeeper_quorum;
+        public boolean      writeRecentChangesToDeltaTables;
+
+
+        @JsonDeserialize
+        public HiveImports     hive_imports = new HiveImports();
+
+        private static class HiveImports {
+            public List<String> tables = Collections.<String>emptyList();
+        }
+
+    }
+
+    @JsonDeserialize
+    private MetadataStore metadata_store;
+
+    private static class MetadataStore {
+        public String       username;
+        public String       password;
+        public String       host;
+        public String       database;
+        public List<String> zookeeper_quorum;
+    }
+
+    @JsonDeserialize
+    private GraphiteConfig graphite;
+
+    private static class GraphiteConfig {
+        public String       namespace;
+        public String       url;
+    }
+
+
+    private boolean         initialSnapshotMode;
+    private long            startingBinlogPosition;
+    private String          startingBinlogFileName;
+    private String          endingBinlogFileName;
+
+    public void loadStartupParameters(StartupParameters startupParameters ) {
+
+        applierType = startupParameters.getApplier();
+
+        if(applierType == "hbase" && hbase == null) {
+            throw new RuntimeException("HBase not configured");
+        }
+
+        // staring position
+        startingBinlogFileName = startupParameters.getBinlogFileName();
+        startingBinlogPosition = startupParameters.getBinlogPosition();
+        endingBinlogFileName   = startupParameters.getLastBinlogFileName();
+
+        replication_schema.shard_id = startupParameters.getShard();
+
+        // delta tables
+        hbase.writeRecentChangesToDeltaTables = startupParameters.isDeltaTables();
+
+        // initial snapshot mode
+        initialSnapshotMode = startupParameters.isInitialSnapshot();
+
+
+        //Hbase namespace
+        if (startupParameters.getHbaseNamespace() != null) {
+            hbase.namespace = startupParameters.getHbaseNamespace();
+        }
     }
 
     public String toString() {
 
         Joiner joiner = Joiner.on(", ");
 
-        if (tablesForWhichToTrackDailyChanges != null) {
+        if (hbase.hive_imports.tables != null) {
             return new StringBuilder()
                     .append("\n")
                     .append("\tapplierType                       : ")
                     .append(applierType)
                     .append("\n")
                     .append("\tdeltaTables                       : ")
-                    .append(writeRecentChangesToDeltaTables)
+                    .append(hbase.writeRecentChangesToDeltaTables)
                     .append("\n")
                     .append("\treplicantSchemaName               : ")
-                    .append(replicantSchemaName)
+                    .append(replication_schema.name)
                     .append("\n")
                     .append("\tuser name                         : ")
-                    .append(replicantDBUserName)
+                    .append(replication_schema.username)
                     .append("\n")
                     .append("\treplicantDBSlaves                 : ")
-                    .append(Joiner.on(" | ").join(replicantDBSlaves))
+                    .append(Joiner.on(" | ").join(replication_schema.slaves))
                     .append("\n")
                     .append("\treplicantDBActiveHost             : ")
-                    .append(replicantDBActiveHost)
+                    .append(this.getActiveSchemaHost())
                     .append("\n")
                     .append("\tactiveSchemaUserName              : ")
-                    .append(activeSchemaUserName)
+                    .append(metadata_store.username)
                     .append("\n")
                     .append("\tactiveSchemaHost                  : ")
-                    .append(activeSchemaHost)
+                    .append(metadata_store.host)
                     .append("\n")
                     .append("\tactiveSchemaDB                    : ")
-                    .append(activeSchemaDB)
+                    .append(metadata_store.database)
                     .append("\n")
                     .append("\tgraphiteStatsNamesapce            : ")
-                    .append(graphiteStatsNamesapce)
+                    .append(graphite.namespace)
                     .append("\n")
                     .append("\tgraphiteStatsUrl                  : ")
-                    .append(graphiteUrl)
+                    .append(graphite.url)
                     .append("\n")
                     .append("\tdeltaTables                       : ")
-                    .append(writeRecentChangesToDeltaTables)
+                    .append(hbase.writeRecentChangesToDeltaTables)
                     .append("\n")
                     .append("\tinitialSnapshotMode               : ")
                     .append(initialSnapshotMode)
                     .append("\n")
                     .append("\ttablesForWhichToTrackDailyChanges : ")
-                    .append(joiner.join(tablesForWhichToTrackDailyChanges))
+                    .append(joiner.join(hbase.hive_imports.tables))
                     .append("\n")
                     .toString();
         }
@@ -112,28 +163,28 @@ public class Configuration {
                     .append(applierType)
                     .append("\n")
                     .append("\tdeltaTables                       : ")
-                    .append(writeRecentChangesToDeltaTables)
+                    .append(hbase.writeRecentChangesToDeltaTables)
                     .append("\n")
                     .append("\treplicantSchemaName               : ")
-                    .append(replicantSchemaName)
+                    .append(replication_schema.name)
                     .append("\n")
                     .append("\tuser name                         : ")
-                    .append(replicantDBUserName)
+                    .append(replication_schema.username)
                     .append("\n")
                     .append("\treplicantDBSlaves             : ")
-                    .append(Joiner.on(" | ").join(replicantDBSlaves))
+                    .append(Joiner.on(" | ").join(replication_schema.slaves))
                     .append("\n")
                     .append("\treplicantDBActiveHost             : ")
-                    .append(replicantDBActiveHost)
+                    .append(this.getActiveSchemaHost())
                     .append("\n")
                     .append("\tactiveSchemaUserName              : ")
-                    .append(activeSchemaUserName)
+                    .append(metadata_store.username)
                     .append("\n")
                     .append("\tgraphiteStatsNamesapce            : ")
-                    .append(graphiteStatsNamesapce)
+                    .append(graphite.namespace)
                     .append("\n")
                     .append("\tdeltaTables                       : ")
-                    .append(writeRecentChangesToDeltaTables)
+                    .append(hbase.writeRecentChangesToDeltaTables)
                     .append("\n")
                     .append("\tinitialSnapshotMode               : ")
                     .append(initialSnapshotMode)
@@ -143,27 +194,27 @@ public class Configuration {
     }
 
     public int getReplicantPort() {
-        return replicantPort;
+        return replication_schema.port;
     }
 
     public int getReplicantDBServerID() {
-        return replicantDBServerID;
+        return replication_schema.server_id;
     }
 
     public long getStartingBinlogPosition() {
-        return this.startingBinlogPosition;
+        return startingBinlogPosition;
     }
 
     public String getReplicantDBActiveHost() {
-        return replicantDBActiveHost;
+        return this.replication_schema.slaves.get(0);
     }
 
     public String getReplicantDBUserName() {
-        return replicantDBUserName;
+        return replication_schema.username;
     }
 
     public String getReplicantDBPassword() {
-        return replicantDBPassword;
+        return replication_schema.password;
     }
 
     public String getStartingBinlogFileName() {
@@ -174,167 +225,63 @@ public class Configuration {
         return endingBinlogFileName;
     }
 
-    public void setReplicantDBActiveHost(String replicantDBActiveHost) {
-        this.replicantDBActiveHost = replicantDBActiveHost;
-    }
-
-    public String getMetaDataDBName() {
-        return metaDataDBName;
-    }
-
-    public void setMetaDataDBName(String metaDataDBName) {
-        this.metaDataDBName = metaDataDBName;
-    }
-
-    public void setReplicantDBPassword(String replicantDBPassword) {
-        this.replicantDBPassword = replicantDBPassword;
-    }
-
-    public void setReplicantDBServerID(int replicantDBServerID) {
-        this.replicantDBServerID = replicantDBServerID;
-    }
-
-    public void setStartingBinlogFileName(String startingBinlogFileName) {
-        this.startingBinlogFileName = startingBinlogFileName;
-    }
-
-    public void setLastBinlogFileName(String endingBinlogFileName) {
-        this.endingBinlogFileName = endingBinlogFileName;
-    }
-
-    public void setStartingBinlogPosition(long startingBinlogPosition) {
-        this.startingBinlogPosition = startingBinlogPosition;
-    }
-
-    public void setReplicantPort(int replicantPort) {
-        this.replicantPort = replicantPort;
-    }
-
-    public void setReplicantDBUserName(String replicantDBUserName) {
-        this.replicantDBUserName = replicantDBUserName;
-    }
-
     public String getReplicantSchemaName() {
-        return replicantSchemaName;
-    }
-
-    public void setReplicantSchemaName(String replicantSchemaName) {
-        this.replicantSchemaName = replicantSchemaName;
-    }
-
-    public List<String> getReplicantDBSlaves() {
-        return replicantDBSlaves;
-    }
-
-    public void setReplicantDBSlaves(List<String> replicantDBSlaves) {
-        this.replicantDBSlaves = replicantDBSlaves;
+        return replication_schema.name;
     }
 
     public String getApplierType() {
         return applierType;
     }
 
-    public void setApplierType(String applierType) {
-        this.applierType = applierType;
-    }
-
     public String getActiveSchemaDSN() {
-        return String.format("jdbc:mysql://%s/%s", this.activeSchemaHost, this.activeSchemaDB);
+        return String.format("jdbc:mysql://%s/%s", metadata_store.host, metadata_store.database);
     }
 
     public String getActiveSchemaHost() {
-        return this.activeSchemaHost;
-    }
-
-    public void setActiveSchemaHost(String activeSchemaHost) {
-        this.activeSchemaHost = activeSchemaHost;
+        return metadata_store.host;
     }
 
     public String getActiveSchemaUserName() {
-        return activeSchemaUserName;
-    }
-
-    public void setActiveSchemaUserName(String activeSchemaUserName) {
-        this.activeSchemaUserName = activeSchemaUserName;
+        return metadata_store.username;
     }
 
     public String getActiveSchemaPassword() {
-        return activeSchemaPassword;
-    }
-
-    public void setActiveSchemaPassword(String activeSchemaPassword) {
-        this.activeSchemaPassword = activeSchemaPassword;
+        return metadata_store.password;
     }
 
     public String getActiveSchemaDB() {
-        return this.activeSchemaDB;
-    }
-
-    public void setActiveSchemaDB(String activeSchemaDB) {
-        this.activeSchemaDB = activeSchemaDB;
+        return metadata_store.database;
     }
 
     public int getReplicantShardID() {
-        return replicantShardID;
+        return replication_schema.shard_id;
     }
 
-    public void setReplicantShardID(int replicantShardID) {
-        this.replicantShardID = replicantShardID;
-    }
-
-    public String getZOOKEEPER_QUORUM() {
-        return ZOOKEEPER_QUORUM;
-    }
-
-    public void setZOOKEEPER_QUORUM(String ZOOKEEPER_QUORUM) {
-        this.ZOOKEEPER_QUORUM = ZOOKEEPER_QUORUM;
+    public String getHBaseQuorum() {
+        return Joiner.on(",").join(hbase.zookeeper_quorum);
     }
 
     public String getGraphiteStatsNamesapce() {
-        return graphiteStatsNamesapce;
-    }
-
-    public void setGraphiteStatsNamesapce(String graphiteStatsNamesapce) {
-        this.graphiteStatsNamesapce = graphiteStatsNamesapce;
+        return graphite.namespace;
     }
 
     public String getGraphiteUrl() {
-        return this.graphiteUrl;
-    }
-
-    public void setGraphiteUrl(String graphiteUrl) {
-        this.graphiteUrl = graphiteUrl;
+        return graphite.url;
     }
 
     public boolean isWriteRecentChangesToDeltaTables() {
-        return writeRecentChangesToDeltaTables;
-    }
-
-    public void setWriteRecentChangesToDeltaTables(boolean writeRecentChangesToDeltaTables) {
-        this.writeRecentChangesToDeltaTables = writeRecentChangesToDeltaTables;
+        return hbase.writeRecentChangesToDeltaTables;
     }
 
     public List<String> getTablesForWhichToTrackDailyChanges() {
-        return tablesForWhichToTrackDailyChanges;
-    }
-
-    public void setTablesForWhichToTrackDailyChanges(List<String> tablesForWhichToTrackDailyChanges) {
-        this.tablesForWhichToTrackDailyChanges = tablesForWhichToTrackDailyChanges;
+        return hbase.hive_imports.tables;
     }
 
     public boolean isInitialSnapshotMode() {
         return initialSnapshotMode;
     }
 
-    public void setInitialSnapshotMode(boolean initialSnapshotMode) {
-        this.initialSnapshotMode = initialSnapshotMode;
-    }
-
     public String getHbaseNamespace() {
-        return hbaseNamespace;
-    }
-
-    public void setHbaseNamespace(String hbaseNamespace) {
-        this.hbaseNamespace = hbaseNamespace;
+        return hbase.namespace;
     }
 }

@@ -94,7 +94,7 @@ class BlackholeCopyMethod(object):
         cursor.close()
 
     def chunked_copy(self, config, table, primary_key):
-        source = MySQLdb.connect(read_default_file=config['source'], cursorclass=Cursor)
+        source = MySQLdb.connect(read_default_file=config['source'], cursorclass=Cursor, host=config['host'])
         cursor = source.cursor()
         sql = 'SELECT `{}` FROM `{}`.`_{}_old` PARTITION ({})'.format(primary_key, table[0], table[1], table[2])
         print sql

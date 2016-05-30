@@ -1,4 +1,4 @@
-package com.booking.replication.audit;
+package com.booking.replication.checkpoints;
 
 import com.booking.replication.metrics.Metric;
 import com.booking.replication.metrics.ReplicatorMetrics;

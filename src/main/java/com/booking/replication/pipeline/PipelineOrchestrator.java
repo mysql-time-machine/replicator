@@ -12,10 +12,13 @@ import java.util.regex.Pattern;
 import com.booking.replication.Configuration;
 import com.booking.replication.Constants;
 import com.booking.replication.applier.Applier;
-import com.booking.replication.audit.CheckPointTests;
+import com.booking.replication.checkpoints.CheckPointTests;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.augmenter.EventAugmenter;
+import com.booking.replication.checkpoints.SafeCheckPointFactory;
+import com.booking.replication.checkpoints.SafeCheckPoint;
+import com.booking.replication.checkpoints.SafeCheckpointType;
 import com.booking.replication.metrics.ReplicatorMetrics;
 import com.booking.replication.queues.ReplicatorQueues;
 import com.booking.replication.schema.TableNameMapper;
@@ -43,6 +46,7 @@ public class PipelineOrchestrator extends Thread {
     private static EventAugmenter     eventAugmenter;
     private static HBaseSchemaManager hBaseSchemaManager;
     private final  ReplicatorMetrics  replicatorMetrics;
+    private final SafeCheckPoint lastVerifiedCheckpoint;
 
     public CurrentTransactionMetadata currentTransactionMetadata;
 
@@ -134,6 +138,8 @@ public class PipelineOrchestrator extends Thread {
         );
 
         checkPointTests = new CheckPointTests(this.configuration, this.replicatorMetrics);
+
+        lastVerifiedCheckpoint = SafeCheckPointFactory.getSafeCheckPoint(SafeCheckpointType.BINLOG_FILENAME);
     }
 
     public boolean isRunning() {
@@ -403,6 +409,7 @@ public class PipelineOrchestrator extends Thread {
                 LOGGER.info("All rows committed");
                 String currentBinlogFileName =
                         ((BinlogPositionInfo) binlogPositionLastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION)).getBinlogFilename();
+                lastVerifiedCheckpoint.setSafeCheckPointMarker(currentBinlogFileName);
                 if (currentBinlogFileName.equals(configuration.getLastBinlogFileName())){
                     LOGGER.info("Processed the last binlog file " + configuration.getLastBinlogFileName());
                     setRunning(false);

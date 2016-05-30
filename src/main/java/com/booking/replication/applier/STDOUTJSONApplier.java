@@ -1,7 +1,7 @@
 package com.booking.replication.applier;
 
 import com.booking.replication.Configuration;
-import com.booking.replication.audit.CheckPointTests;
+import com.booking.replication.checkpoints.CheckPointTests;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
@@ -18,7 +18,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class STDOUTJSONApplier implements Applier  {
 

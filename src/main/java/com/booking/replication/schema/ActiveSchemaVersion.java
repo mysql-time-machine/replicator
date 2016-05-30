@@ -159,8 +159,16 @@ public class ActiveSchemaVersion {
         }
     }
 
+    public String schemaTablesToJSON() {
+        return  JSONBuilder.schemaVersionTablesToJSON(activeSchemaTables);
+    }
+
+    public String schemaCreateStatementsToJSON() {
+        return  JSONBuilder.schemaCreateStatementsToJSON(activeSchemaCreateStatements);
+    }
+
     public String toJSON() {
-        return JSONBuilder.activeSchemaVersionToJSON(this);
+        return JSONBuilder.schemaVersionToJSON(this);
     }
 
     public HashMap<String, TableSchema> getActiveSchemaTables() {

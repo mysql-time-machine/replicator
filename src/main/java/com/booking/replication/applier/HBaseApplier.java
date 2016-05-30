@@ -11,6 +11,7 @@ import com.booking.replication.metrics.SetOfMetrics;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 
 import com.booking.replication.queues.ReplicatorQueues;
+import com.booking.replication.schema.HBaseSchemaManager;
 import com.booking.replication.util.MutableLong;
 import com.google.code.or.binlog.impl.event.FormatDescriptionEvent;
 import com.google.code.or.binlog.impl.event.QueryEvent;
@@ -49,6 +50,8 @@ public class HBaseApplier implements Applier {
     private static final Configuration hbaseConf = HBaseConfiguration.create();
 
     private final ReplicatorMetrics replicatorMetrics;
+
+    private final HBaseSchemaManager hBaseSchemaManager;
 
     private final HBaseApplierWriter hbaseApplierWriter;
 
@@ -90,6 +93,8 @@ public class HBaseApplier implements Applier {
                 hbaseConf,
                 repCfg
             );
+
+        hBaseSchemaManager = new HBaseSchemaManager(configuration.getZOOKEEPER_QUORUM());
     }
 
     /**
@@ -130,24 +135,7 @@ public class HBaseApplier implements Applier {
 
     @Override
     public void applyAugmentedSchemaChangeEvent(AugmentedSchemaChangeEvent e, PipelineOrchestrator caller) {
-
-        // TODO:
-
-        // 1. read database_name
-
-        // 2. read table_name
-
-        // 3. read sql_statement
-
-        // 4. read old/new jsons
-
-        // 5. read old/new creates
-
-        // 6. construct Put object with:
-        //      row_key = 'database_name;event_timestamp'
-
-        // 7. Write to table:
-        //      'schema_replication:schema_version_history'
+        hBaseSchemaManager.writeSchemaSnapshotToHBase(e, configuration);
     }
 
     /**

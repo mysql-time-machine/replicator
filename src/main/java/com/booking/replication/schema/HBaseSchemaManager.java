@@ -1,14 +1,15 @@
 package com.booking.replication.schema;
 
+import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
+import com.booking.replication.util.JSONBuilder;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.RegionSplitter;
-import org.apache.hadoop.hbase.client.Admin;
-import org.apache.hadoop.hbase.client.Connection;
-import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +36,13 @@ public class HBaseSchemaManager {
 
     private static final int MIRRORED_TABLE_DEFAULT_REGIONS = 16;
 
+    private static final int DEFAULT_SCHEMA_VERSIONS = 1; // timestamp is part of row key
+
+    private static final int SCHEMA_HISTORY_TABLE_DEFAULT_REGIONS = 1;
+
     private static final boolean DRY_RUN = false;
+
+    private static final byte[] CF = Bytes.toBytes("d");
 
     public HBaseSchemaManager(String ZOOKEEPER_QUORUM) {
 
@@ -146,6 +153,129 @@ public class HBaseSchemaManager {
         }
         else {
             return false;
+        }
+    }
+
+    public void writeSchemaSnapshotToHBase(AugmentedSchemaChangeEvent e, com.booking.replication.Configuration configuration) {
+
+        // get database_name
+        String mySQLDBName = configuration.getReplicantSchemaName();
+
+        // get sql_statement
+        String ddl = e.getSchemaTransitionSequence().get("ddl");
+        if (ddl == null) {
+            LOGGER.error("DDL can not be null");
+            System.exit(-1);
+        }
+
+        // get pre/post schemas
+        String preChangeTablesSchemaJSON  = e.getPreTransitionSchemaSnapshot().getSchemaVersionTables_JSONSnaphot();
+        String postChangeTablesSchemaJSON = e.getPostTransitionSchemaSnapshot().getSchemaVersionTables_JSONSnaphot();
+        String schemaTransitionSequenceJSON = JSONBuilder.schemaTransitionSequenceToJSON(
+                e.getSchemaTransitionSequence()
+        );
+
+        // get pre/post creates
+        String preChangeCreateStatementsJSON  = e.getPreTransitionSchemaSnapshot().getSchemaVersionCreateStatements_JSONSnapshot();
+        String postChangeCreateStatementsJSON = e.getPostTransitionSchemaSnapshot().getSchemaVersionCreateStatements_JSONSnapshot();
+
+        // get event timestamp
+        Long eventTimestamp = e.getSchemaChangeEventTimestamp();
+
+        String hbaseTableName = "schema_history:" + mySQLDBName.toLowerCase();
+        int shard = configuration.getReplicantShardID();
+        if (shard > 0) {
+            hbaseTableName = hbaseTableName + shard;
+        }
+
+        String hbaseRowKey = eventTimestamp.toString();
+        if (configuration.isInitialSnapshotMode()) {
+            // in initial-snapshot mode timestamp is overridden by 0 so all create statements
+            // fall under the same timestamp. This is ok since there should be only one schema
+            // snapshot for the initial-snapshot. However, having key=0 is not good, so replace
+            // it with:
+            hbaseRowKey = "initial-snapshot";
+        }
+
+        try {
+
+            if (connection == null) {
+                connection = ConnectionFactory.createConnection(hbaseConf);
+            }
+
+            Admin admin = connection.getAdmin();
+
+            TableName TABLE_NAME = TableName.valueOf(hbaseTableName);
+
+            if (!admin.tableExists(TABLE_NAME)) {
+
+                LOGGER.info("table " + hbaseTableName + " does not exist in HBase. Creating...");
+
+                HTableDescriptor tableDescriptor = new HTableDescriptor(TABLE_NAME);
+                HColumnDescriptor cd = new HColumnDescriptor("d");
+                cd.setMaxVersions(DEFAULT_SCHEMA_VERSIONS);
+                tableDescriptor.addFamily(cd);
+
+                // pre-split into 16 regions
+                RegionSplitter.HexStringSplit splitter = new RegionSplitter.HexStringSplit();
+                byte[][] splitKeys = splitter.split(SCHEMA_HISTORY_TABLE_DEFAULT_REGIONS);
+
+                admin.createTable(tableDescriptor, splitKeys);
+            }
+            else {
+                LOGGER.info("Table " + hbaseTableName + " already exists in HBase. Probably a case of replaying the binlog.");
+            }
+
+            Table hbaseTable = connection.getTable(TABLE_NAME);
+
+            // write schema info
+            Put p = new Put(Bytes.toBytes(hbaseRowKey));
+            String ddlColumnName  = "ddl";
+            p.addColumn(
+                    CF,
+                    Bytes.toBytes(ddlColumnName),
+                    eventTimestamp,
+                    Bytes.toBytes(schemaTransitionSequenceJSON)
+            );
+
+            String schemaSnapshotPreColumnName  = "schemaPreChange";
+            p.addColumn(
+                    CF,
+                    Bytes.toBytes(schemaSnapshotPreColumnName),
+                    eventTimestamp,
+                    Bytes.toBytes(preChangeTablesSchemaJSON)
+            );
+
+            String schemaSnapshotPostColumnName = "schemaPostChange";
+            p.addColumn(
+                    CF,
+                    Bytes.toBytes(schemaSnapshotPostColumnName),
+                    eventTimestamp,
+                    Bytes.toBytes(postChangeTablesSchemaJSON)
+            );
+
+            String preChangeCreateStatementsColumn = "createsPreChange";
+            p.addColumn(
+                    CF,
+                    Bytes.toBytes(preChangeCreateStatementsColumn),
+                    eventTimestamp,
+                    Bytes.toBytes(preChangeCreateStatementsJSON)
+            );
+
+            String postChangeCreateStatementsColumn = "createsPostChange";
+            p.addColumn(
+                    CF,
+                    Bytes.toBytes(postChangeCreateStatementsColumn),
+                    eventTimestamp,
+                    Bytes.toBytes(postChangeCreateStatementsJSON)
+            );
+
+            hbaseTable.put(p);
+
+        } catch (IOException ioe) {
+            LOGGER.error("Failed to store schemaChangePointSnapshot in HBase.", ioe);
+            // TODO: add wait and retry.
+            System.exit(-1);
         }
     }
 }

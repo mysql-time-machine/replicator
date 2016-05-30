@@ -7,17 +7,25 @@ import java.util.HashMap;
  */
 public class SchemaVersionSnapshot {
 
-    private String schemaVersionJSONSnaphot;
+    private String schemaVersion_JSONSnaphot;
+    private String schemaVersionTables_JSONSnaphot;
+    private String schemaVersionCreateStatements_JSONSnapshot;
 
     public SchemaVersionSnapshot(ActiveSchemaVersion activeSchemaVersion) {
-        schemaVersionJSONSnaphot = activeSchemaVersion.toJSON();
+        schemaVersion_JSONSnaphot                  = activeSchemaVersion.toJSON();
+        schemaVersionTables_JSONSnaphot            = activeSchemaVersion.schemaTablesToJSON();
+        schemaVersionCreateStatements_JSONSnapshot = activeSchemaVersion.schemaCreateStatementsToJSON();
     }
 
-    public String getSchemaVersionJSONSnaphot() {
-        return schemaVersionJSONSnaphot;
+    public String getSchemaVersion_JSONSnaphot() {
+        return schemaVersion_JSONSnaphot;
     }
 
-    public void setSchemaVersionJSONSnaphot(String schemaVersionJSONSnaphot) {
-        this.schemaVersionJSONSnaphot = schemaVersionJSONSnaphot;
+    public String getSchemaVersionTables_JSONSnaphot() {
+        return schemaVersionTables_JSONSnaphot;
+    }
+
+    public String getSchemaVersionCreateStatements_JSONSnapshot() {
+        return schemaVersionCreateStatements_JSONSnapshot;
     }
 }

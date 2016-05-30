@@ -3,6 +3,7 @@ package com.booking.replication.util;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.schema.ActiveSchemaVersion;
+import com.booking.replication.schema.table.TableSchema;
 import com.google.code.or.binlog.BinlogEventV4;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,6 +11,7 @@ import com.google.code.or.binlog.impl.event.TableMapEvent;
 import com.google.code.or.common.util.MySQLConstants;
 
 import java.io.IOException;
+import java.util.HashMap;
 
 /**
  * JSONBuilder
@@ -52,24 +54,13 @@ public class JSONBuilder {
         return json;
     }
 
-    public static String dataEventToJSONPrettyPrinter (AugmentedRow augmentedRow){
-
+    public static String schemaVersionToJSON(ActiveSchemaVersion activeSchemaVersion){
         String json = null;
         try {
             ObjectMapper mapper = new ObjectMapper();
-            json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(augmentedRow);
-        } catch (IOException e) {
-            System.out.println("ERROR: could not serialize event");
-            e.printStackTrace();
-        }
-        return json;
-    }
+            //json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(activeSchemaVersion);
+            json = mapper.writeValueAsString(activeSchemaVersion);
 
-    public static String activeSchemaVersionToJSON(ActiveSchemaVersion activeSchemaVersion){
-        String json = null;
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(activeSchemaVersion);
         } catch (IOException e) {
             System.out.println("ERROR: could not serialize event");
             e.printStackTrace();
@@ -81,11 +72,64 @@ public class JSONBuilder {
         String json = null;
         try {
             ObjectMapper mapper = new ObjectMapper();
-            json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(augmentedSchemaChangeEvent);
+            json = mapper.writeValueAsString(augmentedSchemaChangeEvent);
         } catch (IOException e) {
             System.out.println("ERROR: could not serialize event");
             e.printStackTrace();
         }
         return json;
     }
+
+    public static String schemaTransitionSequenceToJSON(HashMap<String,String> schemaTransitionSequence) {
+        String json = null;
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            json = mapper.writeValueAsString(schemaTransitionSequence);
+
+        } catch (IOException e) {
+            System.out.println("ERROR: could not serialize event");
+            e.printStackTrace();
+        }
+        return json;
+    }
+
+    public static String schemaVersionTablesToJSON(HashMap<String, TableSchema> schemaVersionTables) {
+        String json = null;
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            json = mapper.writeValueAsString(schemaVersionTables);
+
+        } catch (IOException e) {
+            System.out.println("ERROR: could not serialize event");
+            e.printStackTrace();
+        }
+        return json;
+    }
+
+    public static String schemaCreateStatementsToJSON(HashMap<String, String> schemaCreateStatements) {
+        String json = null;
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            json = mapper.writeValueAsString(schemaCreateStatements);
+
+        } catch (IOException e) {
+            System.out.println("ERROR: could not serialize event");
+            e.printStackTrace();
+        }
+        return json;
+    }
+
+    public static String taskStatsToJSON(HashMap<String, MutableLong> tableStats) {
+        String json = null;
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            json = mapper.writeValueAsString(tableStats);
+
+        } catch (IOException e) {
+            System.out.println("ERROR: could not serialize tableStats");
+            e.printStackTrace();
+        }
+        return json;
+    }
+
 }

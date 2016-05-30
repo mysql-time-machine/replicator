@@ -34,9 +34,9 @@ metadata_store:
 hbase:
     namespace: 'schema_namespace'
     zookeeper_quorum:  ['hbase-zk1-host', 'hbase-zkN-host']
+    hive_imports:
+        tables: ['sometable']
 graphite:
     url:       'graphite_host[:<graphite_port>]'
     namespace: 'no-stats'
-hive_imports:
-    tables: ['sometable']
 ````

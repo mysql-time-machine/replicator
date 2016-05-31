@@ -26,6 +26,8 @@ public class CheckPointTests {
 
     public boolean verifyConsistentCountersOnRotateEvent(BigInteger hbaseTotalRowsCommitted, BigInteger mysqlTotalRowsProccessed) {
 
+        LOGGER.info("===============================================================");
+        LOGGER.info("==================== CHECKPOINT TESTS =========================");
         boolean isDelta = replicatorConfiguration.isWriteRecentChangesToDeltaTables();
 
         final int TESTS_TO_RUN = 2;
@@ -49,9 +51,8 @@ public class CheckPointTests {
                     HashMap<Integer, MutableLong> tableTotals = replicatorMetrics.getTotalsPerTable().get(tableName);
 
                     if (tableName.contains(":")) {
-                        LOGGER.info("hbase destination table");
                         if (tableName.contains("delta:")) { // <- convention: all delta tables must go in 'delta' namespace
-                            LOGGER.info("Delta table: " + tableName);
+                            LOGGER.info("HBase Delta Table: " + tableName);
 
                             if (tableTotals != null) {
                                 for (Integer metricID : tableTotals.keySet()) {
@@ -76,7 +77,7 @@ public class CheckPointTests {
                             }
                         }
                         else {
-                            LOGGER.info("Mirrored table: " + tableName);
+                            LOGGER.info("HBase Mirrored Table: " + tableName);
 
                             if (tableTotals != null) {
                                 for (Integer metricID : tableTotals.keySet()) {
@@ -116,7 +117,7 @@ public class CheckPointTests {
 
             LOGGER.info("(" + hbaseTotalRowsCommitted + " - " + mysqlTotalRowsProccessed + ") == " + sumOfRowsCommitedForDeltaTables);
 
-            if ((hbaseTotalRowsCommitted.subtract(mysqlTotalRowsProccessed)) == sumOfRowsCommitedForDeltaTables) {
+            if ((hbaseTotalRowsCommitted.subtract(mysqlTotalRowsProccessed)).equals(sumOfRowsCommitedForDeltaTables)) {
                 LOGGER.info("PASS");
                 testsPassed++;
             }
@@ -129,7 +130,7 @@ public class CheckPointTests {
 
             LOGGER.info(mysqlTotalRowsProccessed + " == " + sumOfRowsCommitedForMirroredTables);
 
-            if (mysqlTotalRowsProccessed == sumOfRowsCommitedForMirroredTables) {
+            if (mysqlTotalRowsProccessed.equals(sumOfRowsCommitedForMirroredTables)) {
                 LOGGER.info("PASS");
                 testsPassed++;
             }

@@ -6,6 +6,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import joptsimple.OptionSet;
 import org.apache.commons.cli.MissingArgumentException;
+import org.apache.commons.math3.linear.SymmLQ;
+import org.jruby.RubyProcess;
+import zookeeper.ZookeeperTalk;
+import zookeeper.impl.ZookeeperTalkImpl;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,9 +47,15 @@ public class Main {
 
         System.out.println("loaded configuration: \n" + configuration.toString());
 
+        ZookeeperTalk zkTalk = new ZookeeperTalkImpl(configuration);
+
         try {
+            while (!zkTalk.amIALeader()) {
+                Thread.sleep(1000);
+            }
             // Start the machine
             new Replicator(configuration).start();
+
         } catch (SQLException e) {
             e.printStackTrace();
         } catch (URISyntaxException e) {

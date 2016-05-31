@@ -7,7 +7,7 @@ import com.booking.replication.checkpoints.SafeCheckPoint;
  */
 public interface ZookeeperTalk {
 
-    public boolean amIALeader();
+    public boolean onLeaderElection(Runnable callback) throws InterruptedException;
 
     public void storeSafeCheckPointInZK(SafeCheckPoint safeCheckPoint);
 

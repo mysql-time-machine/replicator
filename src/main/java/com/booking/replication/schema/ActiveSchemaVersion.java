@@ -147,8 +147,6 @@ public class ActiveSchemaVersion {
                 getTableInfo_Statement.close();
             }
             con.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
         } finally{
             try {
                 // 3. release connection

@@ -20,7 +20,7 @@ import java.sql.SQLException;
 
 public class Main {
 
-    public static void main(String[] args) throws MissingArgumentException, RuntimeException {
+    public static void main(String[] args) throws Exception {
 
         OptionSet optionSet = CMD.parseArgs(args);
 
@@ -29,7 +29,8 @@ public class Main {
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
         String  configPath = startupParameters.getConfigPath();
 
-        Configuration configuration;
+        final Configuration configuration;
+
         try {
             InputStream in = Files.newInputStream(Paths.get(configPath));
             configuration = mapper.readValue(in, Configuration.class);
@@ -47,23 +48,24 @@ public class Main {
 
         System.out.println("loaded configuration: \n" + configuration.toString());
 
-        ZookeeperTalk zkTalk = new ZookeeperTalkImpl(configuration);
+        ZookeeperTalkImpl zkTalk = new ZookeeperTalkImpl(configuration);
 
-        try {
-            while (!zkTalk.amIALeader()) {
-                Thread.sleep(1000);
+        zkTalk.onLeaderElection(
+            new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        new Replicator(configuration).start();
+                    } catch (SQLException | URISyntaxException | IOException e) {
+                        e.printStackTrace();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
             }
-            // Start the machine
-            new Replicator(configuration).start();
+        );
 
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        System.out.println("Done leading...");
     }
+
 }

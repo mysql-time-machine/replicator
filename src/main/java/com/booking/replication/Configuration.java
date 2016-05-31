@@ -65,6 +65,7 @@ public class Configuration {
         public String       host;
         public String       database;
         public List<String> zookeeper_quorum;
+        public String       zookeeper_path = "/";
     }
 
     @JsonDeserialize
@@ -118,6 +119,10 @@ public class Configuration {
         }
         if(replication_schema.username == null) {
             throw new RuntimeException("Replication schema user name cannot be null.");
+        }
+
+        if(metadata_store.zookeeper_quorum == null) {
+            throw new RuntimeException("Zookeeper quorum cannot be null.");
         }
 
         if(applierType == "hbase") {
@@ -205,6 +210,10 @@ public class Configuration {
     public String getHBaseQuorum() {
         return Joiner.on(",").join(hbase.zookeeper_quorum);
     }
+
+    public String getZookeeperQuorum() { return Joiner.on(",").join(metadata_store.zookeeper_quorum); }
+
+    public String getZookeeperPath() { return metadata_store.zookeeper_path; }
 
     public String getGraphiteStatsNamesapce() {
         return graphite.namespace;

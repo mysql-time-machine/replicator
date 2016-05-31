@@ -3,6 +3,7 @@ package zookeeper.impl;
 import com.booking.replication.Configuration;
 import com.booking.replication.checkpoints.LastVerifiedBinlogFile;
 import com.booking.replication.checkpoints.SafeCheckPoint;
+
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;

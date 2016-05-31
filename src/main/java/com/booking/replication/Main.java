@@ -48,7 +48,7 @@ public class Main {
 
         System.out.println("loaded configuration: \n" + configuration.toString());
 
-        ZookeeperTalkImpl zkTalk = new ZookeeperTalkImpl(configuration);
+        ZookeeperTalk zkTalk = new ZookeeperTalkImpl(configuration);
 
         zkTalk.onLeaderElection(
             new Runnable() {

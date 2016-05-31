@@ -22,27 +22,15 @@ public class StartupParameters {
     private boolean initialSnapshot;
     private String  hbaseNamespace;
 
-    private static final String DEFAULT_BINLOG_FILENAME_PATERN = "mysql-bin.";
-
     private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(StartupParameters.class);
 
-    public void init(OptionSet o) throws MissingArgumentException {
+    public StartupParameters(OptionSet o) throws MissingArgumentException {
 
         // use delta tables
-        if (o.has("delta")) {
-            deltaTables = true;
-        }
-        else {
-            deltaTables = false;
-        }
+        deltaTables = o.has("delta");
 
         // initial snapshot mode
-        if (o.has("initial-snapshot")) {
-            initialSnapshot = true;
-        }
-        else {
-            initialSnapshot = false;
-        }
+        initialSnapshot  = o.has("initial-snapshot");
 
         // schema
         if (o.hasArgument("schema")) {
@@ -58,52 +46,31 @@ public class StartupParameters {
 
         // shard_id can also be explicity passed as cmd argument - that will overide config file setting
         if (o.hasArgument("shard")) {
-            shard = Integer.parseInt(o.valueOf("shard").toString());
+            shard = (Integer) o.valueOf("shard");
         }
 
         // config-path
-        if (o.hasArgument("config-path")) {
-            configPath = o.valueOf("config-path").toString();
-        }
-        else {
-            configPath = "./config.yml";
-        }
+        configPath = (String) o.valueOf("config-path");
 
         // applier, defaults to STDOUT
-        if (o.hasArgument("applier")) {
-            applier = o.valueOf("applier").toString();
-        }
-        else {
-            applier = "STDOUT";
-        }
+        applier = (String) o.valueOf("applier");
 
         // setup hbase namespace
         if (o.hasArgument("hbase-namespace")) {
-            hbaseNamespace = o.valueOf("hbase-namespace").toString();
+            hbaseNamespace = (String) o.valueOf("hbase-namespace");
         }
         else {
             LOGGER.error("Must specify hbase namespace");
         }
 
         // binlog-filename
-        if (o.hasArgument("binlog-filename")) {
-            binlogFileName = o.valueOf("binlog-filename").toString();
-        }
-        else {
-            binlogFileName = DEFAULT_BINLOG_FILENAME_PATERN + "000001";
-        }
+        binlogFileName = (String) o.valueOf("binlog-filename");
 
         // position
-        if (o.hasArgument("position")) {
-            binlogPosition = Long.parseLong(o.valueOf("position").toString());
-        }
-        else {
-            // default to 4
-            binlogPosition = 4L;
-        }
+        binlogPosition = (Long) o.valueOf("position");
 
         if (o.hasArgument("last-binlog-filename")) {
-            lastBinlogFileName = o.valueOf("last-binlog-filename").toString();
+            lastBinlogFileName = (String) o.valueOf("last-binlog-filename");
         }
 
         System.out.println("----------------------------------------------");
@@ -124,24 +91,12 @@ public class StartupParameters {
         return configPath;
     }
 
-    public void setConfigPath(String configPath) {
-        this.configPath = configPath;
-    }
-
     public String getSchema() {
         return schema;
     }
 
-    public void setSchema(String schema) {
-        this.schema = schema;
-    }
-
     public String getApplier() {
         return applier;
-    }
-
-    public void setApplier(String applier) {
-        this.applier = applier;
     }
 
     public String getBinlogFileName() {
@@ -152,16 +107,8 @@ public class StartupParameters {
         return lastBinlogFileName;
     }
 
-    public void setBinlogFileName(String binlogFileName) {
-        this.binlogFileName = binlogFileName;
-    }
-
     public Long getBinlogPosition() {
         return binlogPosition;
-    }
-
-    public void setBinlogPosition(Long binlogPosition) {
-        this.binlogPosition = binlogPosition;
     }
 
     public Integer getShard() {

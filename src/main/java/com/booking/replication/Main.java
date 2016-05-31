@@ -20,8 +20,7 @@ public class Main {
 
         OptionSet optionSet = CMD.parseArgs(args);
 
-        StartupParameters startupParameters = new StartupParameters();
-        startupParameters.init(optionSet);
+        StartupParameters startupParameters = new StartupParameters(optionSet);
 
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
         String  configPath = startupParameters.getConfigPath();

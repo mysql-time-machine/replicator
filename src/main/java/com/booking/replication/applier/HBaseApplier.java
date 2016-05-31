@@ -59,7 +59,6 @@ public class HBaseApplier implements Applier {
 
     private final com.booking.replication.Configuration configuration;
 
-
     private final ReplicatorQueues queues;
 
     /**
@@ -176,10 +175,6 @@ public class HBaseApplier implements Applier {
         if (currentTransactionDB != null) {
             if (currentTransactionDB.equals(mySQLDBName)) {
                 hbaseNamespace = mySQLDBName.toLowerCase();
-                if (hbaseNamespace == null) {
-                    LOGGER.error("Namespace can not be null");
-                    System.exit(-1);
-                }
             }
             else if(currentTransactionDB.equals(Constants.BLACKLISTED_DB)) {
                 return null;

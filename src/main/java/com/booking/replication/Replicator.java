@@ -29,42 +29,36 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class Replicator {
 
-    private final Configuration        configuration;
-    private final ReplicatorQueues     replicatorQueues;
-    private final ReplicatorMetrics    replicatorMetrics;
     private final BinlogEventProducer  binlogEventProducer;
     private final PipelineOrchestrator pipelineOrchestrator;
     private final Overseer             overseer;
-    private final Applier              applier;
-
-    private final ConcurrentHashMap<Integer,Object> lastKnownInfo =
-            new ConcurrentHashMap<Integer, Object>();
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Replicator.class);
 
     // Replicator()
-    public Replicator(Configuration conf) throws SQLException, URISyntaxException, IOException {
-
-        // Configuration
-        configuration  = conf;
+    public Replicator(Configuration configuration) throws SQLException, URISyntaxException, IOException {
 
         // Queues
-        replicatorQueues = new ReplicatorQueues();
+        ReplicatorQueues replicatorQueues = new ReplicatorQueues();
 
         // Position Tracking
+        ConcurrentHashMap<Integer, Object> lastKnownInfo = new ConcurrentHashMap<Integer, Object>();
+
         lastKnownInfo.put(Constants.LAST_KNOWN_BINLOG_POSITION,
                 new BinlogPositionInfo(
-                    conf.getStartingBinlogFileName(),
-                    conf.getStartingBinlogPosition()
+                    configuration.getStartingBinlogFileName(),
+                    configuration.getStartingBinlogPosition()
                 ));
 
         // Producer
         binlogEventProducer = new BinlogEventProducer(replicatorQueues.rawQueue, lastKnownInfo, configuration);
 
         // Metrics
-        replicatorMetrics = new ReplicatorMetrics(configuration);
+        ReplicatorMetrics replicatorMetrics = new ReplicatorMetrics(configuration);
 
         // Applier
+        Applier applier;
+
         if (configuration.getApplierType().equals("STDOUT")) {
             applier = new STDOUTJSONApplier(
                     replicatorQueues,

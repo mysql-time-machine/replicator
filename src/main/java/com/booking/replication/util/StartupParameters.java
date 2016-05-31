@@ -56,22 +56,16 @@ public class StartupParameters {
         applier = (String) o.valueOf("applier");
 
         // setup hbase namespace
-        if (o.hasArgument("hbase-namespace")) {
-            hbaseNamespace = (String) o.valueOf("hbase-namespace");
-        }
-        else {
-            LOGGER.error("Must specify hbase namespace");
-        }
+        hbaseNamespace = (String) o.valueOf("hbase-namespace");
 
-        // binlog-filename
+        // Start binlog filename
         binlogFileName = (String) o.valueOf("binlog-filename");
 
-        // position
-        binlogPosition = (Long) o.valueOf("position");
+        // Start binlog position
+        binlogPosition = (Long) o.valueOf("binlog-position");
 
-        if (o.hasArgument("last-binlog-filename")) {
-            lastBinlogFileName = (String) o.valueOf("last-binlog-filename");
-        }
+        // Last binlog filename
+        lastBinlogFileName = (String) o.valueOf("last-binlog-filename");
 
         System.out.println("----------------------------------------------");
         System.out.println("Parsed params:           ");

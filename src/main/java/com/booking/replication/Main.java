@@ -16,7 +16,7 @@ import java.sql.SQLException;
 
 public class Main {
 
-    public static void main(String[] args) throws MissingArgumentException {
+    public static void main(String[] args) throws MissingArgumentException, RuntimeException {
 
         OptionSet optionSet = CMD.parseArgs(args);
 
@@ -29,11 +29,13 @@ public class Main {
         try {
             InputStream in = Files.newInputStream(Paths.get(configPath));
             configuration = mapper.readValue(in, Configuration.class);
-            configuration.loadStartupParameters(startupParameters);
 
             if (configuration == null) {
                 throw new RuntimeException(String.format("Unable to load configuration from file: %s", configPath));
             }
+
+            configuration.loadStartupParameters(startupParameters);
+            configuration.validate();
         } catch (Exception e) {
             e.printStackTrace();
             return;

@@ -4,6 +4,7 @@ import com.booking.replication.util.StartupParameters;
 import com.google.common.base.Joiner;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.sun.tools.javac.util.Assert;
 
 import java.io.Serializable;
 import java.util.Collections;
@@ -98,10 +99,15 @@ public class Configuration {
         // initial snapshot mode
         initialSnapshotMode = startupParameters.isInitialSnapshot();
 
-
         //Hbase namespace
         if (startupParameters.getHbaseNamespace() != null) {
             hbase.namespace = startupParameters.getHbaseNamespace();
+        }
+    }
+
+    public void validate() {
+        if(applierType == "habse") {
+            Assert.checkNonNull(hbase.namespace);
         }
     }
 

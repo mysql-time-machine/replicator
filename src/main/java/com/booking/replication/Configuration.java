@@ -8,7 +8,6 @@ import com.google.common.base.Joiner;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.sun.tools.javac.util.Assert;
 
 import java.io.Serializable;
 import java.util.Collections;
@@ -111,13 +110,20 @@ public class Configuration {
 
     public void validate() {
 
-        Assert.checkNonNull(replication_schema.name);
-        Assert.checkNonNull(replication_schema.slaves);
-        Assert.checkNonNull(replication_schema.username);
-        Assert.checkNonNull(replication_schema.password);
+        if(replication_schema.name == null) {
+            throw new RuntimeException("Replication schema name cannot be null.");
+        }
+        if(replication_schema.slaves == null) {
+            throw new RuntimeException("Replication schema slave list cannot be null.");
+        }
+        if(replication_schema.username == null) {
+            throw new RuntimeException("Replication schema user name cannot be null.");
+        }
 
-        if(applierType == "habse") {
-            Assert.checkNonNull(hbase.namespace);
+        if(applierType == "hbase") {
+            if(hbase.namespace == null) {
+                throw new RuntimeException("HBase namespace cannot be null.");
+            }
         }
     }
 

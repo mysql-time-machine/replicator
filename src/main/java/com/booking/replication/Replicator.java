@@ -3,6 +3,9 @@ package com.booking.replication;
 import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.HBaseApplier;
 import com.booking.replication.applier.STDOUTJSONApplier;
+import com.booking.replication.checkpoints.SafeCheckPoint;
+import com.booking.replication.checkpoints.SafeCheckPointFactory;
+import com.booking.replication.checkpoints.SafeCheckpointType;
 import com.booking.replication.metrics.ReplicatorMetrics;
 import com.booking.replication.pipeline.BinlogEventProducer;
 import com.booking.replication.pipeline.PipelineOrchestrator;
@@ -37,6 +40,10 @@ public class Replicator {
 
     // Replicator()
     public Replicator(Configuration configuration) throws SQLException, URISyntaxException, IOException {
+
+        // Safe Check Point
+        SafeCheckPoint safeCheckPoint = SafeCheckPointFactory.getSafeCheckPoint(SafeCheckpointType.BINLOG_FILENAME);
+        safeCheckPoint.setSafeCheckPointMarker(configuration.getStartingBinlogFileName());
 
         // Queues
         ReplicatorQueues replicatorQueues = new ReplicatorQueues();
@@ -99,7 +106,6 @@ public class Replicator {
                 replicatorMetrics,
                 lastKnownInfo
         );
-
     }
 
     // start()

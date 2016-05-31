@@ -1,9 +1,13 @@
 package com.booking.replication;
 
 import com.booking.replication.util.StartupParameters;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.common.base.Joiner;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.sun.tools.javac.util.Assert;
 
 import java.io.Serializable;
@@ -106,97 +110,24 @@ public class Configuration {
     }
 
     public void validate() {
+
+        Assert.checkNonNull(replication_schema.name);
+        Assert.checkNonNull(replication_schema.slaves);
+        Assert.checkNonNull(replication_schema.username);
+        Assert.checkNonNull(replication_schema.password);
+
         if(applierType == "habse") {
             Assert.checkNonNull(hbase.namespace);
         }
     }
 
     public String toString() {
-
-        Joiner joiner = Joiner.on(", ");
-
-        if (hbase.hive_imports.tables != null) {
-            return new StringBuilder()
-                    .append("\n")
-                    .append("\tapplierType                       : ")
-                    .append(applierType)
-                    .append("\n")
-                    .append("\tdeltaTables                       : ")
-                    .append(hbase.writeRecentChangesToDeltaTables)
-                    .append("\n")
-                    .append("\treplicantSchemaName               : ")
-                    .append(replication_schema.name)
-                    .append("\n")
-                    .append("\tuser name                         : ")
-                    .append(replication_schema.username)
-                    .append("\n")
-                    .append("\treplicantDBSlaves                 : ")
-                    .append(Joiner.on(" | ").join(replication_schema.slaves))
-                    .append("\n")
-                    .append("\treplicantDBActiveHost             : ")
-                    .append(this.getActiveSchemaHost())
-                    .append("\n")
-                    .append("\tactiveSchemaUserName              : ")
-                    .append(metadata_store.username)
-                    .append("\n")
-                    .append("\tactiveSchemaHost                  : ")
-                    .append(metadata_store.host)
-                    .append("\n")
-                    .append("\tactiveSchemaDB                    : ")
-                    .append(metadata_store.database)
-                    .append("\n")
-                    .append("\tgraphiteStatsNamesapce            : ")
-                    .append(graphite.namespace)
-                    .append("\n")
-                    .append("\tgraphiteStatsUrl                  : ")
-                    .append(graphite.url)
-                    .append("\n")
-                    .append("\tdeltaTables                       : ")
-                    .append(hbase.writeRecentChangesToDeltaTables)
-                    .append("\n")
-                    .append("\tinitialSnapshotMode               : ")
-                    .append(initialSnapshotMode)
-                    .append("\n")
-                    .append("\ttablesForWhichToTrackDailyChanges : ")
-                    .append(joiner.join(hbase.hive_imports.tables))
-                    .append("\n")
-                    .toString();
+        try {
+            return new ObjectMapper(new YAMLFactory()).writeValueAsString(this);
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
         }
-        else {
-            return new StringBuilder()
-                    .append("\n")
-                    .append("\tapplierType                       : ")
-                    .append(applierType)
-                    .append("\n")
-                    .append("\tdeltaTables                       : ")
-                    .append(hbase.writeRecentChangesToDeltaTables)
-                    .append("\n")
-                    .append("\treplicantSchemaName               : ")
-                    .append(replication_schema.name)
-                    .append("\n")
-                    .append("\tuser name                         : ")
-                    .append(replication_schema.username)
-                    .append("\n")
-                    .append("\treplicantDBSlaves             : ")
-                    .append(Joiner.on(" | ").join(replication_schema.slaves))
-                    .append("\n")
-                    .append("\treplicantDBActiveHost             : ")
-                    .append(this.getActiveSchemaHost())
-                    .append("\n")
-                    .append("\tactiveSchemaUserName              : ")
-                    .append(metadata_store.username)
-                    .append("\n")
-                    .append("\tgraphiteStatsNamesapce            : ")
-                    .append(graphite.namespace)
-                    .append("\n")
-                    .append("\tdeltaTables                       : ")
-                    .append(hbase.writeRecentChangesToDeltaTables)
-                    .append("\n")
-                    .append("\tinitialSnapshotMode               : ")
-                    .append(initialSnapshotMode)
-                    .append("\n")
-                    .toString();
-        }
+        return "";
     }
 
     public int getReplicantPort() {
@@ -219,6 +150,7 @@ public class Configuration {
         return replication_schema.username;
     }
 
+    @JsonIgnore
     public String getReplicantDBPassword() {
         return replication_schema.password;
     }
@@ -251,6 +183,7 @@ public class Configuration {
         return metadata_store.username;
     }
 
+    @JsonIgnore
     public String getActiveSchemaPassword() {
         return metadata_store.password;
     }

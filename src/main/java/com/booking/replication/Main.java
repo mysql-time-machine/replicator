@@ -41,13 +41,11 @@ public class Main {
             return;
         }
 
-        System.out.println("loaded configuration: " + configuration.toString());
-
-        Replicator replicator;
+        System.out.println("loaded configuration: \n" + configuration.toString());
 
         try {
-            replicator = new Replicator(configuration);
-            replicator.start();
+            // Start the machine
+            new Replicator(configuration).start();
         } catch (SQLException e) {
             e.printStackTrace();
         } catch (URISyntaxException e) {

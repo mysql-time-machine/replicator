@@ -52,8 +52,6 @@ public class FileCoordinator implements CoordinatorInterface {
 
             LOGGER.info(String.format("Serialized checkpoint: %s", serialized));
 
-
-            LOGGER.info(checkPointPath.getParent().toString());
             Path tempFile = Files.createTempFile(checkPointPath.getParent(), null, ".replicator");
             LOGGER.debug(String.format("Creating file: %s", tempFile.getFileName()));
 

@@ -5,14 +5,12 @@ import com.booking.replication.audit.CheckPointTests;
 
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
-import com.booking.replication.metrics.Metric;
-import com.booking.replication.metrics.ReplicatorMetrics;
-import com.booking.replication.metrics.SetOfMetrics;
+import com.booking.replication.metrics.*;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 
 import com.booking.replication.queues.ReplicatorQueues;
 import com.booking.replication.schema.HBaseSchemaManager;
-import com.booking.replication.util.MutableLong;
+
 import com.google.code.or.binlog.impl.event.FormatDescriptionEvent;
 import com.google.code.or.binlog.impl.event.QueryEvent;
 import com.google.code.or.binlog.impl.event.RotateEvent;
@@ -226,15 +224,18 @@ public class HBaseApplier implements Applier {
 
     @Override
     public void waitUntilAllRowsAreCommitted(CheckPointTests checkPointTests) {
-
-        SetOfMetrics totals = replicatorMetrics.getTotals();
-
         boolean wait = true;
 
         while (wait) {
 
-            BigInteger totalHBaseRowsAffected  = totals.getMetricValue(Metric.TOTAL_HBASE_ROWS_AFFECTED);
-            BigInteger totalMySQLRowsProcessed = totals.getMetricValue(Metric.TOTAL_ROWS_PROCESSED);
+            Totals totals = replicatorMetrics.getTotalsSnapshot();
+            BigInteger totalHBaseRowsAffected = totals.getTotalHbaseRowsAffected().getValue();
+
+            // TODO: BigInteger totalMySQLRowsProcessed = totals.getMetricValue(Metric.TOTAL_ROWS_PROCESSED);
+            BigInteger totalMySQLRowsProcessed = totals.getHbaseRowsAffected().getValue();
+
+            LOGGER.info("hbaseTotalRowsCommited  => " + totalHBaseRowsAffected);
+            LOGGER.info("mysqlTotalRowsProcessed => " + totalMySQLRowsProcessed);
 
             if (checkPointTests.verifyConsistentCountersOnRotateEvent(totalHBaseRowsAffected, totalMySQLRowsProcessed)) {
                 wait = false;
@@ -257,30 +258,21 @@ public class HBaseApplier implements Applier {
     @Override
     public void dumpStats() {
 
-        for (Integer timebucket : replicatorMetrics.getMetrics().keySet()) {
+        Map<Integer, TotalsPerTimeSlot> metricsSnapshot = replicatorMetrics.getMetricsSnapshot();
+
+        for (Integer timebucket : metricsSnapshot.keySet()) {
 
             LOGGER.debug("dumping stats for bucket => " + timebucket);
 
-            HashMap<Integer,MutableLong> timebucketStats;
-            timebucketStats = replicatorMetrics.getMetrics().get(timebucket);
+            TotalsPerTimeSlot timebucketStats;
+            timebucketStats = replicatorMetrics.getMetricsSnapshot().get(timebucket);
 
-            if (timebucketStats != null) {
-                // all is good
-            }
-            else {
-                LOGGER.warn("Metrics missing for timebucket " + timebucket);
-                return;
-            }
+            INameValue[] metricNamesAndValues = timebucketStats.getAllNamesAndValues();
 
-            for (Integer metricsID : timebucketStats.keySet()) {
-
-                Long value = timebucketStats.get(metricsID).getValue();
-
-                String pointInfo = Metric.getCounterName(metricsID)
-                                + " => " + value.toString()
-                                + " @ " + timebucket.toString();
-
-                LOGGER.info(pointInfo);
+            for (int i = 0; i < metricNamesAndValues.length; i++)
+            {
+                LOGGER.info(String.format("%s => %s @ %s", metricNamesAndValues[i].getName(), metricNamesAndValues[i].getValue(),
+                        timebucket));
             }
         }
     }

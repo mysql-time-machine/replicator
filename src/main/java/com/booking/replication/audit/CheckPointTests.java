@@ -1,13 +1,13 @@
 package com.booking.replication.audit;
 
-import com.booking.replication.metrics.Metric;
+import com.booking.replication.metrics.INameValue;
 import com.booking.replication.metrics.ReplicatorMetrics;
-import com.booking.replication.util.MutableLong;
+import com.booking.replication.metrics.RowTotals;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
-import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by bosko on 3/29/16.
@@ -45,64 +45,36 @@ public class CheckPointTests {
             BigInteger sumOfRowsCommitedForDeltaTables    = BigInteger.ZERO;
             BigInteger sumOfRowsCommitedForMirroredTables = BigInteger.ZERO;
 
-            if (replicatorMetrics.getTotalsPerTable() != null) {
-                for (String tableName : replicatorMetrics.getTotalsPerTable().keySet()) {
+            Map<String, RowTotals> totalsPerTableSnapshot = replicatorMetrics.getTotalsPerTableSnapshot();
 
-                    HashMap<Integer, MutableLong> tableTotals = replicatorMetrics.getTotalsPerTable().get(tableName);
+            if (replicatorMetrics.getTotalsPerTableSnapshot() != null) {
+                for (String tableName : totalsPerTableSnapshot.keySet()) {
+
+                    RowTotals tableTotals = replicatorMetrics.getTotalsPerTableSnapshot().get(tableName);
+                    INameValue[] namesAndValues = tableTotals.getAllNamesAndValues();
 
                     if (tableName.contains(":")) {
                         if (tableName.contains("delta:")) { // <- convention: all delta tables must go in 'delta' namespace
                             LOGGER.info("HBase Delta Table: " + tableName);
 
-                            if (tableTotals != null) {
-                                for (Integer metricID : tableTotals.keySet()) {
-                                    if (tableTotals.get(metricID) != null) {
-                                        LOGGER.info("\t [" +
-                                                tableName +
-                                                "." +
-                                                Metric.getCounterName(metricID) +
-                                                "]" +
-                                                " => " +
-                                                tableTotals.get(metricID).getValue());
+                            for (int i = 0; i < namesAndValues.length; i++)
+                            {
+                                LOGGER.info(String.format("\t [%s.%s] => %s", tableName, namesAndValues[i].getName(),
+                                        namesAndValues[i].getValue()));
+                            }
 
-                                        if (metricID == Metric.TOTAL_HBASE_ROWS_AFFECTED) {
-                                            BigInteger deltaCommitedForTable = BigInteger.valueOf(tableTotals.get(Metric.TOTAL_HBASE_ROWS_AFFECTED).getValue());
-                                            sumOfRowsCommitedForDeltaTables = sumOfRowsCommitedForDeltaTables.add(deltaCommitedForTable);
-                                        }
-                                    }
-                                }
-                            }
-                            else {
-                                LOGGER.info("No count for table => " + tableName);
-                            }
+                            sumOfRowsCommitedForDeltaTables = sumOfRowsCommitedForDeltaTables.add(tableTotals.getTotalHbaseRowsAffected().getValue());
                         }
                         else {
                             LOGGER.info("HBase Mirrored Table: " + tableName);
 
-                            if (tableTotals != null) {
-                                for (Integer metricID : tableTotals.keySet()) {
-                                    if (tableTotals.get(metricID) != null) {
-                                        LOGGER.info("\t [" +
-                                                tableName +
-                                                "." +
-                                                Metric.getCounterName(metricID) +
-                                                "]" +
-                                                " => " +
-                                                tableTotals.get(metricID).getValue());
+                            for (int i = 0; i < namesAndValues.length; i++)
+                            {
+                                LOGGER.info(String.format("\t [%s.%s] => %s", tableName, namesAndValues[i].getName(),
+                                        namesAndValues[i].getValue()));
+                            }
 
-                                        if (metricID == Metric.TOTAL_HBASE_ROWS_AFFECTED) {
-                                            BigInteger mirroredCommitedForTable = BigInteger.valueOf(tableTotals.get(Metric.TOTAL_HBASE_ROWS_AFFECTED).getValue());
-                                            sumOfRowsCommitedForMirroredTables = sumOfRowsCommitedForMirroredTables.add(mirroredCommitedForTable);
-                                        }
-                                    }
-                                    else {
-                                        LOGGER.info("No writes for this table were made");
-                                    }
-                                }
-                            }
-                            else {
-                                LOGGER.info("No count for table => " + tableName);
-                            }
+                            sumOfRowsCommitedForMirroredTables = sumOfRowsCommitedForMirroredTables.add(tableTotals.getTotalHbaseRowsAffected().getValue());
                         }
                     }
                     else {
@@ -152,7 +124,7 @@ public class CheckPointTests {
             LOGGER.info("\n    " +  mysqlTotalRowsProccessed  + " == " +  hbaseTotalRowsCommitted);
 
 
-            if (mysqlTotalRowsProccessed == hbaseTotalRowsCommitted) {
+            if (mysqlTotalRowsProccessed.equals(hbaseTotalRowsCommitted)) {
                 LOGGER.info("PASS");
                 return true;
             }

@@ -644,6 +644,17 @@ public class HBaseApplierWriter {
                                     }
                                 }
 
+<<<<<<< HEAD
+=======
+                                LOGGER.info("Metric of rows in task " + taskUUID + " => " + numberOfRowsInTask);
+
+                                if (DRY_RUN) {
+                                    taskStatus.put(taskUUID, TaskStatusCatalog.WRITE_SUCCEEDED);
+                                    TaskResult taskResult = new TaskResult(taskUUID, true, numberOfRowsInTask, tableStats);
+                                    return taskResult;
+                                }
+
+>>>>>>> Metrics refactoring - step one (before we get to use the metrics library)
                                 if (taskMessages.get(taskUUID) == null) {
                                     taskMessages.put(taskUUID, new ArrayList<String>());
                                 }

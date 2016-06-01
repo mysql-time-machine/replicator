@@ -1,20 +1,18 @@
 package com.booking.replication.monitor;
 
 import com.booking.replication.Constants;
-import com.booking.replication.metrics.ReplicatorMetrics;
+import com.booking.replication.metrics.*;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.pipeline.BinlogEventProducer;
 import com.booking.replication.pipeline.BinlogPositionInfo;
-import com.booking.replication.metrics.Metric;
-import com.booking.replication.util.MutableLong;
 import com.google.common.base.Joiner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.rmi.ConnectException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import java.io.*;
@@ -131,22 +129,25 @@ public class Overseer extends Thread {
         if (pipelineOrchestrator.configuration.isWriteRecentChangesToDeltaTables()) {
             if (!graphiteStatsNamespace.equals("no-stats")) {
                 List<String> deltaTables = pipelineOrchestrator.configuration.getTablesForWhichToTrackDailyChanges();
-                HashMap<Integer, MutableLong> tableTotals;
+
+                Map<String, RowTotals> tablesToMetrics = replicatorMetrics.getTotalsPerTableSnapshot();
+
                 for (String table : deltaTables) {
-                    if (replicatorMetrics.getTotalsPerTable().containsKey(table)) {
-                        tableTotals = replicatorMetrics.getTotalsPerTable().get(table);
+                    if (tablesToMetrics.containsKey(table)) {
+                        RowTotals tableTotals = replicatorMetrics.getTotalsPerTableSnapshot().get(table);
                         if (tableTotals != null) {
-                            for (Integer metricID : tableTotals.keySet()) {
-                                Long value = tableTotals.get(metricID).getValue();
-                                String graphitePoint = graphiteStatsNamespace
-                                        + "."
-                                        + dbAlias
-                                        + "."
-                                        + table
-                                        + "."
-                                        + Metric.getCounterName(metricID)
-                                        + " " + value.toString()
-                                        + " " + currentTimeSeconds;
+
+                            INameValue[] metricValues = tableTotals.getAllNamesAndValues();
+
+                            for (int i = 0; i < metricValues.length; i++) {
+                                String graphitePoint =
+                                        String.format("%s.%s.%s.%s %s %s",
+                                                graphiteStatsNamespace,
+                                                dbAlias,
+                                                table,
+                                                metricValues[i].getName(),
+                                                metricValues[i].getValue().toString(),
+                                                currentTimeSeconds);
 
                                 metrics.add(graphitePoint);
                             }
@@ -156,48 +157,42 @@ public class Overseer extends Thread {
             }
         }
 
+        Map<Integer, TotalsPerTimeSlot> metricSnapshot = replicatorMetrics.getMetricsSnapshot();
 
         // time bucket metric
-        for (Integer timebucket : replicatorMetrics.getMetrics().keySet()) {
+        for (Integer timebucket : metricSnapshot.keySet()) {
 
             if (timebucket <  currentTimeSeconds) {
 
                 LOGGER.debug("processing stats for bucket => " + timebucket + " since < then " + currentTimeSeconds);
 
-                HashMap<Integer,MutableLong> timebucketStats;
-                timebucketStats = replicatorMetrics.getMetrics().get(timebucket);
-                if (timebucketStats != null) {
-                    // all is good
-                }
-                else {
-                    LOGGER.warn("Metrics missing for timebucket " + timebucket);
-                    return;
-                }
+                if (!graphiteStatsNamespace.equals("no-stats")) {
 
-                for (Integer metricsID : timebucketStats.keySet()) {
+                    TotalsPerTimeSlot timebucketStats;
+                    timebucketStats = metricSnapshot.get(timebucket);
 
-                    Long value = timebucketStats.get(metricsID).getValue();
+                    INameValue[] metricValues = timebucketStats.getAllNamesAndValues();
 
-                    if (!graphiteStatsNamespace.equals("no-stats")) {
-                        String graphitePoint;
+                    for (int i = 0; i < metricValues.length; i++) {
+                        String graphitePoint =
+                                String.format("%s.%s.%s %s %s",
+                                graphiteStatsNamespace,
+                                dbAlias,
+                                metricValues[i].getName(),
+                                metricValues[i].getValue().toString(),
+                                timebucket.toString());
 
-                        graphitePoint = graphiteStatsNamespace
-                                + "."
-                                + dbAlias
-                                + "."
-                                + Metric.getCounterName(metricsID)
-                                + " " + value.toString()
-                                + " " + timebucket.toString();
-
-                        LOGGER.debug("graphite point => " + graphitePoint);
+                        LOGGER.debug("" +
+                                "graphite point => " + graphitePoint);
 
                         metrics.add(graphitePoint);
                     }
                 }
+
                 String message = Joiner.on("\n").join(metrics) + "\n";
                 LOGGER.debug("Graphite metrics from processed second => " + message);
                 sendToGraphite(message);
-                replicatorMetrics.getMetrics().remove(timebucket);
+                replicatorMetrics.removeBucketStats(timebucket);
             }
         }
     }

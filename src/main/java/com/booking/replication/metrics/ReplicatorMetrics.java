@@ -1,14 +1,9 @@
 package com.booking.replication.metrics;
 
 import com.booking.replication.Configuration;
-import com.booking.replication.util.MutableLong;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.math.BigInteger;
+import java.util.*;
 
 
 /**
@@ -16,391 +11,333 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class ReplicatorMetrics {
 
-    private final ConcurrentHashMap<Integer, HashMap<Integer, MutableLong>> replicatorMetrics;
-
-    private final SetOfMetrics totals;
-
-    private final ConcurrentHashMap<String, HashMap<Integer, MutableLong>> totalsPerTable;
-
-    private final AtomicBoolean timeBucketInitializationInProgess = new AtomicBoolean(false);
+    private final Totals totals;
+    private final HashMap<String, RowTotals> totalsPerTable;
+    private final HashMap<Integer, TotalsPerTimeSlot> replicatorMetrics;
+    private final Object criticalSection = new Object();
 
     private final Integer beginTime;
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ReplicatorMetrics.class);
-
     public ReplicatorMetrics(Configuration configuration) {
 
+        // TODO: get rid of kictchen sink
         beginTime = (int) (System.currentTimeMillis() / 1000L);
-        replicatorMetrics = new  ConcurrentHashMap<Integer, HashMap<Integer, MutableLong>>();
+        replicatorMetrics = new HashMap<Integer, TotalsPerTimeSlot>();
 
-        totals = new SetOfMetrics();
+        totals = new Totals();
 
         List<String> deltaTables = configuration.getTablesForWhichToTrackDailyChanges();
-        totalsPerTable = new ConcurrentHashMap<String, HashMap<Integer, MutableLong>>();
+        totalsPerTable = new HashMap<>();
         initTotalsPerTable(deltaTables);
     }
 
     private void initTotalsPerTable(List<String> tables) {
 
-        for (String table: tables) {
-
-            initTotalForTable(table, Metric.TOTAL_ROWS_PROCESSED);
-            initTotalForTable(table, Metric.TOTAL_ROWS_FOR_INSERT_PROCESSED);
-            initTotalForTable(table, Metric.TOTAL_ROWS_FOR_UPDATE_PROCESSED);
-            initTotalForTable(table, Metric.TOTAL_ROWS_FOR_DELETE_PROCESSED);
-
-            initTotalForTable(table, Metric.TOTAL_HBASE_ROWS_AFFECTED);
+        for (String table : tables) {
+            totalsPerTable.put(table, new RowTotals());
         }
     }
 
-    private synchronized void initTotalForTable(String table, Integer totalID) {
-        if (totalsPerTable.get(table) != null) {
-            totalsPerTable.get(table).put(totalID, new MutableLong());
+    private void initTimebucket(int currentTimeSeconds) {
+
+        synchronized (criticalSection) {
+            // this can be called by multiple threads for the same bucket, so some
+            // protection is needed to make sure that bucket is initialized only once
+
+            if (replicatorMetrics.containsKey(currentTimeSeconds)) {
+                return;
+            }
+
+            replicatorMetrics.put(currentTimeSeconds, new TotalsPerTimeSlot(totals));
         }
-        else {
-            totalsPerTable.put(table, new HashMap<Integer, MutableLong>());
-            totalsPerTable.get(table).put(totalID, new MutableLong());
-        }
-    }
-
-    public void initTimebucket(int currentTimeSeconds) {
-
-        // this can be called by multiple threads for the same bucket, so some
-        // protection is needed to make sure that bucket is initialized only once
-        if (timeBucketInitializationInProgess.compareAndSet(false,true)) {
-
-            this.replicatorMetrics.put(currentTimeSeconds, new HashMap<Integer, MutableLong>());
-
-            this.replicatorMetrics.get(currentTimeSeconds).put(Metric.EVENTS_RECEIVED, new MutableLong());
-            this.replicatorMetrics.get(currentTimeSeconds).put(Metric.EVENTS_SKIPPED, new MutableLong());
-            this.replicatorMetrics.get(currentTimeSeconds).put(Metric.EVENTS_PROCESSED, new MutableLong());
-
-            this.replicatorMetrics.get(currentTimeSeconds).put(Metric.INSERT_EVENTS_COUNTER, new MutableLong());
-            this.replicatorMetrics.get(currentTimeSeconds).put(Metric.UPDATE_EVENTS_COUNTER, new MutableLong());
-            this.replicatorMetrics.get(currentTimeSeconds).put(Metric.DELETE_EVENTS_COUNTER, new MutableLong());
-            this.replicatorMetrics.get(currentTimeSeconds).put(Metric.COMMIT_COUNTER, new MutableLong());
-            this.replicatorMetrics.get(currentTimeSeconds).put(Metric.XID_COUNTER, new MutableLong());
-
-            this.replicatorMetrics.get(currentTimeSeconds).put(Metric.ROWS_PROCESSED, new MutableLong());
-            this.replicatorMetrics.get(currentTimeSeconds).put(Metric.ROWS_FOR_INSERT_PROCESSED, new MutableLong());
-            this.replicatorMetrics.get(currentTimeSeconds).put(Metric.ROWS_FOR_UPDATE_PROCESSED, new MutableLong());
-            this.replicatorMetrics.get(currentTimeSeconds).put(Metric.ROWS_FOR_DELETE_PROCESSED, new MutableLong());
-
-            this.replicatorMetrics.get(currentTimeSeconds).put(Metric.HEART_BEAT_COUNTER, new MutableLong());
-
-            this.replicatorMetrics.get(currentTimeSeconds).put(Metric.APPLIER_TASKS_SUBMITTED, new MutableLong());
-            this.replicatorMetrics.get(currentTimeSeconds).put(Metric.APPLIER_TASKS_IN_PROGRESS, new MutableLong());
-            this.replicatorMetrics.get(currentTimeSeconds).put(Metric.APPLIER_TASKS_SUCCEEDED, new MutableLong());
-            this.replicatorMetrics.get(currentTimeSeconds).put(Metric.APPLIER_TASKS_FAILED, new MutableLong());
-
-            this.replicatorMetrics.get(currentTimeSeconds).put(Metric.REPLICATION_DELAY_MS, new MutableLong());
-
-            this.replicatorMetrics.get(currentTimeSeconds).put(Metric.HBASE_ROWS_AFFECTED, new MutableLong());
-
-            this.replicatorMetrics.get(currentTimeSeconds).put(Metric.TASK_QUEUE_SIZE, new MutableLong());
-
-            // TOTALS
-            initTimebucketForTotal(currentTimeSeconds, Metric.TOTAL_EVENTS_RECEIVED);
-            initTimebucketForTotal(currentTimeSeconds, Metric.TOTAL_EVENTS_SKIPPED);
-            initTimebucketForTotal(currentTimeSeconds, Metric.TOTAL_EVENTS_PROCESSED);
-
-            initTimebucketForTotal(currentTimeSeconds, Metric.TOTAL_INSERT_EVENTS_COUNTER);
-            initTimebucketForTotal(currentTimeSeconds, Metric.TOTAL_UPDATE_EVENTS_COUNTER);
-            initTimebucketForTotal(currentTimeSeconds, Metric.TOTAL_DELETE_EVENTS_COUNTER);
-            initTimebucketForTotal(currentTimeSeconds, Metric.TOTAL_COMMIT_COUNTER);
-            initTimebucketForTotal(currentTimeSeconds, Metric.TOTAL_XID_COUNTER);
-
-            initTimebucketForTotal(currentTimeSeconds, Metric.TOTAL_ROWS_PROCESSED);
-            initTimebucketForTotal(currentTimeSeconds, Metric.TOTAL_ROWS_FOR_INSERT_PROCESSED);
-            initTimebucketForTotal(currentTimeSeconds, Metric.TOTAL_ROWS_FOR_UPDATE_PROCESSED);
-            initTimebucketForTotal(currentTimeSeconds, Metric.TOTAL_ROWS_FOR_DELETE_PROCESSED);
-
-            initTimebucketForTotal(currentTimeSeconds, Metric.TOTAL_HBASE_ROWS_AFFECTED);
-
-            initTimebucketForTotal(currentTimeSeconds, Metric.TOTAL_HEART_BEAT_COUNTER);
-
-            initTimebucketForTotal(currentTimeSeconds, Metric.TOTAL_APPLIER_TASKS_SUBMITTED);
-            initTimebucketForTotal(currentTimeSeconds, Metric.TOTAL_APPLIER_TASKS_IN_PROGRESS);
-            initTimebucketForTotal(currentTimeSeconds, Metric.TOTAL_APPLIER_TASKS_SUCCEEDED);
-            initTimebucketForTotal(currentTimeSeconds, Metric.TOTAL_APPLIER_TASKS_FAILED);
-
-            // release the lock
-            timeBucketInitializationInProgess.compareAndSet(true,false);
-        }
-        else {
-            // timebucket initialization in progress by another thread.
-            // Wait until lock is released
-            while (timeBucketInitializationInProgess.get() == true);
-        }
-    }
-
-    public ConcurrentHashMap<Integer, HashMap<Integer, MutableLong>> getMetrics() {
-        return replicatorMetrics;
     }
 
     // ROWS
     public void incRowsInsertedCounter(String tableName) {
-        int currentTimeSeconds = (int) (System.currentTimeMillis() / 1000L);
-        incCounter(currentTimeSeconds, Metric.ROWS_FOR_INSERT_PROCESSED);
-        incTotal(currentTimeSeconds, Metric.TOTAL_ROWS_FOR_INSERT_PROCESSED, 1L);
-        incTableTotal(tableName, Metric.TOTAL_ROWS_FOR_INSERT_PROCESSED, 1L);
+        synchronized (criticalSection)
+        {
+            if (!totalsPerTable.containsKey(tableName))
+            {
+                throw createNoSuchElementException(tableName);
+            }
+
+            int currentTimeSeconds = getCurrentTimestamp();
+            getOrCreateTimeSlotMetrics(currentTimeSeconds).getRowsForInsertProcessed().increment();
+
+            totalsPerTable.get(tableName).getRowsForInsertProcessed().increment();
+        }
+    }
+
+    private NoSuchElementException createNoSuchElementException(String tableName) {
+        return new NoSuchElementException(String.format("There's no table named %s registered with metrics", tableName));
     }
 
     public void incRowsUpdatedCounter(String tableName) {
-        int currentTimeSeconds = (int) (System.currentTimeMillis() / 1000L);
-        incCounter(currentTimeSeconds, Metric.ROWS_FOR_UPDATE_PROCESSED);
-        incTotal(currentTimeSeconds, Metric.TOTAL_ROWS_FOR_UPDATE_PROCESSED, 1L);
-        incTableTotal(tableName, Metric.TOTAL_ROWS_FOR_UPDATE_PROCESSED, 1L);
+
+        synchronized (criticalSection)
+        {
+            if (!totalsPerTable.containsKey(tableName))
+            {
+                throw createNoSuchElementException(tableName);
+            }
+
+            int currentTimeSeconds = getCurrentTimestamp();
+            getOrCreateTimeSlotMetrics(currentTimeSeconds).getRowsForUpdateProcessed().increment();
+            totalsPerTable.get(tableName).getRowsForUpdateProcessed().increment();
+        }
     }
 
     public void incRowsDeletedCounter(String tableName) {
-        int currentTimeSeconds = (int) (System.currentTimeMillis() / 1000L);
-        incCounter(currentTimeSeconds, Metric.ROWS_FOR_DELETE_PROCESSED);
-        incTotal(currentTimeSeconds, Metric.TOTAL_ROWS_FOR_DELETE_PROCESSED, 1L);
-        incTableTotal(tableName, Metric.TOTAL_ROWS_FOR_DELETE_PROCESSED, 1L);
+        synchronized (criticalSection)
+        {
+            if (!totalsPerTable.containsKey(tableName))
+            {
+                throw createNoSuchElementException(tableName);
+            }
+
+            int currentTimeSeconds = getCurrentTimestamp();
+            getOrCreateTimeSlotMetrics(currentTimeSeconds).getRowsForDeleteProcessed().increment();
+
+            totalsPerTable.get(tableName).getRowsForDeleteProcessed().increment();
+        }
     }
 
     public void incRowsProcessedCounter(String tableName) {
-        int currentTimeSeconds = (int) (System.currentTimeMillis() / 1000L);
-        incCounter(currentTimeSeconds, Metric.ROWS_PROCESSED);
-        incTotal(currentTimeSeconds, Metric.TOTAL_ROWS_PROCESSED, 1L);
-        incTableTotal(tableName, Metric.TOTAL_ROWS_PROCESSED, 1L);
+        synchronized (criticalSection)
+        {
+            if (!totalsPerTable.containsKey(tableName))
+            {
+                throw createNoSuchElementException(tableName);
+            }
+
+            int currentTimeSeconds = getCurrentTimestamp();
+            getOrCreateTimeSlotMetrics(currentTimeSeconds).getHbaseRowsAffected().increment();
+
+            totalsPerTable.get(tableName).getHbaseRowsAffected().increment();
+        }
     }
 
     // EVENTS
     public void incInsertEventCounter() {
-        int currentTimeSeconds = (int) (System.currentTimeMillis() / 1000L);
-        incCounter(currentTimeSeconds, Metric.INSERT_EVENTS_COUNTER);
-        incTotal(currentTimeSeconds, Metric.TOTAL_INSERT_EVENTS_COUNTER, 1L);
+        int currentTimeSeconds = getCurrentTimestamp();
+        synchronized (criticalSection)
+        {
+            getOrCreateTimeSlotMetrics(currentTimeSeconds).getInsertEvents().increment();
+        }
+    }
+
+    private int getCurrentTimestamp()
+    {
+        // TODO: don't use ints, use the actual date surrogates
+
+        return (int) (System.currentTimeMillis() / 1000L);
+    }
+
+    private TotalsPerTimeSlot getOrCreateTimeSlotMetrics(int timestamp)
+    {
+        if (!replicatorMetrics.containsKey(timestamp))
+        {
+            initTimebucket(timestamp);
+        }
+
+        return this.replicatorMetrics.get(timestamp);
     }
 
     public void incUpdateEventCounter() {
-        int currentTimeSeconds = (int) (System.currentTimeMillis() / 1000L);
-        incCounter(currentTimeSeconds, Metric.UPDATE_EVENTS_COUNTER);
-        incTotal(currentTimeSeconds, Metric.TOTAL_UPDATE_EVENTS_COUNTER, 1L);
+        int currentTimeSeconds = getCurrentTimestamp();
+
+        synchronized (criticalSection)
+        {
+            getOrCreateTimeSlotMetrics(currentTimeSeconds).getUpdateEvents().increment();
+        }
     }
 
     public void incDeleteEventCounter() {
-        int currentTimeSeconds = (int) (System.currentTimeMillis() / 1000L);
-        incCounter(currentTimeSeconds, Metric.DELETE_EVENTS_COUNTER);
-        incTotal(currentTimeSeconds, Metric.TOTAL_DELETE_EVENTS_COUNTER, 1L);
+        int currentTimeSeconds = getCurrentTimestamp();
+
+        synchronized (criticalSection)
+        {
+            getOrCreateTimeSlotMetrics(currentTimeSeconds).getDeleteEvents().increment();
+        }
     }
 
     public void incCommitQueryCounter() {
-        int currentTimeSeconds = (int) (System.currentTimeMillis() / 1000L);
-        incCounter(currentTimeSeconds, Metric.COMMIT_COUNTER);
-        incTotal(currentTimeSeconds, Metric.TOTAL_COMMIT_COUNTER, 1L);
+        int currentTimeSeconds = getCurrentTimestamp();
+
+        synchronized (criticalSection)
+        {
+            getOrCreateTimeSlotMetrics(currentTimeSeconds).getCommitCounter().increment();
+        }
     }
 
     public void incXIDCounter() {
-        int currentTimeSeconds = (int) (System.currentTimeMillis() / 1000L);
-        incCounter(currentTimeSeconds, Metric.XID_COUNTER);
-        incTotal(currentTimeSeconds, Metric.TOTAL_XID_COUNTER, 1L);
+        int currentTimeSeconds = getCurrentTimestamp();
+
+        synchronized (criticalSection)
+        {
+            getOrCreateTimeSlotMetrics(currentTimeSeconds).getXidCounter().increment();
+        }
     }
 
     public void incEventsReceivedCounter() {
-        int currentTimeSeconds = (int) (System.currentTimeMillis() / 1000L);
-        incCounter(currentTimeSeconds, Metric.EVENTS_RECEIVED);
-        incTotal(currentTimeSeconds, Metric.TOTAL_EVENTS_RECEIVED, 1L);
+        int currentTimeSeconds = getCurrentTimestamp();
+
+        synchronized (criticalSection)
+        {
+            getOrCreateTimeSlotMetrics(currentTimeSeconds).getEventsReceived().increment();
+        }
     }
 
     public void incEventsProcessedCounter() {
-        int currentTimeSeconds = (int) (System.currentTimeMillis() / 1000L);
-        incCounter(currentTimeSeconds, Metric.EVENTS_PROCESSED);
-        incTotal(currentTimeSeconds, Metric.TOTAL_EVENTS_PROCESSED, 1L);
+        int currentTimeSeconds = getCurrentTimestamp();
+
+        synchronized (criticalSection)
+        {
+            getOrCreateTimeSlotMetrics(currentTimeSeconds).getEventsProcessed().increment();
+        }
     }
 
     public void incEventsSkippedCounter() {
-        int currentTimeSeconds = (int) (System.currentTimeMillis() / 1000L);
-        incCounter(currentTimeSeconds, Metric.EVENTS_SKIPPED);
-        incTotal(currentTimeSeconds, Metric.TOTAL_EVENTS_SKIPPED, 1L);
+        int currentTimeSeconds = getCurrentTimestamp();
+
+        synchronized (criticalSection)
+        {
+            getOrCreateTimeSlotMetrics(currentTimeSeconds).getEventsSkipped().increment();
+        }
     }
 
     public void incHeartBeatCounter() {
-        int currentTimeSeconds = (int) (System.currentTimeMillis() / 1000L);
-        incCounter(currentTimeSeconds, Metric.HEART_BEAT_COUNTER);
-        incTotal(currentTimeSeconds, Metric.TOTAL_HEART_BEAT_COUNTER, 1L);
+        int currentTimeSeconds = getCurrentTimestamp();
+
+        synchronized (criticalSection)
+        {
+            getOrCreateTimeSlotMetrics(currentTimeSeconds).getHeartBeatCounter().increment();
+        }
     }
 
     public void incApplierTasksSubmittedCounter() {
-        int currentTimeSeconds = (int) (System.currentTimeMillis() / 1000L);
-        incCounter(currentTimeSeconds, Metric.APPLIER_TASKS_SUBMITTED);
-        incTotal(currentTimeSeconds, Metric.TOTAL_APPLIER_TASKS_SUBMITTED, 1L);
+        int currentTimeSeconds = getCurrentTimestamp();
+
+        synchronized (criticalSection)
+        {
+            getOrCreateTimeSlotMetrics(currentTimeSeconds).getApplierTasksSubmitted().increment();
+        }
     }
 
     public void incApplierTasksSucceededCounter() {
-        int currentTimeSeconds = (int) (System.currentTimeMillis() / 1000L);
-        incCounter(currentTimeSeconds, Metric.APPLIER_TASKS_SUCCEEDED);
-        incTotal(currentTimeSeconds, Metric.TOTAL_APPLIER_TASKS_SUCCEEDED, 1L);
+        int currentTimeSeconds = getCurrentTimestamp();
+
+        synchronized (criticalSection)
+        {
+            getOrCreateTimeSlotMetrics(currentTimeSeconds).getApplierTasksSucceeded().increment();
+        }
     }
 
     public void incApplierTasksFailedCounter() {
-        int currentTimeSeconds = (int) (System.currentTimeMillis() / 1000L);
-        incCounter(currentTimeSeconds, Metric.APPLIER_TASKS_FAILED);
-        incTotal(currentTimeSeconds, Metric.TOTAL_APPLIER_TASKS_FAILED, 1L);
+        int currentTimeSeconds = getCurrentTimestamp();
+
+        synchronized (criticalSection)
+        {
+            getOrCreateTimeSlotMetrics(currentTimeSeconds).getApplierTasksFailed().increment();
+        }
     }
 
     public void incApplierTasksInProgressCounter() {
-        int currentTimeSeconds = (int) (System.currentTimeMillis() / 1000L);
-        incCounter(currentTimeSeconds, Metric.APPLIER_TASKS_IN_PROGRESS);
-        incTotal(currentTimeSeconds, Metric.TOTAL_APPLIER_TASKS_IN_PROGRESS, 1L);
+        int currentTimeSeconds = getCurrentTimestamp();
+
+        synchronized (criticalSection)
+        {
+            getOrCreateTimeSlotMetrics(currentTimeSeconds).getApplierTasksInProgress().increment();
+        }
     }
 
     // SET:
     public void setReplicatorReplicationDelay(Long replicatorReplicationDelay) {
-        int currentTimeSeconds = (int) (System.currentTimeMillis() / 1000L);
-        if (this.replicatorMetrics.get(currentTimeSeconds) == null) {
-            initTimebucket(currentTimeSeconds);
-        }
-        if (this.replicatorMetrics.get(currentTimeSeconds).get(Metric.REPLICATION_DELAY_MS) != null) {
-            this.replicatorMetrics.get(currentTimeSeconds).get(Metric.REPLICATION_DELAY_MS).setValue(replicatorReplicationDelay);
-        }
-        else {
-            LOGGER.warn("Failed to properly initialize timebucket " + currentTimeSeconds);
+        int currentTimeSeconds = getCurrentTimestamp();
+
+        synchronized (criticalSection)
+        {
+            getOrCreateTimeSlotMetrics(currentTimeSeconds).getReplicationDelayMilliseconds().setValue(BigInteger.valueOf(replicatorReplicationDelay));
         }
     }
 
     // ADD:
     public void incCurrentTimeBucketForRowOpsSuccessfullyCommittedToHBase(Long delta) {
-        int currentTimeSeconds = (int) (System.currentTimeMillis() / 1000L);
-        if (this.replicatorMetrics.get(currentTimeSeconds) == null) {
-            initTimebucket(currentTimeSeconds);
-        }
-        if (this.replicatorMetrics.get(currentTimeSeconds).get(Metric.HBASE_ROWS_AFFECTED) != null) {
-            this.replicatorMetrics.get(currentTimeSeconds).get(Metric.HBASE_ROWS_AFFECTED).addValue(delta);
-        }
-        else {
-            LOGGER.warn("Failed to properly initialize timebucket " + currentTimeSeconds);
+        int currentTimeSeconds = getCurrentTimestamp();
+
+        synchronized (criticalSection)
+        {
+            getOrCreateTimeSlotMetrics(currentTimeSeconds).getTotalHbaseRowsAffected().incrementBy(delta);
         }
     }
+
 
     // TOTALS:
-    public void incTotalRowOpsSuccessfullyCommitedToHBase(Long delta, String tableName) {
-        int currentTimeSeconds = (int) (System.currentTimeMillis() / 1000L);
-        incTotal(currentTimeSeconds, Metric.TOTAL_HBASE_ROWS_AFFECTED, delta);
-        incTableTotal(tableName, Metric.TOTAL_HBASE_ROWS_AFFECTED, delta);
-    }
 
-    public void initTimebucketForTotal(int currentTimeSeconds, int totalID) {
-        long currentTotalValue = totals.getMetricValue(totalID).longValue();
-        this.replicatorMetrics.get(currentTimeSeconds).put(totalID, new MutableLong(currentTotalValue));
+    public void incTotalRowOpsSuccessfullyCommitedToHBase(Long delta, String tableName) {
+        synchronized (criticalSection) {
+            if (!totalsPerTable.containsKey(tableName)) {
+                throw createNoSuchElementException(tableName);
+            }
+
+            int currentTimeSeconds = getCurrentTimestamp();
+            getOrCreateTimeSlotMetrics(currentTimeSeconds).getTotalHbaseRowsAffected().incrementBy(delta);
+
+            totalsPerTable.get(tableName).getTotalHbaseRowsAffected().incrementBy(delta);
+        }
     }
 
     public void setTaskQueueSize(Long newValue) {
-        int currentTimeSeconds = (int) (System.currentTimeMillis() / 1000L);
-        if (this.replicatorMetrics.get(currentTimeSeconds) == null) {
-            initTimebucket(currentTimeSeconds);
-        }
-        if (this.replicatorMetrics.get(currentTimeSeconds).get(Metric.TASK_QUEUE_SIZE) != null) {
-            this.replicatorMetrics.get(currentTimeSeconds).get(Metric.TASK_QUEUE_SIZE).setValue(newValue);
-        }
-        else {
-            LOGGER.warn("Failed to properly initialize timebucket " + currentTimeSeconds);
+
+        synchronized (criticalSection)
+        {
+            int currentTimeSeconds = getCurrentTimestamp();
+            getOrCreateTimeSlotMetrics(currentTimeSeconds).getTaskQueueSize().setValue(BigInteger.valueOf(newValue));
         }
     }
 
-    public ConcurrentHashMap<String, HashMap<Integer, MutableLong>> getTotalsPerTable() {
-        return totalsPerTable;
+    public void removeBucketStats(int timestamp)
+    {
+        synchronized (criticalSection)
+        {
+            replicatorMetrics.remove(timestamp);
+        }
     }
 
-    // Util
-    private boolean noNulls(Integer timebucket, Integer metricID) {
+    public Map<String, RowTotals> getTotalsPerTableSnapshot() {
+        HashMap<String, RowTotals> copy = new HashMap<>();
 
-        if (this.replicatorMetrics.get(timebucket) == null) {
-            return false;
-        }
-        if (this.replicatorMetrics.get(timebucket).get(metricID) == null) {
-            return false;
-        }
-        return true;
-    }
+        synchronized (criticalSection)
+        {
+            for (String tableName : totalsPerTable.keySet()) {
 
-    private void incCounter(Integer timebucket, Integer counterID) {
-
-        while (timeBucketInitializationInProgess.get() == true);
-
-        try {
-            if (noNulls(timebucket, counterID)) {
-                this.replicatorMetrics.get(timebucket).get(counterID).increment();
-                return;
-            } else {
-                if (timeBucketInitializationInProgess.get() == false) {
-                    initTimebucket(timebucket);
-                }
+                copy.put(tableName, totalsPerTable.get(tableName).copy());
             }
 
-            if (noNulls(timebucket, counterID)) {
-                this.replicatorMetrics.get(timebucket).get(counterID).increment();
-                return;
-            } else {
-                LOGGER.warn("Failed to properly initialize timebucket " + timebucket + " for metricID " + counterID + ". This should not happen - needs fixing!");
-            }
-        }
-        catch (NullPointerException e) {
-            LOGGER.warn("NullPointerException checks are not good enough. Needs fixing!", e);
+            return Collections.unmodifiableMap(copy);
         }
     }
 
-    public void incTableTotal(String table, Integer totalID, Long delta) {
+    public Map<Integer, TotalsPerTimeSlot> getMetricsSnapshot() {
 
-        if (totalsPerTable.get(table) == null) {
-            initTotalForTable(table, totalID);
-        }
-        else {
-            if (totalsPerTable.get(table).get(totalID) == null) {
-                initTotalForTable(table, totalID);
-            }
-        }
+        HashMap<Integer, TotalsPerTimeSlot> copy = new HashMap<>();
 
-        if (totalsPerTable.get(table) == null) {
-            LOGGER.error("Failed to init metrics for table => " + table);
-            System.exit(-1);
-        }
-        if (totalsPerTable.get(table).get(totalID) == null) {
-            LOGGER.error("Failed to init totalID [" + totalID + "] for table => " + table);
-            System.exit(-1);
-        }
+        synchronized (criticalSection)
+        {
+            for (int timestamp : replicatorMetrics.keySet()) {
 
-        totalsPerTable.get(table).get(totalID).addValue(delta);
-    }
-
-    public void incTotal(Integer timebucket, Integer totalID, Long delta) {
-
-        while (timeBucketInitializationInProgess.get() == true);
-
-        try {
-            if (noNulls(timebucket, totalID)) {
-                deltaIncTotal(timebucket,totalID, delta);
-                return;
-            } else {
-                if (timeBucketInitializationInProgess.get() == false) {
-                    initTimebucket(timebucket);
-                }
+                copy.put(timestamp, replicatorMetrics.get(timestamp).copy());
             }
 
-            if (noNulls(timebucket, totalID)) {
-                deltaIncTotal(timebucket, totalID, delta);
-                return;
-            } else {
-                LOGGER.warn("Failed to properly initialize timebucket " + timebucket + " for metricID " + totalID + ". This should not happen - needs fixing!");
-            }
-        }
-        catch (NullPointerException e) {
-            LOGGER.warn("NullPointerException checks are not good enough. Needs fixing!", e);
+            return Collections.unmodifiableMap(copy);
         }
     }
 
-    private void deltaIncTotal(Integer currentTimeSeconds, Integer metricID, Long delta) {
-        if (this.replicatorMetrics.get(currentTimeSeconds).get(metricID) != null) {
-            totals.incrementMetric(metricID, delta);
-            replicatorMetrics.get(currentTimeSeconds).get(metricID).setValue(totals.getMetricValue(metricID).longValue());
+    public Totals getTotalsSnapshot(){
+        synchronized (criticalSection)
+        {
+            // TODO: this should be readonly
+            return totals.copy();
         }
-        else {
-            LOGGER.warn("Failed to properly initialize timebucket " + currentTimeSeconds);
-        }
-    }
-
-    public SetOfMetrics getTotals(){
-        return totals;
     }
 }

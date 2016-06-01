@@ -5,8 +5,10 @@ import com.booking.replication.audit.CheckPointTests;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
-import com.booking.replication.metrics.Metric;
+import com.booking.replication.metrics.INameValue;
+import com.booking.replication.metrics.Metrics;
 import com.booking.replication.metrics.ReplicatorMetrics;
+import com.booking.replication.metrics.TotalsPerTimeSlot;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.queues.ReplicatorQueues;
 import com.booking.replication.util.MutableLong;
@@ -18,7 +20,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class STDOUTJSONApplier implements Applier  {
 
@@ -172,7 +173,9 @@ public class STDOUTJSONApplier implements Applier  {
     @Override
     public void dumpStats() {
 
-        List<Integer> timebuckets = new ArrayList<Integer>(replicatorMetrics.getMetrics().keySet());
+        Map<Integer, TotalsPerTimeSlot> metricsSnapshot = replicatorMetrics.getMetricsSnapshot();
+
+        List<Integer> timebuckets = new ArrayList<Integer>(metricsSnapshot.keySet());
         Collections.sort(timebuckets, Collections.reverseOrder());
 
         LOGGER.info("Available time buckets:");
@@ -184,25 +187,14 @@ public class STDOUTJSONApplier implements Applier  {
 
         LOGGER.info("dumping stats for latest time bucket => " + timebucket);
 
-        HashMap<Integer, MutableLong> timebucketStats;
-        timebucketStats = replicatorMetrics.getMetrics().get(timebucket);
+        TotalsPerTimeSlot timebucketStats = metricsSnapshot.get(timebucket);
 
-        if (timebucketStats != null) {
-            // all is good
-        } else {
-            LOGGER.error("Metrics missing for timebucket " + timebucket);
-            return;
-        }
+        INameValue[] namesAndValues = timebucketStats.getAllNamesAndValues();
 
-        for (Integer metricsID : timebucketStats.keySet()) {
-
-            Long value = timebucketStats.get(metricsID).getValue();
-
-            String pointInfo = Metric.getCounterName(metricsID)
-                    + " => " + value.toString()
-                    + " @ " + timebucket.toString();
-
-            LOGGER.info("\t" + pointInfo);
+        for (int i = 0; i < namesAndValues.length; i++)
+        {
+            LOGGER.info(String.format("\t %s => %s @ %s", namesAndValues[i].getName(), namesAndValues[i].getValue(),
+                    timebucket.toString()));
         }
     }
     

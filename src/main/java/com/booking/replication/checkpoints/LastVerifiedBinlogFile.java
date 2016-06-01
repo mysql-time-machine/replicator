@@ -16,6 +16,21 @@ public class LastVerifiedBinlogFile implements SafeCheckPoint {
     private final int checkpointType = SafeCheckpointType.BINLOG_FILENAME;
 
     private String lastVerifiedBinlogFileName;
+    private long lastVerifiedBinlogPosition;
+
+    private int slaveId;
+
+    public LastVerifiedBinlogFile() {}
+
+    public LastVerifiedBinlogFile(int slaveId, String binlogFileName) {
+        this(slaveId, binlogFileName, 4L);
+    }
+
+    public LastVerifiedBinlogFile(int slaveId, String binlogFileName, long binlogPosition) {
+        this.slaveId = slaveId;
+        lastVerifiedBinlogFileName = binlogFileName;
+        lastVerifiedBinlogPosition = binlogPosition;
+    }
 
     @Override
     public int getCheckpointType() {
@@ -27,17 +42,20 @@ public class LastVerifiedBinlogFile implements SafeCheckPoint {
         return lastVerifiedBinlogFileName;
     }
 
+    public int getSlaveId() { return slaveId; }
+
     @Override
     public void setSafeCheckPointMarker(String marker) {
         lastVerifiedBinlogFileName = marker;
         LOGGER.info("SafeCheckPoint marter set to: " + lastVerifiedBinlogFileName);
     }
 
+    private ObjectMapper mapper = new ObjectMapper();
+
     @Override
     public String toJSON() {
         String json = null;
         try {
-            ObjectMapper mapper = new ObjectMapper();
             json = mapper.writeValueAsString(this);
         } catch (IOException e) {
             LOGGER.error("ERROR: could not serialize event", e);

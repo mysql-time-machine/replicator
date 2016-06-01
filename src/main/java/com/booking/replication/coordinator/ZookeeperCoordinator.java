@@ -1,17 +1,20 @@
-package zookeeper.impl;
+package com.booking.replication.coordinator;
 
 import com.booking.replication.Configuration;
 import com.booking.replication.checkpoints.LastVerifiedBinlogFile;
 import com.booking.replication.checkpoints.SafeCheckPoint;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.leader.LeaderSelector;
 import org.apache.curator.framework.recipes.leader.LeaderSelectorListenerAdapter;
 import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import zookeeper.ZookeeperTalk;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -19,8 +22,8 @@ import java.io.IOException;
 /**
  * Created by bosko on 5/31/16.
  */
-public class ZookeeperTalkImpl implements ZookeeperTalk {
-    private static final Logger LOGGER = LoggerFactory.getLogger(ZookeeperTalkImpl.class);
+public class ZookeeperCoordinator implements CoordinatorInterface {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ZookeeperCoordinator.class);
 
     private final Configuration configuration;
 
@@ -66,9 +69,9 @@ public class ZookeeperTalkImpl implements ZookeeperTalk {
         }
     }
 
-
-    public ZookeeperTalkImpl(Configuration configuration) throws Exception {
+    public ZookeeperCoordinator(Configuration configuration) throws Exception {
         this.configuration = configuration;
+        this.checkPointPath = String.format("%s/checkpoint", configuration.getZookeeperPath());
 
         RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
 
@@ -96,18 +99,59 @@ public class ZookeeperTalkImpl implements ZookeeperTalk {
         return true;
     }
 
+
+    private ObjectMapper mapper = new ObjectMapper();
+
     @Override
-    public void storeSafeCheckPointInZK(SafeCheckPoint safeCheckPoint) {
+    public String serialize(SafeCheckPoint checkPoint) throws JsonProcessingException {
+        return mapper.writeValueAsString(checkPoint);
+    }
+
+    private String checkPointPath;
+
+    @Override
+    public void storeSafeCheckPoint(SafeCheckPoint safeCheckPoint) throws Exception {
         // TODO: store in zk
-        this.safeCheckPoint = safeCheckPoint;
+        try {
+            String serializedCP = serialize(safeCheckPoint);
+
+            Stat exists = client.checkExists().forPath(checkPointPath);
+            if( exists != null ) {
+                client.setData().forPath(checkPointPath, serializedCP.getBytes());
+            } else {
+                client.create().withMode(CreateMode.PERSISTENT).forPath(checkPointPath, serializedCP.getBytes());
+            }
+            LOGGER.info(String.format("Stored information in ZK: %s", serializedCP));
+        } catch (JsonProcessingException e) {
+            LOGGER.error("Failed to serialize safeCheckPoint!");
+            throw e;
+        } catch (Exception e ) {
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     @Override
-    public SafeCheckPoint getSafeCheckPointFromZK() {
+    public SafeCheckPoint getSafeCheckPoint() {
         // TODO: get from zk
-        SafeCheckPoint safeCheckPoint = new LastVerifiedBinlogFile();
-        safeCheckPoint.setSafeCheckPointMarker(configuration.getStartingBinlogFileName());
-        return safeCheckPoint;
+
+        try {
+            if(client.checkExists().forPath(checkPointPath) == null) {
+                LOGGER.warn("Could not find metadata in zookeeper.");
+                return null;
+            }
+            byte[] data = client.getData().forPath(checkPointPath);
+            LastVerifiedBinlogFile checkpoint = new ObjectMapper().readValue(data, LastVerifiedBinlogFile.class);
+            return checkpoint;
+        } catch (JsonProcessingException e) {
+            LOGGER.error(String.format("Failed to deserialize checkpoint data. %s", e.getMessage()));
+            e.printStackTrace();
+        } catch (Exception e) {
+            LOGGER.error("GENERAL ERROR");
+            e.printStackTrace();
+        }
+
+        return null;
     }
 
 }

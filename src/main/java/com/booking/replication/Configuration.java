@@ -81,6 +81,17 @@ public class Configuration {
         }
     }
 
+    public static int METADATASTORE_ZOOKEEPER = 1;
+    public static int METADATASTORE_FILE      = 2;
+
+    public int getMetadataStoreType() {
+        if(this.metadata_store.zookeeper != null) {
+            return METADATASTORE_ZOOKEEPER;
+        } else {
+            return METADATASTORE_FILE;
+        }
+    }
+
     @JsonDeserialize
     private GraphiteConfig graphite;
 
@@ -134,8 +145,10 @@ public class Configuration {
             throw new RuntimeException("Replication schema user name cannot be null.");
         }
 
-        if(metadata_store.zookeeper.quorum == null) {
-            throw new RuntimeException("Zookeeper quorum cannot be null.");
+        if(metadata_store.zookeeper.quorum == null && metadata_store.file.path == null) {
+            throw new RuntimeException(
+                    "No metadata store specified, please provide " +
+                    "either zookeeper or file-based metadata storage.");
         }
 
         if(applierType == "hbase") {

@@ -4,8 +4,6 @@ import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.HBaseApplier;
 import com.booking.replication.applier.STDOUTJSONApplier;
 import com.booking.replication.checkpoints.SafeCheckPoint;
-import com.booking.replication.checkpoints.SafeCheckPointFactory;
-import com.booking.replication.checkpoints.SafeCheckpointType;
 import com.booking.replication.metrics.ReplicatorMetrics;
 import com.booking.replication.pipeline.BinlogEventProducer;
 import com.booking.replication.pipeline.PipelineOrchestrator;
@@ -42,20 +40,29 @@ public class Replicator {
     public Replicator(Configuration configuration) throws SQLException, URISyntaxException, IOException {
 
         // Safe Check Point
-        SafeCheckPoint safeCheckPoint = SafeCheckPointFactory.getSafeCheckPoint(SafeCheckpointType.BINLOG_FILENAME);
-        safeCheckPoint.setSafeCheckPointMarker(configuration.getStartingBinlogFileName());
+        SafeCheckPoint safeCheckPoint = Coordinator.getCheckpointMarker();
 
         // Queues
         ReplicatorQueues replicatorQueues = new ReplicatorQueues();
 
         // Position Tracking
-        ConcurrentHashMap<Integer, Object> lastKnownInfo = new ConcurrentHashMap<Integer, Object>();
+        ConcurrentHashMap<Integer, BinlogPositionInfo> lastKnownInfo = new ConcurrentHashMap<Integer, BinlogPositionInfo>();
+        BinlogPositionInfo position;
 
-        lastKnownInfo.put(Constants.LAST_KNOWN_BINLOG_POSITION,
-                new BinlogPositionInfo(
+        if(configuration.getStartingBinlogFileName() != null) {
+            LOGGER.info(String.format("Start filename: %s", configuration.getStartingBinlogFileName()));
+            position = new BinlogPositionInfo(
                     configuration.getStartingBinlogFileName(),
                     configuration.getStartingBinlogPosition()
-                ));
+            );
+        } else if(safeCheckPoint != null) {
+            LOGGER.info("Start binlog not specified, reading metadata from coordinator");
+            position = new BinlogPositionInfo(safeCheckPoint.getSafeCheckPointMarker(), 4L);
+        } else {
+            throw new RuntimeException("Could not find start binlog in metadata or startup options");
+        }
+
+        lastKnownInfo.put(Constants.LAST_KNOWN_BINLOG_POSITION, position);
 
         // Producer
         binlogEventProducer = new BinlogEventProducer(replicatorQueues.rawQueue, lastKnownInfo, configuration);

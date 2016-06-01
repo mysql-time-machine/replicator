@@ -27,7 +27,7 @@ public class Overseer extends Thread {
 
     private PipelineOrchestrator pipelineOrchestrator;
     private BinlogEventProducer producer;
-    private final ConcurrentHashMap<Integer,Object> lastKnownInfo;
+    private final ConcurrentHashMap<Integer, BinlogPositionInfo> lastKnownInfo;
     private final ReplicatorMetrics replicatorMetrics;
 
     private volatile boolean doMonitor = true;
@@ -36,7 +36,7 @@ public class Overseer extends Thread {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Overseer.class);
 
-    public Overseer(BinlogEventProducer prod, PipelineOrchestrator orch, ReplicatorMetrics repMetrics, ConcurrentHashMap<Integer, Object> chm) {
+    public Overseer(BinlogEventProducer prod, PipelineOrchestrator orch, ReplicatorMetrics repMetrics, ConcurrentHashMap<Integer, BinlogPositionInfo> chm) {
         this.producer      = prod;
         this.pipelineOrchestrator = orch;
         this.lastKnownInfo = chm;

@@ -23,11 +23,11 @@ public class FileCoordinator implements CoordinatorInterface {
     private final Configuration configuration;
 
     private SafeCheckPoint checkPoint;
-    private final String checkPointPath;
+    private final Path checkPointPath;
 
     public FileCoordinator(Configuration configuration) {
         this.configuration = configuration;
-        checkPointPath  = configuration.getMetadataFile();
+        checkPointPath  = Paths.get(configuration.getMetadataFile());
     }
 
     @Override
@@ -52,8 +52,10 @@ public class FileCoordinator implements CoordinatorInterface {
 
             LOGGER.info(String.format("Serialized checkpoint: %s", serialized));
 
-            Path tempFile = Files.createTempFile(null, ".replicator");
-            LOGGER.info(String.format("Creating file: %s", tempFile.getFileName()));
+
+            LOGGER.info(checkPointPath.getParent().toString());
+            Path tempFile = Files.createTempFile(checkPointPath.getParent(), null, ".replicator");
+            LOGGER.debug(String.format("Creating file: %s", tempFile.getFileName()));
 
             BufferedWriter writer = Files.newBufferedWriter(tempFile, Charset.forName("UTF-8"));
             try {
@@ -66,7 +68,7 @@ public class FileCoordinator implements CoordinatorInterface {
             writer.flush();
             writer.close();
 
-            if(!tempFile.toFile().renameTo(new File(checkPointPath))){
+            if(!tempFile.toFile().renameTo(checkPointPath.toFile())){
                 throw new RuntimeException(String.format("Failed to rename the metadata file to: %s", checkPointPath));
             }
         } catch (Exception e) {
@@ -78,7 +80,7 @@ public class FileCoordinator implements CoordinatorInterface {
     @Override
     public SafeCheckPoint getSafeCheckPoint() {
         try {
-            return mapper.readValue(Files.newInputStream(Paths.get(checkPointPath)), LastVerifiedBinlogFile.class);
+            return mapper.readValue(Files.newInputStream(checkPointPath), LastVerifiedBinlogFile.class);
         } catch (JsonProcessingException e) {
             LOGGER.error(String.format("Failed to deserialize checkpoint data. %s", e.getMessage()));
             e.printStackTrace();

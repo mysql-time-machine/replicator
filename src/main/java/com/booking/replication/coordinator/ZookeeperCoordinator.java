@@ -34,12 +34,12 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
 
     private CuratorFramework client;
 
-    private class myle extends LeaderSelectorListenerAdapter implements Closeable {
+    private class CoordinatorLeaderElectionListener extends LeaderSelectorListenerAdapter implements Closeable {
 
         private final Runnable callback;
         private final LeaderSelector leaderSelector;
 
-        public myle(CuratorFramework client, String path, Runnable onLeadership) {
+        public CoordinatorLeaderElectionListener(CuratorFramework client, String path, Runnable onLeadership) {
             super();
             leaderSelector = new LeaderSelector(client, path, this);
 
@@ -88,14 +88,13 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
     synchronized public boolean onLeaderElection(Runnable callback) throws InterruptedException {
         LOGGER.info("Waiting to become a leader.");
 
-        myle le = new myle(client, String.format("%s/master", configuration.getZookeeperPath()), callback);
+        CoordinatorLeaderElectionListener le = new CoordinatorLeaderElectionListener(client, String.format("%s/master", configuration.getZookeeperPath()), callback);
         le.start();
 
         while(!isLeader || isRunning) {
             Thread.sleep(1000);
         }
 
-        // TODO: get this from zookeeper
         return true;
     }
 

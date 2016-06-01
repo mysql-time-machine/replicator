@@ -141,13 +141,12 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
                 return null;
             }
             byte[] data = client.getData().forPath(checkPointPath);
-            LastVerifiedBinlogFile checkpoint = new ObjectMapper().readValue(data, LastVerifiedBinlogFile.class);
-            return checkpoint;
+            return mapper.readValue(data, LastVerifiedBinlogFile.class);
         } catch (JsonProcessingException e) {
             LOGGER.error(String.format("Failed to deserialize checkpoint data. %s", e.getMessage()));
             e.printStackTrace();
         } catch (Exception e) {
-            LOGGER.error("GENERAL ERROR");
+            LOGGER.error(String.format("Got an error while reading metadata from Zookeeper: %s", e.getMessage()));
             e.printStackTrace();
         }
 

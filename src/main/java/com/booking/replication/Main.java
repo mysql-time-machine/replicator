@@ -1,12 +1,13 @@
 package com.booking.replication;
 
+import com.booking.replication.coordinator.CoordinatorInterface;
+import com.booking.replication.coordinator.FileCoordinator;
+import com.booking.replication.coordinator.ZookeeperCoordinator;
 import com.booking.replication.util.CMD;
 import com.booking.replication.util.StartupParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import joptsimple.OptionSet;
-
-import com.booking.replication.coordinator.ZookeeperCoordinator;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -46,14 +47,20 @@ public class Main {
         System.out.println("loaded configuration: \n" + configuration.toString());
 
         Coordinator.setConfiguration(configuration);
-        if(configuration.getMetadataStoreType() == Configuration.METADATASTORE_ZOOKEEPER) {
-            ZookeeperCoordinator coordinator = new ZookeeperCoordinator(configuration);
-            Coordinator.setImplementation(coordinator);
-        } else {
-            throw new RuntimeException("File metadatastore is not yet implemented");
+        CoordinatorInterface coordinator;
+        switch (configuration.getMetadataStoreType()) {
+            case Configuration.METADATASTORE_ZOOKEEPER:
+                coordinator = new ZookeeperCoordinator(configuration);
+                break;
+            case Configuration.METADATASTORE_FILE:
+                coordinator = new FileCoordinator(configuration);
+                break;
+            default:
+                throw new RuntimeException(String.format("Metadata store type not implemented: %s", configuration.getMetadataStoreType()));
         }
+        Coordinator.setImplementation(coordinator);
 
-        Coordinator.getImplementation().onLeaderElection(
+        Coordinator.onLeaderElection(
             new Runnable() {
                 @Override
                 public void run() {

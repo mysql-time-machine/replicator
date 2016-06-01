@@ -41,4 +41,8 @@ public class Coordinator {
         }
         return cp;
     }
+
+    public static void onLeaderElection(Runnable runnable) throws InterruptedException {
+        implementation.onLeaderElection(runnable);
+    }
 }

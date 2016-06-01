@@ -39,8 +39,6 @@ public class Replicator {
     // Replicator()
     public Replicator(Configuration configuration) throws SQLException, URISyntaxException, IOException {
 
-        // Safe Check Point
-        SafeCheckPoint safeCheckPoint = Coordinator.getCheckpointMarker();
 
         // Queues
         ReplicatorQueues replicatorQueues = new ReplicatorQueues();
@@ -55,11 +53,16 @@ public class Replicator {
                     configuration.getStartingBinlogFileName(),
                     configuration.getStartingBinlogPosition()
             );
-        } else if(safeCheckPoint != null) {
-            LOGGER.info("Start binlog not specified, reading metadata from coordinator");
-            position = new BinlogPositionInfo(safeCheckPoint.getSafeCheckPointMarker(), 4L);
         } else {
-            throw new RuntimeException("Could not find start binlog in metadata or startup options");
+            // Safe Check Point
+            SafeCheckPoint safeCheckPoint = Coordinator.getCheckpointMarker();
+
+            if ( safeCheckPoint != null ){
+                LOGGER.info("Start binlog not specified, reading metadata from coordinator");
+                position = new BinlogPositionInfo(safeCheckPoint.getSafeCheckPointMarker(), 4L);
+            } else {
+                throw new RuntimeException("Could not find start binlog in metadata or startup options");
+            }
         }
 
         lastKnownInfo.put(Constants.LAST_KNOWN_BINLOG_POSITION, position);

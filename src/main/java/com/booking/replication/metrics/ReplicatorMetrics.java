@@ -54,10 +54,7 @@ public class ReplicatorMetrics {
     public void incRowsInsertedCounter(String tableName) {
         synchronized (criticalSection)
         {
-            if (!totalsPerTable.containsKey(tableName))
-            {
-                throw createNoSuchElementException(tableName);
-            }
+            addTableStatsIfTheyAreMissing(tableName);
 
             int currentTimeSeconds = getCurrentTimestamp();
             getOrCreateTimeSlotMetrics(currentTimeSeconds).getRowsForInsertProcessed().increment();
@@ -66,18 +63,18 @@ public class ReplicatorMetrics {
         }
     }
 
-    private NoSuchElementException createNoSuchElementException(String tableName) {
-        return new NoSuchElementException(String.format("There's no table named %s registered with metrics", tableName));
+    private void addTableStatsIfTheyAreMissing(String tableName) {
+        if (!totalsPerTable.containsKey(tableName))
+        {
+            totalsPerTable.put(tableName, new RowTotals());
+        }
     }
 
     public void incRowsUpdatedCounter(String tableName) {
 
         synchronized (criticalSection)
         {
-            if (!totalsPerTable.containsKey(tableName))
-            {
-                throw createNoSuchElementException(tableName);
-            }
+            addTableStatsIfTheyAreMissing(tableName);
 
             int currentTimeSeconds = getCurrentTimestamp();
             getOrCreateTimeSlotMetrics(currentTimeSeconds).getRowsForUpdateProcessed().increment();
@@ -88,10 +85,7 @@ public class ReplicatorMetrics {
     public void incRowsDeletedCounter(String tableName) {
         synchronized (criticalSection)
         {
-            if (!totalsPerTable.containsKey(tableName))
-            {
-                throw createNoSuchElementException(tableName);
-            }
+            addTableStatsIfTheyAreMissing(tableName);
 
             int currentTimeSeconds = getCurrentTimestamp();
             getOrCreateTimeSlotMetrics(currentTimeSeconds).getRowsForDeleteProcessed().increment();
@@ -103,10 +97,7 @@ public class ReplicatorMetrics {
     public void incRowsProcessedCounter(String tableName) {
         synchronized (criticalSection)
         {
-            if (!totalsPerTable.containsKey(tableName))
-            {
-                throw createNoSuchElementException(tableName);
-            }
+            addTableStatsIfTheyAreMissing(tableName);
 
             int currentTimeSeconds = getCurrentTimestamp();
             getOrCreateTimeSlotMetrics(currentTimeSeconds).getTotalRowsProcessed().increment();
@@ -274,9 +265,7 @@ public class ReplicatorMetrics {
 
     public void incTotalRowOpsSuccessfullyCommitedToHBase(Long delta, String tableName) {
         synchronized (criticalSection) {
-            if (!totalsPerTable.containsKey(tableName)) {
-                throw createNoSuchElementException(tableName);
-            }
+            addTableStatsIfTheyAreMissing(tableName);
 
             int currentTimeSeconds = getCurrentTimestamp();
             getOrCreateTimeSlotMetrics(currentTimeSeconds).getTotalHbaseRowsAffected().incrementBy(delta);

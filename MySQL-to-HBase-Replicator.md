@@ -34,9 +34,9 @@ metadata_store:
     # The following are options for storing replicator metadata, only one should be used (zookeeper or file)
     zookeeper:
         quorum: ['zk-host1', 'zk-host2']
-        path: "/path/in/zookeeper"
+        path: '/path/in/zookeeper'
     file:
-        path: "/path/on/disk
+        path: '/path/on/disk'
 hbase:
     namespace: 'schema_namespace'
     zookeeper_quorum:  ['hbase-zk1-host', 'hbase-zkN-host']

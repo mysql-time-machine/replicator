@@ -71,7 +71,7 @@ public class Replicator {
         binlogEventProducer = new BinlogEventProducer(replicatorQueues.rawQueue, lastKnownInfo, configuration);
 
         // Metrics
-        ReplicatorMetrics replicatorMetrics = new ReplicatorMetrics(configuration);
+        ReplicatorMetrics replicatorMetrics = new ReplicatorMetrics(configuration.getTablesForWhichToTrackDailyChanges());
 
         // Applier
         Applier applier;

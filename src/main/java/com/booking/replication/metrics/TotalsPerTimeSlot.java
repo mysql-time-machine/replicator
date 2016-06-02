@@ -6,6 +6,7 @@ package com.booking.replication.metrics;
 public class TotalsPerTimeSlot extends Totals {
 
     protected Metric replicationDelayMilliseconds;
+    protected ICounter hbaseRowsAffected;
     protected Metric taskQueueSize;
 
     public TotalsPerTimeSlot(
@@ -24,11 +25,12 @@ public class TotalsPerTimeSlot extends Totals {
                 new CounterWithDependency(overallTotals.getRowsForInsertProcessed()),
                 new CounterWithDependency(overallTotals.getHeartBeatCounter()),
                 new CounterWithDependency(overallTotals.getRowsForUpdateProcessed()),
-                new CounterWithDependency(overallTotals.getHbaseRowsAffected()),
+                new CounterWithDependency(overallTotals.getTotalRowsProcessed()),
                 new CounterWithDependency(overallTotals.getApplierTasksSubmitted()),
                 new CounterWithDependency(overallTotals.getApplierTasksInProgress()),
                 new CounterWithDependency(overallTotals.getApplierTasksSucceeded()),
                 new CounterWithDependency(overallTotals.getApplierTasksFailed()),
+                new Counter("HBASE_ROWS_AFFECTED"),
                 new Metric("TASK_QUEUE_SIZE"),
                 new Metric("REPLICATION_DELAY_MS"));
     }
@@ -41,7 +43,7 @@ public class TotalsPerTimeSlot extends Totals {
                   ICounter deleteEvents,
                   ICounter commitCounter,
                   ICounter xidCounter,
-                  ICounter rowOperationsSuccessfullyCommitted,
+                  ICounter totalHbaseRowsAffected,
                   ICounter rowsForDeleteProcessed,
                   ICounter rowsForInsertProcessed,
                   ICounter heartBeatCounter,
@@ -51,13 +53,16 @@ public class TotalsPerTimeSlot extends Totals {
                   ICounter applierTasksInProgress,
                   ICounter applierTasksSucceeded,
                   ICounter applierTasksFailed,
+                             ICounter hbaseRowsAffected,
                              Metric taskQueueSize,
                              Metric replicationDelayMilliseconds)
     {
         super(eventsReceived, eventsSkipped, eventsProcessed, insertEvents, updateEvents, deleteEvents,
-                commitCounter, xidCounter, rowOperationsSuccessfullyCommitted, rowsForDeleteProcessed,
+                commitCounter, xidCounter, totalHbaseRowsAffected, rowsForDeleteProcessed,
                 rowsForInsertProcessed, heartBeatCounter, rowsForUpdateProcessed, rowsProcessed,
                 applierTasksSubmitted, applierTasksInProgress, applierTasksSucceeded, applierTasksFailed);
+
+        this.hbaseRowsAffected = hbaseRowsAffected;
 
         this.taskQueueSize = taskQueueSize;
         this.replicationDelayMilliseconds = replicationDelayMilliseconds;
@@ -71,6 +76,10 @@ public class TotalsPerTimeSlot extends Totals {
         return replicationDelayMilliseconds;
     }
 
+    public ICounter getHbaseRowsAffected() {
+        return hbaseRowsAffected;
+    }
+
     public TotalsPerTimeSlot copy()
     {
         return new TotalsPerTimeSlot(
@@ -82,7 +91,8 @@ public class TotalsPerTimeSlot extends Totals {
                 getDeleteEvents().copy(), getCommitCounter().copy(), getXidCounter().copy(),
                 getTotalHbaseRowsAffected().copy(), getRowsForDeleteProcessed().copy(),
                 getRowsForInsertProcessed().copy(), getHeartBeatCounter().copy(), getRowsForUpdateProcessed().copy(),
-                getHbaseRowsAffected().copy(), getApplierTasksSubmitted().copy(), getApplierTasksInProgress().copy(),
-                getApplierTasksSucceeded().copy(), getApplierTasksFailed().copy(),taskQueueSize.copy(), replicationDelayMilliseconds.copy());
+                getTotalRowsProcessed().copy(), getApplierTasksSubmitted().copy(), getApplierTasksInProgress().copy(),
+                getApplierTasksSucceeded().copy(), getApplierTasksFailed().copy(), hbaseRowsAffected.copy(),
+                taskQueueSize.copy(), replicationDelayMilliseconds.copy());
     }
 }

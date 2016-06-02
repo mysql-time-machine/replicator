@@ -16,9 +16,7 @@ public class ReplicatorMetricTests {
     @Test
     public void MakeSureSnapshotsAreDifferentObjectsEveryTime()
     {
-        Configuration configuration = new Configuration();
-
-        ReplicatorMetrics metrics = new ReplicatorMetrics(configuration);
+        ReplicatorMetrics metrics = new ReplicatorMetrics(new ArrayList<String>());
 
         assertNotSame(metrics.getTotalsSnapshot(), metrics.getTotalsSnapshot());
     }

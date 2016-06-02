@@ -230,9 +230,7 @@ public class HBaseApplier implements Applier {
 
             Totals totals = replicatorMetrics.getTotalsSnapshot();
             BigInteger totalHBaseRowsAffected = totals.getTotalHbaseRowsAffected().getValue();
-
-            // TODO: BigInteger totalMySQLRowsProcessed = totals.getMetricValue(Metric.TOTAL_ROWS_PROCESSED);
-            BigInteger totalMySQLRowsProcessed = totals.getHbaseRowsAffected().getValue();
+            BigInteger totalMySQLRowsProcessed = totals.getTotalRowsProcessed().getValue();
 
             LOGGER.info("hbaseTotalRowsCommited  => " + totalHBaseRowsAffected);
             LOGGER.info("mysqlTotalRowsProcessed => " + totalMySQLRowsProcessed);

@@ -18,15 +18,13 @@ public class ReplicatorMetrics {
 
     private final Integer beginTime;
 
-    public ReplicatorMetrics(Configuration configuration) {
+    public ReplicatorMetrics(List<String> deltaTables) {
 
-        // TODO: get rid of kictchen sink
         beginTime = (int) (System.currentTimeMillis() / 1000L);
         replicatorMetrics = new HashMap<Integer, TotalsPerTimeSlot>();
 
         totals = new Totals();
 
-        List<String> deltaTables = configuration.getTablesForWhichToTrackDailyChanges();
         totalsPerTable = new HashMap<>();
         initTotalsPerTable(deltaTables);
     }
@@ -111,9 +109,9 @@ public class ReplicatorMetrics {
             }
 
             int currentTimeSeconds = getCurrentTimestamp();
-            getOrCreateTimeSlotMetrics(currentTimeSeconds).getHbaseRowsAffected().increment();
+            getOrCreateTimeSlotMetrics(currentTimeSeconds).getTotalRowsProcessed().increment();
 
-            totalsPerTable.get(tableName).getHbaseRowsAffected().increment();
+            totalsPerTable.get(tableName).getTotalRowsProcessed().increment();
         }
     }
 
@@ -267,7 +265,7 @@ public class ReplicatorMetrics {
 
         synchronized (criticalSection)
         {
-            getOrCreateTimeSlotMetrics(currentTimeSeconds).getTotalHbaseRowsAffected().incrementBy(delta);
+            getOrCreateTimeSlotMetrics(currentTimeSeconds).getHbaseRowsAffected().incrementBy(delta);
         }
     }
 

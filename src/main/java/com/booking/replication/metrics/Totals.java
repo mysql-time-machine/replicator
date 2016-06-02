@@ -31,7 +31,7 @@ public class Totals extends RowTotals {
                 new Counter("DELETE_EVENTS_COUNT"),
                 new Counter("COMMIT_QUERIES_COUNT"),
                 new Counter("XID_COUNT"),
-                new Counter("HBASE_ROWS_AFFECTED"),
+                new Counter("TOTAL_HBASE_ROWS_AFFECTED"),
                 new Counter("ROWS_FOR_DELETE_PROCESSED"),
                 new Counter("TOTAL_ROWS_FOR_INSERT_PROCESSED"),
                 new Counter("HEART_BEAT_COUNTER"),
@@ -51,7 +51,7 @@ public class Totals extends RowTotals {
                   ICounter deleteEvents,
                   ICounter commitCounter,
                   ICounter xidCounter,
-                  ICounter rowOperationsSuccessfullyCommitted,
+                  ICounter totalHbaseRowsAffected,
                   ICounter rowsForDeleteProcessed,
                   ICounter rowsForInsertProcessed,
                   ICounter heartBeatCounter,
@@ -64,7 +64,7 @@ public class Totals extends RowTotals {
     {
         // TODO: arg checks
 
-        super(rowOperationsSuccessfullyCommitted, rowsForDeleteProcessed, rowsForInsertProcessed, rowsForUpdateProcessed, rowsProcessed);
+        super(totalHbaseRowsAffected, rowsForDeleteProcessed, rowsForInsertProcessed, rowsForUpdateProcessed, rowsProcessed);
 
         this.eventsReceived = eventsReceived;
         this.eventsSkipped = eventsSkipped;
@@ -149,7 +149,7 @@ public class Totals extends RowTotals {
                 getRowsForInsertProcessed().copy(),
                 heartBeatCounter.copy(),
                 getRowsForUpdateProcessed().copy(),
-                getHbaseRowsAffected().copy(),
+                getTotalRowsProcessed().copy(),
                 applierTasksSubmitted.copy(),
                 applierTasksInProgress.copy(),
                 applierTasksSucceeded.copy(),

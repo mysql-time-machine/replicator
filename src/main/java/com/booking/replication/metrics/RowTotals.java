@@ -15,7 +15,7 @@ public class RowTotals {
 
     // TODO: what's the difference between two of the following:
     protected ICounter totalHbaseRowsAffected;
-    protected ICounter hbaseRowsAffected;
+    protected ICounter totalRowsProcessed;
 
     public RowTotals()
     {
@@ -24,7 +24,7 @@ public class RowTotals {
                 new Counter("ROWS_FOR_DELETE_PROCESSED"),
                 new Counter("ROWS_FOR_INSERT_PROCESSED"),
                 new Counter("ROWS_FOR_UPDATE_PROCESSED"),
-                new Counter("HBASE_ROWS_AFFECTED"));
+                new Counter("TOTAL_ROWS_PROCESSED"));
     }
 
     public RowTotals(
@@ -32,7 +32,7 @@ public class RowTotals {
                   ICounter rowsForDeleteProcessed,
                   ICounter rowsForInsertProcessed,
                   ICounter rowsForUpdateProcessed,
-                  ICounter hbaseRowsAffected)
+                  ICounter totalRowsProcessed)
     {
         // TODO: arg checks
 
@@ -40,11 +40,11 @@ public class RowTotals {
         this.rowsForDeleteProcessed = rowsForDeleteProcessed;
         this.rowsForInsertProcessed = rowsForInsertProcessed;
         this.rowsForUpdateProcessed = rowsForUpdateProcessed;
-        this.hbaseRowsAffected = hbaseRowsAffected;
+        this.totalRowsProcessed = totalRowsProcessed;
     }
 
-    public ICounter getHbaseRowsAffected() {
-        return hbaseRowsAffected;
+    public ICounter getTotalRowsProcessed() {
+        return totalRowsProcessed;
     }
 
     public ICounter getRowsForInsertProcessed() {
@@ -107,6 +107,6 @@ public class RowTotals {
                 rowsForDeleteProcessed.copy(),
                 rowsForInsertProcessed.copy(),
                 rowsForUpdateProcessed.copy(),
-                getHbaseRowsAffected().copy());
+                getTotalRowsProcessed().copy());
     }
 }

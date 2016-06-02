@@ -26,7 +26,7 @@ public class TotalsPerTimeslotTests {
 
         totals.getRowsForUpdateProcessed().incrementBy(13);
 
-        totals.getHbaseRowsAffected().incrementBy(14);
+        totals.getTotalRowsProcessed().incrementBy(14);
 
         totals.getInsertEvents().incrementBy(15);
 
@@ -54,7 +54,7 @@ public class TotalsPerTimeslotTests {
         assertEquals(BigInteger.valueOf(11), namesToValues.get(totals.getRowsForInsertProcessed().getName()));
         assertEquals(BigInteger.valueOf(12), namesToValues.get(totals.getRowsForDeleteProcessed().getName()));
         assertEquals(BigInteger.valueOf(13), namesToValues.get(totals.getRowsForUpdateProcessed().getName()));
-        assertEquals(BigInteger.valueOf(14), namesToValues.get(totals.getHbaseRowsAffected().getName()));
+        assertEquals(BigInteger.valueOf(14), namesToValues.get(totals.getTotalRowsProcessed().getName()));
         assertEquals(BigInteger.valueOf(15), namesToValues.get(totals.getInsertEvents().getName()));
         assertEquals(BigInteger.valueOf(16), namesToValues.get(totals.getApplierTasksFailed().getName()));
         assertEquals(BigInteger.valueOf(17), namesToValues.get(totals.getEventsSkipped().getName()));

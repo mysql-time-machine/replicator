@@ -27,7 +27,7 @@ public class RowTotalsTests {
 
         totals.getRowsForUpdateProcessed().incrementBy(13);
 
-        totals.getHbaseRowsAffected().incrementBy(14);
+        totals.getTotalRowsProcessed().incrementBy(14);
 
         INameValue[] namesAndValues = totals.getAllNamesAndValues();
         HashMap<String, BigInteger> namesToValues = new HashMap<>();
@@ -41,7 +41,7 @@ public class RowTotalsTests {
         assertEquals(BigInteger.valueOf(11), namesToValues.get(totals.getRowsForInsertProcessed().getName()));
         assertEquals(BigInteger.valueOf(12), namesToValues.get(totals.getRowsForDeleteProcessed().getName()));
         assertEquals(BigInteger.valueOf(13), namesToValues.get(totals.getRowsForUpdateProcessed().getName()));
-        assertEquals(BigInteger.valueOf(14), namesToValues.get(totals.getHbaseRowsAffected().getName()));
+        assertEquals(BigInteger.valueOf(14), namesToValues.get(totals.getTotalRowsProcessed().getName()));
         assertEquals(5, namesAndValues.length);
     }
 }

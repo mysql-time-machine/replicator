@@ -22,7 +22,7 @@ public class BinlogEventProducer {
     // as the consumer object
     private final BlockingQueue<BinlogEventV4> queue;
 
-    private final ConcurrentHashMap<Integer,Object> lastKnownInfo;
+    private final ConcurrentHashMap<Integer,BinlogPositionInfo> lastKnownInfo;
 
     private final OpenReplicator or;
     private final Configuration configuration;
@@ -31,26 +31,21 @@ public class BinlogEventProducer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BinlogEventProducer.class);
 
-    public BinlogEventProducer(BlockingQueue<BinlogEventV4> q, ConcurrentHashMap chm, Configuration c) {
+    public BinlogEventProducer(BlockingQueue<BinlogEventV4> q, ConcurrentHashMap<Integer, BinlogPositionInfo> chm, Configuration c) {
         this.configuration = c;
         this.queue = q;
         this.lastKnownInfo = chm;
         LOGGER.info("Created producer with lastKnownInfo position => { "
                 + " binlogFileName => "
-                +   ((BinlogPositionInfo) lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION)).getBinlogFilename()
+                +   lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogFilename()
                 + ", binlogPosition => "
-                +   ((BinlogPositionInfo) lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION)).getBinlogPosition()
+                +   lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogPosition()
                 + " }"
         );
         this.or = new OpenReplicator();
     }
 
-    public ConcurrentHashMap<Integer, Object> getLastKnownInfo() {
-        return lastKnownInfo;
-    }
-
     public void start() throws Exception {
-
         // init
         or.setUser(this.configuration.getReplicantDBUserName());
         or.setPassword(this.configuration.getReplicantDBPassword());
@@ -58,8 +53,8 @@ public class BinlogEventProducer {
         or.setPort(this.configuration.getReplicantPort());
         or.setServerId(this.configuration.getReplicantDBServerID());
 
-        or.setBinlogPosition(this.configuration.getStartingBinlogPosition());
-        or.setBinlogFileName(this.configuration.getStartingBinlogFileName());
+        or.setBinlogPosition(lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogPosition());
+        or.setBinlogFileName(lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogFilename());
 
         // disable lv2 buffer
         or.setLevel2BufferSize(-1);
@@ -155,7 +150,7 @@ public class BinlogEventProducer {
         if (or != null) {
             if (!or.isRunning()) {
                 if (lastKnownInfo != null) {
-                    BinlogPositionInfo lastMapEventPosition = (BinlogPositionInfo) lastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION);
+                    BinlogPositionInfo lastMapEventPosition = lastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION);
                     if (lastMapEventPosition != null) {
                         String binlogFileName   = lastMapEventPosition.getBinlogFilename();
                         Long   binlogPosition   = lastMapEventPosition.getBinlogPosition();

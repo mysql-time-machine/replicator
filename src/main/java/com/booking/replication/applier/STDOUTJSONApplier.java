@@ -1,7 +1,7 @@
 package com.booking.replication.applier;
 
 import com.booking.replication.Configuration;
-import com.booking.replication.audit.CheckPointTests;
+import com.booking.replication.checkpoints.CheckPointTests;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
@@ -30,8 +30,8 @@ public class STDOUTJSONApplier implements Applier  {
     public static final String FILTERED_TABLE_NAME = null;
     public static final Boolean VERBOSE = false;
     public static final Boolean STATS_OUT = true;
-    public static final Boolean DATA_OUT = true;
-    public static final Boolean SCHEMA_OUT = true;
+    public static final Boolean DATA_OUT = false;
+    public static final Boolean SCHEMA_OUT = false;
 
     private static final HashMap<String, MutableLong> stats = new HashMap<String, MutableLong>();
 

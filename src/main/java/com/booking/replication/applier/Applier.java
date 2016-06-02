@@ -1,6 +1,6 @@
 package com.booking.replication.applier;
 
-import com.booking.replication.audit.CheckPointTests;
+import com.booking.replication.checkpoints.CheckPointTests;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.pipeline.PipelineOrchestrator;

@@ -64,7 +64,32 @@ public class Configuration {
         public String       password;
         public String       host;
         public String       database;
-        public List<String> zookeeper_quorum;
+
+        @JsonDeserialize
+        public ZookeeperConfig zookeeper;
+
+        private static class ZookeeperConfig {
+            public List<String> quorum;
+            public String       path = "/";
+        }
+
+        @JsonDeserialize
+        public FileConfig file;
+
+        private static class FileConfig {
+            public String       path = "/";
+        }
+    }
+
+    public static final int METADATASTORE_ZOOKEEPER = 1;
+    public static final int METADATASTORE_FILE      = 2;
+
+    public int getMetadataStoreType() {
+        if(this.metadata_store.zookeeper != null) {
+            return METADATASTORE_ZOOKEEPER;
+        } else {
+            return METADATASTORE_FILE;
+        }
     }
 
     @JsonDeserialize
@@ -118,6 +143,12 @@ public class Configuration {
         }
         if(replication_schema.username == null) {
             throw new RuntimeException("Replication schema user name cannot be null.");
+        }
+
+        if(metadata_store.zookeeper == null && metadata_store.file == null) {
+            throw new RuntimeException(
+                    "No metadata store specified, please provide " +
+                    "either zookeeper or file-based metadata storage.");
         }
 
         if(applierType == "hbase") {
@@ -204,6 +235,27 @@ public class Configuration {
 
     public String getHBaseQuorum() {
         return Joiner.on(",").join(hbase.zookeeper_quorum);
+    }
+
+    public String getZookeeperQuorum() {
+        if(getMetadataStoreType() != Configuration.METADATASTORE_ZOOKEEPER) {
+            return "[]";
+        }
+        return Joiner.on(",").join(metadata_store.zookeeper.quorum);
+    }
+
+    public String getZookeeperPath() {
+        if(getMetadataStoreType() != Configuration.METADATASTORE_ZOOKEEPER) {
+            return "";
+        }
+        return metadata_store.zookeeper.path;
+    }
+
+    public String getMetadataFile() {
+        if(getMetadataStoreType() != Configuration.METADATASTORE_FILE){
+            return "";
+        }
+        return metadata_store.file.path;
     }
 
     public String getGraphiteStatsNamesapce() {

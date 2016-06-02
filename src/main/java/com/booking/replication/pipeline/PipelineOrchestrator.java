@@ -11,8 +11,9 @@ import java.util.regex.Pattern;
 
 import com.booking.replication.Configuration;
 import com.booking.replication.Constants;
+import com.booking.replication.Coordinator;
 import com.booking.replication.applier.Applier;
-import com.booking.replication.audit.CheckPointTests;
+import com.booking.replication.checkpoints.*;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.augmenter.EventAugmenter;
@@ -46,7 +47,7 @@ public class PipelineOrchestrator extends Thread {
 
     public CurrentTransactionMetadata currentTransactionMetadata;
 
-    private final ConcurrentHashMap<Integer,Object> binlogPositionLastKnownInfo;
+    private final ConcurrentHashMap<Integer, BinlogPositionInfo> binlogPositionLastKnownInfo;
 
     private volatile boolean running = false;
 
@@ -103,7 +104,7 @@ public class PipelineOrchestrator extends Thread {
 
     public PipelineOrchestrator(
             ReplicatorQueues                  repQueues,
-            ConcurrentHashMap<Integer,Object> chm,
+            ConcurrentHashMap<Integer, BinlogPositionInfo> chm,
             Configuration                     repcfg,
             ReplicatorMetrics                 replicatorMetrics,
             Applier                           applier
@@ -127,9 +128,9 @@ public class PipelineOrchestrator extends Thread {
 
         LOGGER.info("Created consumer with binlogPositionLastKnownInfo position => { "
                 + " binlogFileName => "
-                +   ((BinlogPositionInfo) binlogPositionLastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION)).getBinlogFilename()
+                +   binlogPositionLastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogFilename()
                 + ", binlogPosition => "
-                +   ((BinlogPositionInfo) binlogPositionLastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION)).getBinlogPosition()
+                +   binlogPositionLastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogPosition()
                 + " }"
         );
 
@@ -397,12 +398,27 @@ public class PipelineOrchestrator extends Thread {
 
             // flush buffer at the end of binlog file
             case MySQLConstants.ROTATE_EVENT:
-                applier.applyRotateEvent((RotateEvent) event);
+                RotateEvent re = (RotateEvent) event;
+                applier.applyRotateEvent(re);
                 LOGGER.info("End of binlog file. Waiting for all tasks to finish before moving forward...");
                 applier.waitUntilAllRowsAreCommitted(checkPointTests);
                 LOGGER.info("All rows committed");
                 String currentBinlogFileName =
-                        ((BinlogPositionInfo) binlogPositionLastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION)).getBinlogFilename();
+                        binlogPositionLastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION).getBinlogFilename();
+
+                String nextBinlogFileName = re.getBinlogFileName().toString();
+                long nextBinlogPosition = re.getBinlogPosition();
+
+                int currentSlaveId = configuration.getReplicantDBServerID();
+                LastVerifiedBinlogFile marker = new LastVerifiedBinlogFile(currentSlaveId, nextBinlogFileName, nextBinlogPosition);
+
+                try {
+                    Coordinator.saveCheckpointMarker(marker);
+                } catch (Exception e) {
+                    LOGGER.error("Failed to save Checkpoint!");
+                    e.printStackTrace();
+                }
+
                 if (currentBinlogFileName.equals(configuration.getLastBinlogFileName())){
                     LOGGER.info("Processed the last binlog file " + configuration.getLastBinlogFileName());
                     setRunning(false);

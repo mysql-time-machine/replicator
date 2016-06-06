@@ -17,16 +17,21 @@ import com.booking.replication.checkpoints.*;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.augmenter.EventAugmenter;
-import com.booking.replication.metrics.ReplicatorMetrics;
+import com.booking.replication.Metrics;
 import com.booking.replication.queues.ReplicatorQueues;
 import com.booking.replication.schema.TableNameMapper;
 import com.booking.replication.schema.HBaseSchemaManager;
 import com.booking.replication.schema.exception.TableMapException;
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.MetricRegistry;
 import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.impl.event.*;
 import com.google.code.or.common.util.MySQLConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static com.codahale.metrics.MetricRegistry.name;
 
 /**
  * PipelineOrchestrator
@@ -43,7 +48,6 @@ public class PipelineOrchestrator extends Thread {
     private final  ReplicatorQueues   queues;
     private static EventAugmenter     eventAugmenter;
     private static HBaseSchemaManager hBaseSchemaManager;
-    private final  ReplicatorMetrics  replicatorMetrics;
 
     public CurrentTransactionMetadata currentTransactionMetadata;
 
@@ -55,8 +59,15 @@ public class PipelineOrchestrator extends Thread {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PipelineOrchestrator.class);
 
-
-    private final CheckPointTests checkPointTests;
+    private static final Counter XIDCounter = Metrics.registry.counter(name("events", "XIDCounter"));
+    private static final Counter deleteEventCounter = Metrics.registry.counter(name("events", "deleteEventCounter"));
+    private static final Counter insertEventCounter = Metrics.registry.counter(name("events", "insertEventCounter"));
+    private static final Counter commitQueryCounter = Metrics.registry.counter(name("events", "commitQueryCounter"));
+    private static final Counter updateEventCounter = Metrics.registry.counter(name("events", "updateEventCounter"));
+    private static final Counter heartBeatCounter = Metrics.registry.counter(name("events", "heartBeatCounter"));
+    private static final Counter eventsReceivedCounter = Metrics.registry.counter(name("events", "eventsReceivedCounter"));
+    private static final Counter eventsProcessedCounter = Metrics.registry.counter(name("events", "eventsProcessedCounter"));
+    private static final Counter eventsSkippedCounter = Metrics.registry.counter(name("events", "eventsSkippedCounter"));
 
     private static final int BUFFER_FLUSH_INTERVAL = 30000; // <- force buffer flush every 30 sec
 
@@ -106,15 +117,13 @@ public class PipelineOrchestrator extends Thread {
             ReplicatorQueues                  repQueues,
             ConcurrentHashMap<Integer, BinlogPositionInfo> chm,
             Configuration                     repcfg,
-            ReplicatorMetrics                 replicatorMetrics,
             Applier                           applier
         ) throws SQLException, URISyntaxException, IOException {
 
         this.queues            = repQueues;
-        this.replicatorMetrics = replicatorMetrics;
         this.configuration     = repcfg;
 
-        eventAugmenter = new EventAugmenter(repcfg, replicatorMetrics);
+        eventAugmenter = new EventAugmenter(repcfg);
 
         currentTransactionMetadata = new CurrentTransactionMetadata();
 
@@ -134,7 +143,13 @@ public class PipelineOrchestrator extends Thread {
                 + " }"
         );
 
-        checkPointTests = new CheckPointTests(this.configuration, this.replicatorMetrics);
+        Metrics.registry.register(MetricRegistry.name("events", "replicatorReplicationDelay"),
+            new Gauge<Long>() {
+                @Override
+                public Long getValue() {
+                    return replDelay;
+            }
+        });
     }
 
     public boolean isRunning() {
@@ -169,13 +184,12 @@ public class PipelineOrchestrator extends Thread {
 
                         eventCounter++;
 
-                        replicatorMetrics.incEventsReceivedCounter();
+                        eventsReceivedCounter.inc();
                         if (!skipEvent(event)) {
                             calculateAndPropagateChanges(event);
-                            replicatorMetrics.incEventsProcessedCounter();
-                        }
-                        else {
-                            replicatorMetrics.incEventsSkippedCounter();
+                            eventsProcessedCounter.inc();
+                        } else {
+                            eventsSkippedCounter.inc();
                         }
                         if (eventCounter % 5000 == 0) {
                             LOGGER.info("Pipeline report: producer rawQueue size => " + queues.rawQueue.size());
@@ -211,6 +225,8 @@ public class PipelineOrchestrator extends Thread {
         }
     }
 
+    private Long replDelay = 0L;
+
     /**
      *  calculateAndPropagateChanges
      *
@@ -240,8 +256,7 @@ public class PipelineOrchestrator extends Thread {
         long tDelta;
 
         // Calculate replication delay before the event timestamp is extended with fake miscrosecond part
-        Long replicationReplicationDelay = event.getHeader().getTimestampOfReceipt() - event.getHeader().getTimestamp();
-        replicatorMetrics.setReplicatorReplicationDelay(replicationReplicationDelay);
+        replDelay = event.getHeader().getTimestampOfReceipt() - event.getHeader().getTimestamp();
 
         // Process Event
         switch (event.getHeader().getEventType()) {
@@ -253,7 +268,7 @@ public class PipelineOrchestrator extends Thread {
                 String querySQL = ((QueryEvent) event).getSql().toString();
                 boolean isDDL = isDDL(querySQL);
                 if (isCOMMIT(querySQL, isDDL)) {
-                    replicatorMetrics.incCommitQueryCounter();
+                    commitQueryCounter.inc();
                     applier.applyCommitQueryEvent((QueryEvent) event);
                 }
                 else if (isBEGIN(querySQL, isDDL)) {
@@ -286,7 +301,7 @@ public class PipelineOrchestrator extends Thread {
                     LOGGER.debug("fakeMicrosecondCounter before reset => " + fakeMicrosecondCounter);
                     fakeMicrosecondCounter = 0;
                     doTimestampOverride(event);
-                    replicatorMetrics.incHeartBeatCounter();
+                    heartBeatCounter.inc();
                 } else {
                     fakeMicrosecondCounter++;
                     doTimestampOverride(event);
@@ -347,7 +362,7 @@ public class PipelineOrchestrator extends Thread {
                 consumerTimeM1 += tDelta;
                 applier.applyAugmentedRowsEvent(augmentedRowsEvent,this);
                 updateLastKnownPosition((AbstractRowEvent) event);
-                replicatorMetrics.incUpdateEventCounter();
+                updateEventCounter.inc();
                 break;
 
             case MySQLConstants.WRITE_ROWS_EVENT:
@@ -361,7 +376,7 @@ public class PipelineOrchestrator extends Thread {
                 consumerTimeM1 += tDelta;
                 applier.applyAugmentedRowsEvent(augmentedRowsEvent,this);
                 updateLastKnownPosition((AbstractRowEvent) event);
-                replicatorMetrics.incInsertEventCounter();
+                insertEventCounter.inc();
                 break;
 
             case MySQLConstants.DELETE_ROWS_EVENT:
@@ -375,7 +390,7 @@ public class PipelineOrchestrator extends Thread {
                 consumerTimeM1 += tDelta;
                 applier.applyAugmentedRowsEvent(augmentedRowsEvent,this);
                 updateLastKnownPosition((AbstractRowEvent) event);
-                replicatorMetrics.incDeleteEventCounter();
+                deleteEventCounter.inc();
                 break;
 
             case MySQLConstants.XID_EVENT:
@@ -385,7 +400,7 @@ public class PipelineOrchestrator extends Thread {
                 fakeMicrosecondCounter++;
                 doTimestampOverride(event);
                 applier.applyXIDEvent((XidEvent) event);
-                replicatorMetrics.incXIDCounter();
+                XIDCounter.inc();
                 currentTransactionMetadata = null;
                 currentTransactionMetadata = new CurrentTransactionMetadata();
                 break;
@@ -401,7 +416,10 @@ public class PipelineOrchestrator extends Thread {
                 RotateEvent re = (RotateEvent) event;
                 applier.applyRotateEvent(re);
                 LOGGER.info("End of binlog file. Waiting for all tasks to finish before moving forward...");
-                applier.waitUntilAllRowsAreCommitted(checkPointTests);
+
+                //TODO: Investigate if this is the right thing to do.
+                applier.waitUntilAllRowsAreCommitted();
+
                 LOGGER.info("All rows committed");
                 String currentBinlogFileName =
                         binlogPositionLastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION).getBinlogFilename();
@@ -420,7 +438,7 @@ public class PipelineOrchestrator extends Thread {
                 }
 
                 if (currentBinlogFileName.equals(configuration.getLastBinlogFileName())){
-                    LOGGER.info("Processed the last binlog file " + configuration.getLastBinlogFileName());
+                    LOGGER.info("processed the last binlog file " + configuration.getLastBinlogFileName());
                     setRunning(false);
                     requestReplicatorShutdown();
                 }

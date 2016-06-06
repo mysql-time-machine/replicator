@@ -3,6 +3,7 @@ package com.booking.replication;
 import com.booking.replication.coordinator.CoordinatorInterface;
 import com.booking.replication.coordinator.FileCoordinator;
 import com.booking.replication.coordinator.ZookeeperCoordinator;
+import com.booking.replication.metrics.GraphiteReporter;
 import com.booking.replication.util.CMD;
 import com.booking.replication.util.StartupParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -46,7 +47,6 @@ public class Main {
 
         System.out.println("loaded configuration: \n" + configuration.toString());
 
-        Coordinator.setConfiguration(configuration);
         CoordinatorInterface coordinator;
         switch (configuration.getMetadataStoreType()) {
             case Configuration.METADATASTORE_ZOOKEEPER:
@@ -58,6 +58,7 @@ public class Main {
             default:
                 throw new RuntimeException(String.format("Metadata store type not implemented: %s", configuration.getMetadataStoreType()));
         }
+
         Coordinator.setImplementation(coordinator);
 
         Coordinator.onLeaderElection(
@@ -65,6 +66,7 @@ public class Main {
                 @Override
                 public void run() {
                     try {
+                        Metrics.startReporters(configuration);
                         new Replicator(configuration).start();
                     } catch (SQLException | URISyntaxException | IOException e) {
                         e.printStackTrace();

@@ -98,7 +98,6 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
         return true;
     }
 
-
     private ObjectMapper mapper = new ObjectMapper();
 
     @Override

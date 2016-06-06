@@ -1,11 +1,10 @@
 package com.booking.replication.applier;
 
 import com.booking.replication.Constants;
-import com.booking.replication.checkpoints.CheckPointTests;
 
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
-import com.booking.replication.metrics.*;
+import com.booking.replication.Metrics;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 
 import com.booking.replication.queues.ReplicatorQueues;
@@ -21,8 +20,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.math.BigInteger;
-import java.util.*;
 
 /**
  * This class abstracts the HBase store.
@@ -47,8 +44,6 @@ public class HBaseApplier implements Applier {
 
     private static final Configuration hbaseConf = HBaseConfiguration.create();
 
-    private final ReplicatorMetrics replicatorMetrics;
-
     private final HBaseSchemaManager hBaseSchemaManager;
 
     private final HBaseApplierWriter hbaseApplierWriter;
@@ -63,21 +58,18 @@ public class HBaseApplier implements Applier {
      * HBaseApplier constructor
      *
      * @param ZOOKEEPER_QUORUM
-     * @param repMetrics
      * @throws IOException
      */
     public HBaseApplier(
 
             ReplicatorQueues                      repQueues,
             String                                ZOOKEEPER_QUORUM,
-            ReplicatorMetrics                     repMetrics,
             com.booking.replication.Configuration repCfg
 
         ) throws IOException {
 
         configuration     = repCfg;
         queues            = repQueues;
-        replicatorMetrics = repMetrics;
 
         hbaseConf.set("hbase.zookeeper.quorum", ZOOKEEPER_QUORUM);
         hbaseConf.set("hbase.client.keyvalue.maxsize", "0");
@@ -86,7 +78,6 @@ public class HBaseApplier implements Applier {
             new HBaseApplierWriter(
                 repQueues,
                 POOL_SIZE,
-                repMetrics,
                 hbaseConf,
                 repCfg
             );
@@ -126,7 +117,6 @@ public class HBaseApplier implements Applier {
                 + hbaseApplierWriter.rowsBufferedInCurrentTask.get()
                 + " rows before moving to the next binlog file.");
         LOGGER.info("Stats snapshot: ");
-        dumpStats();
         markAndSubmit(); // mark current as ready; flush all;
     }
 
@@ -223,19 +213,12 @@ public class HBaseApplier implements Applier {
     }
 
     @Override
-    public void waitUntilAllRowsAreCommitted(CheckPointTests checkPointTests) {
+    public void waitUntilAllRowsAreCommitted() {
         boolean wait = true;
 
         while (wait) {
-
-            Totals totals = replicatorMetrics.getTotalsSnapshot();
-            BigInteger totalHBaseRowsAffected = totals.getTotalHbaseRowsAffected().getValue();
-            BigInteger totalMySQLRowsProcessed = totals.getTotalRowsProcessed().getValue();
-
-            LOGGER.info("hbaseTotalRowsCommited  => " + totalHBaseRowsAffected);
-            LOGGER.info("mysqlTotalRowsProcessed => " + totalMySQLRowsProcessed);
-
-            if (checkPointTests.verifyConsistentCountersOnRotateEvent(totalHBaseRowsAffected, totalMySQLRowsProcessed)) {
+            if (hbaseApplierWriter.areAllTasksDone()) {
+                LOGGER.debug("All tasks have completed!");
                 wait = false;
             }
             else {
@@ -253,25 +236,4 @@ public class HBaseApplier implements Applier {
         hbaseApplierWriter.markCurrentTransactionForCommit();
     }
 
-    @Override
-    public void dumpStats() {
-
-        Map<Integer, TotalsPerTimeSlot> metricsSnapshot = replicatorMetrics.getMetricsSnapshot();
-
-        for (Integer timebucket : metricsSnapshot.keySet()) {
-
-            LOGGER.debug("dumping stats for bucket => " + timebucket);
-
-            TotalsPerTimeSlot timebucketStats;
-            timebucketStats = replicatorMetrics.getMetricsSnapshot().get(timebucket);
-
-            INameValue[] metricNamesAndValues = timebucketStats.getAllNamesAndValues();
-
-            for (int i = 0; i < metricNamesAndValues.length; i++)
-            {
-                LOGGER.info(String.format("%s => %s @ %s", metricNamesAndValues[i].getName(), metricNamesAndValues[i].getValue(),
-                        timebucket));
-            }
-        }
-    }
 }

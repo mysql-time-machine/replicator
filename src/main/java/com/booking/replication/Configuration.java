@@ -1,5 +1,6 @@
 package com.booking.replication;
 
+import com.booking.replication.util.Duration;
 import com.booking.replication.util.StartupParameters;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -11,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.io.Serializable;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -51,7 +53,7 @@ public class Configuration {
         public HiveImports     hive_imports = new HiveImports();
 
         private static class HiveImports {
-            public List<String> tables = Collections.<String>emptyList();
+            public List<String> tables = Collections.emptyList();
         }
 
     }
@@ -87,19 +89,44 @@ public class Configuration {
     public int getMetadataStoreType() {
         if(this.metadata_store.zookeeper != null) {
             return METADATASTORE_ZOOKEEPER;
-        } else {
+        } else if (this.metadata_store.file != null) {
             return METADATASTORE_FILE;
+        } else {
+            throw new RuntimeException("Metadata store not configured, please define a zookeeper or file metadata store.");
         }
     }
 
     @JsonDeserialize
-    private GraphiteConfig graphite;
+    public MetricsConfig metrics = new MetricsConfig();
 
-    private static class GraphiteConfig {
-        public String       namespace;
-        public String       url;
+    public static class MetricsConfig {
+        @JsonDeserialize
+        public Duration     frequency;
+
+        public HashMap<String, ReporterConfig> reporters = new HashMap<>();
+
+        public static class ReporterConfig {
+            public String       type;
+            public String       namespace;
+            public String       url;
+        }
     }
 
+    public Duration getReportingFrequency() {
+        return metrics.frequency;
+    }
+
+    public HashMap<String, MetricsConfig.ReporterConfig> getMetricReporters() {
+        return metrics.reporters;
+    }
+
+    public MetricsConfig.ReporterConfig getReporterConfig(String type) {
+        if(! metrics.reporters.containsKey(type)) {
+            return null;
+        }
+
+        return metrics.reporters.get(type);
+    }
 
     private boolean         initialSnapshotMode;
     private long            startingBinlogPosition;
@@ -256,14 +283,6 @@ public class Configuration {
             return "";
         }
         return metadata_store.file.path;
-    }
-
-    public String getGraphiteStatsNamesapce() {
-        return graphite.namespace;
-    }
-
-    public String getGraphiteUrl() {
-        return graphite.url;
     }
 
     public boolean isWriteRecentChangesToDeltaTables() {

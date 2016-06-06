@@ -1,7 +1,7 @@
 package com.booking.replication.augmenter;
 
 import com.booking.replication.Configuration;
-import com.booking.replication.metrics.ReplicatorMetrics;
+import com.booking.replication.Metrics;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.schema.ActiveSchemaVersion;
 import com.booking.replication.schema.SchemaVersionSnapshot;
@@ -42,24 +42,20 @@ public class EventAugmenter {
     // public CurrentTransactionMetadata currentTransactionMetadata;
 
     private ActiveSchemaVersion activeSchemaVersion;
-    private final Configuration configuration;
-
-    private final ReplicatorMetrics replicatorMetrics;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EventAugmenter.class);
+
+    public static Metrics.PerTableMetricsHash perTableCounters = new Metrics.PerTableMetricsHash("mysql");
 
     /**
      * Constructor
      *
      * @param  replicatorConfiguration Replicator configuration object
-     * @param repMetrics Replicator metrics object
      * @throws SQLException
      * @throws URISyntaxException
      */
-    public EventAugmenter(Configuration replicatorConfiguration, ReplicatorMetrics repMetrics) throws SQLException, URISyntaxException {
+    public EventAugmenter(Configuration replicatorConfiguration) throws SQLException, URISyntaxException {
         activeSchemaVersion = new ActiveSchemaVersion(replicatorConfiguration);
-        configuration = replicatorConfiguration;
-        replicatorMetrics = repMetrics;
     }
 
     /**
@@ -226,6 +222,8 @@ public class EventAugmenter {
         // table name
         String tableName =  caller.currentTransactionMetadata.getTableNameFromID(writeRowsEvent.getTableId());
 
+        Metrics.PerTableMetrics tableMetrics = perTableCounters.getOrCreate(tableName);
+
         // getValue schema for that table from activeSchemaVersion
         TableSchema tableSchema = activeSchemaVersion.getActiveSchemaTables().get(tableName);
 
@@ -247,11 +245,8 @@ public class EventAugmenter {
             augEvent.setEventType("INSERT");
             augEvent.setEventV4Header(writeRowsEvent.getHeader());
 
-            replicatorMetrics.incRowsInsertedCounter(tableName);
-            replicatorMetrics.incRowsProcessedCounter(tableName);
-
-            // caller.incRowsInsertedCounter();
-            // caller.incRowsProcessedCounter();
+            tableMetrics.inserted.inc();
+            tableMetrics.processed.inc();
 
             //column index counting starts with 1
             for (int columnIndex = 1; columnIndex <= numberOfColumns ; columnIndex++ ) {
@@ -282,6 +277,8 @@ public class EventAugmenter {
         // table name
         String tableName = caller.currentTransactionMetadata.getTableNameFromID(writeRowsEvent.getTableId());
 
+        Metrics.PerTableMetrics tableMetrics = perTableCounters.getOrCreate(tableName);
+
         // getValue schema for that table from activeSchemaVersion
         TableSchema tableSchema = activeSchemaVersion.getActiveSchemaTables().get(tableName);
 
@@ -297,8 +294,8 @@ public class EventAugmenter {
         
         for (Row row : writeRowsEvent.getRows()) {
 
-            replicatorMetrics.incRowsInsertedCounter(tableName);
-            replicatorMetrics.incRowsProcessedCounter(tableName);
+            tableMetrics.inserted.inc();
+            tableMetrics.processed.inc();
 
             AugmentedRow augEvent = new AugmentedRow();
 
@@ -341,6 +338,8 @@ public class EventAugmenter {
         // table name
         String tableName = pipeline.currentTransactionMetadata.getTableNameFromID(deleteRowsEvent.getTableId());
 
+        Metrics.PerTableMetrics tableMetrics = perTableCounters.getOrCreate(tableName);
+
         // getValue schema for that table from activeSchemaVersion
         TableSchema tableSchema = activeSchemaVersion.getActiveSchemaTables().get(tableName);
 
@@ -355,9 +354,8 @@ public class EventAugmenter {
 
         for (Row row : deleteRowsEvent.getRows()) {
 
-            // caller.incRowsProcessedCounter();
-            replicatorMetrics.incRowsDeletedCounter(tableName);
-            replicatorMetrics.incRowsProcessedCounter(tableName);
+            tableMetrics.processed.inc();
+            tableMetrics.deleted.inc();
 
             AugmentedRow augEvent = new AugmentedRow();
             augEvent.setTableName(tableName);
@@ -394,6 +392,8 @@ public class EventAugmenter {
         // table name
         String tableName = caller.currentTransactionMetadata.getTableNameFromID(deleteRowsEvent.getTableId());
 
+        Metrics.PerTableMetrics tableMetrics = perTableCounters.getOrCreate(tableName);
+
         // getValue schema for that table from activeSchemaVersion
         TableSchema tableSchema = activeSchemaVersion.getActiveSchemaTables().get(tableName);
 
@@ -409,9 +409,8 @@ public class EventAugmenter {
 
         for (Row row : deleteRowsEvent.getRows()) {
 
-            // caller.incRowsProcessedCounter();
-            replicatorMetrics.incRowsDeletedCounter(tableName);
-            replicatorMetrics.incRowsProcessedCounter(tableName);
+            tableMetrics.deleted.inc();
+            tableMetrics.processed.inc();
 
             AugmentedRow augEvent = new AugmentedRow();
             augEvent.setTableName(tableName);
@@ -449,6 +448,8 @@ public class EventAugmenter {
         // table name
         String tableName = caller.currentTransactionMetadata.getTableNameFromID(upEvent.getTableId());
 
+        Metrics.PerTableMetrics tableMetrics = perTableCounters.getOrCreate(tableName);
+
         // getValue schema for that table from activeSchemaVersion
         TableSchema tableSchema = activeSchemaVersion.getActiveSchemaTables().get(tableName);
 
@@ -465,9 +466,8 @@ public class EventAugmenter {
         // rowPair is pair <rowBeforeChange, rowAfterChange>
         for (Pair<Row> rowPair : upEvent.getRows()) {
 
-            // caller.incRowsProcessedCounter();
-            replicatorMetrics.incRowsUpdatedCounter(tableName);
-            replicatorMetrics.incRowsProcessedCounter(tableName);
+            tableMetrics.processed.inc();
+            tableMetrics.updated.inc();
 
             AugmentedRow augEvent = new AugmentedRow();
             augEvent.setTableName(tableName);
@@ -508,6 +508,8 @@ public class EventAugmenter {
         // table name
         String tableName = caller.currentTransactionMetadata.getTableNameFromID(upEvent.getTableId());
 
+        Metrics.PerTableMetrics tableMetrics = perTableCounters.getOrCreate(tableName);
+
         // getValue schema for that table from activeSchemaVersion
         TableSchema tableSchema = activeSchemaVersion.getActiveSchemaTables().get(tableName);
 
@@ -524,9 +526,8 @@ public class EventAugmenter {
         // rowPair is pair <rowBeforeChange, rowAfterChange>
         for (Pair<Row> rowPair : upEvent.getRows()) {
 
-            // caller incRowsProcessedCounter();
-            replicatorMetrics.incRowsUpdatedCounter(tableName);
-            replicatorMetrics.incRowsProcessedCounter(tableName);
+            tableMetrics.processed.inc();
+            tableMetrics.updated.inc();
 
             AugmentedRow augEvent = new AugmentedRow();
             augEvent.setTableName(tableName);

@@ -1,14 +1,9 @@
 package com.booking.replication.applier;
 
 import com.booking.replication.Configuration;
-import com.booking.replication.checkpoints.CheckPointTests;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
-import com.booking.replication.metrics.INameValue;
-import com.booking.replication.metrics.Metrics;
-import com.booking.replication.metrics.ReplicatorMetrics;
-import com.booking.replication.metrics.TotalsPerTimeSlot;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.queues.ReplicatorQueues;
 import com.booking.replication.util.MutableLong;
@@ -35,8 +30,6 @@ public class STDOUTJSONApplier implements Applier  {
 
     private static final HashMap<String, MutableLong> stats = new HashMap<String, MutableLong>();
 
-    private final ReplicatorMetrics replicatorMetrics;
-
     private final com.booking.replication.Configuration replicatorConfiguration;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(STDOUTJSONApplier.class);
@@ -46,11 +39,9 @@ public class STDOUTJSONApplier implements Applier  {
 
     public STDOUTJSONApplier(
             ReplicatorQueues repQueues,
-            ReplicatorMetrics repMetrics,
             Configuration configuration
         ) {
         queues = repQueues;
-        replicatorMetrics = repMetrics;
         replicatorConfiguration = configuration;
     }
 
@@ -69,8 +60,15 @@ public class STDOUTJSONApplier implements Applier  {
     }
 
     @Override
-    public void waitUntilAllRowsAreCommitted(CheckPointTests checkPointTests) {
+    public void waitUntilAllRowsAreCommitted() {
 
+        try {
+            LOGGER.info("Sleeping as to simulate waiting for all rows being committed");
+            Thread.sleep(1000);
+            LOGGER.info("DONE.");
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -167,37 +165,8 @@ public class STDOUTJSONApplier implements Applier  {
     public void applyRotateEvent(RotateEvent event) {
         LOGGER.info("binlog rotate: " + event.getBinlogFilename());
         LOGGER.info("STDOUTApplier totalRowsCounter => " + totalRowsCounter);
-        dumpStats();
     }
 
-    @Override
-    public void dumpStats() {
-
-        Map<Integer, TotalsPerTimeSlot> metricsSnapshot = replicatorMetrics.getMetricsSnapshot();
-
-        List<Integer> timebuckets = new ArrayList<Integer>(metricsSnapshot.keySet());
-        Collections.sort(timebuckets, Collections.reverseOrder());
-
-        LOGGER.info("Available time buckets:");
-        for (Integer t : timebuckets) {
-            LOGGER.info("\tbucket => " + t);
-        }
-
-        Integer timebucket = timebuckets.get(0);
-
-        LOGGER.info("dumping stats for latest time bucket => " + timebucket);
-
-        TotalsPerTimeSlot timebucketStats = metricsSnapshot.get(timebucket);
-
-        INameValue[] namesAndValues = timebucketStats.getAllNamesAndValues();
-
-        for (int i = 0; i < namesAndValues.length; i++)
-        {
-            LOGGER.info(String.format("\t %s => %s @ %s", namesAndValues[i].getName(), namesAndValues[i].getValue(),
-                    timebucket.toString()));
-        }
-    }
-    
     @Override
     public void applyFormatDescriptionEvent(FormatDescriptionEvent event) {
 

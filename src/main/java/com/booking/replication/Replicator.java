@@ -4,7 +4,6 @@ import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.HBaseApplier;
 import com.booking.replication.applier.STDOUTJSONApplier;
 import com.booking.replication.checkpoints.SafeCheckPoint;
-import com.booking.replication.metrics.ReplicatorMetrics;
 import com.booking.replication.pipeline.BinlogEventProducer;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.pipeline.BinlogPositionInfo;
@@ -70,16 +69,12 @@ public class Replicator {
         // Producer
         binlogEventProducer = new BinlogEventProducer(replicatorQueues.rawQueue, lastKnownInfo, configuration);
 
-        // Metrics
-        ReplicatorMetrics replicatorMetrics = new ReplicatorMetrics(configuration.getTablesForWhichToTrackDailyChanges());
-
         // Applier
         Applier applier;
 
         if (configuration.getApplierType().equals("STDOUT")) {
             applier = new STDOUTJSONApplier(
                     replicatorQueues,
-                    replicatorMetrics,
                     configuration
             );
         }
@@ -87,7 +82,6 @@ public class Replicator {
             applier = new HBaseApplier(
                     replicatorQueues,
                     configuration.getHBaseQuorum(),
-                    replicatorMetrics,
                     configuration
             );
         }
@@ -95,7 +89,6 @@ public class Replicator {
             LOGGER.warn("Unknown applier type. Defaulting to STDOUT");
             applier = new STDOUTJSONApplier(
                     replicatorQueues,
-                    replicatorMetrics,
                     configuration
             );
         }
@@ -105,7 +98,6 @@ public class Replicator {
                 replicatorQueues,
                 lastKnownInfo,
                 configuration,
-                replicatorMetrics,
                 applier
         );
 
@@ -113,7 +105,6 @@ public class Replicator {
         overseer = new Overseer(
                 binlogEventProducer,
                 pipelineOrchestrator,
-                replicatorMetrics,
                 lastKnownInfo
         );
     }

@@ -19,8 +19,6 @@ public class Coordinator {
         implementation = impl;
     }
 
-    public static void setConfiguration(Configuration conf) { configuration = conf; }
-
     public static CoordinatorInterface getImplementation() {
         return implementation;
     }
@@ -31,9 +29,6 @@ public class Coordinator {
 
     public static SafeCheckPoint getCheckpointMarker() {
         SafeCheckPoint cp = implementation.getSafeCheckPoint();
-        if(cp == null) {
-            new LastVerifiedBinlogFile(configuration.getReplicantDBServerID(), configuration.getStartingBinlogFileName());
-        }
         try {
             LOGGER.info(String.format("Got checkpoint: %s", implementation.serialize(cp)));
         } catch (Exception e) {

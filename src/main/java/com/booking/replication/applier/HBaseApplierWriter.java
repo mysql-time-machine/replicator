@@ -2,10 +2,11 @@ package com.booking.replication.applier;
 
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
-import com.booking.replication.metrics.ReplicatorMetrics;
+import com.booking.replication.Metrics;
 import com.booking.replication.queues.ReplicatorQueues;
 import com.booking.replication.util.MutableLong;
-import org.apache.commons.lang.mutable.Mutable;
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.Gauge;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
@@ -17,6 +18,8 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static com.codahale.metrics.MetricRegistry.name;
 
 public class HBaseApplierWriter {
 
@@ -115,15 +118,29 @@ public class HBaseApplierWriter {
     // is full, it is submitted and new one is opened with new taskUUID
     public AtomicInteger rowsBufferedInCurrentTask = new AtomicInteger(0);
 
-    private final ReplicatorMetrics replicatorMetrics;
-
     private final Configuration hbaseConf;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HBaseApplierWriter.class);
 
-    private final ReplicatorQueues queues;
-
     private final  com.booking.replication.Configuration configuration;
+
+    public static Metrics.PerTableMetricsHash perHBaseTableCounters = new Metrics.PerTableMetricsHash("HBase");
+
+    private static final Counter applierTasksSubmittedCounter = Metrics.registry.counter(name("HBase", "applierTasksSubmittedCounter"));
+    private static final Counter applierTasksSucceededCounter = Metrics.registry.counter(name("HBase", "applierTasksSucceededCounter"));
+    private static final Counter applierTasksFailedCounter = Metrics.registry.counter(name("HBase", "applierTasksFailedCounter"));
+    private static final Counter applierTasksInProgressCounter = Metrics.registry.counter(name("HBase", "applierTasksInProgressCounter"));
+    private static final Counter rowOpsCommittedToHbase = Metrics.registry.counter(name("HBase", "rowOpsCommittedToHbase"));
+
+    //@todo: the logic here is sufficient but not exhaustive, improve robustness of following code
+    public boolean areAllTasksDone() {
+        for(String key: taskStatus.keySet()) {
+            if(taskStatus.get(key) != TaskStatusCatalog.WRITE_SUCCEEDED) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     // ================================================
     // Constructor
@@ -131,18 +148,14 @@ public class HBaseApplierWriter {
     public HBaseApplierWriter(
             ReplicatorQueues repQueues,
             int poolSize,
-            ReplicatorMetrics repMetrics,
             org.apache.hadoop.conf.Configuration hbaseConfiguration,
             com.booking.replication.Configuration repCfg
         ) {
-
-        queues            = repQueues;
 
         POOL_SIZE         = poolSize;
         taskPool          = Executors.newFixedThreadPool(POOL_SIZE);
 
         hbaseConf         = hbaseConfiguration;
-        replicatorMetrics = repMetrics;
 
         configuration     = repCfg;
 
@@ -155,6 +168,14 @@ public class HBaseApplierWriter {
         }
 
         initBuffers();
+
+        Metrics.registry.register(name("HBase", "hbaseWriterTaskQueueSize"),
+                new Gauge<Long>() {
+                    @Override
+                    public Long getValue() {
+                        return taskQueueSize;
+                    }
+                });
     }
 
     public void initBuffers() {
@@ -291,14 +312,16 @@ public class HBaseApplierWriter {
         rowsBufferedInCurrentTask.set(0);
 
         // update task queue size
-        long taskQueueSize = 0;
+        long queueSize = 0;
         for (String taskUUID : taskStatus.keySet()) {
             if (taskStatus.get(taskUUID) == TaskStatusCatalog.READY_FOR_PICK_UP) {
-                taskQueueSize++;
+                queueSize++;
             }
         }
-        replicatorMetrics.setTaskQueueSize(taskQueueSize);
+        taskQueueSize = queueSize;
     }
+
+    private Long taskQueueSize = 0L;
 
     public void markAllTasksAsReadyToGo() {
 
@@ -307,11 +330,7 @@ public class HBaseApplierWriter {
 
         LOGGER.info("Tasks left: " + numberOfTasksLeft);
 
-        if (numberOfTasksLeft == 0) {
-            replicatorMetrics.setTaskQueueSize(0L);
-            return;
-        }
-        else {
+        if (numberOfTasksLeft != 0) {
             for (String taskUUID : taskStatus.keySet()) {
 
                 if (taskStatus.get(taskUUID) == TaskStatusCatalog.WRITE_IN_PROGRESS) {
@@ -350,6 +369,8 @@ public class HBaseApplierWriter {
                     LOGGER.info("task " + taskUUID + " => " + "UNKNOWN STATUS => " + taskStatus.get(taskUUID));
                 }
             }
+        } else {
+            taskQueueSize = 0L;
         }
     }
 
@@ -413,22 +434,25 @@ public class HBaseApplierWriter {
                             throw new Exception("Inconsistent success reports for task " + submittedTaskUUID);
                         }
 
-                        replicatorMetrics.incApplierTasksSucceededCounter();
+                        applierTasksSucceededCounter.inc();;
 
-                        replicatorMetrics.incCurrentTimeBucketForRowOpsSuccessfullyCommittedToHBase(numberOfHBaseRowsAffected);
+                        rowOpsCommittedToHbase.inc(numberOfHBaseRowsAffected);
 
                         if (taskResult.getTableStats() != null) {
                             for (String tableType: taskResult.getTableStats().keySet()) {
                                 for (String table : taskResult.getTableStats().get(tableType).keySet()) {
+
+                                    Metrics.PerTableMetrics tableMetrics = perHBaseTableCounters.getOrCreate(table);
+
                                     if (tableType.equals("delta")) {
                                         long rowOpsCommitedForTable = taskResult.getTableStats().get(tableType).get(table).getValue();
                                         LOGGER.info("Row ops committed for delta table " + table + " => " + rowOpsCommitedForTable);
-                                        replicatorMetrics.incTotalRowOpsSuccessfullyCommitedToHBase(rowOpsCommitedForTable, table);
+                                        tableMetrics.committed.inc(rowOpsCommitedForTable);
                                     }
                                     if (tableType.equals("mirrored")) {
                                         long rowOpsCommitedForTable = taskResult.getTableStats().get(tableType).get(table).getValue();
                                         LOGGER.info("Row ops committed for delta table " + table + " => " + rowOpsCommitedForTable);
-                                        replicatorMetrics.incTotalRowOpsSuccessfullyCommitedToHBase(rowOpsCommitedForTable, table);
+                                        tableMetrics.committed.inc(rowOpsCommitedForTable);
                                     }
                                 }
                             }
@@ -456,7 +480,7 @@ public class HBaseApplierWriter {
                         }
                         LOGGER.warn("Task " + submittedTaskUUID + " failed. Task will be retried.");
                         requeueTask(submittedTaskUUID);
-                        replicatorMetrics.incApplierTasksFailedCounter();
+                        applierTasksFailedCounter.inc();
                     }
                     else {
                         LOGGER.error("Illegal task status ["
@@ -464,22 +488,22 @@ public class HBaseApplierWriter {
                                 + "]. Probably a silent death of a thread. "
                                 + "Will consider the task as failed and re-queue.");
                         requeueTask(submittedTaskUUID);
-                        replicatorMetrics.incApplierTasksFailedCounter();
+                        applierTasksFailedCounter.inc();
                     }
                 }
             }
             catch (ExecutionException ex) {
                 LOGGER.error("Future failed for task " + submittedTaskUUID + ", with exception " + ex.getCause().toString());
                 requeueTask(submittedTaskUUID);
-                replicatorMetrics.incApplierTasksFailedCounter();
+                applierTasksFailedCounter.inc();
             } catch (InterruptedException ei) {
                 LOGGER.info("Task " + submittedTaskUUID + " was canceled by interrupt. The task that has been canceled will be retired later by another future.", ei);
                 requeueTask(submittedTaskUUID);
-                replicatorMetrics.incApplierTasksFailedCounter();
+                applierTasksFailedCounter.inc();
             } catch (Exception e) {
                 LOGGER.error("Inconsistent success reports for task " + submittedTaskUUID + ". Will retry the task.");
                 requeueTask(submittedTaskUUID);
-                replicatorMetrics.incApplierTasksFailedCounter();
+                applierTasksFailedCounter.inc();
             }
         }
     }
@@ -608,7 +632,7 @@ public class HBaseApplierWriter {
 
                     taskStatus.put(taskUUID, TaskStatusCatalog.TASK_SUBMITTED);
 
-                    replicatorMetrics.incApplierTasksSubmittedCounter();
+                    applierTasksSubmittedCounter.inc();
 
                     taskFutures.put(taskUUID, taskPool.submit(new Callable<TaskResult>() {
 
@@ -662,7 +686,7 @@ public class HBaseApplierWriter {
                                 }
 
                                 taskStatus.put(taskUUID, TaskStatusCatalog.WRITE_IN_PROGRESS);
-                                replicatorMetrics.incApplierTasksInProgressCounter();
+                                applierTasksInProgressCounter.inc();
 
                                 if (chaosMonkey.feelsLikeThrowingExceptionForTaskInProgress()) {
                                     throw new Exception("Chaos monkey exception for task in progress!");

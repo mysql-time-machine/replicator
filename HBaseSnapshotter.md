@@ -1,7 +1,13 @@
 ## HBaseSnapshotter
 
 ### Overview
-HBaseSnapshotter is a Spark application that takes a snapshot of an HBase table at a given point in time and stores it to a Hive table. Usually you can export from HBase to Hive but you can only get the latest version, as Hive doesn't have enough flexibility to access different versions of an HBase table. Spark framework allows this flexibility since it has the ability and the API to access and manipulate both HBase and Hive.
+HBaseSnapshotter is a Spark application that takes a snapshot of an HBase table at a given point in time and stores it to a Hive table. Currently there are two solutions doing similar work, but not the exact functionality.
+
+1. HBase allows you to take a snapshot from an HBase table to another HBase table by using the provided Export and Import tools. This is done by specifying a table name, start time, end time, and number of versions, and running the export tool which will export the table to HDFS in a SequenceFile format. Then you can import the SequenceFile files to a new HBase table by using the import tool. For more information, you can check [this](http://hbase.apache.org/book.html#export).
+
+2. Hive storage handler allows you to use Hive queries and apply Hive operations on an HBase table. The shortcoming of this method is that it's able to access only the latest version of an HBase table. You can check [this] (https://cwiki.apache.org/confluence/display/Hive/HBaseIntegration) for more information.
+
+HBaseSnapshotter allows you to take a snapshot from an HBase table and save it as a Hive table directly, with the possibility of selecting a desired point in time to copy the table at.
 
 ### Configuration
 HBaseSnapshotter needs a yaml configuration file to be provided through the option ``` --config <CONFIG-PATH> ```

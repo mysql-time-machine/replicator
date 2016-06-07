@@ -42,7 +42,15 @@ hbase:
     zookeeper_quorum:  ['hbase-zk1-host', 'hbase-zkN-host']
     hive_imports:
         tables: ['sometable']
-graphite:
-    url:       'graphite_host[:<graphite_port>]'
-    namespace: 'no-stats'
+
+metrics:
+    frequency: 10 seconds
+    reporters:
+      graphite:
+        namespace: 'graphite.namespace.prefix'
+        url: 'graphite_host[:<graphite_port (default is 3002)>]'
+# Optionally you can specify a console reporter for ease of testing
+#      console:
+#        timeZone: UTC
+#        output: stdout
 ````

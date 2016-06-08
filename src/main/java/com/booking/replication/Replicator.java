@@ -2,6 +2,7 @@ package com.booking.replication;
 
 import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.HBaseApplier;
+import com.booking.replication.applier.KafkaApplier;
 import com.booking.replication.applier.STDOUTJSONApplier;
 import com.booking.replication.checkpoints.SafeCheckPoint;
 import com.booking.replication.pipeline.BinlogEventProducer;
@@ -84,13 +85,13 @@ public class Replicator {
                     configuration.getHBaseQuorum(),
                     configuration
             );
-        }
-        else {
-            LOGGER.warn("Unknown applier type. Defaulting to STDOUT");
-            applier = new STDOUTJSONApplier(
-                    replicatorQueues,
+        } else if (configuration.getApplierType().toLowerCase().equals("kafka")) {
+            applier = new KafkaApplier(
                     configuration
             );
+        }
+        else {
+            throw new RuntimeException(String.format("Unknown applier: %s", configuration.getApplierType()));
         }
 
         // Orchestrator

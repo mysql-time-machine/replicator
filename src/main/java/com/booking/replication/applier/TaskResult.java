@@ -10,21 +10,18 @@ import java.util.HashMap;
 public class TaskResult {
 
     private final String                                        taskUUID;
+    private final int                                           taskStatus;
     private final boolean                                       taskSucceeded;
-    private final long                                          numberOfAugmentedRowsInTask;
-    private final long                                          numberOfAffectedHBaseRowsInTask;
-    private final HashMap<String, HashMap<String, MutableLong>> tableStats;
 
-    public TaskResult(String uuid,
-                      boolean success,
-                      long numOfAugmentedRowsInTask,
-                      long numberOfAffectedHBaseRowsInTask,
-                      HashMap<String, HashMap<String, MutableLong>> tableStats) {
-        numberOfAugmentedRowsInTask          = numOfAugmentedRowsInTask;
+    public TaskResult(
+            String uuid,
+            int status,
+            boolean success
+    )
+    {
         taskSucceeded                        = success;
         taskUUID                             = uuid;
-        this.tableStats                      = tableStats;
-        this.numberOfAffectedHBaseRowsInTask = numberOfAffectedHBaseRowsInTask;
+        taskStatus                           = status;
     }
 
     public String getTaskUUID() {
@@ -35,15 +32,6 @@ public class TaskResult {
         return taskSucceeded;
     }
 
-    public long getNumberOfAugmentedRowsInTask() {
-        return numberOfAugmentedRowsInTask;
-    }
+    public int getTaskStatus() { return taskStatus; }
 
-    public HashMap<String, HashMap<String, MutableLong>> getTableStats() {
-        return tableStats;
-    }
-
-    public long getNumberOfAffectedHBaseRowsInTask() {
-        return numberOfAffectedHBaseRowsInTask;
-    }
 }

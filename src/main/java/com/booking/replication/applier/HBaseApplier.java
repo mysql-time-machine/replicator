@@ -4,10 +4,8 @@ import com.booking.replication.Constants;
 
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
-import com.booking.replication.Metrics;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 
-import com.booking.replication.queues.ReplicatorQueues;
 import com.booking.replication.schema.HBaseSchemaManager;
 
 import com.google.code.or.binlog.impl.event.FormatDescriptionEvent;
@@ -52,8 +50,6 @@ public class HBaseApplier implements Applier {
 
     private final com.booking.replication.Configuration configuration;
 
-    private final ReplicatorQueues queues;
-
     /**
      * HBaseApplier constructor
      *
@@ -61,22 +57,18 @@ public class HBaseApplier implements Applier {
      * @throws IOException
      */
     public HBaseApplier(
-
-            ReplicatorQueues                      repQueues,
             String                                ZOOKEEPER_QUORUM,
             com.booking.replication.Configuration repCfg
 
         ) throws IOException {
 
         configuration     = repCfg;
-        queues            = repQueues;
 
         hbaseConf.set("hbase.zookeeper.quorum", ZOOKEEPER_QUORUM);
         hbaseConf.set("hbase.client.keyvalue.maxsize", "0");
 
         hbaseApplierWriter =
             new HBaseApplierWriter(
-                repQueues,
                 POOL_SIZE,
                 hbaseConf,
                 repCfg

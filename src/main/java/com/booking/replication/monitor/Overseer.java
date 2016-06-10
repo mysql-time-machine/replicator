@@ -21,20 +21,17 @@ public class Overseer extends Thread {
 
     private volatile boolean doMonitor = true;
 
-    private int observedStatus = ObservedStatus.OK;
-
     private static final Logger LOGGER = LoggerFactory.getLogger(Overseer.class);
 
     public Overseer(BinlogEventProducer prod, PipelineOrchestrator orch, ConcurrentHashMap<Integer, BinlogPositionInfo> chm) {
-        this.producer      = prod;
-        this.pipelineOrchestrator = orch;
-        this.lastKnownInfo = chm;
+        producer      = prod;
+        pipelineOrchestrator = orch;
+        lastKnownInfo = chm;
     }
 
     @Override
     public void run() {
         while (doMonitor) {
-
             try {
                 // make sure that producer is running every 1s
                 Thread.sleep(1000);
@@ -59,15 +56,15 @@ public class Overseer extends Thread {
     private void makeSureProducerIsRunning() {
         if (!producer.getOr().isRunning()) {
             LOGGER.warn("Producer stopped running. OR position: "
-                    + ((BinlogPositionInfo) lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION)).getBinlogFilename()
+                    + lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogFilename()
                     + ":"
-                    + ((BinlogPositionInfo) lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION)).getBinlogPosition()
+                    + lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogPosition()
                     + "Trying to restart it...");
             try {
-                BinlogPositionInfo lastMapEventFakeMCounter = (BinlogPositionInfo) lastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION_FAKE_MICROSECONDS_COUNTER);
+                BinlogPositionInfo lastMapEventFakeMCounter = lastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION_FAKE_MICROSECONDS_COUNTER);
                 Long   lastFakeMCounter = lastMapEventFakeMCounter.getFakeMicrosecondsCounter();
 
-                pipelineOrchestrator.setFakeMicrosecondCounter(lastFakeMCounter);
+                PipelineOrchestrator.setFakeMicrosecondCounter(lastFakeMCounter);
 
                 producer.startOpenReplicatorFromLastKnownMapEventPosition();
                 LOGGER.info("Restarted open replicator to run from position "
@@ -78,7 +75,6 @@ public class Overseer extends Thread {
             }
             catch (ConnectException e) {
                 LOGGER.error("Overseer tried to restart OpenReplicator and failed. Can not continue running. Requesting shutdown...");
-                observedStatus = ObservedStatus.ERROR_SHOULD_SHUTDOWN;
                 System.exit(-1);
             }
             catch (Exception e) {

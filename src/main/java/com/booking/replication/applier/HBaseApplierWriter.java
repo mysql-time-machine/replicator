@@ -166,6 +166,17 @@ public class HBaseApplierWriter {
                         return taskQueueSize;
                     }
                 });
+
+        Metrics.registry.register(name("HBase", "hbaseWriterSlotWaitTime"),
+                new Gauge<Long>() {
+                    @Override
+                    public Long getValue() {
+                        if (slotWaitTime == 0) {
+                            return 0L;
+                        }
+                        return System.currentTimeMillis() - slotWaitTime;
+                    }
+                });
     }
 
     public void initBuffers() {
@@ -360,11 +371,14 @@ public class HBaseApplierWriter {
         }
     }
 
+    private long slotWaitTime = 0L;
+
     private void blockIfNoSlotsAvailableForBuffering() {
 
         boolean block = true;
         int blockingTime = 0;
 
+        slotWaitTime = System.currentTimeMillis();
         while (block) {
 
             updateTaskStatuses();
@@ -391,6 +405,8 @@ public class HBaseApplierWriter {
                 if(blockingTime > 1000) {
                     LOGGER.warn("Wait is over with " + currentNumberOfTasks + " current tasks, blocking time was " + blockingTime + "ms");
                 }
+
+                slotWaitTime = 0;
                 block = false;
             }
         }

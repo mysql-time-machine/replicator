@@ -416,11 +416,6 @@ public class PipelineOrchestrator extends Thread {
                 RotateEvent re = (RotateEvent) event;
                 applier.applyRotateEvent(re);
                 LOGGER.info("End of binlog file. Waiting for all tasks to finish before moving forward...");
-                LOGGER.info("Event type is: " + event.getClass() );
-                if (event instanceof RotateEvent) {
-                    LOGGER.info("This would have triggered!");
-                }
-
 
                 //TODO: Investigate if this is the right thing to do.
                 applier.waitUntilAllRowsAreCommitted();

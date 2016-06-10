@@ -13,11 +13,11 @@ import com.booking.replication.Configuration;
 import com.booking.replication.Constants;
 import com.booking.replication.Coordinator;
 import com.booking.replication.applier.Applier;
-import com.booking.replication.checkpoints.*;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.augmenter.EventAugmenter;
 import com.booking.replication.Metrics;
+import com.booking.replication.checkpoints.LastVerifiedBinlogFile;
 import com.booking.replication.queues.ReplicatorQueues;
 import com.booking.replication.schema.TableNameMapper;
 import com.booking.replication.schema.HBaseSchemaManager;
@@ -77,15 +77,6 @@ public class PipelineOrchestrator extends Thread {
 
     public long consumerStatsNumberOfProcessedRows = 0;
     public long consumerStatsNumberOfProcessedEvents = 0;
-
-    public long consumerTimeM1 = 0;
-    public long consumerTimeM1_WriteV2 = 0;
-    public long consumerTimeM2 = 0;
-    public long consumerTimeM3 = 0;
-    public long consumerTimeM4 = 0;
-    public long consumerTimeM5 = 0;
-
-    public long eventCounter = 0;
 
    /**
     * fakeMicrosecondCounter: this is a special feature that
@@ -166,7 +157,6 @@ public class PipelineOrchestrator extends Thread {
 
     @Override
     public void run() {
-
         setRunning(true);
 
         long timeOfLastEvent = System.currentTimeMillis();
@@ -174,29 +164,23 @@ public class PipelineOrchestrator extends Thread {
         while (isRunning()) {
             try {
                 if (queues.rawQueue.size() > 0) {
-
                     BinlogEventV4 event =
                             queues.rawQueue.poll(100, TimeUnit.MILLISECONDS);
 
-                    if (event != null) {
-
-                        timeOfLastEvent = System.currentTimeMillis();
-
-                        eventCounter++;
-
-                        eventsReceivedCounter.mark();
-                        if (!skipEvent(event)) {
-                            calculateAndPropagateChanges(event);
-                            eventsProcessedCounter.mark();
-                        } else {
-                            eventsSkippedCounter.mark();
-                        }
-                        if (eventCounter % 5000 == 0) {
-                            LOGGER.info("Pipeline report: producer rawQueue size => " + queues.rawQueue.size());
-                        }
-                    } else {
+                    if (event == null) {
                         LOGGER.warn("Poll timeout. Will sleep for 1s and try again.");
                         Thread.sleep(1000);
+                        continue;
+                    }
+
+                    timeOfLastEvent = System.currentTimeMillis();
+                    eventsReceivedCounter.mark();
+
+                    if (!skipEvent(event)) {
+                        calculateAndPropagateChanges(event);
+                        eventsProcessedCounter.mark();
+                    } else {
+                        eventsSkippedCounter.mark();
                     }
                 }
                 else {
@@ -251,10 +235,6 @@ public class PipelineOrchestrator extends Thread {
             fakeMicrosecondCounter = 0;
         }
 
-        long tStart;
-        long tEnd;
-        long tDelta;
-
         // Calculate replication delay before the event timestamp is extended with fake miscrosecond part
         replDelay = event.getHeader().getTimestampOfReceipt() - event.getHeader().getTimestamp();
 
@@ -276,11 +256,7 @@ public class PipelineOrchestrator extends Thread {
                     currentTransactionMetadata = new CurrentTransactionMetadata();
                 }
                 else if (isDDL) {
-                    long tStart5 = System.currentTimeMillis();
                     augmentedSchemaChangeEvent = eventAugmenter.transitionSchemaToNextVersion(event);
-                    long tEnd5 = System.currentTimeMillis();
-                    long tDelta5 = tEnd5 - tStart5;
-                    consumerTimeM5 += tDelta5;
                     applier.applyAugmentedSchemaChangeEvent(augmentedSchemaChangeEvent, this);
                 }
                 else {
@@ -355,11 +331,7 @@ public class PipelineOrchestrator extends Thread {
             case MySQLConstants.UPDATE_ROWS_EVENT_V2:
                 fakeMicrosecondCounter++;
                 doTimestampOverride(event);
-                tStart = System.currentTimeMillis();
                 augmentedRowsEvent = eventAugmenter.mapDataEventToSchema((AbstractRowEvent) event, this);
-                tEnd = System.currentTimeMillis();
-                tDelta = tEnd - tStart;
-                consumerTimeM1 += tDelta;
                 applier.applyAugmentedRowsEvent(augmentedRowsEvent,this);
                 updateLastKnownPosition((AbstractRowEvent) event);
                 updateEventCounter.mark();
@@ -369,11 +341,7 @@ public class PipelineOrchestrator extends Thread {
             case MySQLConstants.WRITE_ROWS_EVENT_V2:
                 fakeMicrosecondCounter++;
                 doTimestampOverride(event);
-                tStart = System.currentTimeMillis();
                 augmentedRowsEvent = eventAugmenter.mapDataEventToSchema((AbstractRowEvent) event, this);
-                tEnd = System.currentTimeMillis();
-                tDelta = tEnd - tStart;
-                consumerTimeM1 += tDelta;
                 applier.applyAugmentedRowsEvent(augmentedRowsEvent,this);
                 updateLastKnownPosition((AbstractRowEvent) event);
                 insertEventCounter.mark();
@@ -383,18 +351,14 @@ public class PipelineOrchestrator extends Thread {
             case MySQLConstants.DELETE_ROWS_EVENT_V2:
                 fakeMicrosecondCounter++;
                 doTimestampOverride(event);
-                tStart = System.currentTimeMillis();
                 augmentedRowsEvent = eventAugmenter.mapDataEventToSchema((AbstractRowEvent) event, this);
-                tEnd = System.currentTimeMillis();
-                tDelta = tEnd - tStart;
-                consumerTimeM1 += tDelta;
                 applier.applyAugmentedRowsEvent(augmentedRowsEvent,this);
                 updateLastKnownPosition((AbstractRowEvent) event);
                 deleteEventCounter.mark();
                 break;
 
             case MySQLConstants.XID_EVENT:
-                // Latter we may want to tag previous data events with xid_id
+                // Later we may want to tag previous data events with xid_id
                 // (so we can know if events were in the same transaction).
                 // For now we just increase the counter.
                 fakeMicrosecondCounter++;
@@ -458,29 +422,18 @@ public class PipelineOrchestrator extends Thread {
     }
 
     public boolean isDDL(String querySQL) {
-
-        long tStart = System.currentTimeMillis();
-        boolean isDDL;
         // optimization
         if (querySQL.equals("BEGIN")) {
-            isDDL = false;
-        }
-        else {
-
-            String ddlPattern = "(alter|drop|create|rename|truncate|modify)\\s+(table|column)";
-
-            Pattern p = Pattern.compile(ddlPattern, Pattern.CASE_INSENSITIVE);
-
-            Matcher m = p.matcher(querySQL);
-
-            isDDL = m.find();
+            return false;
         }
 
-        long tEnd = System.currentTimeMillis();
-        long tDelta = tEnd - tStart;
+        String ddlPattern = "(alter|drop|create|rename|truncate|modify)\\s+(table|column)";
 
-        consumerTimeM2 += tDelta;
-        return isDDL;
+        Pattern p = Pattern.compile(ddlPattern, Pattern.CASE_INSENSITIVE);
+
+        Matcher m = p.matcher(querySQL);
+
+        return m.find();
     }
 
     public boolean isBEGIN(String querySQL, boolean isDDL) {
@@ -558,8 +511,6 @@ public class PipelineOrchestrator extends Thread {
      * @throws TableMapException
      */
     public boolean skipEvent(BinlogEventV4 event) throws TableMapException {
-
-        long tStart = System.currentTimeMillis();
         boolean eventIsTracked      = false;
         switch (event.getHeader().getEventType()) {
             // Query Event:
@@ -664,29 +615,15 @@ public class PipelineOrchestrator extends Thread {
                 break;
         }
 
-        boolean skipEvent;
-        skipEvent = !eventIsTracked;
-
-        long tEnd = System.currentTimeMillis();
-        long tDelta = tEnd - tStart;
-        consumerTimeM3 += tDelta;
-
-        return  skipEvent;
+        return !eventIsTracked;
     }
 
     private void doTimestampOverride(BinlogEventV4 event) {
-        long tStart = System.currentTimeMillis();
-
         if (configuration.isInitialSnapshotMode()) {
             doInitialSnapshotEventTimestampOverride(event);
-        }
-        else {
+        } else {
             injectFakeMicroSecondsIntoEventTimestamp(event);
         }
-        long tEnd = System.currentTimeMillis();
-        long tDelta = tEnd - tStart;
-
-        consumerTimeM4 += tDelta;
     }
 
     private void injectFakeMicroSecondsIntoEventTimestamp(BinlogEventV4 event) {

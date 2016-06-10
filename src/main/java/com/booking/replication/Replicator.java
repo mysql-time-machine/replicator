@@ -75,13 +75,11 @@ public class Replicator {
 
         if (configuration.getApplierType().equals("STDOUT")) {
             applier = new STDOUTJSONApplier(
-                    replicatorQueues,
                     configuration
             );
         }
         else if (configuration.getApplierType().toLowerCase().equals("hbase")) {
             applier = new HBaseApplier(
-                    replicatorQueues,
                     configuration.getHBaseQuorum(),
                     configuration
             );

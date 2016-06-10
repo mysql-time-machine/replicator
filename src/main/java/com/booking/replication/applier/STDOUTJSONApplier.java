@@ -35,13 +35,9 @@ public class STDOUTJSONApplier implements Applier  {
     private static final Logger LOGGER = LoggerFactory.getLogger(STDOUTJSONApplier.class);
 
 
-    private final ReplicatorQueues queues;
-
     public STDOUTJSONApplier(
-            ReplicatorQueues repQueues,
             Configuration configuration
         ) {
-        queues = repQueues;
         replicatorConfiguration = configuration;
     }
 

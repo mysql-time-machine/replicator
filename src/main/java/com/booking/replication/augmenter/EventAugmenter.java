@@ -63,7 +63,7 @@ public class EventAugmenter {
      * @return ActiveSchemaVersion
      */
     public ActiveSchemaVersion getActiveSchemaVersion() {
-        return  this.activeSchemaVersion;
+        return activeSchemaVersion;
     }
 
     /**
@@ -85,10 +85,10 @@ public class EventAugmenter {
 
         // 1. make snapshot of active schema before change
         SchemaVersionSnapshot schemaVersionSnapshotBeforeTransition =
-                new SchemaVersionSnapshot(this.activeSchemaVersion);
+                new SchemaVersionSnapshot(activeSchemaVersion);
 
         // 2. transition to the new schema
-        HashMap<String, String> schemaTransitionSequence = this.getDDLFromEvent(event);
+        HashMap<String, String> schemaTransitionSequence = getDDLFromEvent(event);
         if (schemaTransitionSequence != null) {
             // since active schema has a postfix, we need to make sure that queires that
             // specify schema explictly are rewriten so they work properly on active schema
@@ -100,7 +100,7 @@ public class EventAugmenter {
             schemaTransitionSequence.put("ddl", activeSchemaTransitionDDL);
             futureSchemaVersion = activeSchemaVersion.applyDDL(schemaTransitionSequence);
             if (futureSchemaVersion != null) {
-                this.activeSchemaVersion = futureSchemaVersion;
+                activeSchemaVersion = futureSchemaVersion;
             }
             else {
                 throw new SchemaTransitionException("Failed to calculateAndPropagateChanges with DDL statement: " + activeSchemaTransitionDDL);
@@ -112,7 +112,7 @@ public class EventAugmenter {
 
         // 3. snapshot schema after change
         SchemaVersionSnapshot schemaVersionSnapshotAfterTransition =
-                new SchemaVersionSnapshot(this.activeSchemaVersion);
+                new SchemaVersionSnapshot(activeSchemaVersion);
 
         // 4. create & return augmentedSchemaChangeEvent
         String _dbName = ((QueryEvent) event).getDatabaseName().toString();
@@ -319,11 +319,7 @@ public class EventAugmenter {
                 // type cast
                 String value = Converter.orTypeToString(columnValue, columnSchema);
 
-                long tStart = System.currentTimeMillis();
                 augEvent.addColumnDataForInsert(columnName, value);
-                long tEnd = System.currentTimeMillis();
-                long tDelta = tEnd - tStart;
-                caller.consumerTimeM1_WriteV2 += tDelta;
             }
             augEventGroup.addSingleRowEvent(augEvent);
         }

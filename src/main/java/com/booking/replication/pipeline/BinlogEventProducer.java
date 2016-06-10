@@ -2,6 +2,9 @@ package com.booking.replication.pipeline;
 
 import com.booking.replication.Configuration;
 import com.booking.replication.Constants;
+import com.booking.replication.Metrics;
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.Meter;
 import com.google.code.or.OpenReplicator;
 import com.google.code.or.binlog.BinlogEventListener;
 import com.google.code.or.binlog.BinlogEventV4;
@@ -12,6 +15,8 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+
+import static com.codahale.metrics.MetricRegistry.name;
 
 /**
  * Simple wrapper for Open Replicator. Writes events to blocking queue.
@@ -31,6 +36,8 @@ public class BinlogEventProducer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BinlogEventProducer.class);
 
+    private static final Meter producedEvents = Metrics.registry.meter(name("events", "eventsProduced"));
+
     public BinlogEventProducer(BlockingQueue<BinlogEventV4> q, ConcurrentHashMap<Integer, BinlogPositionInfo> chm, Configuration c) {
         this.configuration = c;
         this.queue = q;
@@ -43,6 +50,14 @@ public class BinlogEventProducer {
                 + " }"
         );
         this.or = new OpenReplicator();
+
+        Metrics.registry.register(name("events", "producerBackPressureSleep"),
+                new Gauge<Long>() {
+                    @Override
+                    public Long getValue() {
+                        return backPressureSleep;
+                    }
+                });
     }
 
     public void start() throws Exception {
@@ -71,6 +86,7 @@ public class BinlogEventProducer {
             public void onEvents(BinlogEventV4 event) {
 
                 long start = System.currentTimeMillis();
+                producedEvents.mark();
 
                 // This call is blocking the writes from server side. If time goes above
                 // net_write_timeout (which defaults to 60s) server will drop connection.
@@ -111,6 +127,8 @@ public class BinlogEventProducer {
         or.start();
     }
 
+    private long backPressureSleep = 0;
+
     private void backPressureSleep() {
 
         int qSize = queue.size();
@@ -119,27 +137,26 @@ public class BinlogEventProducer {
 
         // LOGGER.info("qPercent => " + qPercent + "%");
 
-        long preasureSleep = 0;
 
-        if      (qPercent < 30) { preasureSleep = 0;    }
-        else if (qPercent < 40) { preasureSleep = 4;    }
-        else if (qPercent < 50) { preasureSleep = 8;    }
-        else if (qPercent < 60) { preasureSleep = 16;   }
-        else if (qPercent < 70) { preasureSleep = 32;   }
-        else if (qPercent < 75) { preasureSleep = 64;   }
-        else if (qPercent < 80) { preasureSleep = 128;  }
-        else if (qPercent < 85) { preasureSleep = 256;  }
-        else if (qPercent < 90) { preasureSleep = 1024; }
-        else if (qPercent < 95) { preasureSleep = 2048; }
-        else if (qPercent < 95) { preasureSleep = 4096; }
-        else                    { preasureSleep = 8192; }
+        if      (qPercent < 30) { backPressureSleep = 0;    }
+        else if (qPercent < 40) { backPressureSleep = 4;    }
+        else if (qPercent < 50) { backPressureSleep = 8;    }
+        else if (qPercent < 60) { backPressureSleep = 16;   }
+        else if (qPercent < 70) { backPressureSleep = 32;   }
+        else if (qPercent < 75) { backPressureSleep = 64;   }
+        else if (qPercent < 80) { backPressureSleep = 128;  }
+        else if (qPercent < 85) { backPressureSleep = 256;  }
+        else if (qPercent < 90) { backPressureSleep = 1024; }
+        else if (qPercent < 95) { backPressureSleep = 2048; }
+        else if (qPercent < 95) { backPressureSleep = 4096; }
+        else                    { backPressureSleep = 8192; }
 
-        if (preasureSleep > 4000) {
+        if (backPressureSleep > 4000) {
             LOGGER.warn("Queue is getting big, back pressure is getting high");
         }
 
         try {
-            Thread.sleep(preasureSleep);
+            Thread.sleep(backPressureSleep);
         } catch (InterruptedException e) {
             LOGGER.error("Thread wont sleep");
             e.printStackTrace();

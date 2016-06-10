@@ -26,14 +26,8 @@ public class Metrics {
         }
 
         public PerTableMetrics getOrCreate(String key) {
-            PerTableMetrics value;
-            if(! this.containsKey(key)) {
-                value = new Metrics.PerTableMetrics(prefix, key);
-                this.put(key, value);
-            } else {
-                value = super.get(key);
-            }
-            return value;
+            putIfAbsent(key, new Metrics.PerTableMetrics(prefix, key));
+            return get(key);
         }
     }
 

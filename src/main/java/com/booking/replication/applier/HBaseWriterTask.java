@@ -66,42 +66,11 @@ public class HBaseWriterTask implements Callable<TaskResult> {
     @Override
     public TaskResult call() throws Exception {
         try {
-            long numberOfMySQLRowsInTask = 0;
-
-            // for unique rows tracking
-            HashMap<String, HashMap<String, HashMap<String, MutableLong>>> hbaseRowsAffectedPerTable = new HashMap<>();
-
-            HashMap<String, HashMap<String, MutableLong>> taskStatsPerTable = new HashMap<>();
-
-            for (String transactionUUID : taskRowIDS.keySet()) {
-
-                for (String tableName : taskRowIDS.get(transactionUUID).keySet()) {
-
-                    List<String> bufferedMySQLIDs = taskRowIDS.get(transactionUUID).get(tableName);
-
-                    long numberOfBufferedMySQLIDsForTable = bufferedMySQLIDs.size();
-
-                    if (taskStatsPerTable.get("mysql") == null) {
-                        taskStatsPerTable.put("mysql", new HashMap<String, MutableLong>());
-                        taskStatsPerTable.get("mysql").put(tableName, new MutableLong(numberOfBufferedMySQLIDsForTable));
-                    } else if (taskStatsPerTable.get("mysql").get(tableName) == null) {
-                        taskStatsPerTable.get("mysql").put(tableName, new MutableLong(numberOfBufferedMySQLIDsForTable));
-                    } else {
-                        taskStatsPerTable.get("mysql").get(tableName).addValue(numberOfBufferedMySQLIDsForTable);
-                    }
-                    numberOfMySQLRowsInTask += numberOfBufferedMySQLIDsForTable;
-                }
-            }
-
-            LOGGER.info("Metric of rows in task " + taskUUID + " => " + numberOfMySQLRowsInTask);
-
             ChaosMonkey chaosMonkey = new ChaosMonkey();
 
             if (chaosMonkey.feelsLikeThrowingExceptionAfterTaskSubmitted()) {
                 throw new Exception("Chaos monkey exception for submitted task!");
             }
-
-            int taskStatus;
 
             if (chaosMonkey.feelsLikeFailingSubmitedTaskWithoutException()) {
                 return new TaskResult(taskUUID, TaskStatusCatalog.WRITE_FAILED, false);
@@ -144,29 +113,12 @@ public class HBaseWriterTask implements Callable<TaskResult> {
 
                         for (String type: "mirrored delta".split(" ")) {
 
-                            if(!hbaseRowsAffectedPerTable.containsKey(type)) {
-                                hbaseRowsAffectedPerTable.put(type, new HashMap<String, HashMap<String, MutableLong>>());
-                            }
-
-                            HashMap<String, HashMap<String, MutableLong>> rowsAffected = hbaseRowsAffectedPerTable.get(type);
-
                             for (String HBaseTableName : preparedMutations.get(type).keySet()) {
 
                                 List<Put> puts = new ArrayList<>();
 
                                 for (Triple<String, String, Put> augmentedMutation : preparedMutations.get(type).get(HBaseTableName)) {
-
                                     puts.add(augmentedMutation.getThird());
-
-                                    if (rowsAffected.get(HBaseTableName) == null) {
-                                        rowsAffected.put(HBaseTableName, new HashMap<String, MutableLong>());
-                                    }
-
-                                    if (rowsAffected.get(HBaseTableName).get(augmentedMutation.getSecond()) == null) {
-                                        rowsAffected.get(HBaseTableName).put(augmentedMutation.getSecond(), new MutableLong(1L));
-                                    } else {
-                                        rowsAffected.get(HBaseTableName).get(augmentedMutation.getSecond()).addValue(1L);
-                                    }
                                 }
 
                                 if (!DRY_RUN) {
@@ -179,11 +131,8 @@ public class HBaseWriterTask implements Callable<TaskResult> {
                                     numberOfFlushedTablesInCurrentTransaction++;
                                 }
 
-                                Metrics.PerTableMetrics tableMetrics = perHBaseTableCounters.getOrCreate(HBaseTableName);
-                                for (String rowKey : hbaseRowsAffectedPerTable.get(type).get(HBaseTableName).keySet()) {
-                                    tableMetrics.committed.inc(hbaseRowsAffectedPerTable.get(type).get(HBaseTableName).get(rowKey).getValue());
-                                    rowOpsCommittedToHbase.mark(hbaseRowsAffectedPerTable.get(type).get(HBaseTableName).get(rowKey).getValue());
-                                }
+                                perHBaseTableCounters.getOrCreate(HBaseTableName).committed.inc(puts.size());
+                                rowOpsCommittedToHbase.mark(puts.size());
                             }
                         }
                     }
@@ -196,12 +145,10 @@ public class HBaseWriterTask implements Callable<TaskResult> {
                 }
             } // next transaction
 
-            taskStatus = TaskStatusCatalog.WRITE_SUCCEEDED;
-
             // task result
             return new TaskResult(
                     taskUUID,
-                    taskStatus,
+                    TaskStatusCatalog.WRITE_SUCCEEDED,
                     true
             );
         } catch (NullPointerException e) {

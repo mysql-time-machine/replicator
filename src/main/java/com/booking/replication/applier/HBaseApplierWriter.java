@@ -71,13 +71,6 @@ public class HBaseApplierWriter {
             taskTransactionBuffer = new ConcurrentHashMap<>();
 
     /**
-     * helper buffer of the same structure for row-ids only
-     */
-    private final
-            ConcurrentHashMap<String, Map<String, Map<String,List<String>>>>
-            taskRowIDS = new ConcurrentHashMap<>();
-
-    /**
      * Futures grouped by task UUID
      */
     private final
@@ -185,10 +178,7 @@ public class HBaseApplierWriter {
         currentTransactionUUID = UUID.randomUUID().toString();
 
         taskTransactionBuffer.put(currentTaskUUID, new HashMap<String, Map<String, List<AugmentedRow>>>());
-        taskRowIDS.put(currentTaskUUID, new HashMap<String, Map<String, List<String>>>());
-
         taskTransactionBuffer.get(currentTaskUUID).put(currentTransactionUUID, new HashMap<String, List<AugmentedRow>>());
-        taskRowIDS.get(currentTaskUUID).put(currentTransactionUUID, new HashMap<String, List<String>>());
 
         taskStatus.put(currentTaskUUID, TaskStatusCatalog.READY_FOR_BUFFERING);
         transactionStatus.put(currentTransactionUUID, TransactionStatus.OPEN);
@@ -208,21 +198,10 @@ public class HBaseApplierWriter {
             LOGGER.error("ERROR: Missing task UUID from taskTransactionBuffer keySet. Should never happen. Shutting down...");
             System.exit(1);
         }
-        if (taskRowIDS.get(currentTaskUUID) == null) {
-            LOGGER.error("ERROR: Missing task UUID from taskRowIDS keySet. Should never happen. Shutting down...");
-            System.exit(1);
-        }
 
         // Verify that transaction_uuid exists
         if (taskTransactionBuffer.get(currentTaskUUID).get(currentTransactionUUID) == null) {
             LOGGER.error("ERROR: Missing transaction UUID from taskTransactionBuffer keySet. Should never happen. Shutting down...");
-            System.exit(1);
-        }
-        if (taskRowIDS.get(currentTaskUUID).get(currentTransactionUUID) == null) {
-            LOGGER.error("ERROR: Missing transaction UUID from taskRowIDS keySet. Should never happen. Shutting down...");
-            for (String tid : taskRowIDS.get(currentTaskUUID).keySet()) {
-                LOGGER.info("current task => " + currentTaskUUID + ", current tid => " + currentTransactionUUID + ", available tid => " + tid);
-            }
             System.exit(1);
         }
 
@@ -232,19 +211,10 @@ public class HBaseApplierWriter {
         if (taskTransactionBuffer.get(currentTaskUUID).get(currentTransactionUUID).get(mySQLTableName) == null) {
             taskTransactionBuffer.get(currentTaskUUID).get(currentTransactionUUID).put(mySQLTableName, new ArrayList<AugmentedRow>());
         }
-        if (taskRowIDS.get(currentTaskUUID).get(currentTransactionUUID).get(mySQLTableName) == null) {
-            taskRowIDS.get(currentTaskUUID).get(currentTransactionUUID).put(mySQLTableName, new ArrayList<String>());
-        }
 
         // Add to buffer
         for(AugmentedRow augmentedRow : augmentedRows) {
-
             taskTransactionBuffer.get(currentTaskUUID).get(currentTransactionUUID).get(mySQLTableName).add(augmentedRow);
-
-            // calculate the hbRowKey
-            String hbRowKey = HBaseApplierMutationGenerator.getHBaseRowKey(augmentedRow);
-            taskRowIDS.get(currentTaskUUID).get(currentTransactionUUID).get(mySQLTableName).add(hbRowKey);
-
             rowsBufferedInCurrentTask.incrementAndGet();
         }
     }
@@ -260,7 +230,6 @@ public class HBaseApplierWriter {
         // open a new transaction slot and set it as the current transaction
         currentTransactionUUID = UUID.randomUUID().toString();
         taskTransactionBuffer.get(currentTaskUUID).put(currentTransactionUUID, new HashMap<String,List<AugmentedRow>>());
-        taskRowIDS.get(currentTaskUUID).put(currentTransactionUUID, new HashMap<String,List<String>>());
         transactionStatus.put(currentTransactionUUID, TransactionStatus.OPEN);
     }
 
@@ -281,7 +250,6 @@ public class HBaseApplierWriter {
         String newTaskUUID = UUID.randomUUID().toString();
 
         taskTransactionBuffer.put(newTaskUUID, new HashMap<String, Map<String, List<AugmentedRow>>>());
-        taskRowIDS.put(newTaskUUID, new HashMap<String, Map<String, List<String>>>());
 
         // Check if there is an open/unfinished transaction in current UUID task buffer and
         // if so, create/reserve the corresponding transaction UUID in the new UUID task buffer
@@ -298,7 +266,6 @@ public class HBaseApplierWriter {
                     System.exit(-1);
                 }
                 taskTransactionBuffer.get(newTaskUUID).put(transactionUUID, new HashMap<String,List<AugmentedRow>>() );
-                taskRowIDS.get(newTaskUUID).put(transactionUUID, new HashMap<String,List<String>>() );
                 currentTransactionUUID = transactionUUID; // <- important
             }
         }
@@ -353,7 +320,6 @@ public class HBaseApplierWriter {
                         // cant flush empty task
                         taskStatus.remove(taskUUID);
                         taskTransactionBuffer.remove(taskUUID);
-                        taskRowIDS.remove(taskUUID);
                         if (taskFutures.containsKey(taskUUID)) {
                             taskFutures.remove(taskUUID);
                         }
@@ -441,7 +407,7 @@ public class HBaseApplierWriter {
                             throw new Exception("Inconsistent success reports for task " + submittedTaskUUID);
                         }
 
-                        applierTasksSucceededCounter.inc();;
+                        applierTasksSucceededCounter.inc();
 
                         taskStatus.remove(submittedTaskUUID);
 
@@ -449,7 +415,6 @@ public class HBaseApplierWriter {
                         // if there is an open transaction UUID in this task, it has
                         // already been copied to the new/next task
                         taskTransactionBuffer.remove(submittedTaskUUID);
-                        taskRowIDS.remove(submittedTaskUUID);
 
                         // since the task is done, remove the key from the futures hash
                         taskFutures.remove(submittedTaskUUID);
@@ -591,7 +556,6 @@ public class HBaseApplierWriter {
                                 configuration,
                                 hbaseConnection,
                                 taskUUID,
-                                taskRowIDS.get(taskUUID),
                                 taskTransactionBuffer.get(taskUUID)
                         )
                     ));

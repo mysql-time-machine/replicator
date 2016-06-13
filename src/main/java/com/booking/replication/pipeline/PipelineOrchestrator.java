@@ -75,9 +75,6 @@ public class PipelineOrchestrator extends Thread {
 
     private HashMap<String,Boolean> rotateEventAllreadySeenForBinlogFile = new HashMap<>();
 
-    public long consumerStatsNumberOfProcessedRows = 0;
-    public long consumerStatsNumberOfProcessedEvents = 0;
-
    /**
     * fakeMicrosecondCounter: this is a special feature that
     * requires some explanation

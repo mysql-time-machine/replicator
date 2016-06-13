@@ -265,7 +265,6 @@ public class EventAugmenter {
             }
             augEventGroup.addSingleRowEvent(augEvent);
         }
-        caller.consumerStatsNumberOfProcessedEvents++;
 
         return augEventGroup;
     }
@@ -323,7 +322,6 @@ public class EventAugmenter {
             }
             augEventGroup.addSingleRowEvent(augEvent);
         }
-        caller.consumerStatsNumberOfProcessedEvents++;
 
         return augEventGroup;
     }
@@ -359,8 +357,6 @@ public class EventAugmenter {
             augEvent.setEventType("DELETE");
             augEvent.setEventV4Header(deleteRowsEvent.getHeader());
 
-            pipeline.consumerStatsNumberOfProcessedRows++;
-
             //column index counting starts with 1
             for (int columnIndex = 1; columnIndex <= numberOfColumns ; columnIndex++ ) {
 
@@ -378,7 +374,6 @@ public class EventAugmenter {
             }
             augEventGroup.addSingleRowEvent(augEvent);
         }
-        pipeline.consumerStatsNumberOfProcessedEvents++;
 
         return augEventGroup;
     }
@@ -414,8 +409,6 @@ public class EventAugmenter {
             augEvent.setEventType("DELETE");
             augEvent.setEventV4Header(deleteRowsEvent.getHeader());
 
-            caller.consumerStatsNumberOfProcessedRows++;
-
             //column index counting starts with 1
             for (int columnIndex = 1; columnIndex <= numberOfColumns ; columnIndex++ ) {
 
@@ -434,7 +427,6 @@ public class EventAugmenter {
             }
             augEventGroup.addSingleRowEvent(augEvent);
         }
-        caller.consumerStatsNumberOfProcessedEvents++;
 
         return augEventGroup;
     }
@@ -471,8 +463,6 @@ public class EventAugmenter {
             augEvent.setEventType("UPDATE");
             augEvent.setEventV4Header(upEvent.getHeader());
 
-            caller.consumerStatsNumberOfProcessedRows++;
-
             //column index counting starts with 1
             for (int columnIndex = 1; columnIndex <= numberOfColumns ; columnIndex++ ) {
 
@@ -493,7 +483,6 @@ public class EventAugmenter {
             }
             augEventGroup.addSingleRowEvent(augEvent);
         }
-        caller.consumerStatsNumberOfProcessedEvents++;
 
         return augEventGroup;
     }
@@ -531,8 +520,6 @@ public class EventAugmenter {
             augEvent.setEventType("UPDATE");
             augEvent.setEventV4Header(upEvent.getHeader());
 
-            caller.consumerStatsNumberOfProcessedRows++;
-
             //column index counting starts with 1
             for (int columnIndex = 1; columnIndex <= numberOfColumns ; columnIndex++ ) {
 
@@ -557,7 +544,6 @@ public class EventAugmenter {
             }
             augEventGroup.addSingleRowEvent(augEvent);
         }
-        caller.consumerStatsNumberOfProcessedEvents++;
 
         return augEventGroup;
     }

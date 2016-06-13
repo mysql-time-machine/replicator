@@ -40,42 +40,39 @@ public class Main {
 
             configuration.loadStartupParameters(startupParameters);
             configuration.validate();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return;
-        }
 
-        System.out.println("loaded configuration: \n" + configuration.toString());
+            System.out.println("loaded configuration: \n" + configuration.toString());
 
-        CoordinatorInterface coordinator;
-        switch (configuration.getMetadataStoreType()) {
-            case Configuration.METADATASTORE_ZOOKEEPER:
-                coordinator = new ZookeeperCoordinator(configuration);
-                break;
-            case Configuration.METADATASTORE_FILE:
-                coordinator = new FileCoordinator(configuration);
-                break;
-            default:
-                throw new RuntimeException(String.format("Metadata store type not implemented: %s", configuration.getMetadataStoreType()));
-        }
+            CoordinatorInterface coordinator;
+            switch (configuration.getMetadataStoreType()) {
+                case Configuration.METADATASTORE_ZOOKEEPER:
+                    coordinator = new ZookeeperCoordinator(configuration);
+                    break;
+                case Configuration.METADATASTORE_FILE:
+                    coordinator = new FileCoordinator(configuration);
+                    break;
+                default:
+                    throw new RuntimeException(String.format("Metadata store type not implemented: %s", configuration.getMetadataStoreType()));
+            }
 
-        Coordinator.setImplementation(coordinator);
+            Coordinator.setImplementation(coordinator);
 
-        Coordinator.onLeaderElection(
-            new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        Metrics.startReporters(configuration);
-                        new Replicator(configuration).start();
-                    } catch (SQLException | URISyntaxException | IOException e) {
-                        e.printStackTrace();
-                    } catch (Exception e) {
-                        e.printStackTrace();
+            Coordinator.onLeaderElection(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            Metrics.startReporters(configuration);
+                            new Replicator(configuration).start();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
-            }
-        );
-    }
+            );
 
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }

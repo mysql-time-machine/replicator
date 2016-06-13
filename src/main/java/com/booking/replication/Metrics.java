@@ -18,7 +18,7 @@ public class Metrics {
 
     public static class PerTableMetricsHash extends ConcurrentHashMap<String, PerTableMetrics>{
 
-        private String prefix;
+        private final String prefix;
 
         public PerTableMetricsHash(String prefix) {
             super();
@@ -32,11 +32,11 @@ public class Metrics {
     }
 
     public static class PerTableMetrics {
-        public Counter inserted;
-        public Counter processed;
-        public Counter deleted;
-        public Counter updated;
-        public Counter committed;
+        public final Counter inserted;
+        public final Counter processed;
+        public final Counter deleted;
+        public final Counter updated;
+        public final Counter committed;
 
         public PerTableMetrics(String prefix, String tableName) {
             inserted    = Metrics.registry.counter(name(prefix, tableName, "inserted"));

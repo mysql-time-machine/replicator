@@ -28,7 +28,7 @@ public class STDOUTJSONApplier implements Applier  {
     public static final Boolean DATA_OUT = false;
     public static final Boolean SCHEMA_OUT = false;
 
-    private static final HashMap<String, MutableLong> stats = new HashMap<String, MutableLong>();
+    private static final HashMap<String, MutableLong> stats = new HashMap<>();
 
     private final com.booking.replication.Configuration replicatorConfiguration;
 

@@ -26,9 +26,7 @@ public class CMD {
         parser.accepts("delta");
         parser.accepts("initial-snapshot");
 
-        OptionSet options = parser.parse(args);
-
-        return options;
+        return parser.parse(args);
     }
 }
 

@@ -85,7 +85,7 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
         client.createContainers(configuration.getZookeeperPath());
     }
 
-    synchronized public boolean onLeaderElection(Runnable callback) throws InterruptedException {
+    synchronized public void onLeaderElection(Runnable callback) throws InterruptedException {
         LOGGER.info("Waiting to become a leader.");
 
         CoordinatorLeaderElectionListener le = new CoordinatorLeaderElectionListener(client, String.format("%s/master", configuration.getZookeeperPath()), callback);
@@ -94,18 +94,16 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
         while(!isLeader || isRunning) {
             Thread.sleep(1000);
         }
-
-        return true;
     }
 
-    private ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = new ObjectMapper();
 
     @Override
     public String serialize(SafeCheckPoint checkPoint) throws JsonProcessingException {
         return mapper.writeValueAsString(checkPoint);
     }
 
-    private String checkPointPath;
+    private final String checkPointPath;
 
     @Override
     public void storeSafeCheckPoint(SafeCheckPoint safeCheckPoint) throws Exception {

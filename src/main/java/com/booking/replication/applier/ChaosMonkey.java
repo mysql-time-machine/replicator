@@ -15,56 +15,26 @@ public class ChaosMonkey {
     }
 
     public boolean feelsLikeThrowingExceptionAfterTaskSubmitted() {
-        if ( chaosPoint < 15) {
-            return true;
-        }
-        else {
-            return false;
-        }
+        return chaosPoint < 15;
     }
 
     public boolean feelsLikeFailingSubmitedTaskWithoutException() {
-        if ( chaosPoint >= 15 && chaosPoint < 30) {
-            return true;
-        }
-        else {
-            return false;
-        }
+        return chaosPoint >= 15 && chaosPoint < 30;
     }
 
     public boolean feelsLikeThrowingExceptionForTaskInProgress() {
-        if (chaosPoint >= 30 && chaosPoint < 45) {
-            return true;
-        }
-        else {
-            return false;
-        }
+        return chaosPoint >= 30 && chaosPoint < 45;
     }
 
     public boolean feelsLikeFailingTaskInProgessWithoutException() {
-        if (chaosPoint >= 45 && chaosPoint < 60) {
-            return true;
-        }
-        else {
-            return false;
-        }
+        return chaosPoint >= 45 && chaosPoint < 60;
     }
 
     public boolean feelsLikeThrowingExceptionBeforeFlushingData() {
-        if (chaosPoint >= 60 && chaosPoint < 75) {
-            return true;
-        }
-        else {
-            return false;
-        }
+        return chaosPoint >= 60 && chaosPoint < 75;
     }
 
     public boolean feelsLikeFailingDataFlushWithoutException() {
-        if (chaosPoint >= 75 && chaosPoint < 100) {
-            return true;
-        }
-        else {
-            return false;
-        }
+        return chaosPoint >= 75 && chaosPoint < 100;
     }
 }

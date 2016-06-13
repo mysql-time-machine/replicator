@@ -27,7 +27,7 @@ public class AugmentedRow {
 
     private TableSchema tableSchema;
     private String tableName;
-    private List<String> primaryKeyColumns = new ArrayList<String>();
+    private List<String> primaryKeyColumns = new ArrayList<>();
     // eventColumns: {
     //      column_name => $name,
     //          value_before => $1,
@@ -36,7 +36,7 @@ public class AugmentedRow {
     //          type => $type
     //      }
     // }
-    private HashMap<String,Map<String,String>> eventColumns = new HashMap<String, Map<String, String>>();
+    private HashMap<String,Map<String,String>> eventColumns = new HashMap<>();
 
     private String eventType;
 
@@ -86,8 +86,7 @@ public class AugmentedRow {
     }
 
     public String toJSON() {
-        String json = JSONBuilder.dataEventToJSON(this);
-        return json;
+        return JSONBuilder.dataEventToJSON(this);
     }
 
     public String getTableName() {
@@ -124,7 +123,7 @@ public class AugmentedRow {
             throw new TableMapException("Need table schem in order to generate PK list.");
         }
         else {
-            Map<Integer, String> pkColumns = new HashMap<Integer, String>();
+            Map<Integer, String> pkColumns = new HashMap<>();
 
             Set<String> columnNames = tableSchema.getColumnsSchema().keySet();
             for(String columnName: columnNames) {
@@ -140,7 +139,7 @@ public class AugmentedRow {
                 }
             }
 
-            TreeMap<Integer,String> pkColumnSortedByOP= new TreeMap<Integer,String>();
+            TreeMap<Integer,String> pkColumnSortedByOP= new TreeMap<>();
             pkColumnSortedByOP.putAll(pkColumns);
 
             primaryKeyColumns.addAll(pkColumnSortedByOP.values());

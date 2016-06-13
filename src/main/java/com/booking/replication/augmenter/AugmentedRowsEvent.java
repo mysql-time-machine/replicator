@@ -10,7 +10,7 @@ public class AugmentedRowsEvent {
 
     private String mysqlTableName;
 
-    private List<AugmentedRow> singleRowEvents = new ArrayList<AugmentedRow>();
+    private List<AugmentedRow> singleRowEvents = new ArrayList<>();
 
     public void addSingleRowEvent(AugmentedRow au) {
         singleRowEvents.add(au);

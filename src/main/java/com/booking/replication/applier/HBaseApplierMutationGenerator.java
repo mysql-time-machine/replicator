@@ -96,48 +96,79 @@ public class HBaseApplierMutationGenerator {
         String hbaseRowID = getHBaseRowKey(row);
 
         String hbaseTableName =
-                configuration.getHbaseNamespace() + ":" +
-                row.getTableName().toString().toLowerCase();
+                configuration.getHbaseNamespace() + ":" + row.getTableName().toLowerCase();
 
         Put p = new Put(Bytes.toBytes(hbaseRowID));
 
-        if (row.getEventType().equals("DELETE")) {
+        switch (row.getEventType()) {
+            case "DELETE": {
 
-            // No need to process columns on DELETE. Only write delete marker.
+                // No need to process columns on DELETE. Only write delete marker.
 
-            Long columnTimestamp = row.getEventV4Header().getTimestamp();
-            String columnName  = "row_status";
-            String columnValue = "D";
-            p.addColumn(
-                    CF,
-                    Bytes.toBytes(columnName),
-                    columnTimestamp,
-                    Bytes.toBytes(columnValue)
-            );
-        }
-        else if (row.getEventType().equals("UPDATE")) {
+                Long columnTimestamp = row.getEventV4Header().getTimestamp();
+                String columnName = "row_status";
+                String columnValue = "D";
+                p.addColumn(
+                        CF,
+                        Bytes.toBytes(columnName),
+                        columnTimestamp,
+                        Bytes.toBytes(columnValue)
+                );
+                break;
+            }
+            case "UPDATE": {
 
-            // Only write values that have changed
+                // Only write values that have changed
 
-            Long columnTimestamp = row.getEventV4Header().getTimestamp();
-            String columnValue;
+                Long columnTimestamp = row.getEventV4Header().getTimestamp();
+                String columnValue;
 
-            for (String columnName : row.getEventColumns().keySet()) {
+                for (String columnName : row.getEventColumns().keySet()) {
 
-                String valueBefore = row.getEventColumns().get(columnName).get("value_before");
-                String valueAfter  = row.getEventColumns().get(columnName).get("value_after");
+                    String valueBefore = row.getEventColumns().get(columnName).get("value_before");
+                    String valueAfter = row.getEventColumns().get(columnName).get("value_after");
 
-                if ((valueAfter == null) && (valueBefore == null)) {
-                    // no change, skip;
+                    if ((valueAfter == null) && (valueBefore == null)) {
+                        // no change, skip;
+                    } else if (
+                            ((valueBefore == null) && (valueAfter != null))
+                                    ||
+                                    ((valueBefore != null) && (valueAfter == null))
+                                    ||
+                                    (!valueAfter.equals(valueBefore))) {
+
+                        columnValue = valueAfter;
+                        p.addColumn(
+                                CF,
+                                Bytes.toBytes(columnName),
+                                columnTimestamp,
+                                Bytes.toBytes(columnValue)
+                        );
+                    } else {
+                        // no change, skip
+                    }
                 }
-                else if (
-                        ((valueBefore == null) && (valueAfter != null))
-                                ||
-                                ((valueBefore != null) && (valueAfter == null))
-                                ||
-                                (!valueAfter.equals(valueBefore))) {
 
-                    columnValue = valueAfter;
+                p.addColumn(
+                        CF,
+                        Bytes.toBytes("row_status"),
+                        columnTimestamp,
+                        Bytes.toBytes("U")
+                );
+                break;
+            }
+            case "INSERT": {
+
+                Long columnTimestamp = row.getEventV4Header().getTimestamp();
+                String columnValue;
+
+                for (String columnName : row.getEventColumns().keySet()) {
+
+                    columnValue = row.getEventColumns().get(columnName).get("value");
+                    if (columnValue == null) {
+                        columnValue = "NULL";
+                    }
+
                     p.addColumn(
                             CF,
                             Bytes.toBytes(columnName),
@@ -145,53 +176,22 @@ public class HBaseApplierMutationGenerator {
                             Bytes.toBytes(columnValue)
                     );
                 }
-                else {
-                    // no change, skip
-                }
-            }
 
-            p.addColumn(
-                    CF,
-                    Bytes.toBytes("row_status"),
-                    columnTimestamp,
-                    Bytes.toBytes("U")
-            );
-        }
-        else if (row.getEventType().equals("INSERT")) {
-
-            Long columnTimestamp = row.getEventV4Header().getTimestamp();
-            String columnValue;
-
-            for (String columnName : row.getEventColumns().keySet()) {
-
-                columnValue = row.getEventColumns().get(columnName).get("value");
-                if (columnValue == null) {
-                    columnValue = "NULL";
-                }
 
                 p.addColumn(
                         CF,
-                        Bytes.toBytes(columnName),
+                        Bytes.toBytes("row_status"),
                         columnTimestamp,
-                        Bytes.toBytes(columnValue)
+                        Bytes.toBytes("I")
                 );
+                break;
             }
-
-
-            p.addColumn(
-                    CF,
-                    Bytes.toBytes("row_status"),
-                    columnTimestamp,
-                    Bytes.toBytes("I")
-            );
-        }
-        else {
-            LOGGER.error("ERROR: Wrong event type. Expected RowType event. Shutting down...");
-            System.exit(1);
+            default:
+                LOGGER.error("ERROR: Wrong event type. Expected RowType event. Shutting down...");
+                System.exit(1);
         }
 
-        Triple<String,String,Put> tableKeyPut = new Triple<>(hbaseTableName,hbaseRowID,p);
-        return tableKeyPut;
+        return new Triple<>(hbaseTableName,hbaseRowID,p);
     }
 
     private Triple<String,String,Put> getPutForDeltaTable(AugmentedRow row) {
@@ -212,99 +212,102 @@ public class HBaseApplierMutationGenerator {
 
         Put p = new Put(Bytes.toBytes(hbaseRowID));
 
-        if (row.getEventType().equals("DELETE")) {
+        switch (row.getEventType()) {
+            case "DELETE": {
 
-            // For delta tables in case of DELETE, just write a delete marker
+                // For delta tables in case of DELETE, just write a delete marker
 
-            Long columnTimestamp = row.getEventV4Header().getTimestamp();
-            String columnName  = "row_status";
-            String columnValue = "D";
-            p.addColumn(
-                    CF,
-                    Bytes.toBytes(columnName),
-                    columnTimestamp,
-                    Bytes.toBytes(columnValue)
-            );
-        }
-        else if (row.getEventType().equals("UPDATE")) {
-
-            // for delta tables write the latest version of the entire row
-
-            Long columnTimestamp = row.getEventV4Header().getTimestamp();
-            String columnValue;
-
-            for (String columnName : row.getEventColumns().keySet()) {
-
-                String valueAfter  = row.getEventColumns().get(columnName).get("value_after");
-
-                columnValue = valueAfter;
+                Long columnTimestamp = row.getEventV4Header().getTimestamp();
+                String columnName = "row_status";
+                String columnValue = "D";
                 p.addColumn(
                         CF,
                         Bytes.toBytes(columnName),
                         columnTimestamp,
                         Bytes.toBytes(columnValue)
                 );
+                break;
             }
+            case "UPDATE": {
 
-            p.addColumn(
-                    CF,
-                    Bytes.toBytes("row_status"),
-                    columnTimestamp,
-                    Bytes.toBytes("U")
-            );
-        }
-        else if (row.getEventType().equals("INSERT")) {
+                // for delta tables write the latest version of the entire row
 
-            Long columnTimestamp = row.getEventV4Header().getTimestamp();
-            String columnValue;
+                Long columnTimestamp = row.getEventV4Header().getTimestamp();
 
-            for (String columnName : row.getEventColumns().keySet()) {
-
-                columnValue = row.getEventColumns().get(columnName).get("value");
-                if (columnValue == null) {
-                    columnValue = "NULL";
+                for (String columnName : row.getEventColumns().keySet()) {
+                    p.addColumn(
+                            CF,
+                            Bytes.toBytes(columnName),
+                            columnTimestamp,
+                            Bytes.toBytes(row.getEventColumns().get(columnName).get("value_after"))
+                    );
                 }
 
                 p.addColumn(
                         CF,
-                        Bytes.toBytes(columnName),
+                        Bytes.toBytes("row_status"),
                         columnTimestamp,
-                        Bytes.toBytes(columnValue)
+                        Bytes.toBytes("U")
                 );
+                break;
             }
+            case "INSERT": {
 
-            p.addColumn(
-                    CF,
-                    Bytes.toBytes("row_status"),
-                    columnTimestamp,
-                    Bytes.toBytes("I")
-            );
-        }
-        else {
-            LOGGER.error("ERROR: Wrong event type. Expected RowType event. Shutting down...");
-            System.exit(1);
+                Long columnTimestamp = row.getEventV4Header().getTimestamp();
+                String columnValue;
+
+                for (String columnName : row.getEventColumns().keySet()) {
+
+                    columnValue = row.getEventColumns().get(columnName).get("value");
+                    if (columnValue == null) {
+                        columnValue = "NULL";
+                    }
+
+                    p.addColumn(
+                            CF,
+                            Bytes.toBytes(columnName),
+                            columnTimestamp,
+                            Bytes.toBytes(columnValue)
+                    );
+                }
+
+                p.addColumn(
+                        CF,
+                        Bytes.toBytes("row_status"),
+                        columnTimestamp,
+                        Bytes.toBytes("I")
+                );
+                break;
+            }
+            default:
+                LOGGER.error("ERROR: Wrong event type. Expected RowType event. Shutting down...");
+                System.exit(1);
         }
 
-        Triple<String,String,Put> tableKeyPut = new Triple<>(deltaTableName,hbaseRowID,p);
-        return tableKeyPut;
+        return new Triple<>(deltaTableName,hbaseRowID,p);
     }
 
     public static String getHBaseRowKey(AugmentedRow row) {
         // RowID
         List<String> pkColumnNames  = row.getPrimaryKeyColumns(); // <- this is sorted by column OP (from information schema)
-        List<String> pkColumnValues = new ArrayList<String>();
+        List<String> pkColumnValues = new ArrayList<>();
 
         for (String pkColumnName : pkColumnNames) {
 
             Map<String, String> pkCell = row.getEventColumns().get(pkColumnName);
 
-            if (row.getEventType().equals("INSERT") || row.getEventType().equals("DELETE")) {
-                pkColumnValues.add(pkCell.get("value"));
-            } else if (row.getEventType().equals("UPDATE")) {
-                pkColumnValues.add(pkCell.get("value_after"));
-            } else {
-                LOGGER.error("Wrong event type. Expected RowType event.");
-                // TODO: throw WrongEventTypeException
+            switch (row.getEventType()) {
+                case "INSERT":
+                case "DELETE":
+                    pkColumnValues.add(pkCell.get("value"));
+                    break;
+                case "UPDATE":
+                    pkColumnValues.add(pkCell.get("value_after"));
+                    break;
+                default:
+                    LOGGER.error("Wrong event type. Expected RowType event.");
+                    // TODO: throw WrongEventTypeException
+                    break;
             }
         }
 
@@ -346,8 +349,6 @@ public class HBaseApplierMutationGenerator {
                 + ("00" + byte_4_hex).substring(byte_4_hex.length())
                 ;
 
-        String saltedRowKey = salt + ";" + hbaseRowID;
-
-        return saltedRowKey;
+        return salt + ";" + hbaseRowID;
     }
 }

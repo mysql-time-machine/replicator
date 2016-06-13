@@ -7,7 +7,7 @@ import com.booking.replication.checkpoints.SafeCheckPoint;
  */
 public interface CoordinatorInterface {
 
-    public boolean onLeaderElection(Runnable callback) throws InterruptedException;
+    public void onLeaderElection(Runnable callback) throws InterruptedException;
 
     public void storeSafeCheckPoint(SafeCheckPoint safeCheckPoint) throws Exception;
 

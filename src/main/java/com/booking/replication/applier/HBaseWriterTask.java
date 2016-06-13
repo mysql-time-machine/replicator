@@ -29,15 +29,15 @@ public class HBaseWriterTask implements Callable<TaskResult> {
 
     private static final boolean DRY_RUN = false;
 
-    private String taskUUID;
+    private final String taskUUID;
 
     private static final Counter applierTasksInProgressCounter = Metrics.registry.counter(name("HBase", "applierTasksInProgressCounter"));
     private static final Meter rowOpsCommittedToHbase = Metrics.registry.meter(name("HBase", "rowOpsCommittedToHbase"));
 
     private static final Metrics.PerTableMetricsHash perHBaseTableCounters = new Metrics.PerTableMetricsHash("HBase");
 
-    private Configuration configuration;
-    private Connection hbaseConnection;
+    private final Configuration configuration;
+    private final Connection hbaseConnection;
 
     public HBaseWriterTask(
             Configuration config,

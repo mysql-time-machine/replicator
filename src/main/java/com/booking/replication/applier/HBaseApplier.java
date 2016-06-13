@@ -60,7 +60,7 @@ public class HBaseApplier implements Applier {
             String                                ZOOKEEPER_QUORUM,
             com.booking.replication.Configuration repCfg
 
-        ) throws IOException {
+        ) {
 
         configuration     = repCfg;
 

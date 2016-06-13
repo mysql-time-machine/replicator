@@ -37,6 +37,7 @@ public class Overseer extends Thread {
                 Thread.sleep(1000);
                 makeSureProducerIsRunning();
                 // TODO: add status checks for pipelineOrchestrator and applier
+//                makeSurePipelineIsRunning();
 
             } catch (InterruptedException e) {
                 LOGGER.error("Overseer thread interrupted", e);
@@ -53,6 +54,15 @@ public class Overseer extends Thread {
         doMonitor = true;
     }
 
+    //todo: Make this check better
+    private void makeSurePipelineIsRunning() {
+        if(!pipelineOrchestrator.isRunning()) {
+            LOGGER.info("PipelineOrchestrator is not running!");
+        } else {
+            System.exit(-1);
+        }
+    }
+
     private void makeSureProducerIsRunning() {
         if (!producer.getOr().isRunning()) {
             LOGGER.warn("Producer stopped running. OR position: "
@@ -61,7 +71,10 @@ public class Overseer extends Thread {
                     + lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogPosition()
                     + "Trying to restart it...");
             try {
-                BinlogPositionInfo lastMapEventFakeMCounter = lastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION_FAKE_MICROSECONDS_COUNTER);
+
+                //todo: Investigate potential race condition in setting the microsecond counter,
+                //the PO may still have queued up events when this reset happens
+                BinlogPositionInfo lastMapEventFakeMCounter = lastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION);
                 Long   lastFakeMCounter = lastMapEventFakeMCounter.getFakeMicrosecondsCounter();
 
                 PipelineOrchestrator.setFakeMicrosecondCounter(lastFakeMCounter);

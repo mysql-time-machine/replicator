@@ -98,6 +98,7 @@ public class PipelineOrchestrator extends Thread {
     }
 
     public static void setFakeMicrosecondCounter(Long fakeMicrosecondCounter) {
+        LOGGER.info(String.format("Setting fake microsecond counter to: %s (was: %s)", fakeMicrosecondCounter, PipelineOrchestrator.fakeMicrosecondCounter));
         PipelineOrchestrator.fakeMicrosecondCounter = fakeMicrosecondCounter;
     }
 
@@ -315,7 +316,7 @@ public class PipelineOrchestrator extends Thread {
                             }
                         }
                     }
-                    updateLastKnownPositionForMapEvent((TableMapEvent) event);
+                    updateLastKnownPositionForMapEvent((TableMapEvent) event, fakeMicrosecondCounter);
                 }
                 catch (Exception e) {
                     LOGGER.error("Could not execute mapEvent block. Requesting replicator shutdown...", e);
@@ -647,7 +648,7 @@ public class PipelineOrchestrator extends Thread {
         }
     }
 
-    private void updateLastKnownPositionForMapEvent(TableMapEvent event) {
+    private void updateLastKnownPositionForMapEvent(TableMapEvent event, long fakeMicrosecondCounter) {
 
         String lastBinlogFileName;
         if (binlogPositionLastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION) != null) {
@@ -665,7 +666,8 @@ public class PipelineOrchestrator extends Thread {
                 Constants.LAST_KNOWN_MAP_EVENT_POSITION,
                 new BinlogPositionInfo(
                         event.getBinlogFilename(),
-                        event.getHeader().getPosition()
+                        event.getHeader().getPosition(),
+                        fakeMicrosecondCounter
                 )
         );
 

@@ -43,7 +43,7 @@ public class SetColumnSchema extends ColumnSchema {
 
     public String getSetMembersFromNumericValue(long setNumericValue) {
         // TODO: handle case when enum value is NULL
-        List<String> items = new ArrayList<String>();
+        List<String> items = new ArrayList<>();
         if (setNumericValue == 0) {
             return "";
         }

@@ -44,7 +44,7 @@ public class Replicator {
         ReplicatorQueues replicatorQueues = new ReplicatorQueues();
 
         // Position Tracking
-        ConcurrentHashMap<Integer, BinlogPositionInfo> lastKnownInfo = new ConcurrentHashMap<Integer, BinlogPositionInfo>();
+        ConcurrentHashMap<Integer, BinlogPositionInfo> lastKnownInfo = new ConcurrentHashMap<>();
         BinlogPositionInfo position;
 
         if(configuration.getStartingBinlogFileName() != null) {

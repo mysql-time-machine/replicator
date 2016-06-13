@@ -107,7 +107,7 @@ public class PipelineOrchestrator extends Thread {
             ConcurrentHashMap<Integer, BinlogPositionInfo> chm,
             Configuration                     repcfg,
             Applier                           applier
-        ) throws SQLException, URISyntaxException, IOException {
+        ) throws SQLException, URISyntaxException {
 
         queues = repQueues;
         configuration = repcfg;
@@ -250,7 +250,6 @@ public class PipelineOrchestrator extends Thread {
                     applier.applyCommitQueryEvent((QueryEvent) event);
                 }
                 else if (isBEGIN(querySQL, isDDL)) {
-                    currentTransactionMetadata = null;
                     currentTransactionMetadata = new CurrentTransactionMetadata();
                 }
                 else if (isDDL) {
@@ -363,7 +362,6 @@ public class PipelineOrchestrator extends Thread {
                 doTimestampOverride(event);
                 applier.applyXIDEvent((XidEvent) event);
                 XIDCounter.mark();
-                currentTransactionMetadata = null;
                 currentTransactionMetadata = new CurrentTransactionMetadata();
                 break;
 
@@ -508,7 +506,7 @@ public class PipelineOrchestrator extends Thread {
      * @return shouldSkip Weather event should be skipped or processed
      * @throws TableMapException
      */
-    public boolean skipEvent(BinlogEventV4 event) throws TableMapException {
+    public boolean skipEvent(BinlogEventV4 event) {
         boolean eventIsTracked      = false;
         switch (event.getHeader().getEventType()) {
             // Query Event:
@@ -560,7 +558,7 @@ public class PipelineOrchestrator extends Thread {
                 }
                 else {
                     // TODO: handle View statement
-                    // LOGGER.warn("Received non-DDL, non-COMMIT, non-BEGIN query: " + querySQL);
+//                     LOGGER.warn("Received non-DDL, non-COMMIT, non-BEGIN query: " + querySQL);
                 }
                 break;
 

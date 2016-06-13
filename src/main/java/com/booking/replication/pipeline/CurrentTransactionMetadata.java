@@ -17,16 +17,16 @@ import java.util.TimeZone;
  */
 public class CurrentTransactionMetadata {
 
-    private Map<Long,String> tableID2Name = new HashMap<Long,String>();
+    private Map<Long,String> tableID2Name = new HashMap<>();
     private Map<Long, String> tableID2DBName = new HashMap<>();
 
     private TableMapEvent firstMapEventInTransaction = null;
 
-    private final Map<String, TableMapEvent> currentTransactionTableMapEvents = new HashMap<String,TableMapEvent>();
+    private final Map<String, TableMapEvent> currentTransactionTableMapEvents = new HashMap<>();
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CurrentTransactionMetadata.class);
 
-    public void updateCache(TableMapEvent event) throws IOException, TableMapException {
+    public void updateCache(TableMapEvent event) {
 
         if (firstMapEventInTransaction == null) {
             firstMapEventInTransaction = event;
@@ -45,8 +45,6 @@ public class CurrentTransactionMetadata {
         );
 
         currentTransactionTableMapEvents.put(tableName, event);
-
-        return;
     }
 
     public String getTableNameFromID (Long tableID) throws TableMapException {

@@ -24,7 +24,7 @@ public class StartupParameters {
 
     private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(StartupParameters.class);
 
-    public StartupParameters(OptionSet o) throws MissingArgumentException {
+    public StartupParameters(OptionSet o) {
 
         // use delta tables
         deltaTables = o.has("delta");
@@ -36,7 +36,7 @@ public class StartupParameters {
         if (o.hasArgument("schema")) {
             schema = o.valueOf("schema").toString();
             // shards can be specified in config file as ${schema_name}${shard_id}
-            String maybeNumber = (new String(schema)).replaceAll("[A-Za-z]", "");
+            String maybeNumber = schema.replaceAll("[A-Za-z]", "");
             shard = StringUtils.isNotBlank(maybeNumber) ? Integer.parseInt(maybeNumber) : 0;
             schema = schema.replaceAll("[0-9]","");
         }

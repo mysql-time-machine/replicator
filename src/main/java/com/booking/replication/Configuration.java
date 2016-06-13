@@ -87,7 +87,7 @@ public class Configuration {
     public static final int METADATASTORE_FILE      = 2;
 
     public int getMetadataStoreType() {
-        if(this.metadata_store.zookeeper != null) {
+        if(metadata_store.zookeeper != null) {
             return METADATASTORE_ZOOKEEPER;
         } else if (this.metadata_store.file != null) {
             return METADATASTORE_FILE;
@@ -137,7 +137,7 @@ public class Configuration {
 
         applierType = startupParameters.getApplier();
 
-        if(applierType == "hbase" && hbase == null) {
+        if(applierType.equals("hbase") && hbase == null) {
             throw new RuntimeException("HBase not configured");
         }
 
@@ -178,7 +178,7 @@ public class Configuration {
                     "either zookeeper or file-based metadata storage.");
         }
 
-        if(applierType == "hbase") {
+        if(applierType.equals("hbase")) {
             if(hbase.namespace == null) {
                 throw new RuntimeException("HBase namespace cannot be null.");
             }

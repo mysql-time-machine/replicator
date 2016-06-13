@@ -43,22 +43,14 @@ public class HBaseWriterTask implements Callable<TaskResult> {
             Configuration config,
             Connection conn,
             String id,
-            Map<String, Map<String, List<String>>> taskRows,
             Map<String, Map<String, List<AugmentedRow>>> taskBuffer
     ) {
         super();
         configuration = config;
         hbaseConnection = conn;
         taskUUID = id;
-        taskRowIDS = taskRows;
         taskTransactionBuffer = taskBuffer;
     }
-
-    /**
-     * helper buffer of the same structure for row-ids only
-     */
-    private Map<String, Map<String,List<String>>>
-            taskRowIDS = new ConcurrentHashMap<>();
 
     private Map<String, Map<String,List<AugmentedRow>>>
             taskTransactionBuffer = new ConcurrentHashMap<>();

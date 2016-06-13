@@ -15,7 +15,7 @@ import java.io.IOException;
  */
 public interface Applier {
 
-    void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedSingleRowEvent, PipelineOrchestrator caller);
+    void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedSingleRowEvent, PipelineOrchestrator caller) throws IOException;
 
     void applyCommitQueryEvent(QueryEvent event);
 

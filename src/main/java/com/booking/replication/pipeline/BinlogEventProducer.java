@@ -39,9 +39,9 @@ public class BinlogEventProducer {
     private static final Meter producedEvents = Metrics.registry.meter(name("events", "eventsProduced"));
 
     public BinlogEventProducer(BlockingQueue<BinlogEventV4> q, ConcurrentHashMap<Integer, BinlogPositionInfo> chm, Configuration c) {
-        configuration = c;
-        queue = q;
-        lastKnownInfo = chm;
+        this.configuration = c;
+        this.queue = q;
+        this.lastKnownInfo = chm;
         LOGGER.info("Created producer with lastKnownInfo position => { "
                 + " binlogFileName => "
                 +   lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogFilename()
@@ -49,7 +49,7 @@ public class BinlogEventProducer {
                 +   lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogPosition()
                 + " }"
         );
-        or = new OpenReplicator();
+        this.or = new OpenReplicator();
 
         Metrics.registry.register(name("events", "producerBackPressureSleep"),
                 new Gauge<Long>() {
@@ -62,11 +62,11 @@ public class BinlogEventProducer {
 
     public void start() throws Exception {
         // init
-        or.setUser(configuration.getReplicantDBUserName());
-        or.setPassword(configuration.getReplicantDBPassword());
-        or.setHost(configuration.getReplicantDBActiveHost());
-        or.setPort(configuration.getReplicantPort());
-        or.setServerId(configuration.getReplicantDBServerID());
+        or.setUser(this.configuration.getReplicantDBUserName());
+        or.setPassword(this.configuration.getReplicantDBPassword());
+        or.setHost(this.configuration.getReplicantDBActiveHost());
+        or.setPort(this.configuration.getReplicantPort());
+        or.setServerId(this.configuration.getReplicantDBServerID());
 
         or.setBinlogPosition(lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogPosition());
         or.setBinlogFileName(lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogFilename());
@@ -84,6 +84,8 @@ public class BinlogEventProducer {
         or.setBinlogEventListener(new BinlogEventListener() {
 
             public void onEvents(BinlogEventV4 event) {
+
+                long start = System.currentTimeMillis();
                 producedEvents.mark();
 
                 // This call is blocking the writes from server side. If time goes above
@@ -116,6 +118,9 @@ public class BinlogEventProducer {
                         }
                     }
                 }
+
+                long end = System.currentTimeMillis();
+                long diff = end - start;
             }
         });
 
@@ -129,6 +134,9 @@ public class BinlogEventProducer {
         int qSize = queue.size();
 
         int qPercent = (int) (100 * ((float) qSize / Constants.MAX_RAW_QUEUE_SIZE));
+
+        // LOGGER.info("qPercent => " + qPercent + "%");
+
 
         if      (qPercent < 30) { backPressureSleep = 0;    }
         else if (qPercent < 40) { backPressureSleep = 4;    }
@@ -155,7 +163,7 @@ public class BinlogEventProducer {
         }
     }
 
-    public void startOpenReplicatorFromLastKnownMapEventPosition() throws Exception {
+    public void startOpenReplicatorFromLastKnownMapEventPosition() throws Exception, java.net.ConnectException {
         if (or != null) {
             if (!or.isRunning()) {
                 if (lastKnownInfo != null) {
@@ -171,10 +179,10 @@ public class BinlogEventProducer {
                                     + " }"
                             );
                             this.or.setBinlogFileName(
-                                    lastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION).getBinlogFilename()
+                                    ((BinlogPositionInfo) lastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION)).getBinlogFilename()
                             );
                             this.or.setBinlogPosition(
-                                    lastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION).getBinlogPosition()
+                                    ((BinlogPositionInfo) lastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION)).getBinlogPosition()
                             );
                             this.or.start();
                         }

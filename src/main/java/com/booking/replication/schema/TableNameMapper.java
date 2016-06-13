@@ -44,11 +44,13 @@ public class TableNameMapper {
             suffix = sdf.format(resultDate);
         }
 
-        return "delta:" + replicantNamespace.toLowerCase() + "_" + mysqlTableName.toLowerCase() + "_" + suffix;
+        String currentDeltaTable = "delta:" + replicantNamespace.toLowerCase() + "_" + mysqlTableName.toLowerCase() + "_" + suffix;
+        return currentDeltaTable;
     }
 
     public static String mysqlTableNameToHBaseTableName(String schemaName, String mysqlTableName) {
-        return schemaName.toLowerCase() + ":" + mysqlTableName.toLowerCase();
+        String hbaseTableName = schemaName.toLowerCase() + ":" + mysqlTableName.toLowerCase();
+        return hbaseTableName;
     }
 
 }

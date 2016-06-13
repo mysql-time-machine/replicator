@@ -30,14 +30,14 @@ public class ActiveSchemaVersion {
     private final String INFORMATION_SCHEMA_SQL =
             "SELECT * FROM `information_schema`.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?";
 
-    private final HashMap<String,String> activeSchemaCreateStatements = new HashMap<>();
-    private final HashMap<String,TableSchema> activeSchemaTables      = new HashMap<>();
+    private final HashMap<String,String> activeSchemaCreateStatements = new HashMap<String,String>();
+    private final HashMap<String,TableSchema> activeSchemaTables      = new HashMap<String, TableSchema>();
 
     private final Configuration configuration;
 
     // TODO: refactor this so that datasource is passed in constructor
     //       so that same pool is shared for different objects
-    private final BasicDataSource activeSchemaDataSource;
+    private BasicDataSource activeSchemaDataSource;
     private static final Logger LOGGER = LoggerFactory.getLogger(ActiveSchemaVersion.class);
 
     public ActiveSchemaVersion(Configuration replicatorConfiguration) throws SQLException, URISyntaxException {
@@ -52,15 +52,15 @@ public class ActiveSchemaVersion {
         activeSchemaDataSource.setUsername(replicatorConfiguration.getActiveSchemaUserName());
         activeSchemaDataSource.setPassword(replicatorConfiguration.getActiveSchemaPassword());
 
-        configuration = replicatorConfiguration;
+        this.configuration = replicatorConfiguration;
 
-        loadActiveSchema();
+        this.loadActiveSchema();
 
         LOGGER.info("Successfully loaded ActiveSchemaVersion");
     }
 
     public void loadActiveSchema()
-            throws SQLException {
+            throws SQLException, URISyntaxException {
 
         Connection con = null;
 
@@ -72,7 +72,7 @@ public class ActiveSchemaVersion {
             ResultSet         showTables_ResultSet         = showTables_Statement.executeQuery(SHOW_TABLES_SQL);
             ResultSetMetaData showTables_ResultSetMetaData = showTables_ResultSet.getMetaData();
 
-            List<String> tableNames = new ArrayList<>();
+            List<String> tableNames = new ArrayList<String>();
             while(showTables_ResultSet.next()){
 
                 int columnCount = showTables_ResultSetMetaData.getColumnCount();
@@ -124,6 +124,8 @@ public class ActiveSchemaVersion {
 
                 ResultSet getTableInfo_ResultSet =
                         getTableInfo_Statement.executeQuery();
+                ResultSetMetaData getTableInfo_ResultSetMetadata =
+                        getTableInfo_ResultSet.getMetaData();
 
                 while (getTableInfo_ResultSet.next()) {
 
@@ -172,7 +174,7 @@ public class ActiveSchemaVersion {
     }
 
     public HashMap<String, String> getActiveSchemaCreateStatements() {
-        return activeSchemaCreateStatements;
+        return this.activeSchemaCreateStatements;
     }
 
     /**
@@ -218,6 +220,9 @@ public class ActiveSchemaVersion {
             LOGGER.info("Successfully loaded new active schema version");
 
         } catch (SQLException e) {
+            e.printStackTrace();
+            LOGGER.error("FATAL: failed to execute DDL statement on active schema.", e);
+        } catch (URISyntaxException e) {
             e.printStackTrace();
             LOGGER.error("FATAL: failed to execute DDL statement on active schema.", e);
         } finally{

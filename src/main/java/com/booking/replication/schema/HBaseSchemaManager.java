@@ -24,7 +24,7 @@ public class HBaseSchemaManager {
 
     private static final Configuration hbaseConf = HBaseConfiguration.create();
 
-    private static Map<String, Integer> knownHBaseTables = new HashMap<>();
+    private static Map<String, Integer> knownHBaseTables = new HashMap<String,Integer>();
 
     private static Connection connection;
 
@@ -148,7 +148,12 @@ public class HBaseSchemaManager {
     }
 
     public boolean isTableKnownToHBase(String tableName) {
-        return knownHBaseTables.get(tableName) != null;
+        if (knownHBaseTables.get(tableName) != null) {
+            return true;
+        }
+        else {
+            return false;
+        }
     }
 
     public void writeSchemaSnapshotToHBase(AugmentedSchemaChangeEvent e, com.booking.replication.Configuration configuration) {
@@ -180,7 +185,7 @@ public class HBaseSchemaManager {
         String hbaseTableName = "schema_history:" + mySQLDBName.toLowerCase();
         int shard = configuration.getReplicantShardID();
         if (shard > 0) {
-            hbaseTableName += shard;
+            hbaseTableName = hbaseTableName + shard;
         }
 
         String hbaseRowKey = eventTimestamp.toString();

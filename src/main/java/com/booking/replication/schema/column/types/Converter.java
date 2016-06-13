@@ -86,7 +86,8 @@ public class Converter {
             }
             else {
                 // Ordinary Binary BLOB - convert to HEX string
-                return blobToHexString(bytes);
+                String stringValue = blobToHexString(bytes);
+                return stringValue;
             }
         }
 
@@ -148,7 +149,8 @@ public class Converter {
             long setValue = sc.getValue();
             if (columnSchema instanceof SetColumnSchema) {
                 try {
-                    return ((SetColumnSchema) columnSchema).getSetMembersFromNumericValue(setValue);
+                    String setStringValue = ((SetColumnSchema) columnSchema).getSetMembersFromNumericValue(setValue);
+                    return setStringValue;
                 }
                 catch (Exception e) {
                     e.printStackTrace();
@@ -166,7 +168,8 @@ public class Converter {
             if (columnSchema instanceof EnumColumnSchema) {
 
                 try {
-                    return ((EnumColumnSchema) columnSchema).getEnumValueFromIndex(enumIntValue);
+                    String enumStringValue = ((EnumColumnSchema) columnSchema).getEnumValueFromIndex(enumIntValue);
+                    return enumStringValue;
                 }
                 catch (Exception e) {
                     e.printStackTrace();
@@ -373,7 +376,7 @@ public class Converter {
         for ( final byte b : raw ) {
             int i = b & 0xFF;
             if (i < 16 ) {
-                 hex.append("0").append(Integer.toHexString(i).toUpperCase());
+                 hex.append("0" + Integer.toHexString(i).toUpperCase());
             }
             else {
                 hex.append(Integer.toHexString(i).toUpperCase());

@@ -9,13 +9,13 @@ public class TableSchema {
 
     private HashMap<String,ColumnSchema> columns;
 
-    private HashMap<Integer,String> columnIndexToColumnNameMap = new HashMap<>();
+    private HashMap<Integer,String> columnIndexToColumnNameMap = new HashMap<Integer,String>();
 
     // TODO: load table CHARACTER_SET_NAME
     private String CHARACTER_SET_NAME;
 
     public TableSchema() {
-        columns = new HashMap<>();
+        columns = new HashMap<String, ColumnSchema>();
     }
 
     public void addColumn(ColumnSchema columnSchema)
@@ -29,12 +29,14 @@ public class TableSchema {
     }
 
     public ColumnSchema getColumnSchemaByColumnName(String columnName) {
-        return this.columns.get(columnName);
+        ColumnSchema c = this.columns.get(columnName);
+        return c;
     }
 
     public ColumnSchema getColumnSchemaByColumnIndex(Integer columnIndex) {
-        String columnName = getColumnIndexToNameMap().get(columnIndex);
-        return columns.get(columnName);
+        String columnName = this.getColumnIndexToNameMap().get(columnIndex);
+        ColumnSchema c = this.columns.get(columnName);
+        return c;
     }
 
     public HashMap<String, ColumnSchema> getColumnsSchema() {

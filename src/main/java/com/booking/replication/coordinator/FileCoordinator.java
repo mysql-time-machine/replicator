@@ -31,9 +31,10 @@ public class FileCoordinator implements CoordinatorInterface {
     }
 
     @Override
-    public void onLeaderElection(Runnable callback) throws InterruptedException {
+    public boolean onLeaderElection(Runnable callback) throws InterruptedException {
         callback.run();
         callback.wait();
+        return true;
     }
 
     private ObjectMapper mapper = new ObjectMapper();
@@ -46,26 +47,28 @@ public class FileCoordinator implements CoordinatorInterface {
     @Override
     public void storeSafeCheckPoint(SafeCheckPoint safeCheckPoint) throws Exception {
         checkPoint = safeCheckPoint;
-        Path tempFile = Files.createTempFile(checkPointPath.getParent(), null, ".replicator");
-
         try {
             String serialized = serialize(checkPoint);
 
             LOGGER.info(String.format("Serialized checkpoint: %s", serialized));
+
+            Path tempFile = Files.createTempFile(checkPointPath.getParent(), null, ".replicator");
             LOGGER.debug(String.format("Creating file: %s", tempFile.getFileName()));
 
             BufferedWriter writer = Files.newBufferedWriter(tempFile, Charset.forName("UTF-8"));
-            writer.write(serialized, 0, serialized.length());
+            try {
+                writer.write(serialized, 0, serialized.length());
+            } catch (IOException e) {
+                LOGGER.error(String.format("Got an error while trying to write: %s (%s)", tempFile.getFileName(), e.getMessage()));
+                e.printStackTrace();
+                throw e;
+            }
             writer.flush();
             writer.close();
 
             if(!tempFile.toFile().renameTo(checkPointPath.toFile())){
                 throw new RuntimeException(String.format("Failed to rename the metadata file to: %s", checkPointPath));
             }
-        } catch (IOException e) {
-            LOGGER.error(String.format("Got an error while trying to write: %s (%s)", tempFile.getFileName(), e.getMessage()));
-            e.printStackTrace();
-            throw e;
         } catch (Exception e) {
             e.printStackTrace();
             throw e;

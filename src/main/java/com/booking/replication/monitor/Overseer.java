@@ -64,7 +64,7 @@ public class Overseer extends Thread {
     }
 
     private void makeSureProducerIsRunning() {
-        if (!producer.getOr().isRunning()) {
+        if (!producer.getOpenReplicator().isRunning()) {
             LOGGER.warn("Producer stopped running. OR position: "
                     + lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogFilename()
                     + ":"
@@ -81,9 +81,9 @@ public class Overseer extends Thread {
 
                 producer.startOpenReplicatorFromLastKnownMapEventPosition();
                 LOGGER.info("Restarted open replicator to run from position "
-                        + producer.getOr().getBinlogFileName()
+                        + producer.getOpenReplicator().getBinlogFileName()
                         + ":"
-                        + producer.getOr().getBinlogPosition()
+                        + producer.getOpenReplicator().getBinlogPosition()
                 );
             }
             catch (ConnectException e) {

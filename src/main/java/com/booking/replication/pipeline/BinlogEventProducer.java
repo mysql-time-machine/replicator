@@ -29,7 +29,7 @@ public class BinlogEventProducer {
 
     private final ConcurrentHashMap<Integer,BinlogPositionInfo> lastKnownInfo;
 
-    private final OpenReplicator or;
+    private final OpenReplicator openReplicator;
     private final Configuration configuration;
 
     private long opCounter = 0;
@@ -49,7 +49,7 @@ public class BinlogEventProducer {
                 +   lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogPosition()
                 + " }"
         );
-        or = new OpenReplicator();
+        openReplicator = new OpenReplicator();
 
         Metrics.registry.register(name("events", "producerBackPressureSleep"),
                 new Gauge<Long>() {
@@ -62,26 +62,26 @@ public class BinlogEventProducer {
 
     public void start() throws Exception {
         // init
-        or.setUser(configuration.getReplicantDBUserName());
-        or.setPassword(configuration.getReplicantDBPassword());
-        or.setHost(configuration.getReplicantDBActiveHost());
-        or.setPort(configuration.getReplicantPort());
-        or.setServerId(configuration.getReplicantDBServerID());
+        openReplicator.setUser(configuration.getReplicantDBUserName());
+        openReplicator.setPassword(configuration.getReplicantDBPassword());
+        openReplicator.setHost(configuration.getReplicantDBActiveHost());
+        openReplicator.setPort(configuration.getReplicantPort());
+        openReplicator.setServerId(configuration.getReplicantDBServerID());
 
-        or.setBinlogPosition(lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogPosition());
-        or.setBinlogFileName(lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogFilename());
+        openReplicator.setBinlogPosition(lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogPosition());
+        openReplicator.setBinlogFileName(lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogFilename());
 
         // disable lv2 buffer
-        or.setLevel2BufferSize(-1);
+        openReplicator.setLevel2BufferSize(-1);
 
         LOGGER.info("starting OR from: { file => "
-                + or.getBinlogFileName()
+                + openReplicator.getBinlogFileName()
                 + ", position => "
-                + or.getBinlogPosition()
+                + openReplicator.getBinlogPosition()
                 + " }"
         );
 
-        or.setBinlogEventListener(new BinlogEventListener() {
+        openReplicator.setBinlogEventListener(new BinlogEventListener() {
 
             public void onEvents(BinlogEventV4 event) {
                 producedEvents.mark();
@@ -119,7 +119,7 @@ public class BinlogEventProducer {
             }
         });
 
-        or.start();
+        openReplicator.start();
     }
 
     private long backPressureSleep = 0;
@@ -156,8 +156,8 @@ public class BinlogEventProducer {
     }
 
     public void startOpenReplicatorFromLastKnownMapEventPosition() throws Exception {
-        if (or != null) {
-            if (!or.isRunning()) {
+        if (openReplicator != null) {
+            if (!openReplicator.isRunning()) {
                 if (lastKnownInfo != null) {
                     BinlogPositionInfo lastMapEventPosition = lastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION);
                     if (lastMapEventPosition != null) {
@@ -170,13 +170,13 @@ public class BinlogEventProducer {
                                     + binlogPosition
                                     + " }"
                             );
-                            this.or.setBinlogFileName(
+                            this.openReplicator.setBinlogFileName(
                                     lastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION).getBinlogFilename()
                             );
-                            this.or.setBinlogPosition(
+                            this.openReplicator.setBinlogPosition(
                                     lastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION).getBinlogPosition()
                             );
-                            this.or.start();
+                            this.openReplicator.start();
                         }
                         else {
                             LOGGER.error("last mapEvent position object is not initialized. This should not happen. Shuting down...");
@@ -200,15 +200,15 @@ public class BinlogEventProducer {
     }
 
     public void stop(long timeout, TimeUnit unit) throws Exception {
-        or.stop(timeout, unit);
+        openReplicator.stop(timeout, unit);
     }
 
     public boolean isRunning()
     {
-        return this.or.isRunning();
+        return this.openReplicator.isRunning();
     }
 
-    public OpenReplicator getOr() {
-        return or;
+    public OpenReplicator getOpenReplicator() {
+        return openReplicator;
     }
 }

@@ -132,7 +132,7 @@ public class Replicator {
                     // let open replicator stop its own threads
                     LOGGER.info("Stopping Producer...");
                     binlogEventProducer.stop(1000, TimeUnit.MILLISECONDS);
-                    if (!binlogEventProducer.getOr().isRunning()) {
+                    if (!binlogEventProducer.getOpenReplicator().isRunning()) {
                         LOGGER.info("Successfully stopped Producer thread");
                     }
                     else {

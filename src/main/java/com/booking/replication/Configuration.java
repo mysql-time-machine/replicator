@@ -195,6 +195,14 @@ public class Configuration {
         return "";
     }
 
+    @JsonDeserialize
+    private KafkaConfiguration kafka = new KafkaConfiguration();
+
+    private static class KafkaConfiguration {
+        public String broker;
+        public List<String> topics;
+    }
+
     public int getReplicantPort() {
         return replication_schema.port;
     }
@@ -300,5 +308,13 @@ public class Configuration {
 
     public String getHbaseNamespace() {
         return hbase.namespace;
+    }
+
+    public String getKafkaBrokerAddress() {
+        return kafka.broker;
+    }
+
+    public List<String> getKafkaTopicList() {
+        return kafka.topics;
     }
 }

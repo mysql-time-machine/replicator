@@ -84,6 +84,8 @@ public class Replicator {
             );
         } else if (configuration.getApplierType().toLowerCase().equals("kafka")) {
             applier = new KafkaApplier(
+                    configuration.getKafkaBrokerAddress(),
+                    configuration.getKafkaTopicList(),
                     configuration
             );
         } else {

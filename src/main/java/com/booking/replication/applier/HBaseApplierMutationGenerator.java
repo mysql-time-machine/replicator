@@ -1,15 +1,12 @@
 package com.booking.replication.applier;
 
 import com.booking.replication.augmenter.AugmentedRow;
-import com.booking.replication.augmenter.AugmentedRowsEvent;
-import com.booking.replication.queues.ReplicatorQueues;
 import com.booking.replication.schema.TableNameMapper;
 
 import com.google.common.base.Joiner;
 
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.util.Pair;
 
 import org.apache.hadoop.hbase.util.Triple;
 import org.slf4j.Logger;
@@ -22,7 +19,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.*;
 
 /**
  * Created by bosko on 4/18/16.
@@ -30,7 +26,6 @@ import java.util.concurrent.*;
 public class HBaseApplierMutationGenerator {
 
     private static final byte[] CF                           = Bytes.toBytes("d");
-    private static final int    MUTATION_GENERATOR_POOL_SIZE = 10;
     private static final String DIGEST_ALGORITHM             = "MD5";
 
     private final com.booking.replication.Configuration configuration;

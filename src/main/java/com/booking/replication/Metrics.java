@@ -4,8 +4,13 @@ import static com.codahale.metrics.MetricRegistry.name;
 
 import com.booking.replication.metrics.GraphiteReporter;
 
-import com.codahale.metrics.*;
-import com.codahale.metrics.jvm.*;
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.jvm.ClassLoadingGaugeSet;
+import com.codahale.metrics.jvm.FileDescriptorRatioGauge;
+import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
+import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
+import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
 
 import java.util.concurrent.ConcurrentHashMap;
 

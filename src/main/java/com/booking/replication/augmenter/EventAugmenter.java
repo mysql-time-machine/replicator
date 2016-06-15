@@ -101,12 +101,12 @@ public class EventAugmenter {
             futureSchemaVersion = activeSchemaVersion.applyDDL(schemaTransitionSequence);
             if (futureSchemaVersion != null) {
                 activeSchemaVersion = futureSchemaVersion;
+            } else {
+                throw new SchemaTransitionException(String.format(
+                        "Failed to calculateAndPropagateChanges with DDL statement: %s",
+                        activeSchemaTransitionDDL));
             }
-            else {
-                throw new SchemaTransitionException("Failed to calculateAndPropagateChanges with DDL statement: " + activeSchemaTransitionDDL);
-            }
-        }
-        else {
+        } else {
             throw new SchemaTransitionException("DDL statement can not be null!");
         }
 
@@ -154,8 +154,7 @@ public class EventAugmenter {
                 }
             }
             return sqlCommands;
-        }
-        else {
+        } else {
             throw new SchemaTransitionException("Not a valid query event!");
         }
     }
@@ -271,7 +270,9 @@ public class EventAugmenter {
 
     // TODO: refactor these functions since they are mostly the same. Also move to a different class.
     // Same as for V1 write event. There is some extra data in V2, but not sure if we can use it.
-    private AugmentedRowsEvent augmentWriteRowsEventV2(WriteRowsEventV2 writeRowsEvent, PipelineOrchestrator caller) throws TableMapException {
+    private AugmentedRowsEvent augmentWriteRowsEventV2(
+            WriteRowsEventV2 writeRowsEvent,
+            PipelineOrchestrator caller) throws TableMapException {
 
         // table name
         String tableName = caller.currentTransactionMetadata.getTableNameFromID(writeRowsEvent.getTableId());
@@ -379,7 +380,9 @@ public class EventAugmenter {
     }
 
     // For now this is the same as for V1 event.
-    private AugmentedRowsEvent augmentDeleteRowsEventV2(DeleteRowsEventV2 deleteRowsEvent, PipelineOrchestrator caller) throws TableMapException {
+    private AugmentedRowsEvent augmentDeleteRowsEventV2(
+            DeleteRowsEventV2 deleteRowsEvent,
+            PipelineOrchestrator caller) throws TableMapException {
         // table name
         String tableName = caller.currentTransactionMetadata.getTableNameFromID(deleteRowsEvent.getTableId());
 

@@ -216,8 +216,7 @@ public class HBaseSchemaManager {
                 byte[][] splitKeys = splitter.split(SCHEMA_HISTORY_TABLE_DEFAULT_REGIONS);
 
                 admin.createTable(tableDescriptor, splitKeys);
-            }
-            else {
+            } else {
                 LOGGER.info("Table " + hbaseTableName + " already exists in HBase. Probably a case of replaying the binlog.");
             }
 

@@ -85,17 +85,14 @@ public class Overseer extends Thread {
                         + ":"
                         + producer.getOpenReplicator().getBinlogPosition()
                 );
-            }
-            catch (ConnectException e) {
+            } catch (ConnectException e) {
                 LOGGER.error("Overseer tried to restart OpenReplicator and failed. Can not continue running. Requesting shutdown...");
                 System.exit(-1);
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 LOGGER.warn("Exception while trying to restart OpenReplicator", e);
                 e.printStackTrace();
             }
-        }
-        else {
+        } else {
             LOGGER.debug("MonitorCheck: producer is running.");
         }
     }

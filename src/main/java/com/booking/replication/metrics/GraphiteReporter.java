@@ -20,8 +20,13 @@ public class GraphiteReporter extends MetricsReporter {
     private ScheduledReporter reporter;
     private Duration frequency = Duration.parse("10 seconds");
 
-    public ScheduledReporter getReporter() { return reporter; }
-    public Duration getFrequency() { return frequency; }
+    public ScheduledReporter getReporter() {
+        return reporter;
+    }
+
+    public Duration getFrequency() {
+        return frequency;
+    }
 
     public GraphiteReporter(Configuration conf) {
         Configuration.MetricsConfig.ReporterConfig metricConf = conf.getReporterConfig(GraphiteReporter.type);

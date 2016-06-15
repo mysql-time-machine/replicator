@@ -18,8 +18,7 @@ public class TableSchema {
         columns = new HashMap<>();
     }
 
-    public void addColumn(ColumnSchema columnSchema)
-    {
+    public void addColumn(ColumnSchema columnSchema) {
         this.columns.put(columnSchema.getCOLUMN_NAME(), columnSchema);
 
         // update the indexToNameMap

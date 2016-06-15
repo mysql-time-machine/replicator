@@ -3,7 +3,6 @@ package com.booking.replication.applier;
 import com.booking.replication.Configuration;
 import com.booking.replication.Metrics;
 import com.booking.replication.augmenter.AugmentedRow;
-import com.booking.replication.util.MutableLong;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
 import org.apache.hadoop.hbase.TableName;
@@ -109,7 +108,8 @@ public class HBaseWriterTask implements Callable<TaskResult> {
 
                                 List<Put> puts = new ArrayList<>();
 
-                                for (Triple<String, String, Put> augmentedMutation : preparedMutations.get(type).get(HBaseTableName)) {
+                                for (Triple<String, String, Put> augmentedMutation :
+                                        preparedMutations.get(type).get(HBaseTableName)) {
                                     puts.add(augmentedMutation.getThird());
                                 }
 
@@ -132,7 +132,9 @@ public class HBaseWriterTask implements Callable<TaskResult> {
 
                 // data integrity check
                 if (numberOfTablesInCurrentTransaction != numberOfFlushedTablesInCurrentTransaction) {
-                    LOGGER.error(String.format("Failed integrity check number of tables: %s != %s", numberOfTablesInCurrentTransaction, numberOfFlushedTablesInCurrentTransaction));
+                    LOGGER.error(String.format("Failed integrity check number of tables: %s != %s",
+                            numberOfTablesInCurrentTransaction,
+                            numberOfFlushedTablesInCurrentTransaction));
                     return new TaskResult(taskUUID, TaskStatusCatalog.WRITE_FAILED, false);
                 }
             } // next transaction

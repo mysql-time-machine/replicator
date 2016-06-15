@@ -52,7 +52,9 @@ public class Main {
                     coordinator = new FileCoordinator(configuration);
                     break;
                 default:
-                    throw new RuntimeException(String.format("Metadata store type not implemented: %s", configuration.getMetadataStoreType()));
+                    throw new RuntimeException(String.format(
+                            "Metadata store type not implemented: %s",
+                            configuration.getMetadataStoreType()));
             }
 
             Coordinator.setImplementation(coordinator);

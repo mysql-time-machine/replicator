@@ -48,12 +48,10 @@ public class EnumColumnSchema extends ColumnSchema {
         // TODO: handle case when enum value is NULL
         if (index == 0) {
             return "";
-        }
-        else {
+        } else {
             try {
                 return enumValues[index - 1];
-            }
-            catch (IndexOutOfBoundsException e) {
+            } catch (IndexOutOfBoundsException e) {
                 LOGGER.error("Index out of bound exception", e);
                 LOGGER.error("received index => " + index);
                 LOGGER.error("available => ");

@@ -98,7 +98,11 @@ public class PipelineOrchestrator extends Thread {
     }
 
     public static void setFakeMicrosecondCounter(Long fakeMicrosecondCounter) {
-        LOGGER.info(String.format("Setting fake microsecond counter to: %s (was: %s)", fakeMicrosecondCounter, PipelineOrchestrator.fakeMicrosecondCounter));
+        LOGGER.info(String.format(
+                "Setting fake microsecond counter to: %s (was: %s)",
+                fakeMicrosecondCounter,
+                PipelineOrchestrator.fakeMicrosecondCounter)
+        );
         PipelineOrchestrator.fakeMicrosecondCounter = fakeMicrosecondCounter;
     }
 
@@ -180,8 +184,7 @@ public class PipelineOrchestrator extends Thread {
                     } else {
                         eventsSkippedCounter.mark();
                     }
-                }
-                else {
+                } else {
                     LOGGER.info("Pipeline report: no items in producer event rawQueue. Will sleep for 0.5s and check again.");
                     Thread.sleep(500);
                     long currentTime = System.currentTimeMillis();
@@ -248,15 +251,12 @@ public class PipelineOrchestrator extends Thread {
                 if (isCOMMIT(querySQL, isDDL)) {
                     commitQueryCounter.mark();
                     applier.applyCommitQueryEvent((QueryEvent) event);
-                }
-                else if (isBEGIN(querySQL, isDDL)) {
+                } else if (isBEGIN(querySQL, isDDL)) {
                     currentTransactionMetadata = new CurrentTransactionMetadata();
-                }
-                else if (isDDL) {
+                } else if (isDDL) {
                     augmentedSchemaChangeEvent = eventAugmenter.transitionSchemaToNextVersion(event);
                     applier.applyAugmentedSchemaChangeEvent(augmentedSchemaChangeEvent, this);
-                }
-                else {
+                } else {
                     LOGGER.warn("Unexpected query event: " + querySQL);
                 }
                 break;
@@ -316,8 +316,7 @@ public class PipelineOrchestrator extends Thread {
                         }
                     }
                     updateLastKnownPositionForMapEvent((TableMapEvent) event, fakeMicrosecondCounter);
-                }
-                catch (Exception e) {
+                } catch (Exception e) {
                     LOGGER.error("Could not execute mapEvent block. Requesting replicator shutdown...", e);
                     requestReplicatorShutdown();
                 }
@@ -439,8 +438,7 @@ public class PipelineOrchestrator extends Thread {
         // optimization
         if (querySQL.equals("COMMIT")) {
             hasBEGIN = false;
-        }
-        else {
+        } else {
 
             String beginPattern = "(begin)";
 
@@ -461,8 +459,7 @@ public class PipelineOrchestrator extends Thread {
         // optimization
         if (querySQL.equals("BEGIN")) {
             hasCOMMIT = false;
-        }
-        else {
+        } else {
 
             String commitPattern = "(commit)";
 
@@ -529,8 +526,7 @@ public class PipelineOrchestrator extends Thread {
                         } else {
                             LOGGER.warn("non-replicated database [" + currentTransactionDBName + "] in current transaction.");
                         }
-                    }
-                    else {
+                    } else {
                         String message = "";
                         for (String tblName : currentTransactionMetadata.getCurrentTransactionTableMapEvents().keySet()) {
                             message += tblName;
@@ -540,23 +536,19 @@ public class PipelineOrchestrator extends Thread {
                                 "Tables in transaction are " + message
                         );
                     }
-                }
-                else if (isBEGIN) {
+                } else if (isBEGIN) {
                     eventIsTracked = true;
-                }
-                else if (isDDL) {
+                } else if (isDDL) {
                     // DDL event should always contain db name
                     String dbName = ((QueryEvent) event).getDatabaseName().toString();
                     if (isReplicant(dbName)) {
                         eventIsTracked = true;
-                    }
-                    else {
+                    } else {
                         eventIsTracked = false;
                         LOGGER.warn("DDL statement " + querySQL + " on non-replicated database [" + dbName + "].");
 
                     }
-                }
-                else {
+                } else {
                     // TODO: handle View statement
 //                     LOGGER.warn("Received non-DDL, non-COMMIT, non-BEGIN query: " + querySQL);
                 }
@@ -590,8 +582,7 @@ public class PipelineOrchestrator extends Thread {
                         binlogPositionLastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION).getBinlogFilename();
                 if (rotateEventAllreadySeenForBinlogFile.containsKey(currentBinlogFile)) {
                     eventIsTracked = false;
-                }
-                else {
+                } else {
                     eventIsTracked = true;
                     rotateEventAllreadySeenForBinlogFile.put(currentBinlogFile, true);
                 }
@@ -651,8 +642,7 @@ public class PipelineOrchestrator extends Thread {
         String lastBinlogFileName;
         if (binlogPositionLastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION) != null) {
             lastBinlogFileName = binlogPositionLastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION).getBinlogFilename();
-        }
-        else {
+        } else {
             lastBinlogFileName = "";
         }
 

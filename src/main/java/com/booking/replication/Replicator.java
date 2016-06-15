@@ -77,8 +77,7 @@ public class Replicator {
             applier = new STDOUTJSONApplier(
                     configuration
             );
-        }
-        else if (configuration.getApplierType().toLowerCase().equals("hbase")) {
+        } else if (configuration.getApplierType().toLowerCase().equals("hbase")) {
             applier = new HBaseApplier(
                     configuration.getHBaseQuorum(),
                     configuration
@@ -87,8 +86,7 @@ public class Replicator {
             applier = new KafkaApplier(
                     configuration
             );
-        }
-        else {
+        } else {
             throw new RuntimeException(String.format("Unknown applier: %s", configuration.getApplierType()));
         }
 
@@ -134,8 +132,7 @@ public class Replicator {
                     binlogEventProducer.stop(1000, TimeUnit.MILLISECONDS);
                     if (!binlogEventProducer.getOpenReplicator().isRunning()) {
                         LOGGER.info("Successfully stopped Producer thread");
-                    }
-                    else {
+                    } else {
                         throw new Exception("Failed to stop Producer thread");
                     }
                 } catch (InterruptedException e) {

@@ -131,11 +131,9 @@ public class ActiveSchemaVersion {
 
                     if (getTableInfo_ResultSet.getString("DATA_TYPE").equals("enum")) {
                         c = new EnumColumnSchema(getTableInfo_ResultSet);
-                    }
-                    else if (getTableInfo_ResultSet.getString("DATA_TYPE").equals("set")) {
+                    } else if (getTableInfo_ResultSet.getString("DATA_TYPE").equals("set")) {
                         c = new SetColumnSchema(getTableInfo_ResultSet);
-                    }
-                    else {
+                    } else {
                         c = new ColumnSchema(getTableInfo_ResultSet);
                     }
 
@@ -148,7 +146,9 @@ public class ActiveSchemaVersion {
         } finally{
             try {
                 // 3. release connection
-                if(con != null) con.close();
+                if(con != null) {
+                    con.close();
+                }
             } catch (SQLException e) {
                 e.printStackTrace();
             }
@@ -222,7 +222,9 @@ public class ActiveSchemaVersion {
             LOGGER.error("FATAL: failed to execute DDL statement on active schema.", e);
         } finally{
             try {
-                if(con != null) con.close();
+                if(con != null) {
+                    con.close();
+                }
             } catch (SQLException e) {
                 e.printStackTrace();
             }

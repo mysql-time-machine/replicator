@@ -39,8 +39,7 @@ public class StartupParameters {
             String maybeNumber = schema.replaceAll("[A-Za-z]", "");
             shard = StringUtils.isNotBlank(maybeNumber) ? Integer.parseInt(maybeNumber) : 0;
             schema = schema.replaceAll("[0-9]","");
-        }
-        else {
+        } else {
             schema = "test";
         }
 

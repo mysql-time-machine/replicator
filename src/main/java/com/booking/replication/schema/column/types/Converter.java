@@ -32,23 +32,20 @@ public class Converter {
     // Extracts string representation from or typed column. For now just
     // calls toString. Later if needed some type specific processing
     // can be added
-    public static String orTypeToString(Column s, ColumnSchema columnSchema) throws TableMapException
-    {
+    public static String
+    orTypeToString(Column s, ColumnSchema columnSchema)
+    throws TableMapException {
 
         // ================================================================
         // Bit
         // ================================================================
-        if (s instanceof BitColumn)
-        {
+        if (s instanceof BitColumn) {
             BitColumn bc = (BitColumn) s;
             return bc.toString();
-        }
-
-        // ================================================================
-        // Blob and Text column types
-        // ================================================================
-        else if (s instanceof BlobColumn)
-        {
+        } else if (s instanceof BlobColumn) {
+            // ================================================================
+            // Blob and Text column types
+            // ================================================================
             BlobColumn bc = (BlobColumn) s;
             byte[] bytes = bc.getValue();
 
@@ -60,8 +57,7 @@ public class Converter {
                 if (charSetName == null) {
                     // TODO: defualt to TABLE/DB charset; in the meantime return HEX-fied blob
                     return blobToHexString(bytes);
-                }
-                else if (charSetName.contains("utf8")) {
+                } else if (charSetName.contains("utf8")) {
                     String utf8Value = null;
                     try {
                         utf8Value = new String(bytes,"UTF8");
@@ -69,8 +65,7 @@ public class Converter {
                         e.printStackTrace();
                     }
                     return utf8Value;
-                }
-                else if (charSetName.contains("latin1")) {
+                } else if (charSetName.contains("latin1")) {
                     String latin1Value = null;
                     try {
                         latin1Value = new String(bytes,"ISO-8859-1");
@@ -78,23 +73,18 @@ public class Converter {
                         e.printStackTrace();
                     }
                     return latin1Value;
-                }
-                else {
+                } else {
                     // TODO: handle other encodings; in the meantime return HEX-fied blob
                     return blobToHexString(bytes);
                 }
-            }
-            else {
+            } else {
                 // Ordinary Binary BLOB - convert to HEX string
                 return blobToHexString(bytes);
             }
-        }
-
-        // ================================================================
-        // Varchar column type
-        // ================================================================
-        else if (s instanceof StringColumn)
-        {
+        } else if (s instanceof StringColumn) {
+            // ================================================================
+            // Varchar column type
+            // ================================================================
             StringColumn sc = (StringColumn) s;
 
             String charSetName = columnSchema.getCHARACTER_SET_NAME();
@@ -107,8 +97,7 @@ public class Converter {
                 // TODO: defualt to TABLE/DB charset; in the meantime return HEX-fied blob
                 byte[] bytes = sc.getValue();
                 return blobToHexString(bytes);
-            }
-            else if (charSetName.contains("utf8")) {
+            } else if (charSetName.contains("utf8")) {
                 byte[] bytes = sc.getValue();
                 String utf8Value = null;
                 try {
@@ -117,8 +106,7 @@ public class Converter {
                     e.printStackTrace();
                 }
                 return utf8Value;
-            }
-            else if (charSetName.contains("latin1")) {
+            } else if (charSetName.contains("latin1")) {
                 byte[] bytes = sc.getValue();
                 String latin1Value = null;
                 try {
@@ -127,84 +115,59 @@ public class Converter {
                     e.printStackTrace();
                 }
                 return latin1Value;
-            }
-            else {
+            } else {
                 // TODO: handle other encodings; in the meantime return HEX-fied blob
                 byte[] bytes = sc.getValue();
                 return blobToHexString(bytes);
             }
-        }
-        else if (s instanceof NullColumn)
-        {
+        } else if (s instanceof NullColumn) {
             return "NULL";
-        }
-
-        // ================================================================
-        // Set and Enum types
-        // ================================================================
-        else if (s instanceof SetColumn)
-        {
+        } else if (s instanceof SetColumn) {
+            // ================================================================
+            // Set and Enum types
+            // ================================================================
             SetColumn sc = (SetColumn) s;
             long setValue = sc.getValue();
             if (columnSchema instanceof SetColumnSchema) {
                 try {
                     return ((SetColumnSchema) columnSchema).getSetMembersFromNumericValue(setValue);
-                }
-                catch (Exception e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                     throw new TableMapException("Wrong mapping of set csv");
                 }
-            }
-            else {
+            } else {
                 throw new TableMapException("Got set colum, but the ColumnSchema instance is of wrong type");
             }
-        }
-        else if (s instanceof EnumColumn)
-        {
+        } else if (s instanceof EnumColumn) {
             EnumColumn ec = (EnumColumn) s;
             int enumIntValue = ec.getValue();
             if (columnSchema instanceof EnumColumnSchema) {
 
                 try {
                     return ((EnumColumnSchema) columnSchema).getEnumValueFromIndex(enumIntValue);
-                }
-                catch (Exception e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                     throw new TableMapException("Probaly wrong mapping of indexes for enum array");
                 }
-            }
-            else {
+            } else {
                 throw new TableMapException("Got enum colum, but the ColumnSchema instance is of wrong type");
             }
-
-        }
-
-        // ================================================================
-        // Floating point types
-        // ================================================================
-        else if (s instanceof DecimalColumn)
-        {
+        } else if (s instanceof DecimalColumn) {
+            // ================================================================
+            // Floating point types
+            // ================================================================
             DecimalColumn dc = (DecimalColumn) s;
             return dc.toString();
-        }
-        else if (s instanceof DoubleColumn)
-        {
-
+        } else if (s instanceof DoubleColumn) {
             DoubleColumn dc = (DoubleColumn) s;
             return dc.toString();
-
-        }
-        else if (s instanceof FloatColumn)
-        {
+        } else if (s instanceof FloatColumn) {
             FloatColumn fc = (FloatColumn) s;
             return Float.toString(fc.getValue());
-        }
-
-        // ================================================================
-        // Whole numbers (with unsigned option) types
-        // ================================================================
-        else if (s instanceof TinyColumn)
-        {
+        } else if (s instanceof TinyColumn) {
+            // ================================================================
+            // Whole numbers (with unsigned option) types
+            // ================================================================
             // 1 byte
             if (columnSchema.getDATA_TYPE().equals("tinyint")) {
                 boolean isUnsigned = isUnsignedPattern.matcher(columnSchema.getCOLUMN_TYPE()).find();
@@ -217,55 +180,43 @@ public class Converter {
                     long unsignedValue = x & 0xff;
                     return Long.toString(unsignedValue);
 
-                }
-                else {
+                } else {
                     // Default OpenReplicator/Java behaviour (signed numbers)
                     TinyColumn tc = (TinyColumn) s;
                     return tc.toString();
                 }
-            }
-            else {
+            } else {
                 throw new TableMapException("Unknown MySQL type in the event" + s.getClass() + " Object = " + s);
             }
-        }
-        else if (s instanceof ShortColumn)
-        {
+        } else if (s instanceof ShortColumn) {
             // 2 bytes
             ShortColumn sc = (ShortColumn) s;
             if (columnSchema.getDATA_TYPE().equals("smallint")) {
                 boolean isUnsigned = isUnsignedPattern.matcher(columnSchema.getCOLUMN_TYPE()).find();
                 if (isUnsigned) {
                     return Long.toString(((long) sc.getValue()) & 0xffff);
-                }
-                else {
+                } else {
                     // Default OpenReplicator/Java behaviour (signed numbers)
                     return sc.toString();
                 }
-            }
-            else {
+            } else {
                 throw new TableMapException("Unknown MySQL type in the event" + s.getClass() + " Object = " + s);
             }
-        }
-        else if (s instanceof Int24Column)
-        {
+        } else if (s instanceof Int24Column) {
             // medium-int (3 bytes) in MySQL
             Int24Column ic = (Int24Column) s;
             if (columnSchema.getDATA_TYPE().equals("mediumint")) {
                 boolean isUnsigned = isUnsignedPattern.matcher(columnSchema.getCOLUMN_TYPE()).find();
                 if (isUnsigned) {
                     return Long.toString(((long) ic.getValue()) & 0xffffff);
-                }
-                else {
+                } else {
                     // Default OpenReplicator/Java behaviour (signed numbers)
                     return ic.toString();
                 }
-            }
-            else {
+            } else {
                 throw new TableMapException("Unknown MySQL type in the event" + s.getClass() + " Object = " + s);
             }
-        }
-        else if (s instanceof LongColumn)
-        {
+        } else if (s instanceof LongColumn) {
             // MySQL int (4 bytes)
             LongColumn lc = (LongColumn) s;
             if (columnSchema.getDATA_TYPE().equals("int")) {
@@ -275,18 +226,14 @@ public class Converter {
                     BigInteger big = new BigInteger(1,bytes);
                     return big.toString();
                     //return Long.toString(((long) lc.getValue()) & 0xffffffffL);
-                }
-                else {
+                } else {
                     // Default OpenReplicator/Java behaviour (signed numbers)
                     return lc.toString();
                 }
-            }
-            else {
+            } else {
                 throw new TableMapException("Unknown MySQL type in the event" + s.getClass() + " Object = " + s);
             }
-        }
-        else if (s instanceof LongLongColumn)
-        {
+        } else if (s instanceof LongLongColumn) {
             // MySQL BigInt (8 bytes)
             LongLongColumn llc = (LongLongColumn) s;
             if (columnSchema.getDATA_TYPE().equals("bigint")) {
@@ -295,72 +242,56 @@ public class Converter {
                     byte[] bytes = ByteBuffer.allocate(8).putLong(llc.getValue()).array();
                     BigInteger big = new BigInteger(1,bytes);
                     return big.toString();
-                }
-                else {
+                } else {
                     // Default OpenReplicator/Java behaviour (signed numbers)
                     return llc.toString();
                 }
-            }
-            else {
+            } else {
                 throw new TableMapException("Unknown"
                         + " MySQL type " + columnSchema.getDATA_TYPE()
                         + " in the event " + s.getClass()
                         + " Object = " + s
                 );
             }
-        }
-
-        // ================================================================
-        // Date&Time types
-        // ================================================================
-        else if (s instanceof YearColumn)
-        {
+        } else if (s instanceof YearColumn) {
+            // ================================================================
+            // Date&Time types
+            // ================================================================
             YearColumn yc = (YearColumn) s;
             return yc.toString();
-        }
-        else if (s instanceof DateColumn)
-        {
+        } else if (s instanceof DateColumn) {
             DateColumn dc =  (DateColumn) s;
             return dc.toString();
-        }
-        else if (s instanceof DatetimeColumn)
-        {
+        } else if (s instanceof DatetimeColumn) {
             DatetimeColumn dc = (DatetimeColumn) s;
             return dc.toString();
             // TODO: check if this bug is fixed in zendesk fork
-            //Bug in OR for DateTIme and Time data-types. MilliSeconds is not available for these columns but is set with currentMillis() wrongly.
-        }
-        else if (s instanceof Datetime2Column) {
+            // Bug in OR for DateTIme and Time data-types.
+            // MilliSeconds is not available for these columns but is set with currentMillis() wrongly.
+        } else if (s instanceof Datetime2Column) {
             Datetime2Column d2c = (Datetime2Column) s;
             return d2c.toString();
-        }
-        else if (s instanceof TimeColumn)
-        {
+        } else if (s instanceof TimeColumn) {
             TimeColumn tc = (TimeColumn) s;
             return tc.toString();
             // TODO: check if this bug is fixed in zendesk fork
             /**
              * There is a bug in OR where instead of using the default year as 1970, it is using 0070.
-             * This is a temporary measure to resolve it by working around at this layer. The value obtained from OR is subtracted from "0070-00-01 00:00:00"
+             * This is a temporary measure to resolve it by working around at this layer.
+             * The value obtained from OR is subtracted from "0070-00-01 00:00:00"
              */
-        }
-        else if (s instanceof  Time2Column) {
+        } else if (s instanceof  Time2Column) {
             Time2Column t2c = (Time2Column) s;
             return t2c.toString();
-        }
-        else if (s instanceof TimestampColumn)
-        {
+        } else if (s instanceof TimestampColumn) {
             TimestampColumn tsc = (TimestampColumn) s;
             Long timestampValue = tsc.getValue().getTime();
             return String.valueOf(timestampValue);
-        }
-        else if (s instanceof Timestamp2Column) {
+        } else if (s instanceof Timestamp2Column) {
             Timestamp2Column ts2c = (Timestamp2Column) s;
             Long timestamp2Value = ts2c.getValue().getTime();
             return String.valueOf(timestamp2Value);
-        }
-        else
-        {
+        } else {
             throw new TableMapException("Unknown MySQL type in the event" + s.getClass() + " Object = " + s);
         }
     }
@@ -374,8 +305,7 @@ public class Converter {
             int i = b & 0xFF;
             if (i < 16 ) {
                  hex.append("0").append(Integer.toHexString(i).toUpperCase());
-            }
-            else {
+            } else {
                 hex.append(Integer.toHexString(i).toUpperCase());
             }
         }

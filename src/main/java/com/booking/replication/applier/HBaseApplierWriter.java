@@ -112,9 +112,12 @@ public class HBaseApplierWriter {
 
     private final  com.booking.replication.Configuration configuration;
 
-    private static final Counter applierTasksSubmittedCounter = Metrics.registry.counter(name("HBase", "applierTasksSubmittedCounter"));
-    private static final Counter applierTasksSucceededCounter = Metrics.registry.counter(name("HBase", "applierTasksSucceededCounter"));
-    private static final Counter applierTasksFailedCounter = Metrics.registry.counter(name("HBase", "applierTasksFailedCounter"));
+    private static final Counter
+            applierTasksSubmittedCounter = Metrics.registry.counter(name("HBase", "applierTasksSubmittedCounter"));
+    private static final Counter
+            applierTasksSucceededCounter = Metrics.registry.counter(name("HBase", "applierTasksSucceededCounter"));
+    private static final Counter
+            applierTasksFailedCounter = Metrics.registry.counter(name("HBase", "applierTasksFailedCounter"));
 
     //@todo: the logic here is sufficient but not exhaustive, improve robustness of following code
     public boolean areAllTasksDone() {
@@ -177,8 +180,10 @@ public class HBaseApplierWriter {
         currentTaskUUID = UUID.randomUUID().toString();
         currentTransactionUUID = UUID.randomUUID().toString();
 
-        taskTransactionBuffer.put(currentTaskUUID, new HashMap<String, Map<String, List<AugmentedRow>>>());
-        taskTransactionBuffer.get(currentTaskUUID).put(currentTransactionUUID, new HashMap<String, List<AugmentedRow>>());
+        taskTransactionBuffer
+                .put(currentTaskUUID, new HashMap<String, Map<String, List<AugmentedRow>>>());
+        taskTransactionBuffer.get(currentTaskUUID)
+                .put(currentTransactionUUID, new HashMap<String, List<AugmentedRow>>());
 
         taskStatus.put(currentTaskUUID, TaskStatusCatalog.READY_FOR_BUFFERING);
         transactionStatus.put(currentTransactionUUID, TransactionStatus.OPEN);
@@ -195,13 +200,15 @@ public class HBaseApplierWriter {
 
         // Verify that task_uuid exists
         if (taskTransactionBuffer.get(currentTaskUUID) == null) {
-            LOGGER.error("ERROR: Missing task UUID from taskTransactionBuffer keySet. Should never happen. Shutting down...");
+            LOGGER.error("ERROR: Missing task UUID from taskTransactionBuffer keySet should not happen. " +
+                    "Shutting down...");
             System.exit(1);
         }
 
         // Verify that transaction_uuid exists
         if (taskTransactionBuffer.get(currentTaskUUID).get(currentTransactionUUID) == null) {
-            LOGGER.error("ERROR: Missing transaction UUID from taskTransactionBuffer keySet. Should never happen. Shutting down...");
+            LOGGER.error("ERROR: Missing transaction UUID from taskTransactionBuffer keySet should not happen. " +
+                    "Shutting down...");
             System.exit(1);
         }
 
@@ -209,12 +216,19 @@ public class HBaseApplierWriter {
         // tables, delta table key will belong to the same task and transaction
         // as corresponding mirrored table
         if (taskTransactionBuffer.get(currentTaskUUID).get(currentTransactionUUID).get(mySQLTableName) == null) {
-            taskTransactionBuffer.get(currentTaskUUID).get(currentTransactionUUID).put(mySQLTableName, new ArrayList<AugmentedRow>());
+            taskTransactionBuffer
+                    .get(currentTaskUUID)
+                    .get(currentTransactionUUID)
+                    .put(mySQLTableName, new ArrayList<AugmentedRow>());
         }
 
         // Add to buffer
         for(AugmentedRow augmentedRow : augmentedRows) {
-            taskTransactionBuffer.get(currentTaskUUID).get(currentTransactionUUID).get(mySQLTableName).add(augmentedRow);
+            taskTransactionBuffer
+                    .get(currentTaskUUID)
+                    .get(currentTransactionUUID)
+                    .get(mySQLTableName)
+                    .add(augmentedRow);
             rowsBufferedInCurrentTask.incrementAndGet();
         }
     }
@@ -241,8 +255,7 @@ public class HBaseApplierWriter {
         // rows buffered (then just keep the buffer ready for next binlog file)
         if (rowsBufferedInCurrentTask.get() > 0) {
             taskStatus.put(currentTaskUUID, TaskStatusCatalog.READY_FOR_PICK_UP);
-        }
-        else {
+        } else {
             return;
         }
 
@@ -300,23 +313,18 @@ public class HBaseApplierWriter {
 
                 if (taskStatus.get(taskUUID) == TaskStatusCatalog.WRITE_IN_PROGRESS) {
                     LOGGER.info("task " + taskUUID + " => " + "WRITE_IN_PROGRESS");
-                }
-                else if (taskStatus.get(taskUUID) == TaskStatusCatalog.WRITE_FAILED) {
+                } else if (taskStatus.get(taskUUID) == TaskStatusCatalog.WRITE_FAILED) {
                     LOGGER.info("task " + taskUUID + " => " + "WRITE_FAILED");
-                }
-                else if (taskStatus.get(taskUUID) == TaskStatusCatalog.TASK_SUBMITTED) {
+                } else if (taskStatus.get(taskUUID) == TaskStatusCatalog.TASK_SUBMITTED) {
                     LOGGER.info("task " + taskUUID + " => " + "TASK_SUBMITTED");
-                }
-                else if (taskStatus.get(taskUUID) == TaskStatusCatalog.READY_FOR_PICK_UP) {
+                } else if (taskStatus.get(taskUUID) == TaskStatusCatalog.READY_FOR_PICK_UP) {
                     LOGGER.info("task " + taskUUID + " => " + "READY_FOR_PICK_UP");
-                }
-                else if (taskStatus.get(taskUUID) == TaskStatusCatalog.READY_FOR_BUFFERING) {
+                } else if (taskStatus.get(taskUUID) == TaskStatusCatalog.READY_FOR_BUFFERING) {
                     LOGGER.info("task " + taskUUID + " => " + "READY_FOR_BUFFERING");
                     if (taskHasRowsBuffered(taskUUID)) {
                         taskStatus.put(taskUUID, TaskStatusCatalog.READY_FOR_PICK_UP);
                         LOGGER.info("Marked task " + taskUUID + " as READY_FOR_PICK_UP");
-                    }
-                    else {
+                    } else {
                         // cant flush empty task
                         taskStatus.remove(taskUUID);
                         taskTransactionBuffer.remove(taskUUID);
@@ -324,11 +332,9 @@ public class HBaseApplierWriter {
                             taskFutures.remove(taskUUID);
                         }
                     }
-                }
-                else if (taskStatus.get(taskUUID) == TaskStatusCatalog.WRITE_SUCCEEDED) {
+                } else if (taskStatus.get(taskUUID) == TaskStatusCatalog.WRITE_SUCCEEDED) {
                     LOGGER.info("task " + taskUUID + " => " + "WRITE_SUCCEEDED");
-                }
-                else {
+                } else {
                     LOGGER.info("task " + taskUUID + " => " + "UNKNOWN STATUS => " + taskStatus.get(taskUUID));
                 }
             }
@@ -355,8 +361,7 @@ public class HBaseApplierWriter {
                 try {
                     Thread.sleep(5);
                     blockingTime += 5;
-                }
-                catch (InterruptedException e) {
+                } catch (InterruptedException e) {
                     LOGGER.error("Cant sleep.", e);
                 }
                 if ((blockingTime % 500) == 0) {
@@ -366,8 +371,7 @@ public class HBaseApplierWriter {
                     LOGGER.error("Timed out waiting for an open applier slot after 60s.");
                     throw new RuntimeException("Timed out waiting on applier slot");
                 }
-            }
-            else {
+            } else {
                 if(blockingTime > 1000) {
                     LOGGER.warn("Wait is over with " + currentNumberOfTasks + " current tasks, blocking time was " + blockingTime + "ms");
                 }
@@ -427,8 +431,7 @@ public class HBaseApplierWriter {
                         LOGGER.warn("Task " + submittedTaskUUID + " failed. Task will be retried.");
                         requeueTask(submittedTaskUUID);
                         applierTasksFailedCounter.inc();
-                    }
-                    else {
+                    } else {
                         LOGGER.error("Illegal task status ["
                                 + statusOfDoneTask
                                 + "]. Probably a silent death of a thread. "
@@ -437,13 +440,16 @@ public class HBaseApplierWriter {
                         applierTasksFailedCounter.inc();
                     }
                 }
-            }
-            catch (ExecutionException ex) {
-                LOGGER.error("Future failed for task " + submittedTaskUUID + ", with exception " + ex.getCause().toString());
+            } catch (ExecutionException ex) {
+                LOGGER.error(String.format("Future failed for task %s, with exception: %s",
+                        submittedTaskUUID ,
+                        ex.getCause().toString()));
                 requeueTask(submittedTaskUUID);
                 applierTasksFailedCounter.inc();
             } catch (InterruptedException ei) {
-                LOGGER.info("Task " + submittedTaskUUID + " was canceled by interrupt. The task that has been canceled will be retired later by another future.", ei);
+                LOGGER.info(String.format("Task %s was canceled by interrupt. " +
+                        "The task that has been canceled " +
+                        "will be retired later by another future.", submittedTaskUUID), ei);
                 requeueTask(submittedTaskUUID);
                 applierTasksFailedCounter.inc();
             } catch (Exception e) {
@@ -480,8 +486,7 @@ public class HBaseApplierWriter {
                 List<AugmentedRow> bufferedOPS = task.get(transactionUUID).get(tableName);
                 if (bufferedOPS != null && bufferedOPS.size() > 0) {
                     taskHasRows = true;
-                }
-                else {
+                } else {
                     LOGGER.info("Table " + tableName + " has no rows!!!");
                 }
             }

@@ -30,8 +30,7 @@ public class TableNameMapper {
 
         if (isInitialSnapshot) {
             suffix = "initial";
-        }
-        else {
+        } else {
             long eventTimestamp = (long) eventTimestampMicroSec / 1000; // microsec => milisec
 
             String DATE_FORMAT = "yyyyMMdd";

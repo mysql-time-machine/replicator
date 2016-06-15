@@ -11,7 +11,7 @@ public class ChaosMonkey {
     private final int chaosPoint;
 
     public ChaosMonkey() {
-        chaosPoint = (int)(Math.random()*CHAOS_MAX);
+        chaosPoint = (int) (Math.random() * CHAOS_MAX);
     }
 
     public boolean feelsLikeThrowingExceptionAfterTaskSubmitted() {

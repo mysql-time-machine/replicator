@@ -124,10 +124,14 @@ public class HBaseApplier implements Applier {
      * @param pipeline
      */
     @Override
-    public void applyAugmentedRowsEvent(final AugmentedRowsEvent augmentedRowsEvent, final PipelineOrchestrator pipeline) {
+    public void applyAugmentedRowsEvent(
+            final AugmentedRowsEvent augmentedRowsEvent,
+            final PipelineOrchestrator pipeline) {
 
         String hbaseNamespace = getHBaseNamespace(pipeline);
-        if (hbaseNamespace == null) return;
+        if (hbaseNamespace == null) {
+            return;
+        }
 
         //HBasePreparedAugmentedRowsEvent hBasePreparedAugmentedRowsEvent =
         //        new HBasePreparedAugmentedRowsEvent(hbaseNamespace, augmentedRowsEvent);
@@ -149,21 +153,21 @@ public class HBaseApplier implements Applier {
 
         // get database name from event
         String mySQLDBName = configuration.getReplicantSchemaName();
-        String currentTransactionDB = pipeline.currentTransactionMetadata.getFirstMapEventInTransaction().getDatabaseName().toString();
+        String currentTransactionDB = pipeline.currentTransactionMetadata
+                .getFirstMapEventInTransaction()
+                .getDatabaseName()
+                .toString();
 
         String hbaseNamespace = null;
         if (currentTransactionDB != null) {
             if (currentTransactionDB.equals(mySQLDBName)) {
                 hbaseNamespace = mySQLDBName.toLowerCase();
-            }
-            else if(currentTransactionDB.equals(Constants.BLACKLISTED_DB)) {
+            } else if (currentTransactionDB.equals(Constants.BLACKLISTED_DB)) {
                 return null;
-            }
-            else {
+            } else {
                 LOGGER.error("Invalid database name: " + currentTransactionDB);
             }
-        }
-        else {
+        } else {
             LOGGER.error("CurrentTransactionDB can not be null");
         }
         return hbaseNamespace;
@@ -212,8 +216,7 @@ public class HBaseApplier implements Applier {
             if (hbaseApplierWriter.areAllTasksDone()) {
                 LOGGER.debug("All tasks have completed!");
                 wait = false;
-            }
-            else {
+            } else {
                 resubmitIfThereAreFailedTasks();
                 try {
                     Thread.sleep(1000);

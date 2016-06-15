@@ -42,7 +42,9 @@ public class LastVerifiedBinlogFile implements SafeCheckPoint {
         return lastVerifiedBinlogFileName;
     }
 
-    public int getSlaveId() { return slaveId; }
+    public int getSlaveId() {
+        return slaveId;
+    }
 
     @Override
     public void setSafeCheckPointMarker(String marker) {

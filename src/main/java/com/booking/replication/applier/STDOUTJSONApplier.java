@@ -5,8 +5,6 @@ import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.pipeline.PipelineOrchestrator;
-import com.booking.replication.queues.ReplicatorQueues;
-import com.booking.replication.util.MutableLong;
 import com.google.code.or.binlog.impl.event.FormatDescriptionEvent;
 import com.google.code.or.binlog.impl.event.QueryEvent;
 import com.google.code.or.binlog.impl.event.RotateEvent;
@@ -15,10 +13,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class STDOUTJSONApplier implements Applier  {
 
-    private static long totalEventsCounter = 0;
     private static long totalRowsCounter = 0;
 
     // TODO: move these to CMD config params
@@ -28,24 +26,17 @@ public class STDOUTJSONApplier implements Applier  {
     public static final Boolean DATA_OUT = false;
     public static final Boolean SCHEMA_OUT = false;
 
-    private static final HashMap<String, MutableLong> stats = new HashMap<>();
-
-    private final com.booking.replication.Configuration replicatorConfiguration;
+    private static final Map<String, Long> stats = new ConcurrentHashMap<>();
 
     private static final Logger LOGGER = LoggerFactory.getLogger(STDOUTJSONApplier.class);
 
-
-    public STDOUTJSONApplier(
-            Configuration configuration
-        ) {
-        replicatorConfiguration = configuration;
-    }
+    public STDOUTJSONApplier(Configuration configuration) {}
 
     @Override
     public void applyXIDEvent(XidEvent event) {
         if (VERBOSE) {
             for (String table : stats.keySet()) {
-                LOGGER.info("XID Event, current stats: { table => " + table + ", rows => " + stats.get(table).getValue());
+                LOGGER.info("XID Event, current stats: { table => " + table + ", rows => " + stats.get(table));
             }
         }
     }
@@ -69,8 +60,6 @@ public class STDOUTJSONApplier implements Applier  {
 
     @Override
     public void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedRowsEvent, PipelineOrchestrator caller) {
-        totalEventsCounter++;
-
         if (VERBOSE) {
             LOGGER.info("Row Event: number of rows in event => " + augmentedRowsEvent.getSingleRowEvents().size());
         }
@@ -83,9 +72,9 @@ public class STDOUTJSONApplier implements Applier  {
                     if (row.getTableName().equals(FILTERED_TABLE_NAME)) {
                         totalRowsCounter++;
                         if (stats.containsKey(tableName)) {
-                            stats.get(tableName).increment();
+                            stats.put(tableName, stats.get(tableName)+1);
                         } else {
-                            stats.put(tableName, new MutableLong());
+                            stats.put(tableName, 0L);
                         }
                         if (STATS_OUT) {
                             System.out.println(FILTERED_TABLE_NAME + ":" + totalRowsCounter);
@@ -93,7 +82,7 @@ public class STDOUTJSONApplier implements Applier  {
                             if ((totalRowsCounter % 10000) == 0) {
                                 LOGGER.info("totalRowsCounter => " + totalRowsCounter);
                                 for (String table : stats.keySet()) {
-                                    LOGGER.info("{ table => " + table + ", rows => " + stats.get(table).getValue());
+                                    LOGGER.info("{ table => " + table + ", rows => " + stats.get(table));
                                 }
                             }
                         }
@@ -105,15 +94,15 @@ public class STDOUTJSONApplier implements Applier  {
                     // track all tables
                     totalRowsCounter++;
                     if (stats.containsKey(tableName)) {
-                        stats.get(tableName).increment();
+                        stats.put(tableName, stats.get(tableName)+1);
                     } else {
-                        stats.put(tableName, new MutableLong());
+                        stats.put(tableName, 0L);
                     }
                     if (STATS_OUT) {
                         if ((totalRowsCounter % 10000) == 0) {
                             LOGGER.info("totalRowsCounter => " + totalRowsCounter);
                             for (String table : stats.keySet()) {
-                                LOGGER.info("{ table => " + table + ", rows => " + stats.get(table).getValue());
+                                LOGGER.info("{ table => " + table + ", rows => " + stats.get(table));
                             }
                         }
                     }
@@ -132,15 +121,15 @@ public class STDOUTJSONApplier implements Applier  {
         if (VERBOSE) {
             LOGGER.info("COMMIT");
             for (String table : stats.keySet()) {
-                LOGGER.info("COMMIT, current stats: { table => " + table + ", rows => " + stats.get(table).getValue());
+                LOGGER.info("COMMIT, current stats: { table => " + table + ", rows => " + stats.get(table));
             }
         }
     }
 
     @Override
-    public void applyAugmentedSchemaChangeEvent(AugmentedSchemaChangeEvent augmentedSchemaChangeEvent, PipelineOrchestrator caller) {
-
-        totalEventsCounter++;
+    public void applyAugmentedSchemaChangeEvent(
+            AugmentedSchemaChangeEvent augmentedSchemaChangeEvent,
+            PipelineOrchestrator caller) {
 
         if (SCHEMA_OUT) {
             String json = augmentedSchemaChangeEvent.toJSON();

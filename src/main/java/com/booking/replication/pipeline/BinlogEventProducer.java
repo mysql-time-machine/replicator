@@ -106,8 +106,7 @@ public class BinlogEventProducer {
                                 if (opCounter % 100000 == 0) {
                                     LOGGER.info("Producer reporting queue size => " + queue.size());
                                 }
-                            }
-                            else {
+                            } else {
                                 LOGGER.error("queue.offer timed out. Will sleep for 100ms and try again");
                                 Thread.sleep(100);
                             }
@@ -125,23 +124,9 @@ public class BinlogEventProducer {
     private long backPressureSleep = 0;
 
     private void backPressureSleep() {
-
         int qSize = queue.size();
 
-        int qPercent = (int) (100 * ((float) qSize / Constants.MAX_RAW_QUEUE_SIZE));
-
-        if      (qPercent < 30) { backPressureSleep = 0;    }
-        else if (qPercent < 40) { backPressureSleep = 4;    }
-        else if (qPercent < 50) { backPressureSleep = 8;    }
-        else if (qPercent < 60) { backPressureSleep = 16;   }
-        else if (qPercent < 70) { backPressureSleep = 32;   }
-        else if (qPercent < 75) { backPressureSleep = 64;   }
-        else if (qPercent < 80) { backPressureSleep = 128;  }
-        else if (qPercent < 85) { backPressureSleep = 256;  }
-        else if (qPercent < 90) { backPressureSleep = 1024; }
-        else if (qPercent < 95) { backPressureSleep = 2048; }
-        else if (qPercent < 95) { backPressureSleep = 4096; }
-        else                    { backPressureSleep = 8192; }
+        backPressureSleep = 2 ^ ((int) (13 * ((float) qSize / Constants.MAX_RAW_QUEUE_SIZE)));
 
         if (backPressureSleep > 4000) {
             LOGGER.warn("Queue is getting big, back pressure is getting high");
@@ -170,30 +155,26 @@ public class BinlogEventProducer {
                                     + binlogPosition
                                     + " }"
                             );
-                            this.openReplicator.setBinlogFileName(
+                            openReplicator.setBinlogFileName(
                                     lastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION).getBinlogFilename()
                             );
-                            this.openReplicator.setBinlogPosition(
+                            openReplicator.setBinlogPosition(
                                     lastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION).getBinlogPosition()
                             );
-                            this.openReplicator.start();
-                        }
-                        else {
+                            openReplicator.start();
+                        } else {
                             LOGGER.error("last mapEvent position object is not initialized. This should not happen. Shuting down...");
                         }
-                    }
-                    else {
+                    } else {
                         LOGGER.error("lastMapEventPosition object is null. This should not happen. Shuting down...");
                         Runtime.getRuntime().exit(1);
                     }
                 }
-            }
-            else {
+            } else {
                 LOGGER.error("lastKnownInfo is gone. This should never happen. Shutting down...");
                 Runtime.getRuntime().exit(1);
             }
-        }
-        else {
+        } else {
             LOGGER.error("OpenReplicator is gone, need to recreate it again, but that is not yet implemented. So for now, just shutdown.");
             Runtime.getRuntime().exit(1);
         }
@@ -203,8 +184,7 @@ public class BinlogEventProducer {
         openReplicator.stop(timeout, unit);
     }
 
-    public boolean isRunning()
-    {
+    public boolean isRunning() {
         return this.openReplicator.isRunning();
     }
 

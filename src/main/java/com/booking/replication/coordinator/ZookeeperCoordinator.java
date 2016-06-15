@@ -76,8 +76,9 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
         RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
 
         String cluster = configuration.getZookeeperQuorum();
-        if (cluster == null || "".equals(cluster))
+        if (cluster == null || "".equals(cluster)) {
             throw new Exception("expecting env ZOOKEEPER_CLUSTER (should be in /etc/sysconfig/bookings.puppet)");
+        }
 
         client = CuratorFrameworkFactory.newClient(cluster, retryPolicy);
         client.start();
@@ -88,7 +89,11 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
     synchronized public void onLeaderElection(Runnable callback) throws InterruptedException {
         LOGGER.info("Waiting to become a leader.");
 
-        CoordinatorLeaderElectionListener le = new CoordinatorLeaderElectionListener(client, String.format("%s/master", configuration.getZookeeperPath()), callback);
+        CoordinatorLeaderElectionListener le = new CoordinatorLeaderElectionListener(
+                client,
+                String.format("%s/master", configuration.getZookeeperPath()),
+                callback);
+
         le.start();
 
         while(!isLeader || isRunning) {

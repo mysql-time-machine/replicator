@@ -46,8 +46,7 @@ public class SetColumnSchema extends ColumnSchema {
         List<String> items = new ArrayList<>();
         if (setNumericValue == 0) {
             return "";
-        }
-        else {
+        } else {
             for (int i = 0; i < setMembers.length; i++) {
                 if (((setNumericValue >> i) & 1) == 1) {
                     items.add(setMembers[i]);

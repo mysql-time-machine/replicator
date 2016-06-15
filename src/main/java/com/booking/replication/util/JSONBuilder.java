@@ -119,17 +119,4 @@ public class JSONBuilder {
         return json;
     }
 
-    public static String taskStatsToJSON(HashMap<String, MutableLong> tableStats) {
-        String json = null;
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            json = mapper.writeValueAsString(tableStats);
-
-        } catch (IOException e) {
-            System.out.println("ERROR: could not serialize tableStats");
-            e.printStackTrace();
-        }
-        return json;
-    }
-
 }

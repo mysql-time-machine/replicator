@@ -1,9 +1,5 @@
 package com.booking.replication.applier;
 
-import com.booking.replication.util.MutableLong;
-
-import java.util.HashMap;
-
 /**
  * Created by bosko on 3/17/16.
  */
@@ -17,8 +13,7 @@ public class TaskResult {
             String uuid,
             int status,
             boolean success
-    )
-    {
+    ) {
         taskSucceeded                        = success;
         taskUUID                             = uuid;
         taskStatus                           = status;
@@ -32,6 +27,8 @@ public class TaskResult {
         return taskSucceeded;
     }
 
-    public int getTaskStatus() { return taskStatus; }
+    public int getTaskStatus() {
+        return taskStatus;
+    }
 
 }

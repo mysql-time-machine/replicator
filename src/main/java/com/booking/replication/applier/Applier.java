@@ -23,7 +23,9 @@ public interface Applier {
 
     void applyRotateEvent(RotateEvent event);
 
-    void applyAugmentedSchemaChangeEvent(AugmentedSchemaChangeEvent augmentedSchemaChangeEvent, PipelineOrchestrator caller);
+    void applyAugmentedSchemaChangeEvent(
+            AugmentedSchemaChangeEvent augmentedSchemaChangeEvent,
+            PipelineOrchestrator caller);
 
     void forceFlush();
 

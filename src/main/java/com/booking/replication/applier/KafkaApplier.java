@@ -5,7 +5,6 @@ import com.booking.replication.Metrics;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
-import com.booking.replication.util.MutableLong;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 
 import com.codahale.metrics.Counter;

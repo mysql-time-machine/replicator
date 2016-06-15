@@ -42,7 +42,8 @@ public class HBaseApplierMutationGenerator {
         configuration = repCfg;
     }
 
-    public HashMap<String,HashMap<String,List<Triple<String,String,Put>>>> generateMutationsFromAugmentedRows(List<AugmentedRow> augmentedRows) {
+    public HashMap<String,HashMap<String,List<Triple<String,String,Put>>>>
+    generateMutationsFromAugmentedRows(List<AugmentedRow> augmentedRows) {
 
         // { $type => $tableName => @AugmentedMutations }
         HashMap<String,HashMap<String,List<Triple<String,String,Put>>>> preparedMutations = new HashMap<>();
@@ -289,7 +290,8 @@ public class HBaseApplierMutationGenerator {
 
     public static String getHBaseRowKey(AugmentedRow row) {
         // RowID
-        List<String> pkColumnNames  = row.getPrimaryKeyColumns(); // <- this is sorted by column OP (from information schema)
+        // This is sorted by column OP (from information schema)
+        List<String> pkColumnNames  = row.getPrimaryKeyColumns();
         List<String> pkColumnValues = new ArrayList<>();
 
         for (String pkColumnName : pkColumnNames) {

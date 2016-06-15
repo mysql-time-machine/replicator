@@ -50,16 +50,14 @@ public class AugmentedRow {
 
         if (columnName == null) {
             throw new InvalidParameterException("columnName can not be null");
-        }
-        else if (eventColumns.get(columnName) == null) {
+        } else if (eventColumns.get(columnName) == null) {
             String errorMessage = "Missing data slot for { table => " + this.getTableName() + ", columnName => " + columnName;
             errorMessage += "\n Known columns for table " + this.getTableName() + " are:";
             for (String c : eventColumns.keySet()) {
                 errorMessage += "\n\t" + c;
             }
             throw new TableMapException(errorMessage);
-        }
-        else {
+        } else {
             eventColumns.get(columnName).put("value_before", valueBefore);
             eventColumns.get(columnName).put("value_after", valueAfter);
         }
@@ -121,8 +119,7 @@ public class AugmentedRow {
 
         if (tableSchema == null) {
             throw new TableMapException("Need table schem in order to generate PK list.");
-        }
-        else {
+        } else {
             Map<Integer, String> pkColumns = new HashMap<>();
 
             Set<String> columnNames = tableSchema.getColumnsSchema().keySet();

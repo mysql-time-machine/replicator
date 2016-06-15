@@ -58,9 +58,7 @@ public class CurrentTransactionMetadata {
             }
             throw new TableMapException("Table ID not present in CurrentTransactionMetadata!");
         }
-        else {
-            return tableName;
-        }
+        return tableName;
     }
 
     public String getDBNameFromTableID(Long tableID) throws TableMapException {
@@ -68,8 +66,7 @@ public class CurrentTransactionMetadata {
 
         if (dbName == null) {
             throw new TableMapException("Table ID not present in CurrentTransactionMetadata!");
-        }
-        else {
+        } else {
             return dbName;
         }
     }

@@ -44,9 +44,9 @@ public class HBaseSchemaManager {
 
     private static final byte[] CF = Bytes.toBytes("d");
 
-    public HBaseSchemaManager(String ZOOKEEPER_QUORUM) {
+    public HBaseSchemaManager(String zookeeperQuorum) {
 
-        hbaseConf.set("hbase.zookeeper.quorum",ZOOKEEPER_QUORUM);
+        hbaseConf.set("hbase.zookeeper.quorum", zookeeperQuorum);
 
         if (! DRY_RUN) {
             try {
@@ -71,13 +71,13 @@ public class HBaseSchemaManager {
                 }
 
                 Admin admin = connection.getAdmin();
-                TableName TABLE_NAME = TableName.valueOf(hbaseTableName);
+                TableName tableName = TableName.valueOf(hbaseTableName);
 
-                if (!admin.tableExists(TABLE_NAME)) {
+                if (!admin.tableExists(tableName)) {
 
                     LOGGER.info("table " + hbaseTableName + " does not exist in HBase. Creating...");
 
-                    HTableDescriptor tableDescriptor = new HTableDescriptor(TABLE_NAME);
+                    HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);
                     HColumnDescriptor cd = new HColumnDescriptor("d");
                     cd.setMaxVersions(versions);
                     tableDescriptor.addFamily(cd);
@@ -111,13 +111,13 @@ public class HBaseSchemaManager {
                 }
 
                 Admin admin = connection.getAdmin();
-                TableName TABLE_NAME = TableName.valueOf(hbaseTableName);
+                TableName tableName = TableName.valueOf(hbaseTableName);
 
-                if (!admin.tableExists(TABLE_NAME)) {
+                if (!admin.tableExists(tableName)) {
 
                     LOGGER.info("table " + hbaseTableName + " does not exist in HBase. Creating...");
 
-                    HTableDescriptor tableDescriptor = new HTableDescriptor(TABLE_NAME);
+                    HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);
                     HColumnDescriptor cd = new HColumnDescriptor("d");
                     cd.setMaxVersions(DELTA_TABLE_MAX_VERSIONS);
                     tableDescriptor.addFamily(cd);
@@ -151,31 +151,37 @@ public class HBaseSchemaManager {
         return knownHBaseTables.get(tableName) != null;
     }
 
-    public void writeSchemaSnapshotToHBase(AugmentedSchemaChangeEvent e, com.booking.replication.Configuration configuration) {
+    public void writeSchemaSnapshotToHBase(
+            AugmentedSchemaChangeEvent event,
+            com.booking.replication.Configuration configuration) {
 
         // get database_name
         String mySQLDBName = configuration.getReplicantSchemaName();
 
         // get sql_statement
-        String ddl = e.getSchemaTransitionSequence().get("ddl");
+        String ddl = event.getSchemaTransitionSequence().get("ddl");
         if (ddl == null) {
             LOGGER.error("DDL can not be null");
             System.exit(-1);
         }
 
         // get pre/post schemas
-        String preChangeTablesSchemaJSON  = e.getPreTransitionSchemaSnapshot().getSchemaVersionTables_JSONSnaphot();
-        String postChangeTablesSchemaJSON = e.getPostTransitionSchemaSnapshot().getSchemaVersionTables_JSONSnaphot();
+        String preChangeTablesSchemaJSON  = event.getPreTransitionSchemaSnapshot().getSchemaVersionTablesJSONSnaphot();
+        String postChangeTablesSchemaJSON = event.getPostTransitionSchemaSnapshot().getSchemaVersionTablesJSONSnaphot();
         String schemaTransitionSequenceJSON = JSONBuilder.schemaTransitionSequenceToJSON(
-                e.getSchemaTransitionSequence()
+                event.getSchemaTransitionSequence()
         );
 
         // get pre/post creates
-        String preChangeCreateStatementsJSON  = e.getPreTransitionSchemaSnapshot().getSchemaVersionCreateStatements_JSONSnapshot();
-        String postChangeCreateStatementsJSON = e.getPostTransitionSchemaSnapshot().getSchemaVersionCreateStatements_JSONSnapshot();
+        String preChangeCreateStatementsJSON  = event
+                .getPreTransitionSchemaSnapshot()
+                .getSchemaVersionCreateStatementsJSONSnapshot();
+        String postChangeCreateStatementsJSON = event
+                .getPostTransitionSchemaSnapshot()
+                .getSchemaVersionCreateStatementsJSONSnapshot();
 
         // get event timestamp
-        Long eventTimestamp = e.getSchemaChangeEventTimestamp();
+        Long eventTimestamp = event.getSchemaChangeEventTimestamp();
 
         String hbaseTableName = "schema_history:" + mySQLDBName.toLowerCase();
         int shard = configuration.getReplicantShardID();
@@ -200,13 +206,13 @@ public class HBaseSchemaManager {
 
             Admin admin = connection.getAdmin();
 
-            TableName TABLE_NAME = TableName.valueOf(hbaseTableName);
+            TableName tableName = TableName.valueOf(hbaseTableName);
 
-            if (!admin.tableExists(TABLE_NAME)) {
+            if (!admin.tableExists(tableName)) {
 
                 LOGGER.info("table " + hbaseTableName + " does not exist in HBase. Creating...");
 
-                HTableDescriptor tableDescriptor = new HTableDescriptor(TABLE_NAME);
+                HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);
                 HColumnDescriptor cd = new HColumnDescriptor("d");
                 cd.setMaxVersions(DEFAULT_SCHEMA_VERSIONS);
                 tableDescriptor.addFamily(cd);
@@ -220,12 +226,12 @@ public class HBaseSchemaManager {
                 LOGGER.info("Table " + hbaseTableName + " already exists in HBase. Probably a case of replaying the binlog.");
             }
 
-            Table hbaseTable = connection.getTable(TABLE_NAME);
+            Table hbaseTable = connection.getTable(tableName);
 
             // write schema info
-            Put p = new Put(Bytes.toBytes(hbaseRowKey));
+            Put put = new Put(Bytes.toBytes(hbaseRowKey));
             String ddlColumnName  = "ddl";
-            p.addColumn(
+            put.addColumn(
                     CF,
                     Bytes.toBytes(ddlColumnName),
                     eventTimestamp,
@@ -233,7 +239,7 @@ public class HBaseSchemaManager {
             );
 
             String schemaSnapshotPreColumnName  = "schemaPreChange";
-            p.addColumn(
+            put.addColumn(
                     CF,
                     Bytes.toBytes(schemaSnapshotPreColumnName),
                     eventTimestamp,
@@ -241,7 +247,7 @@ public class HBaseSchemaManager {
             );
 
             String schemaSnapshotPostColumnName = "schemaPostChange";
-            p.addColumn(
+            put.addColumn(
                     CF,
                     Bytes.toBytes(schemaSnapshotPostColumnName),
                     eventTimestamp,
@@ -249,7 +255,7 @@ public class HBaseSchemaManager {
             );
 
             String preChangeCreateStatementsColumn = "createsPreChange";
-            p.addColumn(
+            put.addColumn(
                     CF,
                     Bytes.toBytes(preChangeCreateStatementsColumn),
                     eventTimestamp,
@@ -257,14 +263,14 @@ public class HBaseSchemaManager {
             );
 
             String postChangeCreateStatementsColumn = "createsPostChange";
-            p.addColumn(
+            put.addColumn(
                     CF,
                     Bytes.toBytes(postChangeCreateStatementsColumn),
                     eventTimestamp,
                     Bytes.toBytes(postChangeCreateStatementsJSON)
             );
 
-            hbaseTable.put(p);
+            hbaseTable.put(put);
 
         } catch (IOException ioe) {
             LOGGER.error("Failed to store schemaChangePointSnapshot in HBase.", ioe);

@@ -2,15 +2,12 @@ package com.booking.replication.pipeline;
 
 import com.booking.replication.schema.exception.TableMapException;
 import com.google.code.or.binlog.impl.event.TableMapEvent;
+import com.google.common.base.Joiner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.TimeZone;
 
 /**
  * Created by bosko on 11/10/15.
@@ -48,17 +45,14 @@ public class CurrentTransactionMetadata {
     }
 
     public String getTableNameFromID (Long tableID) throws TableMapException {
-
-        String tableName = tableID2Name.get(tableID);
-
-        if (tableName == null) {
-            LOGGER.error("Table ID not known. Known tables and ids are:");
-            for (long tID: tableID2Name.keySet()) {
-                LOGGER.info(" id => " + tID + " , tableName " + tableID2Name.get(tID));
-            }
+        if (! tableID2DBName.containsKey(tableID)) {
+            LOGGER.error(String.format(
+                    "Table ID not known. Known tables and ids are: %s",
+                    Joiner.on(" ").join(tableID2DBName.keySet(), " ")));
             throw new TableMapException("Table ID not present in CurrentTransactionMetadata!");
         }
-        return tableName;
+
+        return tableID2Name.get(tableID);
     }
 
     public String getDBNameFromTableID(Long tableID) throws TableMapException {

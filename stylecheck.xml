@@ -22,6 +22,10 @@
 
     <property name="fileExtensions" value="java, properties, xml"/>
 
+    <module name="SuppressionFilter">
+        <property name="file" value="stylecheck_suppression.xml" />
+    </module>
+
     <!-- Checks for whitespace                               -->
     <module name="FileTabCharacter">
         <property name="eachLine" value="true"/>
@@ -53,7 +57,6 @@
         <module name="NeedBraces"/>
         <module name="LeftCurly">
             <property name="maxLineLength" value="100"/>
-            <!--<property name="tokens" value="INTERFACE_DEF,CLASS_DEF,ANNOTATION_DEF,ENUM_DEF,CTOR_DEF,METHOD_DEF,ENUM_CONSTANT_DEF,LITERAL_WHILE,LITERAL_TRY,LITERAL_CATCH,LITERAL_FINALLY,LITERAL_SYNCHRONIZED,LITERAL_SWITCH,LITERAL_DO,LITERAL_IF,LITERAL_ELSE,LITERAL_FOR,STATIC_INIT"/>-->
         </module>
         <module name="RightCurly"/>
         <module name="RightCurly">
@@ -70,55 +73,55 @@
             <message key="ws.notPreceded"
             value="WhitespaceAround: ''{0}'' is not preceded with whitespace."/>
         </module>
-        <!--<module name="OneStatementPerLine"/>-->
-        <!--<module name="MultipleVariableDeclarations"/>-->
-        <!--<module name="ArrayTypeStyle"/>-->
-        <!--<module name="MissingSwitchDefault"/>-->
-        <!--<module name="FallThrough"/>-->
-        <!--<module name="UpperEll"/>-->
-        <!--<module name="ModifierOrder"/>-->
-        <!--<module name="EmptyLineSeparator">-->
-        <!--<property name="allowNoEmptyLineBetweenFields" value="true"/>-->
-        <!--</module>-->
-        <!--<module name="SeparatorWrap">-->
-        <!--<property name="tokens" value="DOT"/>-->
-        <!--<property name="option" value="nl"/>-->
-        <!--</module>-->
-        <!--<module name="SeparatorWrap">-->
-        <!--<property name="tokens" value="COMMA"/>-->
-        <!--<property name="option" value="EOL"/>-->
-        <!--</module>-->
-        <!--<module name="PackageName">-->
-        <!--<property name="format" value="^[a-z]+(\.[a-z][a-z0-9]*)*$"/>-->
-        <!--<message key="name.invalidPattern"-->
-        <!--value="Package name ''{0}'' must match pattern ''{1}''."/>-->
-        <!--</module>-->
-        <!--<module name="TypeName">-->
-        <!--<message key="name.invalidPattern"-->
-        <!--value="Type name ''{0}'' must match pattern ''{1}''."/>-->
-        <!--</module>-->
-        <!--<module name="MemberName">-->
-        <!--<property name="format" value="^[a-z][a-z0-9][a-zA-Z0-9]*$"/>-->
-        <!--<message key="name.invalidPattern"-->
-        <!--value="Member name ''{0}'' must match pattern ''{1}''."/>-->
-        <!--</module>-->
-        <!--<module name="ParameterName">-->
-        <!--<property name="format" value="^[a-z][a-z0-9][a-zA-Z0-9]*$"/>-->
-        <!--<message key="name.invalidPattern"-->
-        <!--value="Parameter name ''{0}'' must match pattern ''{1}''."/>-->
-        <!--</module>-->
+        <module name="OneStatementPerLine"/>
+        <module name="MultipleVariableDeclarations"/>
+        <module name="ArrayTypeStyle"/>
+        <module name="MissingSwitchDefault"/>
+        <module name="FallThrough"/>
+        <module name="UpperEll"/>
+        <module name="ModifierOrder"/>
+        <module name="EmptyLineSeparator">
+        <property name="allowNoEmptyLineBetweenFields" value="true"/>
+        </module>
+        <module name="SeparatorWrap">
+        <property name="tokens" value="DOT"/>
+        <property name="option" value="nl"/>
+        </module>
+        <module name="SeparatorWrap">
+        <property name="tokens" value="COMMA"/>
+        <property name="option" value="EOL"/>
+        </module>
+        <module name="PackageName">
+        <property name="format" value="^[a-z]+(\.[a-z][a-z0-9]*)*$"/>
+        <message key="name.invalidPattern"
+        value="Package name ''{0}'' must match pattern ''{1}''."/>
+        </module>
+        <module name="TypeName">
+        <message key="name.invalidPattern"
+        value="Type name ''{0}'' must match pattern ''{1}''."/>
+        </module>
+        <module name="MemberName">
+        <property name="format" value="^[a-z][a-z0-9][a-zA-Z0-9]*$"/>
+        <message key="name.invalidPattern"
+        value="Member name ''{0}'' must match pattern ''{1}''."/>
+        </module>
+        <module name="ParameterName">
+        <property name="format" value="^[a-z][a-z0-9][a-zA-Z0-9]*$"/>
+        <message key="name.invalidPattern"
+        value="Parameter name ''{0}'' must match pattern ''{1}''."/>
+        </module>
         <!--<module name="CatchParameterName">-->
         <!--<property name="format" value="^[a-z][a-z0-9][a-zA-Z0-9]*$"/>-->
         <!--<message key="name.invalidPattern"-->
         <!--value="Catch parameter name ''{0}'' must match pattern ''{1}''."/>-->
         <!--</module>-->
-        <!--<module name="LocalVariableName">-->
-        <!--<property name="tokens" value="VARIABLE_DEF"/>-->
-        <!--<property name="format" value="^[a-z][a-z0-9][a-zA-Z0-9]*$"/>-->
-        <!--<property name="allowOneCharVarInForLoop" value="true"/>-->
-        <!--<message key="name.invalidPattern"-->
-        <!--value="Local variable name ''{0}'' must match pattern ''{1}''."/>-->
-        <!--</module>-->
+        <module name="LocalVariableName">
+        <property name="tokens" value="VARIABLE_DEF"/>
+        <property name="format" value="^[a-z][a-z0-9][a-zA-Z0-9]*$"/>
+        <property name="allowOneCharVarInForLoop" value="true"/>
+        <message key="name.invalidPattern"
+        value="Local variable name ''{0}'' must match pattern ''{1}''."/>
+        </module>
         <!--<module name="ClassTypeParameterName">-->
         <!--<property name="format" value="(^[A-Z][0-9]?)$|([A-Z][a-zA-Z0-9]*[T]$)"/>-->
         <!--<message key="name.invalidPattern"-->

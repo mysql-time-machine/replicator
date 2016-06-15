@@ -12,18 +12,18 @@ public class TableSchema {
     private HashMap<Integer,String> columnIndexToColumnNameMap = new HashMap<>();
 
     // TODO: load table CHARACTER_SET_NAME
-    private String CHARACTER_SET_NAME;
+//    private String CHARACTER_SET_NAME;
 
     public TableSchema() {
         columns = new HashMap<>();
     }
 
     public void addColumn(ColumnSchema columnSchema) {
-        this.columns.put(columnSchema.getCOLUMN_NAME(), columnSchema);
+        this.columns.put(columnSchema.getColumnName(), columnSchema);
 
         // update the indexToNameMap
-        Integer index = columnSchema.getORDINAL_POSITION();
-        String  name  = columnSchema.getCOLUMN_NAME();
+        Integer index = columnSchema.getOrdinalPosition();
+        String  name  = columnSchema.getColumnName();
         columnIndexToColumnNameMap.put(index,name);
     }
 

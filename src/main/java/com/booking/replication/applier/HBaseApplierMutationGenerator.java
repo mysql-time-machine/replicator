@@ -99,7 +99,7 @@ public class HBaseApplierMutationGenerator {
         String hbaseTableName =
                 configuration.getHbaseNamespace() + ":" + row.getTableName().toLowerCase();
 
-        Put p = new Put(Bytes.toBytes(hbaseRowID));
+        Put put = new Put(Bytes.toBytes(hbaseRowID));
 
         switch (row.getEventType()) {
             case "DELETE": {
@@ -109,7 +109,7 @@ public class HBaseApplierMutationGenerator {
                 Long columnTimestamp = row.getEventV4Header().getTimestamp();
                 String columnName = "row_status";
                 String columnValue = "D";
-                p.addColumn(
+                put.addColumn(
                         CF,
                         Bytes.toBytes(columnName),
                         columnTimestamp,
@@ -139,7 +139,7 @@ public class HBaseApplierMutationGenerator {
                                     (!valueAfter.equals(valueBefore))) {
 
                         columnValue = valueAfter;
-                        p.addColumn(
+                        put.addColumn(
                                 CF,
                                 Bytes.toBytes(columnName),
                                 columnTimestamp,
@@ -150,7 +150,7 @@ public class HBaseApplierMutationGenerator {
                     }
                 }
 
-                p.addColumn(
+                put.addColumn(
                         CF,
                         Bytes.toBytes("row_status"),
                         columnTimestamp,
@@ -170,7 +170,7 @@ public class HBaseApplierMutationGenerator {
                         columnValue = "NULL";
                     }
 
-                    p.addColumn(
+                    put.addColumn(
                             CF,
                             Bytes.toBytes(columnName),
                             columnTimestamp,
@@ -179,7 +179,7 @@ public class HBaseApplierMutationGenerator {
                 }
 
 
-                p.addColumn(
+                put.addColumn(
                         CF,
                         Bytes.toBytes("row_status"),
                         columnTimestamp,
@@ -192,7 +192,7 @@ public class HBaseApplierMutationGenerator {
                 System.exit(1);
         }
 
-        return new Triple<>(hbaseTableName,hbaseRowID,p);
+        return new Triple<>(hbaseTableName,hbaseRowID,put);
     }
 
     private Triple<String,String,Put> getPutForDeltaTable(AugmentedRow row) {
@@ -211,7 +211,7 @@ public class HBaseApplierMutationGenerator {
                 isInitialSnapshot
         );
 
-        Put p = new Put(Bytes.toBytes(hbaseRowID));
+        Put put = new Put(Bytes.toBytes(hbaseRowID));
 
         switch (row.getEventType()) {
             case "DELETE": {
@@ -221,7 +221,7 @@ public class HBaseApplierMutationGenerator {
                 Long columnTimestamp = row.getEventV4Header().getTimestamp();
                 String columnName = "row_status";
                 String columnValue = "D";
-                p.addColumn(
+                put.addColumn(
                         CF,
                         Bytes.toBytes(columnName),
                         columnTimestamp,
@@ -236,7 +236,7 @@ public class HBaseApplierMutationGenerator {
                 Long columnTimestamp = row.getEventV4Header().getTimestamp();
 
                 for (String columnName : row.getEventColumns().keySet()) {
-                    p.addColumn(
+                    put.addColumn(
                             CF,
                             Bytes.toBytes(columnName),
                             columnTimestamp,
@@ -244,7 +244,7 @@ public class HBaseApplierMutationGenerator {
                     );
                 }
 
-                p.addColumn(
+                put.addColumn(
                         CF,
                         Bytes.toBytes("row_status"),
                         columnTimestamp,
@@ -264,7 +264,7 @@ public class HBaseApplierMutationGenerator {
                         columnValue = "NULL";
                     }
 
-                    p.addColumn(
+                    put.addColumn(
                             CF,
                             Bytes.toBytes(columnName),
                             columnTimestamp,
@@ -272,7 +272,7 @@ public class HBaseApplierMutationGenerator {
                     );
                 }
 
-                p.addColumn(
+                put.addColumn(
                         CF,
                         Bytes.toBytes("row_status"),
                         columnTimestamp,
@@ -285,7 +285,7 @@ public class HBaseApplierMutationGenerator {
                 System.exit(1);
         }
 
-        return new Triple<>(deltaTableName,hbaseRowID,p);
+        return new Triple<>(deltaTableName,hbaseRowID,put);
     }
 
     public static String getHBaseRowKey(AugmentedRow row) {
@@ -337,18 +337,18 @@ public class HBaseApplierMutationGenerator {
             LOGGER.error("md5 algorithm not available. Shutting down...");
             System.exit(1);
         }
-        byte[] bytes_md5 = md.digest(bytesOfSaltingPartOfRowKey);
+        byte[] bytesMD5 = md.digest(bytesOfSaltingPartOfRowKey);
 
-        String byte_1_hex = Integer.toHexString(bytes_md5[0] & 0xFF);
-        String byte_2_hex = Integer.toHexString(bytes_md5[1] & 0xFF);
-        String byte_3_hex = Integer.toHexString(bytes_md5[2] & 0xFF);
-        String byte_4_hex = Integer.toHexString(bytes_md5[3] & 0xFF);
+        String byte1hex = Integer.toHexString(bytesMD5[0] & 0xFF);
+        String byte2hex = Integer.toHexString(bytesMD5[1] & 0xFF);
+        String byte3hex = Integer.toHexString(bytesMD5[2] & 0xFF);
+        String byte4hex = Integer.toHexString(bytesMD5[3] & 0xFF);
 
         // add 0-padding
-        String salt = ("00" + byte_1_hex).substring(byte_1_hex.length())
-                + ("00" + byte_2_hex).substring(byte_2_hex.length())
-                + ("00" + byte_3_hex).substring(byte_3_hex.length())
-                + ("00" + byte_4_hex).substring(byte_4_hex.length())
+        String salt = ("00" + byte1hex).substring(byte1hex.length())
+                + ("00" + byte2hex).substring(byte2hex.length())
+                + ("00" + byte3hex).substring(byte3hex.length())
+                + ("00" + byte4hex).substring(byte4hex.length())
                 ;
 
         return salt + ";" + hbaseRowID;

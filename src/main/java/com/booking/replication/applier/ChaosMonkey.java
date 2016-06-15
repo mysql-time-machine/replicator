@@ -6,7 +6,7 @@ package com.booking.replication.applier;
  */
 public class ChaosMonkey {
 
-    private final int CHAOS_MAX = 10000;
+    private static final int CHAOS_MAX = 10000;
 
     private final int chaosPoint;
 

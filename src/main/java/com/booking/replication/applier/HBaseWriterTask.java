@@ -91,11 +91,11 @@ public class HBaseWriterTask implements Callable<TaskResult> {
                     } else {
                         List<AugmentedRow> rowOps = taskTransactionBuffer.get(transactionUUID).get(bufferedMySQLTableName);
 
-                        HBaseApplierMutationGenerator hBaseApplierMutationGenerator =
+                        HBaseApplierMutationGenerator hbaseApplierMutationGenerator =
                                 new HBaseApplierMutationGenerator(configuration);
 
                         HashMap<String, HashMap<String, List<Triple<String, String, Put>>>> preparedMutations =
-                                hBaseApplierMutationGenerator.generateMutationsFromAugmentedRows(rowOps);
+                                hbaseApplierMutationGenerator.generateMutationsFromAugmentedRows(rowOps);
 
                         if (!preparedMutations.containsKey("mirrored")) {
                             LOGGER.error("Missing mirrored key from preparedMutations!");
@@ -104,18 +104,18 @@ public class HBaseWriterTask implements Callable<TaskResult> {
 
                         for (String type: "mirrored delta".split(" ")) {
 
-                            for (String HBaseTableName : preparedMutations.get(type).keySet()) {
+                            for (String hbaseTableName : preparedMutations.get(type).keySet()) {
 
                                 List<Put> puts = new ArrayList<>();
 
                                 for (Triple<String, String, Put> augmentedMutation :
-                                        preparedMutations.get(type).get(HBaseTableName)) {
+                                        preparedMutations.get(type).get(hbaseTableName)) {
                                     puts.add(augmentedMutation.getThird());
                                 }
 
                                 if (!DRY_RUN) {
-                                    TableName TABLE = TableName.valueOf(HBaseTableName);
-                                    Table hbaseTable = hbaseConnection.getTable(TABLE);
+                                    TableName tableName = TableName.valueOf(hbaseTableName);
+                                    Table hbaseTable = hbaseConnection.getTable(tableName);
                                     hbaseTable.put(puts);
                                 }
 
@@ -123,7 +123,7 @@ public class HBaseWriterTask implements Callable<TaskResult> {
                                     numberOfFlushedTablesInCurrentTransaction++;
                                 }
 
-                                perHBaseTableCounters.getOrCreate(HBaseTableName).committed.inc(puts.size());
+                                perHBaseTableCounters.getOrCreate(hbaseTableName).committed.inc(puts.size());
                                 rowOpsCommittedToHbase.mark(puts.size());
                             }
                         }

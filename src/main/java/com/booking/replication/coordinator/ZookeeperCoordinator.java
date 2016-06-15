@@ -86,7 +86,7 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
         client.createContainers(configuration.getZookeeperPath());
     }
 
-    synchronized public void onLeaderElection(Runnable callback) throws InterruptedException {
+    public synchronized void onLeaderElection(Runnable callback) throws InterruptedException {
         LOGGER.info("Waiting to become a leader.");
 
         CoordinatorLeaderElectionListener le = new CoordinatorLeaderElectionListener(

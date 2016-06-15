@@ -33,10 +33,8 @@ public class TableNameMapper {
         } else {
             long eventTimestamp = (long) eventTimestampMicroSec / 1000; // microsec => milisec
 
-            String DATE_FORMAT = "yyyyMMdd";
-
             TimeZone timeZone = TimeZone.getDefault();
-            SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT);
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
             sdf.setTimeZone(timeZone);
             Date resultDate = new Date(eventTimestamp);
 

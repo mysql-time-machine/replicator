@@ -62,6 +62,8 @@ public class Metrics {
                 case "console":
                     new com.booking.replication.metrics.ConsoleReporter(conf).start();
                     break;
+                default:
+                    break;
             }
         }
     }

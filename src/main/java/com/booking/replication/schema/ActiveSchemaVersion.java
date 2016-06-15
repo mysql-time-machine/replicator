@@ -25,9 +25,9 @@ import org.apache.commons.dbcp2.*;
  */
 public class ActiveSchemaVersion {
 
-    private final String SHOW_TABLES_SQL        = "SHOW TABLES";
-    private final String SHOW_CREATE_TABLE_SQL  = "SHOW CREATE TABLE ";
-    private final String INFORMATION_SCHEMA_SQL =
+    private static final String SHOW_TABLES_SQL        = "SHOW TABLES";
+    private static final String SHOW_CREATE_TABLE_SQL  = "SHOW CREATE TABLE ";
+    private static final String INFORMATION_SCHEMA_SQL =
             "SELECT * FROM `information_schema`.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?";
 
     private final HashMap<String,String> activeSchemaCreateStatements = new HashMap<>();
@@ -68,21 +68,21 @@ public class ActiveSchemaVersion {
             con = activeSchemaDataSource.getConnection();
 
             // 1. Get list of tables in active schema
-            Statement         showTables_Statement         = con.createStatement();
-            ResultSet         showTables_ResultSet         = showTables_Statement.executeQuery(SHOW_TABLES_SQL);
-            ResultSetMetaData showTables_ResultSetMetaData = showTables_ResultSet.getMetaData();
+            Statement         showTablesStatement         = con.createStatement();
+            ResultSet         showTablesResultSet         = showTablesStatement.executeQuery(SHOW_TABLES_SQL);
+            ResultSetMetaData showTablesResultSetMetaData = showTablesResultSet.getMetaData();
 
             List<String> tableNames = new ArrayList<>();
-            while (showTables_ResultSet.next()) {
-                int columnCount = showTables_ResultSetMetaData.getColumnCount();
+            while (showTablesResultSet.next()) {
+                int columnCount = showTablesResultSetMetaData.getColumnCount();
                 if (columnCount != 1) {
                     throw new SQLException("SHOW TABLES result set should have only one column!");
                 }
-                String tableName = showTables_ResultSet.getString(1);
+                String tableName = showTablesResultSet.getString(1);
                 tableNames.add(tableName);
             }
-            showTables_ResultSet.close();
-            showTables_Statement.close();
+            showTablesResultSet.close();
+            showTablesStatement.close();
 
             // 2. For each table:
             //       a. getValue and cache its create statement
@@ -91,55 +91,53 @@ public class ActiveSchemaVersion {
             for (String tableName : tableNames) {
 
                 // a. getValue and cache table's create statement
-                PreparedStatement showCreateTable_Statement         = con.prepareStatement(SHOW_CREATE_TABLE_SQL + tableName);
-                ResultSet         showCreateTable_ResultSet         = showCreateTable_Statement.executeQuery();
-                ResultSetMetaData showCreateTable_ResultSetMetadata = showCreateTable_ResultSet.getMetaData();
+                PreparedStatement showCreateTableStatement         = con.prepareStatement(SHOW_CREATE_TABLE_SQL + tableName);
+                ResultSet         showCreateTableResultSet         = showCreateTableStatement.executeQuery();
+                ResultSetMetaData showCreateTableResultSetMetadata = showCreateTableResultSet.getMetaData();
 
-                while (showCreateTable_ResultSet.next()) {
+                while (showCreateTableResultSet.next()) {
 
-                    int showCreateTable_ResultSet_ColumnCount = showCreateTable_ResultSetMetadata.getColumnCount();
-                    if (showCreateTable_ResultSet_ColumnCount != 2) {
+                    if (showCreateTableResultSetMetadata.getColumnCount() != 2) {
                         throw new SQLException("SHOW CREATE TABLE should return 2 columns.");
                     }
 
-                    String returnedTableName = showCreateTable_ResultSet.getString(1);
+                    String returnedTableName = showCreateTableResultSet.getString(1);
                     if (!returnedTableName.equalsIgnoreCase(tableName)) {
                         throw new SQLException("We asked for '" + tableName + "' and got '" + returnedTableName + "'");
                     }
-                    String returnedCreateStatement = showCreateTable_ResultSet.getString(2);
+                    String returnedCreateStatement = showCreateTableResultSet.getString(2);
 
                     this.activeSchemaCreateStatements.put(tableName,returnedCreateStatement);
                 }
-                showCreateTable_ResultSet.close();
-                showCreateTable_Statement.close();
+                showCreateTableResultSet.close();
+                showCreateTableStatement.close();
 
                 // b. create and initialize TableSchema object
                 this.activeSchemaTables.put(tableName, new TableSchema());
 
-                PreparedStatement getTableInfo_Statement =
+                PreparedStatement getTableInfoStatement =
                         con.prepareStatement(INFORMATION_SCHEMA_SQL);
-                getTableInfo_Statement.setString(1, this.configuration.getActiveSchemaDB());
-                getTableInfo_Statement.setString(2, tableName);
+                getTableInfoStatement.setString(1, this.configuration.getActiveSchemaDB());
+                getTableInfoStatement.setString(2, tableName);
 
-                ResultSet getTableInfo_ResultSet =
-                        getTableInfo_Statement.executeQuery();
+                ResultSet getTableInfoResultSet = getTableInfoStatement.executeQuery();
 
-                while (getTableInfo_ResultSet.next()) {
+                while (getTableInfoResultSet.next()) {
 
-                    ColumnSchema c;
+                    ColumnSchema columnSchema;
 
-                    if (getTableInfo_ResultSet.getString("DATA_TYPE").equals("enum")) {
-                        c = new EnumColumnSchema(getTableInfo_ResultSet);
-                    } else if (getTableInfo_ResultSet.getString("DATA_TYPE").equals("set")) {
-                        c = new SetColumnSchema(getTableInfo_ResultSet);
+                    if (getTableInfoResultSet.getString("DATA_TYPE").equals("enum")) {
+                        columnSchema = new EnumColumnSchema(getTableInfoResultSet);
+                    } else if (getTableInfoResultSet.getString("DATA_TYPE").equals("set")) {
+                        columnSchema = new SetColumnSchema(getTableInfoResultSet);
                     } else {
-                        c = new ColumnSchema(getTableInfo_ResultSet);
+                        columnSchema = new ColumnSchema(getTableInfoResultSet);
                     }
 
-                    this.activeSchemaTables.get(tableName).addColumn(c);
+                    this.activeSchemaTables.get(tableName).addColumn(columnSchema);
                 }
-                getTableInfo_ResultSet.close();
-                getTableInfo_Statement.close();
+                getTableInfoResultSet.close();
+                getTableInfoStatement.close();
             }
             con.close();
         } finally {

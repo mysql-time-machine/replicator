@@ -20,20 +20,20 @@ public class SetColumnSchema extends ColumnSchema {
 
     public SetColumnSchema(ResultSet tableInfoResultSet) throws SQLException {
         super(tableInfoResultSet);
-        extractEnumValues(this.getCOLUMN_TYPE());
+        extractEnumValues(this.getColumnType());
     }
 
     private void extractEnumValues(String mysqlSetInfo) {
 
         String setPattern = "(?<=set\\()(.*?)(?=\\))";
 
-        Pattern p = Pattern.compile(setPattern, Pattern.CASE_INSENSITIVE);
+        Matcher matcher = Pattern
+                .compile(setPattern, Pattern.CASE_INSENSITIVE)
+                .matcher(mysqlSetInfo);
 
-        Matcher m = p.matcher(mysqlSetInfo);
+        matcher.find();
 
-        m.find();
-
-        String setCSV = m.group(1);
+        String setCSV = matcher.group(1);
 
         setMembers = StringUtils.split(setCSV,",");
         for (int i = 0; i < setMembers.length; i++) {

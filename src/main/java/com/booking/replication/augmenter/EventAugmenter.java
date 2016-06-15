@@ -115,16 +115,13 @@ public class EventAugmenter {
                 new SchemaVersionSnapshot(activeSchemaVersion);
 
         // 4. create & return augmentedSchemaChangeEvent
-        String _dbName = ((QueryEvent) event).getDatabaseName().toString();
-
-        Long   _timestamp = event.getHeader().getTimestamp();
+        Long   timestamp = event.getHeader().getTimestamp();
 
         return new AugmentedSchemaChangeEvent(
                 schemaVersionSnapshotBeforeTransition,
                 schemaTransitionSequence,
                 schemaVersionSnapshotAfterTransition,
-                _dbName,
-                _timestamp
+                timestamp
         );
     }
 

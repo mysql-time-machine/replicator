@@ -127,12 +127,12 @@ public class AugmentedRow {
 
                 ColumnSchema cs = tableSchema.getColumnsSchema().get(columnName);
 
-                String  CK = cs.getCOLUMN_KEY();
-                Integer OP = cs.getORDINAL_POSITION();
-                String  CN = cs.getCOLUMN_NAME();
+                String  ck = cs.getColumnKey();
+                Integer op = cs.getOrdinalPosition();
+                String  cn = cs.getColumnName();
 
-                if ((CK != null) && (CK.equals("PRI"))) {
-                    pkColumns.put(OP, CN);
+                if ((ck != null) && (ck.equals("PRI"))) {
+                    pkColumns.put(op, cn);
                 }
             }
 

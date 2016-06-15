@@ -15,10 +15,10 @@ public class BinlogPositionInfo {
         this.binlogPosition = position;
     }
 
-    public BinlogPositionInfo(String filename, long position, long fMCounter) {
+    public BinlogPositionInfo(String filename, long position, long fakeMsCounter) {
         this.binlogFilename = filename;
         this.binlogPosition = position;
-        this.fakeMicrosecondsCounter = fMCounter;
+        this.fakeMicrosecondsCounter = fakeMsCounter;
     }
 
     public String getBinlogFilename() {

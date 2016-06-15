@@ -38,15 +38,18 @@ public class BinlogEventProducer {
 
     private static final Meter producedEvents = Metrics.registry.meter(name("events", "eventsProduced"));
 
-    public BinlogEventProducer(BlockingQueue<BinlogEventV4> q, ConcurrentHashMap<Integer, BinlogPositionInfo> chm, Configuration c) {
-        configuration = c;
-        queue = q;
-        lastKnownInfo = chm;
+    public BinlogEventProducer(
+            BlockingQueue<BinlogEventV4> queue,
+            ConcurrentHashMap<Integer, BinlogPositionInfo> lastKnownInfo,
+            Configuration conf) {
+        configuration = conf;
+        this.queue = queue;
+        this.lastKnownInfo = lastKnownInfo;
         LOGGER.info("Created producer with lastKnownInfo position => { "
                 + " binlogFileName => "
-                +   lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogFilename()
+                +   this.lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogFilename()
                 + ", binlogPosition => "
-                +   lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogPosition()
+                +   this.lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogPosition()
                 + " }"
         );
         openReplicator = new OpenReplicator();
@@ -124,9 +127,13 @@ public class BinlogEventProducer {
     private long backPressureSleep = 0;
 
     private void backPressureSleep() {
-        int qSize = queue.size();
+        int queueSize = queue.size();
 
-        backPressureSleep = 2 ^ ((int) (13 * ((float) qSize / Constants.MAX_RAW_QUEUE_SIZE)));
+        backPressureSleep = 2 ^ ((int) (13 * ((float) queueSize / Constants.MAX_RAW_QUEUE_SIZE)));
+
+        if (backPressureSleep < 64) {
+            return;
+        }
 
         if (backPressureSleep > 4000) {
             LOGGER.warn("Queue is getting big, back pressure is getting high");

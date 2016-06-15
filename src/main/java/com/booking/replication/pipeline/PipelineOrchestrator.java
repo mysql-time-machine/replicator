@@ -188,8 +188,8 @@ public class PipelineOrchestrator extends Thread {
                     LOGGER.info("Pipeline report: no items in producer event rawQueue. Will sleep for 0.5s and check again.");
                     Thread.sleep(500);
                     long currentTime = System.currentTimeMillis();
-                    long tDiff = currentTime - timeOfLastEvent;
-                    boolean forceFlush = (tDiff > BUFFER_FLUSH_INTERVAL);
+                    long timeDiff = currentTime - timeOfLastEvent;
+                    boolean forceFlush = (timeDiff > BUFFER_FLUSH_INTERVAL);
                     if (forceFlush) {
                         applier.forceFlush();
                     }
@@ -424,11 +424,11 @@ public class PipelineOrchestrator extends Thread {
 
         String ddlPattern = "(alter|drop|create|rename|truncate|modify)\\s+(table|column)";
 
-        Pattern p = Pattern.compile(ddlPattern, Pattern.CASE_INSENSITIVE);
+        Pattern pattern = Pattern.compile(ddlPattern, Pattern.CASE_INSENSITIVE);
 
-        Matcher m = p.matcher(querySQL);
+        Matcher matcher = pattern.matcher(querySQL);
 
-        return m.find();
+        return matcher.find();
     }
 
     public boolean isBEGIN(String querySQL, boolean isDDL) {
@@ -442,11 +442,11 @@ public class PipelineOrchestrator extends Thread {
 
             String beginPattern = "(begin)";
 
-            Pattern p = Pattern.compile(beginPattern, Pattern.CASE_INSENSITIVE);
+            Pattern pattern = Pattern.compile(beginPattern, Pattern.CASE_INSENSITIVE);
 
-            Matcher m = p.matcher(querySQL);
+            Matcher matcher = pattern.matcher(querySQL);
 
-            hasBEGIN = m.find();
+            hasBEGIN = matcher.find();
         }
 
         return (hasBEGIN && !isDDL);
@@ -463,11 +463,11 @@ public class PipelineOrchestrator extends Thread {
 
             String commitPattern = "(commit)";
 
-            Pattern p = Pattern.compile(commitPattern, Pattern.CASE_INSENSITIVE);
+            Pattern pattern = Pattern.compile(commitPattern, Pattern.CASE_INSENSITIVE);
 
-            Matcher m = p.matcher(querySQL);
+            Matcher matcher = pattern.matcher(querySQL);
 
-            hasCOMMIT = m.find();
+            hasCOMMIT = matcher.find();
         }
 
         return (hasCOMMIT && !isDDL);
@@ -482,16 +482,18 @@ public class PipelineOrchestrator extends Thread {
         // TODO: use this to skip table create for tables that allready exists
 
         String createPattern = "(create)\\s+(table)";
-        Pattern pC = Pattern.compile(createPattern, Pattern.CASE_INSENSITIVE);
-        Matcher mC = pC.matcher(querySQL);
 
-        boolean hasCreate = mC.find();
+        boolean hasCreate = Pattern
+                .compile(createPattern, Pattern.CASE_INSENSITIVE)
+                .matcher(querySQL)
+                .find();
 
         String otherPattern = "(alter|drop|rename|truncate|modify)\\s+(table|column)";
-        Pattern pO = Pattern.compile(otherPattern, Pattern.CASE_INSENSITIVE);
-        Matcher mO = pO.matcher(querySQL);
 
-        boolean hasOther = mO.find();
+        boolean hasOther = Pattern
+                .compile(otherPattern, Pattern.CASE_INSENSITIVE)
+                .matcher(querySQL)
+                .find();
 
         return hasCreate && !hasOther;
     }

@@ -24,17 +24,17 @@ public class StartupParameters {
 
     private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(StartupParameters.class);
 
-    public StartupParameters(OptionSet o) {
+    public StartupParameters(OptionSet optionSet) {
 
         // use delta tables
-        deltaTables = o.has("delta");
+        deltaTables = optionSet.has("delta");
 
         // initial snapshot mode
-        initialSnapshot  = o.has("initial-snapshot");
+        initialSnapshot  = optionSet.has("initial-snapshot");
 
         // schema
-        if (o.hasArgument("schema")) {
-            schema = o.valueOf("schema").toString();
+        if (optionSet.hasArgument("schema")) {
+            schema = optionSet.valueOf("schema").toString();
             // shards can be specified in config file as ${schema_name}${shard_id}
             String maybeNumber = schema.replaceAll("[A-Za-z]", "");
             shard = StringUtils.isNotBlank(maybeNumber) ? Integer.parseInt(maybeNumber) : 0;
@@ -44,27 +44,27 @@ public class StartupParameters {
         }
 
         // shard_id can also be explicity passed as cmd argument - that will overide config file setting
-        if (o.hasArgument("shard")) {
-            shard = (Integer) o.valueOf("shard");
+        if (optionSet.hasArgument("shard")) {
+            shard = (Integer) optionSet.valueOf("shard");
         }
 
         // config-path
-        configPath = (String) o.valueOf("config-path");
+        configPath = (String) optionSet.valueOf("config-path");
 
         // applier, defaults to STDOUT
-        applier = (String) o.valueOf("applier");
+        applier = (String) optionSet.valueOf("applier");
 
         // setup hbase namespace
-        hbaseNamespace = (String) o.valueOf("hbase-namespace");
+        hbaseNamespace = (String) optionSet.valueOf("hbase-namespace");
 
         // Start binlog filename
-        binlogFileName = (String) o.valueOf("binlog-filename");
+        binlogFileName = (String) optionSet.valueOf("binlog-filename");
 
         // Start binlog position
-        binlogPosition = (Long) o.valueOf("binlog-position");
+        binlogPosition = (Long) optionSet.valueOf("binlog-position");
 
         // Last binlog filename
-        lastBinlogFileName = (String) o.valueOf("last-binlog-filename");
+        lastBinlogFileName = (String) optionSet.valueOf("last-binlog-filename");
 
         System.out.println("----------------------------------------------");
         System.out.println("Parsed params:           ");

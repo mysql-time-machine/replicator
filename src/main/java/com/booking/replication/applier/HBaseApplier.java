@@ -42,7 +42,7 @@ public class HBaseApplier implements Applier {
 
     private static final Configuration hbaseConf = HBaseConfiguration.create();
 
-    private final HBaseSchemaManager hBaseSchemaManager;
+    private final HBaseSchemaManager hbaseSchemaManager;
 
     private final HBaseApplierWriter hbaseApplierWriter;
 
@@ -53,18 +53,18 @@ public class HBaseApplier implements Applier {
     /**
      * HBaseApplier constructor
      *
-     * @param ZOOKEEPER_QUORUM
+     * @param zookeeperQuorum
      * @throws IOException
      */
     public HBaseApplier(
-            String                                ZOOKEEPER_QUORUM,
+            String                                zookeeperQuorum,
             com.booking.replication.Configuration repCfg
 
         ) {
 
         configuration     = repCfg;
 
-        hbaseConf.set("hbase.zookeeper.quorum", ZOOKEEPER_QUORUM);
+        hbaseConf.set("hbase.zookeeper.quorum", zookeeperQuorum);
         hbaseConf.set("hbase.client.keyvalue.maxsize", "0");
 
         hbaseApplierWriter =
@@ -74,7 +74,7 @@ public class HBaseApplier implements Applier {
                 repCfg
             );
 
-        hBaseSchemaManager = new HBaseSchemaManager(configuration.getHBaseQuorum());
+        hbaseSchemaManager = new HBaseSchemaManager(configuration.getHBaseQuorum());
     }
 
     /**
@@ -113,8 +113,10 @@ public class HBaseApplier implements Applier {
     }
 
     @Override
-    public void applyAugmentedSchemaChangeEvent(AugmentedSchemaChangeEvent e, PipelineOrchestrator caller) {
-        hBaseSchemaManager.writeSchemaSnapshotToHBase(e, configuration);
+    public void applyAugmentedSchemaChangeEvent(
+            AugmentedSchemaChangeEvent event,
+            PipelineOrchestrator caller) {
+        hbaseSchemaManager.writeSchemaSnapshotToHBase(event, configuration);
     }
 
     /**
@@ -141,9 +143,9 @@ public class HBaseApplier implements Applier {
 
         // flush on buffer size or time limit
         long currentTime = System.currentTimeMillis();
-        long tDiff = currentTime - timeOfLastFlush;
+        long tdiff = currentTime - timeOfLastFlush;
 
-        boolean forceFlush = (tDiff > BUFFER_FLUSH_INTERVAL);
+        boolean forceFlush = (tdiff > BUFFER_FLUSH_INTERVAL);
         if ((hbaseApplierWriter.rowsBufferedInCurrentTask.get() >= UUID_BUFFER_SIZE) || forceFlush) {
             markAndSubmit();
         }

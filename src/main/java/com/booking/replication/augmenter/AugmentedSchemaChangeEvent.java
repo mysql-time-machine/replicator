@@ -11,8 +11,6 @@ import java.util.HashMap;
  */
 public class AugmentedSchemaChangeEvent {
 
-    private String database_name;
-
     private final long             schemaChangeEventTimestamp;
 
     private SchemaVersionSnapshot  preTransitionSchemaSnapshot;
@@ -25,25 +23,16 @@ public class AugmentedSchemaChangeEvent {
             SchemaVersionSnapshot snapshotBefore,
             HashMap<String,String> transitionSequence,
             SchemaVersionSnapshot snapshotAfter,
-            String databaseName,
             long ddlTimestamp) {
 
         preTransitionSchemaSnapshot  = snapshotBefore;
         schemaTransitionSequence = transitionSequence;
         postTransitionSchemaSnapshot = snapshotAfter;
-        database_name = databaseName;
         schemaChangeEventTimestamp   = ddlTimestamp;
     }
 
     public String toJSON() {
         return JSONBuilder.schemaChangeEventToJSON(this);
-    }
-    public String getDatabase_name() {
-        return database_name;
-    }
-
-    public void setDatabase_name(String database_name) {
-        this.database_name = database_name;
     }
 
     public HashMap<String,String> getSchemaTransitionSequence() {

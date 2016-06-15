@@ -7,8 +7,6 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -23,20 +21,20 @@ public class EnumColumnSchema extends ColumnSchema {
 
     public EnumColumnSchema(ResultSet tableInfoResultSet) throws SQLException {
         super(tableInfoResultSet);
-        extractEnumValues(this.getCOLUMN_TYPE());
+        extractEnumValues(this.getColumnType());
     }
 
     private void extractEnumValues(String mysqlEnumInfo) {
 
         String enumPattern = "(?<=enum\\()(.*?)(?=\\))\\)$";
 
-        Pattern p = Pattern.compile(enumPattern, Pattern.CASE_INSENSITIVE);
+        Matcher matcher = Pattern
+                .compile(enumPattern, Pattern.CASE_INSENSITIVE)
+                .matcher(mysqlEnumInfo);
 
-        Matcher m = p.matcher(mysqlEnumInfo);
+        matcher.find();
 
-        m.find();
-
-        String enumCSV = m.group(1);
+        String enumCSV = matcher.group(1);
 
         enumValues = StringUtils.split(enumCSV,",");
         for (int i = 0; i < enumValues.length; i++) {

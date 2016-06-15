@@ -94,10 +94,10 @@ public class HBaseApplierWriter {
     private static ExecutorService taskPool;
 
     // TODO: add to startup options
-    private final int POOL_SIZE;
+    private final int poolSize;
 
     // dry run option; TODO: add to startup options
-    private final boolean DRY_RUN = false;
+    private static final boolean DRY_RUN = false;
 
     private static volatile String currentTaskUUID;
     private static volatile String currentTransactionUUID;
@@ -138,8 +138,8 @@ public class HBaseApplierWriter {
             com.booking.replication.Configuration repCfg
         ) {
 
-        POOL_SIZE         = poolSize;
-        taskPool          = Executors.newFixedThreadPool(POOL_SIZE);
+        this.poolSize = poolSize;
+        taskPool          = Executors.newFixedThreadPool(this.poolSize);
 
         hbaseConf         = hbaseConfiguration;
 
@@ -357,7 +357,7 @@ public class HBaseApplierWriter {
 
             int currentNumberOfTasks = taskTransactionBuffer.keySet().size();
 
-            if (currentNumberOfTasks > POOL_SIZE) {
+            if (currentNumberOfTasks > poolSize) {
                 try {
                     Thread.sleep(5);
                     blockingTime += 5;

@@ -15,10 +15,6 @@ import com.google.code.or.binlog.impl.event.XidEvent;
 
 import java.util.*;
 
-import kafka.producer.KeyedMessage;
-//import kafka.javaapi.producer.Producer;
-//import kafka.producer.ProducerConfig;
-import com.booking.replication.Metrics;
 import com.codahale.metrics.Meter;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
@@ -39,7 +35,6 @@ public class KafkaApplier implements Applier {
     private static long totalEventsCounter = 0;
     private static long totalRowsCounter = 0;
     private Properties props;
-//    private ProducerConfig config;
     private KafkaProducer<String, String> producer;
     private ProducerRecord<String, String> message;
     private static List<String> topicList;
@@ -61,12 +56,16 @@ public class KafkaApplier implements Applier {
          * the appropriate kafka broker partition.
          */
 
+        // Below is the new version of Configuration
         props = new Properties();
-        props.put("metadata.broker.list", BROKER);
-        props.put("serializer.class", "kafka.serializer.StringEncoder");
-        props.put("producer.type", "async");
-
-//        config = new ProducerConfig(props);
+        props.put("bootstrap.servers", BROKER);
+        props.put("acks", "all"); // Default 1
+        props.put("retries", 1); // Default value: 0
+        props.put("batch.size", 16384); // Default value: 16384
+        props.put("linger.ms", 1); // Default 0, Artificial delay
+        props.put("buffer.memory", 33554432); // Default value: 33554432
+        props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         producer = new KafkaProducer<>(props);
         topicList = TOPICS;
     }
@@ -82,9 +81,14 @@ public class KafkaApplier implements Applier {
             String topic = row.getTableName();
             if (topicList.contains(topic)) {
                 message = new ProducerRecord<>(topic, row.toJSON());
+                totalRowsCounter ++;
                 producer.send(message);
+                if (totalRowsCounter % 500 == 0) {
+                    LOGGER.info("500 lines have been sent to Kafka broker...");
+                }
                 kafka_messages.mark();
-                LOGGER.info("One line has been sent to Kafka broker...");
+            } else {
+                // LOGGER.warn("No supported topic: " + topic);
             }
         }
     }

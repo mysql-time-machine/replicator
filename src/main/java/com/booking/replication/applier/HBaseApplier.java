@@ -5,13 +5,13 @@ import com.booking.replication.Constants;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.pipeline.PipelineOrchestrator;
-
 import com.booking.replication.schema.HBaseSchemaManager;
 
 import com.google.code.or.binlog.impl.event.FormatDescriptionEvent;
 import com.google.code.or.binlog.impl.event.QueryEvent;
 import com.google.code.or.binlog.impl.event.RotateEvent;
 import com.google.code.or.binlog.impl.event.XidEvent;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.slf4j.Logger;
@@ -53,8 +53,7 @@ public class HBaseApplier implements Applier {
     /**
      * HBaseApplier constructor
      *
-     * @param zookeeperQuorum
-     * @throws IOException
+     * @param zookeeperQuorum Zookeeper quorum of the HBase cluster we are writing tp
      */
     public HBaseApplier(
             String                                zookeeperQuorum,
@@ -83,10 +82,7 @@ public class HBaseApplier implements Applier {
      *  applyAugmentedSchemaChangeEvent
      *
      *  applyAugmentedRowsEvent
-     *
-     * @param event
      */
-
     @Override
     public void applyCommitQueryEvent(QueryEvent event) {
         markCurrentTransactionForCommit();
@@ -120,8 +116,8 @@ public class HBaseApplier implements Applier {
     /**
      * Core logic of the applier. Processes data events and writes to HBase.
      *
-     * @param augmentedRowsEvent
-     * @param pipeline
+     * @param augmentedRowsEvent Rows event
+     * @param pipeline Pipeline instance
      */
     @Override
     public void applyAugmentedRowsEvent(

@@ -1,6 +1,7 @@
 package com.booking.replication.metrics;
 
 import com.booking.replication.util.Duration;
+
 import com.codahale.metrics.ScheduledReporter;
 
 /**

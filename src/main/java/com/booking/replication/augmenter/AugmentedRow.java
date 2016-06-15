@@ -1,10 +1,12 @@
 package com.booking.replication.augmenter;
 
-import com.booking.replication.schema.table.TableSchema;
 import com.booking.replication.schema.column.ColumnSchema;
 import com.booking.replication.schema.exception.TableMapException;
+import com.booking.replication.schema.table.TableSchema;
 import com.booking.replication.util.JsonBuilder;
+
 import com.google.code.or.binlog.BinlogEventV4Header;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

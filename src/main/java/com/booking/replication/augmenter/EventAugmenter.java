@@ -10,6 +10,7 @@ import com.booking.replication.schema.column.types.Converter;
 import com.booking.replication.schema.exception.SchemaTransitionException;
 import com.booking.replication.schema.exception.TableMapException;
 import com.booking.replication.schema.table.TableSchema;
+
 import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.StatusVariable;
 import com.google.code.or.binlog.impl.event.*;
@@ -18,6 +19,7 @@ import com.google.code.or.common.glossary.Column;
 import com.google.code.or.common.glossary.Pair;
 import com.google.code.or.common.glossary.Row;
 import com.google.code.or.common.util.MySQLConstants;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,8 +53,6 @@ public class EventAugmenter {
      * Constructor
      *
      * @param  replicatorConfiguration Replicator configuration object
-     * @throws SQLException
-     * @throws URISyntaxException
      */
     public EventAugmenter(Configuration replicatorConfiguration) throws SQLException, URISyntaxException {
         activeSchemaVersion = new ActiveSchemaVersion(replicatorConfiguration);
@@ -170,7 +170,6 @@ public class EventAugmenter {
      *
      * @param  event               AbstractRowEvent
      * @return augmentedDataEvent  AugmentedRow
-     * @throws TableMapException
      */
     public AugmentedRowsEvent mapDataEventToSchema(AbstractRowEvent event, PipelineOrchestrator caller) throws TableMapException {
 

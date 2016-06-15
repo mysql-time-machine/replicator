@@ -1,8 +1,11 @@
 package com.booking.replication.applier;
 
+import static com.codahale.metrics.MetricRegistry.name;
+
 import com.booking.replication.Configuration;
 import com.booking.replication.Metrics;
 import com.booking.replication.augmenter.AugmentedRow;
+
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
 import org.apache.hadoop.hbase.TableName;
@@ -19,8 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static com.codahale.metrics.MetricRegistry.name;
 
 public class HBaseWriterTask implements Callable<TaskResult> {
 

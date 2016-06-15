@@ -5,20 +5,20 @@ import com.booking.replication.applier.HBaseApplier;
 import com.booking.replication.applier.KafkaApplier;
 import com.booking.replication.applier.StdoutJsonApplier;
 import com.booking.replication.checkpoints.SafeCheckPoint;
-import com.booking.replication.pipeline.BinlogEventProducer;
-import com.booking.replication.pipeline.PipelineOrchestrator;
-import com.booking.replication.pipeline.BinlogPositionInfo;
 import com.booking.replication.monitor.Overseer;
-
+import com.booking.replication.pipeline.BinlogEventProducer;
+import com.booking.replication.pipeline.BinlogPositionInfo;
+import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.queues.ReplicatorQueues;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.sql.SQLException;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Booking replicator. Has two main objects (producer and consumer)

@@ -4,11 +4,12 @@ import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.schema.ActiveSchemaVersion;
 import com.booking.replication.schema.table.TableSchema;
-import com.google.code.or.binlog.BinlogEventV4;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.impl.event.TableMapEvent;
 import com.google.code.or.common.util.MySQLConstants;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.util.HashMap;

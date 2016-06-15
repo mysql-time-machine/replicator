@@ -5,6 +5,7 @@ import com.booking.replication.coordinator.FileCoordinator;
 import com.booking.replication.coordinator.ZookeeperCoordinator;
 import com.booking.replication.util.Cmd;
 import com.booking.replication.util.StartupParameters;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import joptsimple.OptionSet;

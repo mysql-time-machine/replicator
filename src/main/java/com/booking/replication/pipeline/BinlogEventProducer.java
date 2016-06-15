@@ -1,22 +1,23 @@
 package com.booking.replication.pipeline;
 
+import static com.codahale.metrics.MetricRegistry.name;
+
 import com.booking.replication.Configuration;
 import com.booking.replication.Constants;
 import com.booking.replication.Metrics;
-import com.codahale.metrics.Gauge;
-import com.codahale.metrics.Meter;
+
 import com.google.code.or.OpenReplicator;
 import com.google.code.or.binlog.BinlogEventListener;
 import com.google.code.or.binlog.BinlogEventV4;
 
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.Meter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-
-import static com.codahale.metrics.MetricRegistry.name;
 
 /**
  * Simple wrapper for Open Replicator. Writes events to blocking queue.

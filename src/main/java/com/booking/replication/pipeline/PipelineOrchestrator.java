@@ -1,5 +1,32 @@
 package com.booking.replication.pipeline;
 
+import static com.codahale.metrics.MetricRegistry.name;
+
+import com.booking.replication.Configuration;
+import com.booking.replication.Constants;
+import com.booking.replication.Coordinator;
+import com.booking.replication.Metrics;
+import com.booking.replication.applier.Applier;
+import com.booking.replication.augmenter.AugmentedRowsEvent;
+import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
+import com.booking.replication.augmenter.EventAugmenter;
+import com.booking.replication.checkpoints.LastVerifiedBinlogFile;
+import com.booking.replication.queues.ReplicatorQueues;
+import com.booking.replication.schema.HBaseSchemaManager;
+import com.booking.replication.schema.TableNameMapper;
+import com.booking.replication.schema.exception.TableMapException;
+
+import com.google.code.or.binlog.BinlogEventV4;
+import com.google.code.or.binlog.impl.event.*;
+import com.google.code.or.common.util.MySQLConstants;
+import com.google.common.base.Joiner;
+
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.sql.SQLException;
@@ -9,29 +36,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.booking.replication.Configuration;
-import com.booking.replication.Constants;
-import com.booking.replication.Coordinator;
-import com.booking.replication.applier.Applier;
-import com.booking.replication.augmenter.AugmentedRowsEvent;
-import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
-import com.booking.replication.augmenter.EventAugmenter;
-import com.booking.replication.Metrics;
-import com.booking.replication.checkpoints.LastVerifiedBinlogFile;
-import com.booking.replication.queues.ReplicatorQueues;
-import com.booking.replication.schema.TableNameMapper;
-import com.booking.replication.schema.HBaseSchemaManager;
-import com.booking.replication.schema.exception.TableMapException;
-import com.codahale.metrics.Gauge;
-import com.codahale.metrics.Meter;
-import com.codahale.metrics.MetricRegistry;
-import com.google.code.or.binlog.BinlogEventV4;
-import com.google.code.or.binlog.impl.event.*;
-import com.google.code.or.common.util.MySQLConstants;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import static com.codahale.metrics.MetricRegistry.name;
 
 /**
  * PipelineOrchestrator
@@ -502,7 +506,6 @@ public class PipelineOrchestrator extends Thread {
      * tracked database
      * @param  event Binlog event that needs to be checked
      * @return shouldSkip Weather event should be skipped or processed
-     * @throws TableMapException
      */
     public boolean skipEvent(BinlogEventV4 event) {
         boolean eventIsTracked      = false;
@@ -525,17 +528,13 @@ public class PipelineOrchestrator extends Thread {
                         if (isReplicant(currentTransactionDBName)) {
                             eventIsTracked = true;
                         } else {
-                            LOGGER.warn("non-replicated database [" + currentTransactionDBName + "] in current transaction.");
+                            LOGGER.warn(String.format("non-replicated database %s in current transaction.",
+                                    currentTransactionDBName));
                         }
                     } else {
-                        String message = "";
-                        for (String tblName : currentTransactionMetadata.getCurrentTransactionTableMapEvents().keySet()) {
-                            message += tblName;
-                            message += ", ";
-                        }
                         LOGGER.warn(String.format(
                                 "Received COMMIT event, but currentTransactionMetadata is empty! Tables in transaction are %s",
-                                message
+                                Joiner.on(", ").join(currentTransactionMetadata.getCurrentTransactionTableMapEvents().keySet())
                             )
                         );
                     }

@@ -1,21 +1,22 @@
 package com.booking.replication.schema;
 
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.sql.*;
-import java.util.List;
-
 import com.booking.replication.Configuration;
 import com.booking.replication.schema.column.ColumnSchema;
 import com.booking.replication.schema.column.types.EnumColumnSchema;
 import com.booking.replication.schema.column.types.SetColumnSchema;
 import com.booking.replication.schema.table.TableSchema;
 import com.booking.replication.util.JsonBuilder;
+
+import org.apache.commons.dbcp2.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.commons.dbcp2.*;
+import java.net.URISyntaxException;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
 
 /**
  * ActiveSchemaVersion refers to the schema that corresponds
@@ -40,7 +41,7 @@ public class ActiveSchemaVersion {
     private final BasicDataSource activeSchemaDataSource;
     private static final Logger LOGGER = LoggerFactory.getLogger(ActiveSchemaVersion.class);
 
-    public ActiveSchemaVersion(Configuration replicatorConfiguration) throws SQLException, URISyntaxException {
+    public ActiveSchemaVersion(Configuration replicatorConfiguration) throws URISyntaxException, SQLException {
 
         activeSchemaDataSource = new BasicDataSource();
 
@@ -59,9 +60,7 @@ public class ActiveSchemaVersion {
         LOGGER.info("Successfully loaded ActiveSchemaVersion");
     }
 
-    public void loadActiveSchema()
-            throws SQLException {
-
+    public void loadActiveSchema() throws SQLException {
         Connection con = null;
 
         try {
@@ -178,8 +177,8 @@ public class ActiveSchemaVersion {
      * Changes the active schema by executing ddl on active schema db
      * and then reloading the activeSchema objects
      *
-     * @param sequence
-     * @return
+     * @param sequence Sequence of DDL statements for schema transition
+     * @return ActiveSchemaVersion
      */
     public ActiveSchemaVersion applyDDL(HashMap<String,String> sequence) {
 

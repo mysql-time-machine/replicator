@@ -1,14 +1,17 @@
 package com.booking.replication;
 
+import static com.codahale.metrics.MetricRegistry.name;
+
 import com.booking.replication.metrics.GraphiteReporter;
+
 import com.codahale.metrics.*;
 import com.codahale.metrics.jvm.*;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.codahale.metrics.MetricRegistry.name;
-
-
+/**
+ * This class provides facilities for using the Dropwizard-Metrics library.
+ */
 public class Metrics {
     public static MetricRegistry registry = new MetricRegistry();
 

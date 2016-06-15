@@ -3,6 +3,7 @@ package com.booking.replication.coordinator;
 import com.booking.replication.Configuration;
 import com.booking.replication.checkpoints.LastVerifiedBinlogFile;
 import com.booking.replication.checkpoints.SafeCheckPoint;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;

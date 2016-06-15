@@ -2,6 +2,7 @@ package com.booking.replication.schema;
 
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.util.JsonBuilder;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;

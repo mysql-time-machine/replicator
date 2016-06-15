@@ -4,6 +4,7 @@ import com.booking.replication.schema.column.ColumnSchema;
 import com.booking.replication.schema.exception.TableMapException;
 import com.google.code.or.common.glossary.Column;
 import com.google.code.or.common.glossary.column.*;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

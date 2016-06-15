@@ -1,8 +1,11 @@
 package com.booking.replication.applier;
 
+import static com.codahale.metrics.MetricRegistry.name;
+
+import com.booking.replication.Metrics;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
-import com.booking.replication.Metrics;
+
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Gauge;
 import org.apache.hadoop.conf.Configuration;
@@ -14,8 +17,6 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static com.codahale.metrics.MetricRegistry.name;
 
 public class HBaseApplierWriter {
 

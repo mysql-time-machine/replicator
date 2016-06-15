@@ -73,8 +73,7 @@ public class ActiveSchemaVersion {
             ResultSetMetaData showTables_ResultSetMetaData = showTables_ResultSet.getMetaData();
 
             List<String> tableNames = new ArrayList<>();
-            while(showTables_ResultSet.next()){
-
+            while (showTables_ResultSet.next()) {
                 int columnCount = showTables_ResultSetMetaData.getColumnCount();
                 if (columnCount != 1) {
                     throw new SQLException("SHOW TABLES result set should have only one column!");
@@ -143,10 +142,10 @@ public class ActiveSchemaVersion {
                 getTableInfo_Statement.close();
             }
             con.close();
-        } finally{
+        } finally {
             try {
                 // 3. release connection
-                if(con != null) {
+                if (con != null) {
                     con.close();
                 }
             } catch (SQLException e) {
@@ -220,9 +219,9 @@ public class ActiveSchemaVersion {
         } catch (SQLException e) {
             e.printStackTrace();
             LOGGER.error("FATAL: failed to execute DDL statement on active schema.", e);
-        } finally{
+        } finally {
             try {
-                if(con != null) {
+                if (con != null) {
                     con.close();
                 }
             } catch (SQLException e) {

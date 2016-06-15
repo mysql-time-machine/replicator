@@ -41,7 +41,7 @@ public class JSONBuilder {
         return json;
     }
 
-    public static String dataEventToJSON (AugmentedRow augmentedRow){
+    public static String dataEventToJSON (AugmentedRow augmentedRow) {
 
         String json = null;
         try {
@@ -54,7 +54,7 @@ public class JSONBuilder {
         return json;
     }
 
-    public static String schemaVersionToJSON(ActiveSchemaVersion activeSchemaVersion){
+    public static String schemaVersionToJSON(ActiveSchemaVersion activeSchemaVersion) {
         String json = null;
         try {
             ObjectMapper mapper = new ObjectMapper();

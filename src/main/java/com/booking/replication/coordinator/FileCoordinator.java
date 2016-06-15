@@ -59,7 +59,7 @@ public class FileCoordinator implements CoordinatorInterface {
             writer.flush();
             writer.close();
 
-            if(!tempFile.toFile().renameTo(checkPointPath.toFile())){
+            if (!tempFile.toFile().renameTo(checkPointPath.toFile())) {
                 throw new RuntimeException(String.format("Failed to rename the metadata file to: %s", checkPointPath));
             }
         } catch (IOException e) {

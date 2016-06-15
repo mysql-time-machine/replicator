@@ -87,7 +87,7 @@ public class Configuration {
     public static final int METADATASTORE_FILE      = 2;
 
     public int getMetadataStoreType() {
-        if(metadata_store.zookeeper != null) {
+        if (metadata_store.zookeeper != null) {
             return METADATASTORE_ZOOKEEPER;
         } else if (this.metadata_store.file != null) {
             return METADATASTORE_FILE;
@@ -121,7 +121,7 @@ public class Configuration {
     }
 
     public MetricsConfig.ReporterConfig getReporterConfig(String type) {
-        if(! metrics.reporters.containsKey(type)) {
+        if (! metrics.reporters.containsKey(type)) {
             return null;
         }
 
@@ -137,7 +137,7 @@ public class Configuration {
 
         applierType = startupParameters.getApplier();
 
-        if(applierType.equals("hbase") && hbase == null) {
+        if (applierType.equals("hbase") && hbase == null) {
             throw new RuntimeException("HBase not configured");
         }
 
@@ -162,24 +162,24 @@ public class Configuration {
 
     public void validate() {
 
-        if(replication_schema.name == null) {
+        if (replication_schema.name == null) {
             throw new RuntimeException("Replication schema name cannot be null.");
         }
-        if(replication_schema.slaves == null) {
+        if (replication_schema.slaves == null) {
             throw new RuntimeException("Replication schema slave list cannot be null.");
         }
-        if(replication_schema.username == null) {
+        if (replication_schema.username == null) {
             throw new RuntimeException("Replication schema user name cannot be null.");
         }
 
-        if(metadata_store.zookeeper == null && metadata_store.file == null) {
+        if (metadata_store.zookeeper == null && metadata_store.file == null) {
             throw new RuntimeException(
                     "No metadata store specified, please provide " +
                     "either zookeeper or file-based metadata storage.");
         }
 
-        if(applierType.equals("hbase")) {
-            if(hbase.namespace == null) {
+        if (applierType.equals("hbase")) {
+            if (hbase.namespace == null) {
                 throw new RuntimeException("HBase namespace cannot be null.");
             }
         }
@@ -265,21 +265,21 @@ public class Configuration {
     }
 
     public String getZookeeperQuorum() {
-        if(getMetadataStoreType() != Configuration.METADATASTORE_ZOOKEEPER) {
+        if (getMetadataStoreType() != Configuration.METADATASTORE_ZOOKEEPER) {
             return "[]";
         }
         return Joiner.on(",").join(metadata_store.zookeeper.quorum);
     }
 
     public String getZookeeperPath() {
-        if(getMetadataStoreType() != Configuration.METADATASTORE_ZOOKEEPER) {
+        if (getMetadataStoreType() != Configuration.METADATASTORE_ZOOKEEPER) {
             return "";
         }
         return metadata_store.zookeeper.path;
     }
 
     public String getMetadataFile() {
-        if(getMetadataStoreType() != Configuration.METADATASTORE_FILE){
+        if (getMetadataStoreType() != Configuration.METADATASTORE_FILE) {
             return "";
         }
         return metadata_store.file.path;

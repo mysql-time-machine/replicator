@@ -55,7 +55,7 @@ public class KafkaApplier implements Applier {
 //        totalEventsCounter ++;
         // TODO: limit the number of events
 
-        for(AugmentedRow row : augmentedSingleRowEvent.getSingleRowEvents()) {
+        for (AugmentedRow row : augmentedSingleRowEvent.getSingleRowEvents()) {
             String tableName = row.getTableName();
             if (tableName != null) {
 //                totalRowsCounter++;

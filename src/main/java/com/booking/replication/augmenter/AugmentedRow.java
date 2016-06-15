@@ -123,7 +123,7 @@ public class AugmentedRow {
             Map<Integer, String> pkColumns = new HashMap<>();
 
             Set<String> columnNames = tableSchema.getColumnsSchema().keySet();
-            for(String columnName: columnNames) {
+            for (String columnName: columnNames) {
 
                 ColumnSchema cs = tableSchema.getColumnsSchema().get(columnName);
 
@@ -136,7 +136,7 @@ public class AugmentedRow {
                 }
             }
 
-            TreeMap<Integer,String> pkColumnSortedByOP= new TreeMap<>();
+            TreeMap<Integer,String> pkColumnSortedByOP = new TreeMap<>();
             pkColumnSortedByOP.putAll(pkColumns);
 
             primaryKeyColumns.addAll(pkColumnSortedByOP.values());

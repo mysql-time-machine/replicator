@@ -47,7 +47,7 @@ public class Replicator {
         ConcurrentHashMap<Integer, BinlogPositionInfo> lastKnownInfo = new ConcurrentHashMap<>();
         BinlogPositionInfo position;
 
-        if(configuration.getStartingBinlogFileName() != null) {
+        if (configuration.getStartingBinlogFileName() != null) {
             LOGGER.info(String.format("Start filename: %s", configuration.getStartingBinlogFileName()));
             position = new BinlogPositionInfo(
                     configuration.getStartingBinlogFileName(),
@@ -57,7 +57,7 @@ public class Replicator {
             // Safe Check Point
             SafeCheckPoint safeCheckPoint = Coordinator.getCheckpointMarker();
 
-            if ( safeCheckPoint != null ){
+            if ( safeCheckPoint != null ) {
                 LOGGER.info("Start binlog not specified, reading metadata from coordinator");
                 position = new BinlogPositionInfo(safeCheckPoint.getSafeCheckPointMarker(), 4L);
             } else {

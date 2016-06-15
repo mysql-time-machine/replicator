@@ -57,7 +57,7 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
 
             try {
                 callback.run();
-            } catch(Exception e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
             isRunning = false;
@@ -96,7 +96,7 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
 
         le.start();
 
-        while(!isLeader || isRunning) {
+        while (!isLeader || isRunning) {
             Thread.sleep(1000);
         }
     }
@@ -117,7 +117,7 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
             String serializedCP = serialize(safeCheckPoint);
 
             Stat exists = client.checkExists().forPath(checkPointPath);
-            if( exists != null ) {
+            if ( exists != null ) {
                 client.setData().forPath(checkPointPath, serializedCP.getBytes());
             } else {
                 client.create().withMode(CreateMode.PERSISTENT).forPath(checkPointPath, serializedCP.getBytes());
@@ -137,7 +137,7 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
         // TODO: get from zk
 
         try {
-            if(client.checkExists().forPath(checkPointPath) == null) {
+            if (client.checkExists().forPath(checkPointPath) == null) {
                 LOGGER.warn("Could not find metadata in zookeeper.");
                 return null;
             }

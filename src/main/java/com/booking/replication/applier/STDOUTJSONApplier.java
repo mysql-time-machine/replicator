@@ -72,7 +72,7 @@ public class STDOUTJSONApplier implements Applier  {
                     if (row.getTableName().equals(FILTERED_TABLE_NAME)) {
                         totalRowsCounter++;
                         if (stats.containsKey(tableName)) {
-                            stats.put(tableName, stats.get(tableName)+1);
+                            stats.put(tableName, stats.get(tableName) + 1);
                         } else {
                             stats.put(tableName, 0L);
                         }
@@ -94,7 +94,7 @@ public class STDOUTJSONApplier implements Applier  {
                     // track all tables
                     totalRowsCounter++;
                     if (stats.containsKey(tableName)) {
-                        stats.put(tableName, stats.get(tableName)+1);
+                        stats.put(tableName, stats.get(tableName) + 1);
                     } else {
                         stats.put(tableName, 0L);
                     }

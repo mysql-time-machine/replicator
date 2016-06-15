@@ -56,7 +56,7 @@ public class Overseer extends Thread {
 
     //todo: Make this check better
     private void makeSurePipelineIsRunning() {
-        if(!pipelineOrchestrator.isRunning()) {
+        if (!pipelineOrchestrator.isRunning()) {
             LOGGER.info("PipelineOrchestrator is not running!");
         } else {
             System.exit(-1);

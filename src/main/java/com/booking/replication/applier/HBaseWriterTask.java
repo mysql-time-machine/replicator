@@ -97,7 +97,7 @@ public class HBaseWriterTask implements Callable<TaskResult> {
                         HashMap<String, HashMap<String, List<Triple<String, String, Put>>>> preparedMutations =
                                 hBaseApplierMutationGenerator.generateMutationsFromAugmentedRows(rowOps);
 
-                        if(!preparedMutations.containsKey("mirrored")) {
+                        if (!preparedMutations.containsKey("mirrored")) {
                             LOGGER.error("Missing mirrored key from preparedMutations!");
                             System.exit(-1);
                         }
@@ -119,7 +119,7 @@ public class HBaseWriterTask implements Callable<TaskResult> {
                                     hbaseTable.put(puts);
                                 }
 
-                                if(type.equals("mirrored")) {
+                                if (type.equals("mirrored")) {
                                     numberOfFlushedTablesInCurrentTransaction++;
                                 }
 

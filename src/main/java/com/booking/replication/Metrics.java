@@ -54,7 +54,7 @@ public class Metrics {
         registry.register(name("jvm", "fd"), new FileDescriptorRatioGauge());
         registry.register(name("jvm", "memory"), new MemoryUsageGaugeSet());
 
-        for(String reporter: conf.getMetricReporters().keySet()) {
+        for (String reporter: conf.getMetricReporters().keySet()) {
             switch (reporter) {
                 case "graphite":
                     new GraphiteReporter(conf).start();

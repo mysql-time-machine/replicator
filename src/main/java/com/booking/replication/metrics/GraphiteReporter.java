@@ -36,7 +36,7 @@ public class GraphiteReporter extends MetricsReporter {
         String[] urlSplit = metricConf.url.split(":");
         String hostName = urlSplit[0];
         int port = 3002;
-        if(urlSplit.length > 1) {
+        if (urlSplit.length > 1) {
             port = Integer.parseInt(urlSplit[1]);
         }
 

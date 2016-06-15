@@ -121,8 +121,8 @@ public class HBaseApplierWriter {
 
     //@todo: the logic here is sufficient but not exhaustive, improve robustness of following code
     public boolean areAllTasksDone() {
-        for(String key: taskStatus.keySet()) {
-            if(taskStatus.get(key) != TaskStatusCatalog.WRITE_SUCCEEDED) {
+        for (String key: taskStatus.keySet()) {
+            if (taskStatus.get(key) != TaskStatusCatalog.WRITE_SUCCEEDED) {
                 return false;
             }
         }
@@ -223,7 +223,7 @@ public class HBaseApplierWriter {
         }
 
         // Add to buffer
-        for(AugmentedRow augmentedRow : augmentedRows) {
+        for (AugmentedRow augmentedRow : augmentedRows) {
             taskTransactionBuffer
                     .get(currentTaskUUID)
                     .get(currentTransactionUUID)
@@ -372,7 +372,7 @@ public class HBaseApplierWriter {
                     throw new RuntimeException("Timed out waiting on applier slot");
                 }
             } else {
-                if(blockingTime > 1000) {
+                if (blockingTime > 1000) {
                     LOGGER.warn("Wait is over with " + currentNumberOfTasks + " current tasks, blocking time was " + blockingTime + "ms");
                 }
 

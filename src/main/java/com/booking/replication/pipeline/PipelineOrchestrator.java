@@ -89,7 +89,7 @@ public class PipelineOrchestrator extends Thread {
     */
     private static long fakeMicrosecondCounter = 0;
 
-    public void requestReplicatorShutdown(){
+    public void requestReplicatorShutdown() {
         replicatorShutdownRequested = true;
     }
 
@@ -295,7 +295,7 @@ public class PipelineOrchestrator extends Thread {
                             // TODO: load hbase tables on start-up so this never happens
                             hBaseSchemaManager.createMirroredTableIfNotExists(hbaseTableName, DEFAULT_VERSIONS_FOR_MIRRORED_TABLES);
                         }
-                        if(configuration.isWriteRecentChangesToDeltaTables()) {
+                        if (configuration.isWriteRecentChangesToDeltaTables()) {
                             //String replicantSchema = ((TableMapEvent) event).getDatabaseName().toString();
                             String mysqlTableName = ((TableMapEvent) event).getTableName().toString();
 
@@ -396,7 +396,7 @@ public class PipelineOrchestrator extends Thread {
                     e.printStackTrace();
                 }
 
-                if (currentBinlogFileName.equals(configuration.getLastBinlogFileName())){
+                if (currentBinlogFileName.equals(configuration.getLastBinlogFileName())) {
                     LOGGER.info("processed the last binlog file " + configuration.getLastBinlogFileName());
                     setRunning(false);
                     requestReplicatorShutdown();

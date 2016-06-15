@@ -138,7 +138,7 @@ public class EventAugmenter {
             sqlCommands.put("ddl", ddl);
 
             // status variables
-            for(StatusVariable av : ((QueryEvent) event).getStatusVariables()) {
+            for (StatusVariable av : ((QueryEvent) event).getStatusVariables()) {
 
                 // handle timezone overrides during schema changes
                 if (av instanceof QTimeZoneCode) {
@@ -179,7 +179,7 @@ public class EventAugmenter {
 
         AugmentedRowsEvent au;
 
-        switch (event.getHeader().getEventType()){
+        switch (event.getHeader().getEventType()) {
 
            case MySQLConstants.UPDATE_ROWS_EVENT:
                UpdateRowsEvent updateRowsEvent = ((UpdateRowsEvent) event);

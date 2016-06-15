@@ -21,13 +21,14 @@ import java.io.IOException;
 
 /**
  * This class abstracts the HBase store.
- *
+ * <p>
  * Conventions used:
  *
  *      1. Each replication chain is replicated to a namespace "${chain_name}_replication".
  *
  *      2. All table names are converted to low-caps. For example My_Schema.My_Table will be replicated
  *         to 'my_schema:my_table'
+ * </p>
  */
 public class HBaseApplier implements Applier {
 
@@ -51,7 +52,7 @@ public class HBaseApplier implements Applier {
     private final com.booking.replication.Configuration configuration;
 
     /**
-     * HBaseApplier constructor
+     * HBaseApplier constructor.
      *
      * @param zookeeperQuorum Zookeeper quorum of the HBase cluster we are writing tp
      */
@@ -74,15 +75,7 @@ public class HBaseApplier implements Applier {
         hbaseSchemaManager = new HBaseSchemaManager(configuration.getHBaseQuorum());
     }
 
-    /**
-     * Applier interface methods
-     *
-     *  applyCommitQueryEvent
-     *  applyXidEvent
-     *  applyAugmentedSchemaChangeEvent
-     *
-     *  applyAugmentedRowsEvent
-     */
+
     @Override
     public void applyCommitQueryEvent(QueryEvent event) {
         markCurrentTransactionForCommit();

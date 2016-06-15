@@ -21,9 +21,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class HBaseApplierWriter {
 
     /**
-     * batch-transaction-based buffer:
+     * Batch Transaction buffer.
      *
-     * Buffer is structured by tasks. Each task can have multiple transactions, each transaction can have multiple
+     * <p>Buffer is structured by tasks. Each task can have multiple transactions, each transaction can have multiple
      * tables and each table can have multiple mutations. Each task is identified by task UUID. Each transaction is
      * identified with transaction UUID. Task sub-buffers are picked up by flusher threads and on success there
      * identified with transaction UUID. Task sub-buffers are picked up by flusher threads and on success there
@@ -33,9 +33,9 @@ public class HBaseApplierWriter {
      *
      *      2. If there is a transactions not marked for commit (large transactions, so buffer is full before
      *         end of transaction is reached), the new task UUID is created and the transaction UUID of the
-     *         unfinished transaction is reserved in the new task-sub-buffer.
+     *         unfinished transaction is reserved in the new task-sub-buffer.</p>
      *
-     * On task failure, task status is updated to 'WRITE_FAILED' and that task will be retried. The hash structure
+     * <p>On task failure, task status is updated to 'WRITE_FAILED' and that task will be retried. The hash structure
      * of single task sub-buffer looks like this:
      *
      *  {
@@ -54,9 +54,9 @@ public class HBaseApplierWriter {
      *        table_N => [@table_N_augmented_row_changes]
      *
      *      },
-     *  }
+     *  }</p>
      *
-     * Or in short, Perl-like syntax:
+     * <p>Or in short, Perl-like syntax:
      *
      *  $taskBuffer = { $taskUUID => { $transactionUUID => { $tableName => [@AugmentedRows] }}}
      *
@@ -65,32 +65,32 @@ public class HBaseApplierWriter {
      * guaranties that each operation is idempotent (so there is no queries that transform data like update value
      * to value * x, which would break the idempotent feature of operations). Simply put, the order of applying of
      * different transactions does not influence the end result since data will be timestamped with timestamps
-     * from the binlog and if there are multiple operations on the same row all versions are kept in HBase.
+     * from the binlog and if there are multiple operations on the same row all versions are kept in HBase.</p>
      */
     private final
             ConcurrentHashMap<String, Map<String, Map<String,List<AugmentedRow>>>>
             taskTransactionBuffer = new ConcurrentHashMap<>();
 
     /**
-     * Futures grouped by task UUID
+     * Futures grouped by task UUID.
      */
     private final
             ConcurrentHashMap<String, Future<TaskResult>>
             taskFutures = new ConcurrentHashMap<>();
 
     /**
-     * Status tracking helper structures
+     * Status tracking helper structures.
      */
     private final ConcurrentHashMap<String, Integer>      taskStatus        = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Integer>      transactionStatus = new ConcurrentHashMap<>();
 
     /**
-     * Shared connection used by all tasks in applier
+     * Shared connection used by all tasks in applier.
      */
     private Connection hbaseConnection;
 
     /**
-     * Task thread pool
+     * Task thread pool.
      */
     private static ExecutorService taskPool;
 
@@ -462,7 +462,7 @@ public class HBaseApplierWriter {
     }
 
     /**
-     * requeueTask
+     * Requeue task.
      *
      * @param failedTaskUuid UUID
      */
@@ -497,7 +497,7 @@ public class HBaseApplierWriter {
     }
 
     /**
-     * Submit tasks that are READY_FOR_PICK_UP
+     * Submit tasks that are READY_FOR_PICK_UP.
      */
     public void submitTasksThatAreReadyForPickUp() {
 

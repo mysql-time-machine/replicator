@@ -38,12 +38,16 @@ import java.util.regex.Pattern;
 
 
 /**
- * PipelineOrchestrator
+ * Pipeline Orchestrator.
  *
- * On each event handles:
+ * <p>Manages data flow from event producer into the applier.
+ * Also manages persistence of metadata necessary for the replicator features.</p>
+ *
+ * <p>On each event handles:
  *      1. schema version management
  *      2  augmenting events with schema info
  *      3. sending of events to applier.
+ * </p>
  */
 public class PipelineOrchestrator extends Thread {
 
@@ -80,17 +84,19 @@ public class PipelineOrchestrator extends Thread {
     private HashMap<String,Boolean> rotateEventAllreadySeenForBinlogFile = new HashMap<>();
 
     /**
-    * fakeMicrosecondCounter: this is a special feature that
-    * requires some explanation
-    *
-    * MySQL binlog events have second-precision timestamps. This
-    * obviously means that we can't have microsecond precision,
-    * but that is not the intention here. The idea is to at least
-    * preserve the information about ordering of events,
-    * especially if one ID has multiple events within the same
-    * second. We want to know what was their order. That is the
-    * main purpose of this counter.
-    */
+     * Fake microsecond counter.
+     *
+     * <p>This is a special feature that
+     * requires some explanation</p>
+     *
+     * <p>MySQL binlog events have second-precision timestamps. This
+     * obviously means that we can't have microsecond precision,
+     * but that is not the intention here. The idea is to at least
+     * preserve the information about ordering of events,
+     * especially if one ID has multiple events within the same
+     * second. We want to know what was their order. That is the
+     * main purpose of this counter.</p>
+     */
     private static long fakeMicrosecondCounter = 0;
 
     public void requestReplicatorShutdown() {
@@ -216,9 +222,9 @@ public class PipelineOrchestrator extends Thread {
     private Long replDelay = 0L;
 
     /**
-     *  calculateAndPropagateChanges
+     *  Calculate and propagate changes.
      *
-     *     STEPS:
+     *  <p>STEPS:
      *     ======
      *  1. check event type
      *
@@ -229,6 +235,7 @@ public class PipelineOrchestrator extends Thread {
      *  3. if DATA:
      *      a. match column names and types
      *      b. calculateAndPropagateChanges event to AugmentedQueue
+     * </p>
      */
     public void calculateAndPropagateChanges(BinlogEventV4 event) throws IOException, TableMapException {
 
@@ -503,7 +510,8 @@ public class PipelineOrchestrator extends Thread {
 
     /**
      * Returns true if event type is not tracked, or does not belong to the
-     * tracked database
+     * tracked database.
+     *
      * @param  event Binlog event that needs to be checked
      * @return shouldSkip Weather event should be skipped or processed
      */

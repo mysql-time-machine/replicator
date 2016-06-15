@@ -172,10 +172,10 @@ public class ActiveSchemaVersion {
     }
 
     /**
-     * applyDDL
+     * Apply DDL statements.
      *
-     * Changes the active schema by executing ddl on active schema db
-     * and then reloading the activeSchema objects
+     * <p>Changes the active schema by executing ddl on active schema db
+     * and then reloading the activeSchema objects</p>
      *
      * @param sequence Sequence of DDL statements for schema transition
      * @return ActiveSchemaVersion

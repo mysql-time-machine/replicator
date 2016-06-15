@@ -1,7 +1,7 @@
 package com.booking.replication.util;
 
 /**
- * Simple utility class for parsing command line options
+ * Simple utility class for parsing command line options.
  */
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;

@@ -16,12 +16,14 @@ import java.util.HashMap;
 import java.util.List;
 
 /**
- * Stores configuration properties
+ * Configuration instance.
+ *
+ * <p>This object is instantiated by deserializing from a yaml config file.</p>
  */
 public class Configuration {
 
     /**
-     * Constructor
+     * Empty constructor.
      */
     public Configuration() {}
 

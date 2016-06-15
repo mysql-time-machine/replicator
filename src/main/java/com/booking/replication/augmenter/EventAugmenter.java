@@ -30,14 +30,13 @@ import java.util.HashMap;
 /**
  * EventAugmenter
  *
- * This class contains the logic that tracks the schema
+ * <p>This class contains the logic that tracks the schema
  * that corresponds to current binlog position. It also
  * handles schema transition management when DDL statement
  * is encountered. In addition it maintains a tableMapEvent
  * cache (that is needed to getValue tableName from tableID) and
  * provides utility method for mapping raw binlog event to
- * currently active schema.
- *
+ * currently active schema.</p>
  */
 public class EventAugmenter {
 
@@ -50,16 +49,17 @@ public class EventAugmenter {
     public static Metrics.PerTableMetricsHash perTableCounters = new Metrics.PerTableMetricsHash("mysql");
 
     /**
-     * Constructor
+     * Event Augmenter constructor.
      *
-     * @param  replicatorConfiguration Replicator configuration object
+     * @param  replicatorConfiguration Replicator Configuration object
      */
     public EventAugmenter(Configuration replicatorConfiguration) throws SQLException, URISyntaxException {
         activeSchemaVersion = new ActiveSchemaVersion(replicatorConfiguration);
     }
 
     /**
-     * getActiveSchemaVersion
+     * Get active schema version.
+     *
      * @return ActiveSchemaVersion
      */
     public ActiveSchemaVersion getActiveSchemaVersion() {
@@ -70,13 +70,14 @@ public class EventAugmenter {
      * Transitions active schema to a new state that corresponds
      * to the current binlog position.
      *
-     * Steps performed are:
+     * <p>Steps performed are:
      *
      *       1. make snapshot of active schema before change
      *       2. transition to the new schema
      *       3. snapshot schema after change
      *       4. create augmentedSchemaChangeEvent
      *       5. return augmentedSchemaChangeEvent
+     * </p>
      */
     public AugmentedSchemaChangeEvent transitionSchemaToNextVersion(BinlogEventV4 event)
             throws SchemaTransitionException {
@@ -164,9 +165,9 @@ public class EventAugmenter {
     }
 
     /**
-     * mapDataEventToSchema:
+     * Map data event to Schema.
      *
-     * Maps raw binlog event to column names and types
+     * <p>Maps raw binlog event to column names and types</p>
      *
      * @param  event               AbstractRowEvent
      * @return augmentedDataEvent  AugmentedRow

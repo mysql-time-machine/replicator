@@ -15,7 +15,7 @@ import java.io.IOException;
 import java.util.HashMap;
 
 /**
- * JsonBuilder
+ * Json Builder.
  */
 
 public class JsonBuilder {

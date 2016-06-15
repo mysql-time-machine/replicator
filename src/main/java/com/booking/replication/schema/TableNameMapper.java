@@ -12,11 +12,10 @@ import java.util.TimeZone;
 /**
  * Created by bosko on 3/29/16.
  *
- *  TODO: optional hourly tables (--delta-hourly) (currently only daily tables are available)
+ *  <p>TODO: optional hourly tables (--delta-hourly) (currently only daily tables are available)</p>
  *
- *  TODO: timezone specification option (currently all [timestamp => YYYYMMDD] conversions use the default
- *        timezone of the system the replicator is running on)
- *
+ *  <p>TODO: timezone specification option (currently all [timestamp => YYYYMMDD] conversions use the default
+ *        timezone of the system the replicator is running on)</p>
  */
 public class TableNameMapper {
 

@@ -322,8 +322,9 @@ public class HBaseApplierMutationGenerator {
     }
 
     /**
-     * Salting the row keys with hex representation of first two bytes of md5:
-     *      hbaseRowID = md5(hbaseRowID)[0] + md5(hbaseRowID)[1] + "-" + hbaseRowID;
+     * Salting the row keys with hex representation of first two bytes of md5.
+     *
+     * <p>hbaseRowID = md5(hbaseRowID)[0] + md5(hbaseRowID)[1] + "-" + hbaseRowID;</p>
      */
     private static String saltRowKey(String hbaseRowID, String firstPartOfRowKey) {
 

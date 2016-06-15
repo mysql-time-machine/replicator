@@ -23,8 +23,10 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 
 
 import static com.codahale.metrics.MetricRegistry.name;
+import static org.apache.kafka.common.protocol.Protocol.BROKER;
 
-import static com.codahale.metrics.MetricRegistry.name;
+import java.io.IOException;
+import org.apache.commons.lang.mutable.MutableLong;
 
 /**
  * Created by raynald on 08/06/16.
@@ -44,7 +46,7 @@ public class KafkaApplier implements Applier {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaApplier.class);
 
-    public KafkaApplier(String BROKER, List<String> TOPICS, Configuration configuration) {
+    public KafkaApplier(String broker, List<String> topics, Configuration configuration) {
         replicatorConfiguration = configuration;
 
         /**
@@ -58,7 +60,7 @@ public class KafkaApplier implements Applier {
 
         // Below is the new version of Configuration
         props = new Properties();
-        props.put("bootstrap.servers", BROKER);
+        props.put("bootstrap.servers", broker);
         props.put("acks", "all"); // Default 1
         props.put("retries", 1); // Default value: 0
         props.put("batch.size", 16384); // Default value: 16384
@@ -67,12 +69,12 @@ public class KafkaApplier implements Applier {
         props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         producer = new KafkaProducer<>(props);
-        topicList = TOPICS;
+        topicList = topics;
     }
 
     @Override
-    public void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedSingleRowEvent, PipelineOrchestrator caller) throws IOException {
-        for(AugmentedRow row : augmentedSingleRowEvent.getSingleRowEvents()) {
+    public void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedSingleRowEvent, PipelineOrchestrator caller) {
+        for (AugmentedRow row : augmentedSingleRowEvent.getSingleRowEvents()) {
             if (row.getTableName() == null) {
                 LOGGER.error("tableName not exists");
                 throw new RuntimeException("tableName does not exist");
@@ -80,7 +82,7 @@ public class KafkaApplier implements Applier {
 
             String topic = row.getTableName();
             if (topicList.contains(topic)) {
-                message = new ProducerRecord<>(topic, row.toJSON());
+                message = new ProducerRecord<>(topic, row.toJson());
                 totalRowsCounter ++;
                 producer.send(message);
                 if (totalRowsCounter % 500 == 0) {

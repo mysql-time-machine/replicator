@@ -308,7 +308,11 @@ public class Configuration {
         return hbase.namespace;
     }
 
-    public String getKafkaBrokerAddress() { return kafka.broker; }
+    public String getKafkaBrokerAddress() {
+        return kafka.broker;
+    }
 
-    public List<String> getKafkaTopicList() {return kafka.topics; }
+    public List<String> getKafkaTopicList() {
+        return kafka.topics;
+    }
 }

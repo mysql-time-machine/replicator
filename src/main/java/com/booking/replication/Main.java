@@ -3,25 +3,21 @@ package com.booking.replication;
 import com.booking.replication.coordinator.CoordinatorInterface;
 import com.booking.replication.coordinator.FileCoordinator;
 import com.booking.replication.coordinator.ZookeeperCoordinator;
-import com.booking.replication.metrics.GraphiteReporter;
-import com.booking.replication.util.CMD;
+import com.booking.replication.util.Cmd;
 import com.booking.replication.util.StartupParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import joptsimple.OptionSet;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.net.URISyntaxException;
-import java.sql.SQLException;
 
 public class Main {
 
     public static void main(String[] args) throws Exception {
 
-        OptionSet optionSet = CMD.parseArgs(args);
+        OptionSet optionSet = Cmd.parseArgs(args);
 
         StartupParameters startupParameters = new StartupParameters(optionSet);
 

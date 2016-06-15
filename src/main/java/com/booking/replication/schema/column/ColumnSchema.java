@@ -64,7 +64,7 @@ public class ColumnSchema {
         this.characterMaximumLength = characterMaximumLength;
     }
 
-    public boolean IS_NULLABLE() {
+    public boolean isNullable() {
         return isNullable;
     }
 

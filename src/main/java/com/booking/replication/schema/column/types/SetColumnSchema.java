@@ -33,9 +33,9 @@ public class SetColumnSchema extends ColumnSchema {
 
         matcher.find();
 
-        String setCSV = matcher.group(1);
+        String setCsv = matcher.group(1);
 
-        setMembers = StringUtils.split(setCSV,",");
+        setMembers = StringUtils.split(setCsv,",");
         for (int i = 0; i < setMembers.length; i++) {
             setMembers[i] = setMembers[i].replace("'","");
         }

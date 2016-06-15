@@ -1,7 +1,7 @@
 package com.booking.replication.augmenter;
 
 import com.booking.replication.schema.SchemaVersionSnapshot;
-import com.booking.replication.util.JSONBuilder;
+import com.booking.replication.util.JsonBuilder;
 
 import java.util.HashMap;
 
@@ -31,8 +31,8 @@ public class AugmentedSchemaChangeEvent {
         schemaChangeEventTimestamp   = ddlTimestamp;
     }
 
-    public String toJSON() {
-        return JSONBuilder.schemaChangeEventToJSON(this);
+    public String toJson() {
+        return JsonBuilder.schemaChangeEventToJson(this);
     }
 
     public HashMap<String,String> getSchemaTransitionSequence() {

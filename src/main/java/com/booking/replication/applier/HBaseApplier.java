@@ -59,9 +59,7 @@ public class HBaseApplier implements Applier {
     public HBaseApplier(
             String                                zookeeperQuorum,
             com.booking.replication.Configuration repCfg
-
-        ) {
-
+    ) {
         configuration     = repCfg;
 
         hbaseConf.set("hbase.zookeeper.quorum", zookeeperQuorum);
@@ -81,7 +79,7 @@ public class HBaseApplier implements Applier {
      * Applier interface methods
      *
      *  applyCommitQueryEvent
-     *  applyXIDEvent
+     *  applyXidEvent
      *  applyAugmentedSchemaChangeEvent
      *
      *  applyAugmentedRowsEvent
@@ -95,7 +93,7 @@ public class HBaseApplier implements Applier {
     }
 
     @Override
-    public void applyXIDEvent(XidEvent event) {
+    public void applyXidEvent(XidEvent event) {
         // TODO: add transactionID to storage
         // long transactionID = event.getXid();
         markCurrentTransactionForCommit();
@@ -154,7 +152,7 @@ public class HBaseApplier implements Applier {
     private String getHBaseNamespace(PipelineOrchestrator pipeline) {
 
         // get database name from event
-        String mySQLDBName = configuration.getReplicantSchemaName();
+        String mySqlDbName = configuration.getReplicantSchemaName();
         String currentTransactionDB = pipeline.currentTransactionMetadata
                 .getFirstMapEventInTransaction()
                 .getDatabaseName()
@@ -162,8 +160,8 @@ public class HBaseApplier implements Applier {
 
         String hbaseNamespace = null;
         if (currentTransactionDB != null) {
-            if (currentTransactionDB.equals(mySQLDBName)) {
-                hbaseNamespace = mySQLDBName.toLowerCase();
+            if (currentTransactionDB.equals(mySqlDbName)) {
+                hbaseNamespace = mySqlDbName.toLowerCase();
             } else if (currentTransactionDB.equals(Constants.BLACKLISTED_DB)) {
                 return null;
             } else {
@@ -196,7 +194,7 @@ public class HBaseApplier implements Applier {
 
     // mark current uuid buffer as READY_FOR_PICK_UP and create new uuid buffer
     private void markCurrentTaskAsReadyToGo() {
-        hbaseApplierWriter.markCurrentTaskAsReadyAndCreateNewUUIDBuffer();
+        hbaseApplierWriter.markCurrentTaskAsReadyAndCreateNewUuidBuffer();
     }
 
     private void submitAllTasksThatAreReadyToGo() {

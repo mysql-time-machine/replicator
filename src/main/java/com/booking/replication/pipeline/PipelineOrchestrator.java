@@ -75,7 +75,7 @@ public class PipelineOrchestrator extends Thread {
 
     private HashMap<String,Boolean> rotateEventAllreadySeenForBinlogFile = new HashMap<>();
 
-   /**
+    /**
     * fakeMicrosecondCounter: this is a special feature that
     * requires some explanation
     *
@@ -111,8 +111,7 @@ public class PipelineOrchestrator extends Thread {
             ConcurrentHashMap<Integer, BinlogPositionInfo> chm,
             Configuration                     repcfg,
             Applier                           applier
-        ) throws SQLException, URISyntaxException {
-
+    ) throws SQLException, URISyntaxException {
         queues = repQueues;
         configuration = repcfg;
 
@@ -141,8 +140,8 @@ public class PipelineOrchestrator extends Thread {
                 @Override
                 public Long getValue() {
                     return replDelay;
-            }
-        });
+                }
+            });
     }
 
     public boolean isRunning() {
@@ -248,10 +247,10 @@ public class PipelineOrchestrator extends Thread {
                 doTimestampOverride(event);
                 String querySQL = ((QueryEvent) event).getSql().toString();
                 boolean isDDL = isDDL(querySQL);
-                if (isCOMMIT(querySQL, isDDL)) {
+                if (isCommit(querySQL, isDDL)) {
                     commitQueryCounter.mark();
                     applier.applyCommitQueryEvent((QueryEvent) event);
-                } else if (isBEGIN(querySQL, isDDL)) {
+                } else if (isBegin(querySQL, isDDL)) {
                     currentTransactionMetadata = new CurrentTransactionMetadata();
                 } else if (isDDL) {
                     augmentedSchemaChangeEvent = eventAugmenter.transitionSchemaToNextVersion(event);
@@ -359,7 +358,7 @@ public class PipelineOrchestrator extends Thread {
                 // For now we just increase the counter.
                 fakeMicrosecondCounter++;
                 doTimestampOverride(event);
-                applier.applyXIDEvent((XidEvent) event);
+                applier.applyXidEvent((XidEvent) event);
                 XIDCounter.mark();
                 currentTransactionMetadata = new CurrentTransactionMetadata();
                 break;
@@ -431,13 +430,13 @@ public class PipelineOrchestrator extends Thread {
         return matcher.find();
     }
 
-    public boolean isBEGIN(String querySQL, boolean isDDL) {
+    public boolean isBegin(String querySQL, boolean isDDL) {
 
-        boolean hasBEGIN;
+        boolean hasBegin;
 
         // optimization
         if (querySQL.equals("COMMIT")) {
-            hasBEGIN = false;
+            hasBegin = false;
         } else {
 
             String beginPattern = "(begin)";
@@ -446,19 +445,19 @@ public class PipelineOrchestrator extends Thread {
 
             Matcher matcher = pattern.matcher(querySQL);
 
-            hasBEGIN = matcher.find();
+            hasBegin = matcher.find();
         }
 
-        return (hasBEGIN && !isDDL);
+        return (hasBegin && !isDDL);
     }
 
-    public boolean isCOMMIT(String querySQL, boolean isDDL) {
+    public boolean isCommit(String querySQL, boolean isDDL) {
 
-        boolean hasCOMMIT;
+        boolean hasCommit;
 
         // optimization
         if (querySQL.equals("BEGIN")) {
-            hasCOMMIT = false;
+            hasCommit = false;
         } else {
 
             String commitPattern = "(commit)";
@@ -467,10 +466,10 @@ public class PipelineOrchestrator extends Thread {
 
             Matcher matcher = pattern.matcher(querySQL);
 
-            hasCOMMIT = matcher.find();
+            hasCommit = matcher.find();
         }
 
-        return (hasCOMMIT && !isDDL);
+        return (hasCommit && !isDDL);
     }
 
     public boolean isReplicant(String schemaName) {
@@ -512,9 +511,9 @@ public class PipelineOrchestrator extends Thread {
             case MySQLConstants.QUERY_EVENT:
                 String querySQL  = ((QueryEvent) event).getSql().toString();
                 boolean isDDL    = isDDL(querySQL);
-                boolean isCOMMIT = isCOMMIT(querySQL, isDDL);
-                boolean isBEGIN  = isBEGIN(querySQL, isDDL);
-                if (isCOMMIT) {
+                boolean isCommit = isCommit(querySQL, isDDL);
+                boolean isBegin  = isBegin(querySQL, isDDL);
+                if (isCommit) {
                     // COMMIT does not always contain database name so we get it
                     // from current transaction metadata.
                     // There is an assumption that all tables in the transaction
@@ -534,11 +533,13 @@ public class PipelineOrchestrator extends Thread {
                             message += tblName;
                             message += ", ";
                         }
-                        LOGGER.warn("Received COMMIT event, but currentTransactionMetadata is empty! " +
-                                "Tables in transaction are " + message
+                        LOGGER.warn(String.format(
+                                "Received COMMIT event, but currentTransactionMetadata is empty! Tables in transaction are %s",
+                                message
+                            )
                         );
                     }
-                } else if (isBEGIN) {
+                } else if (isBegin) {
                     eventIsTracked = true;
                 } else if (isDDL) {
                     // DDL event should always contain db name
@@ -551,7 +552,7 @@ public class PipelineOrchestrator extends Thread {
 
                     }
                 } else {
-                    // TODO: handle View statement
+// TODO: handle View statement
 //                     LOGGER.warn("Received non-DDL, non-COMMIT, non-BEGIN query: " + querySQL);
                 }
                 break;

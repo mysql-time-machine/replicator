@@ -16,7 +16,7 @@ public class Metrics {
         registry = reg;
     }
 
-    public static class PerTableMetricsHash extends ConcurrentHashMap<String, PerTableMetrics>{
+    public static class PerTableMetricsHash extends ConcurrentHashMap<String, PerTableMetrics> {
 
         private final String prefix;
 

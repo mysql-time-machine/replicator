@@ -5,22 +5,22 @@ package com.booking.replication.applier;
  */
 public class TaskResult {
 
-    private final String                                        taskUUID;
-    private final int                                           taskStatus;
-    private final boolean                                       taskSucceeded;
+    private final String taskUuid;
+    private final int taskStatus;
+    private final boolean taskSucceeded;
 
     public TaskResult(
             String uuid,
             int status,
             boolean success
     ) {
-        taskSucceeded                        = success;
-        taskUUID                             = uuid;
-        taskStatus                           = status;
+        taskSucceeded = success;
+        taskUuid = uuid;
+        taskStatus = status;
     }
 
-    public String getTaskUUID() {
-        return taskUUID;
+    public String getTaskUuid() {
+        return taskUuid;
     }
 
     public boolean isTaskSucceeded() {

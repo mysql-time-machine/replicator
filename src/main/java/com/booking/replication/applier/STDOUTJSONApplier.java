@@ -15,11 +15,11 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class STDOUTJSONApplier implements Applier  {
+public class StdoutJsonApplier implements Applier  {
 
     private static long totalRowsCounter = 0;
 
-    // TODO: move these to CMD config params
+    // TODO: move these to Cmd config params
     public static final String FILTERED_TABLE_NAME = null;
     public static final Boolean VERBOSE = false;
     public static final Boolean STATS_OUT = true;
@@ -28,12 +28,12 @@ public class STDOUTJSONApplier implements Applier  {
 
     private static final Map<String, Long> stats = new ConcurrentHashMap<>();
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(STDOUTJSONApplier.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(StdoutJsonApplier.class);
 
-    public STDOUTJSONApplier(Configuration configuration) {}
+    public StdoutJsonApplier(Configuration configuration) {}
 
     @Override
-    public void applyXIDEvent(XidEvent event) {
+    public void applyXidEvent(XidEvent event) {
         if (VERBOSE) {
             for (String table : stats.keySet()) {
                 LOGGER.info("XID Event, current stats: { table => " + table + ", rows => " + stats.get(table));
@@ -87,7 +87,7 @@ public class STDOUTJSONApplier implements Applier  {
                             }
                         }
                         if (DATA_OUT) {
-                            System.out.println(row.toJSON());
+                            System.out.println(row.toJson());
                         }
                     }
                 } else {
@@ -107,7 +107,7 @@ public class STDOUTJSONApplier implements Applier  {
                         }
                     }
                     if (DATA_OUT) {
-                        System.out.println(row.toJSON());
+                        System.out.println(row.toJson());
                     }
                 }
             } else {
@@ -132,7 +132,7 @@ public class STDOUTJSONApplier implements Applier  {
             PipelineOrchestrator caller) {
 
         if (SCHEMA_OUT) {
-            String json = augmentedSchemaChangeEvent.toJSON();
+            String json = augmentedSchemaChangeEvent.toJson();
             if (json != null) {
                 System.out.println("Schema Change: augmentedSchemaChangeEvent => \n" + json);
             } else {

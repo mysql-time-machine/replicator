@@ -55,7 +55,7 @@ public class LastVerifiedBinlogFile implements SafeCheckPoint {
     private ObjectMapper mapper = new ObjectMapper();
 
     @Override
-    public String toJSON() {
+    public String toJson() {
         String json = null;
         try {
             json = mapper.writeValueAsString(this);

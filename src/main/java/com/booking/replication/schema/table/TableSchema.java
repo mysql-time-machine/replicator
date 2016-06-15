@@ -12,7 +12,7 @@ public class TableSchema {
     private HashMap<Integer,String> columnIndexToColumnNameMap = new HashMap<>();
 
     // TODO: load table CHARACTER_SET_NAME
-//    private String CHARACTER_SET_NAME;
+    // private String CHARACTER_SET_NAME;
 
     public TableSchema() {
         columns = new HashMap<>();
@@ -40,7 +40,7 @@ public class TableSchema {
         return columns;
     }
 
-    public HashMap<Integer,String> getColumnIndexToNameMap () {
+    public HashMap<Integer,String> getColumnIndexToNameMap() {
         return columnIndexToColumnNameMap;
     }
 }

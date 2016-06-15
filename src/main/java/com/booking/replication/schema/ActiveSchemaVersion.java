@@ -11,7 +11,7 @@ import com.booking.replication.schema.column.ColumnSchema;
 import com.booking.replication.schema.column.types.EnumColumnSchema;
 import com.booking.replication.schema.column.types.SetColumnSchema;
 import com.booking.replication.schema.table.TableSchema;
-import com.booking.replication.util.JSONBuilder;
+import com.booking.replication.util.JsonBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -152,16 +152,16 @@ public class ActiveSchemaVersion {
         }
     }
 
-    public String schemaTablesToJSON() {
-        return  JSONBuilder.schemaVersionTablesToJSON(activeSchemaTables);
+    public String schemaTablesToJson() {
+        return  JsonBuilder.schemaVersionTablesToJson(activeSchemaTables);
     }
 
-    public String schemaCreateStatementsToJSON() {
-        return  JSONBuilder.schemaCreateStatementsToJSON(activeSchemaCreateStatements);
+    public String schemaCreateStatementsToJson() {
+        return  JsonBuilder.schemaCreateStatementsToJson(activeSchemaCreateStatements);
     }
 
-    public String toJSON() {
-        return JSONBuilder.schemaVersionToJSON(this);
+    public String toJson() {
+        return JsonBuilder.schemaVersionToJson(this);
     }
 
     public HashMap<String, TableSchema> getActiveSchemaTables() {

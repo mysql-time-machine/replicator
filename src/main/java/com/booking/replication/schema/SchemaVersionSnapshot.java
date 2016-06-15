@@ -5,25 +5,25 @@ package com.booking.replication.schema;
  */
 public class SchemaVersionSnapshot {
 
-    private String schemaVersionJSONSnaphot;
-    private String schemaVersionTablesJSONSnaphot;
-    private String schemaVersionCreateStatementsJSONSnapshot;
+    private String schemaVersionJsonSnaphot;
+    private String schemaVersionTablesJsonSnaphot;
+    private String schemaVersionCreateStatementsJsonSnapshot;
 
     public SchemaVersionSnapshot(ActiveSchemaVersion activeSchemaVersion) {
-        schemaVersionJSONSnaphot = activeSchemaVersion.toJSON();
-        schemaVersionTablesJSONSnaphot = activeSchemaVersion.schemaTablesToJSON();
-        schemaVersionCreateStatementsJSONSnapshot = activeSchemaVersion.schemaCreateStatementsToJSON();
+        schemaVersionJsonSnaphot = activeSchemaVersion.toJson();
+        schemaVersionTablesJsonSnaphot = activeSchemaVersion.schemaTablesToJson();
+        schemaVersionCreateStatementsJsonSnapshot = activeSchemaVersion.schemaCreateStatementsToJson();
     }
 
-    public String getSchemaVersionJSONSnaphot() {
-        return schemaVersionJSONSnaphot;
+    public String getSchemaVersionJsonSnaphot() {
+        return schemaVersionJsonSnaphot;
     }
 
-    public String getSchemaVersionTablesJSONSnaphot() {
-        return schemaVersionTablesJSONSnaphot;
+    public String getSchemaVersionTablesJsonSnaphot() {
+        return schemaVersionTablesJsonSnaphot;
     }
 
-    public String getSchemaVersionCreateStatementsJSONSnapshot() {
-        return schemaVersionCreateStatementsJSONSnapshot;
+    public String getSchemaVersionCreateStatementsJsonSnapshot() {
+        return schemaVersionCreateStatementsJsonSnapshot;
     }
 }

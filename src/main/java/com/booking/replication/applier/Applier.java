@@ -19,7 +19,7 @@ public interface Applier {
 
     void applyCommitQueryEvent(QueryEvent event);
 
-    void applyXIDEvent(XidEvent event);
+    void applyXidEvent(XidEvent event);
 
     void applyRotateEvent(RotateEvent event);
 

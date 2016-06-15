@@ -28,7 +28,7 @@ public class HBaseWriterTask implements Callable<TaskResult> {
 
     private static final boolean DRY_RUN = false;
 
-    private final String taskUUID;
+    private final String taskUuid;
 
     private static final Counter applierTasksInProgressCounter = Metrics.registry.counter(name("HBase", "applierTasksInProgressCounter"));
     private static final Meter rowOpsCommittedToHbase = Metrics.registry.meter(name("HBase", "rowOpsCommittedToHbase"));
@@ -47,7 +47,7 @@ public class HBaseWriterTask implements Callable<TaskResult> {
         super();
         configuration = config;
         hbaseConnection = conn;
-        taskUUID = id;
+        taskUuid = id;
         taskTransactionBuffer = taskBuffer;
     }
 
@@ -64,7 +64,7 @@ public class HBaseWriterTask implements Callable<TaskResult> {
             }
 
             if (chaosMonkey.feelsLikeFailingSubmitedTaskWithoutException()) {
-                return new TaskResult(taskUUID, TaskStatusCatalog.WRITE_FAILED, false);
+                return new TaskResult(taskUuid, TaskStatusCatalog.WRITE_FAILED, false);
             }
 
             applierTasksInProgressCounter.inc();
@@ -73,23 +73,23 @@ public class HBaseWriterTask implements Callable<TaskResult> {
                 throw new Exception("Chaos monkey exception for task in progress!");
             }
             if (chaosMonkey.feelsLikeFailingTaskInProgessWithoutException()) {
-                return new TaskResult(taskUUID, TaskStatusCatalog.WRITE_FAILED, false);
+                return new TaskResult(taskUuid, TaskStatusCatalog.WRITE_FAILED, false);
             }
 
-            for (final String transactionUUID : taskTransactionBuffer.keySet()) {
+            for (final String transactionUuid : taskTransactionBuffer.keySet()) {
 
-                int numberOfTablesInCurrentTransaction = taskTransactionBuffer.get(transactionUUID).keySet().size();
+                int numberOfTablesInCurrentTransaction = taskTransactionBuffer.get(transactionUuid).keySet().size();
 
                 int numberOfFlushedTablesInCurrentTransaction = 0;
 
-                for (final String bufferedMySQLTableName : taskTransactionBuffer.get(transactionUUID).keySet()) {
+                for (final String bufferedMySQLTableName : taskTransactionBuffer.get(transactionUuid).keySet()) {
 
                     if (chaosMonkey.feelsLikeThrowingExceptionBeforeFlushingData()) {
                         throw new Exception("Chaos monkey is here to prevent call to flush!!!");
                     } else if (chaosMonkey.feelsLikeFailingDataFlushWithoutException()) {
-                        return new TaskResult(taskUUID, TaskStatusCatalog.WRITE_FAILED, false);
+                        return new TaskResult(taskUuid, TaskStatusCatalog.WRITE_FAILED, false);
                     } else {
-                        List<AugmentedRow> rowOps = taskTransactionBuffer.get(transactionUUID).get(bufferedMySQLTableName);
+                        List<AugmentedRow> rowOps = taskTransactionBuffer.get(transactionUuid).get(bufferedMySQLTableName);
 
                         HBaseApplierMutationGenerator hbaseApplierMutationGenerator =
                                 new HBaseApplierMutationGenerator(configuration);
@@ -135,13 +135,13 @@ public class HBaseWriterTask implements Callable<TaskResult> {
                     LOGGER.error(String.format("Failed integrity check number of tables: %s != %s",
                             numberOfTablesInCurrentTransaction,
                             numberOfFlushedTablesInCurrentTransaction));
-                    return new TaskResult(taskUUID, TaskStatusCatalog.WRITE_FAILED, false);
+                    return new TaskResult(taskUuid, TaskStatusCatalog.WRITE_FAILED, false);
                 }
             } // next transaction
 
             // task result
             return new TaskResult(
-                    taskUUID,
+                    taskUuid,
                     TaskStatusCatalog.WRITE_SUCCEEDED,
                     true
             );

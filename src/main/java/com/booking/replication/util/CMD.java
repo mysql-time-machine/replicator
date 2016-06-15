@@ -6,7 +6,7 @@ package com.booking.replication.util;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 
-public class CMD {
+public class Cmd {
     private static final String DEFAULT_BINLOG_FILENAME_PATERN = "mysql-bin.";
 
     public static OptionSet parseArgs(String[] args) {

@@ -43,7 +43,7 @@ public class HBaseApplierMutationGenerator {
     }
 
     public HashMap<String,HashMap<String,List<Triple<String,String,Put>>>>
-    generateMutationsFromAugmentedRows(List<AugmentedRow> augmentedRows) {
+        generateMutationsFromAugmentedRows(List<AugmentedRow> augmentedRows) {
 
         // { $type => $tableName => @AugmentedMutations }
         HashMap<String,HashMap<String,List<Triple<String,String,Put>>>> preparedMutations = new HashMap<>();

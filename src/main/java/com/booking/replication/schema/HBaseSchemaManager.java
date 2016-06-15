@@ -1,7 +1,7 @@
 package com.booking.replication.schema;
 
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
-import com.booking.replication.util.JSONBuilder;
+import com.booking.replication.util.JsonBuilder;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -156,7 +156,7 @@ public class HBaseSchemaManager {
             com.booking.replication.Configuration configuration) {
 
         // get database_name
-        String mySQLDBName = configuration.getReplicantSchemaName();
+        String mySqlDbName = configuration.getReplicantSchemaName();
 
         // get sql_statement
         String ddl = event.getSchemaTransitionSequence().get("ddl");
@@ -166,24 +166,24 @@ public class HBaseSchemaManager {
         }
 
         // get pre/post schemas
-        String preChangeTablesSchemaJSON  = event.getPreTransitionSchemaSnapshot().getSchemaVersionTablesJSONSnaphot();
-        String postChangeTablesSchemaJSON = event.getPostTransitionSchemaSnapshot().getSchemaVersionTablesJSONSnaphot();
-        String schemaTransitionSequenceJSON = JSONBuilder.schemaTransitionSequenceToJSON(
+        String preChangeTablesSchemaJson  = event.getPreTransitionSchemaSnapshot().getSchemaVersionTablesJsonSnaphot();
+        String postChangeTablesSchemaJson = event.getPostTransitionSchemaSnapshot().getSchemaVersionTablesJsonSnaphot();
+        String schemaTransitionSequenceJson = JsonBuilder.schemaTransitionSequenceToJson(
                 event.getSchemaTransitionSequence()
         );
 
         // get pre/post creates
-        String preChangeCreateStatementsJSON  = event
+        String preChangeCreateStatementsJson  = event
                 .getPreTransitionSchemaSnapshot()
-                .getSchemaVersionCreateStatementsJSONSnapshot();
-        String postChangeCreateStatementsJSON = event
+                .getSchemaVersionCreateStatementsJsonSnapshot();
+        String postChangeCreateStatementsJson = event
                 .getPostTransitionSchemaSnapshot()
-                .getSchemaVersionCreateStatementsJSONSnapshot();
+                .getSchemaVersionCreateStatementsJsonSnapshot();
 
         // get event timestamp
         Long eventTimestamp = event.getSchemaChangeEventTimestamp();
 
-        String hbaseTableName = "schema_history:" + mySQLDBName.toLowerCase();
+        String hbaseTableName = "schema_history:" + mySqlDbName.toLowerCase();
         int shard = configuration.getReplicantShardID();
         if (shard > 0) {
             hbaseTableName += shard;
@@ -226,8 +226,6 @@ public class HBaseSchemaManager {
                 LOGGER.info("Table " + hbaseTableName + " already exists in HBase. Probably a case of replaying the binlog.");
             }
 
-            Table hbaseTable = connection.getTable(tableName);
-
             // write schema info
             Put put = new Put(Bytes.toBytes(hbaseRowKey));
             String ddlColumnName  = "ddl";
@@ -235,7 +233,7 @@ public class HBaseSchemaManager {
                     CF,
                     Bytes.toBytes(ddlColumnName),
                     eventTimestamp,
-                    Bytes.toBytes(schemaTransitionSequenceJSON)
+                    Bytes.toBytes(schemaTransitionSequenceJson)
             );
 
             String schemaSnapshotPreColumnName  = "schemaPreChange";
@@ -243,7 +241,7 @@ public class HBaseSchemaManager {
                     CF,
                     Bytes.toBytes(schemaSnapshotPreColumnName),
                     eventTimestamp,
-                    Bytes.toBytes(preChangeTablesSchemaJSON)
+                    Bytes.toBytes(preChangeTablesSchemaJson)
             );
 
             String schemaSnapshotPostColumnName = "schemaPostChange";
@@ -251,7 +249,7 @@ public class HBaseSchemaManager {
                     CF,
                     Bytes.toBytes(schemaSnapshotPostColumnName),
                     eventTimestamp,
-                    Bytes.toBytes(postChangeTablesSchemaJSON)
+                    Bytes.toBytes(postChangeTablesSchemaJson)
             );
 
             String preChangeCreateStatementsColumn = "createsPreChange";
@@ -259,7 +257,7 @@ public class HBaseSchemaManager {
                     CF,
                     Bytes.toBytes(preChangeCreateStatementsColumn),
                     eventTimestamp,
-                    Bytes.toBytes(preChangeCreateStatementsJSON)
+                    Bytes.toBytes(preChangeCreateStatementsJson)
             );
 
             String postChangeCreateStatementsColumn = "createsPostChange";
@@ -267,9 +265,10 @@ public class HBaseSchemaManager {
                     CF,
                     Bytes.toBytes(postChangeCreateStatementsColumn),
                     eventTimestamp,
-                    Bytes.toBytes(postChangeCreateStatementsJSON)
+                    Bytes.toBytes(postChangeCreateStatementsJson)
             );
 
+            Table hbaseTable = connection.getTable(tableName);
             hbaseTable.put(put);
 
         } catch (IOException ioe) {

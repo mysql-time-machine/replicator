@@ -44,7 +44,7 @@ public class CurrentTransactionMetadata {
         currentTransactionTableMapEvents.put(tableName, event);
     }
 
-    public String getTableNameFromID (Long tableID) throws TableMapException {
+    public String getTableNameFromID(Long tableID) throws TableMapException {
         if (! tableID2DBName.containsKey(tableID)) {
             LOGGER.error(String.format(
                     "Table ID not known. Known tables and ids are: %s",

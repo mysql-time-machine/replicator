@@ -14,7 +14,6 @@ import com.google.code.or.binlog.impl.event.RotateEvent;
 import com.google.code.or.binlog.impl.event.XidEvent;
 
 import java.util.*;
-import java.io.IOException;
 
 import kafka.producer.KeyedMessage;
 import kafka.javaapi.producer.Producer;
@@ -62,7 +61,7 @@ public class KafkaApplier implements Applier {
                 messages.inc();
             }
             String topic = row.getTableName();
-            message = new KeyedMessage<>(topic, row.toJSON());
+            message = new KeyedMessage<>(topic, row.toJson());
             producer.send(message);
 //            System.out.println("One line has been sent to Kafka broker...");
         }
@@ -75,7 +74,7 @@ public class KafkaApplier implements Applier {
     }
 
     @Override
-    public void applyXIDEvent(XidEvent event) {
+    public void applyXidEvent(XidEvent event) {
 
     }
 

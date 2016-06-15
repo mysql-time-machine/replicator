@@ -32,9 +32,8 @@ public class Converter {
     // Extracts string representation from or typed column. For now just
     // calls toString. Later if needed some type specific processing
     // can be added
-    public static String
-    orTypeToString(Column column, ColumnSchema columnSchema)
-    throws TableMapException {
+    public static String  orTypeToString(Column column, ColumnSchema columnSchema)
+        throws TableMapException {
 
         // ================================================================
         // Bit
@@ -303,7 +302,7 @@ public class Converter {
         for ( final byte b : raw ) {
             int ivalue = b & 0xFF;
             if (ivalue < 16 ) {
-                 hex.append("0").append(Integer.toHexString(ivalue).toUpperCase());
+                hex.append("0").append(Integer.toHexString(ivalue).toUpperCase());
             } else {
                 hex.append(Integer.toHexString(ivalue).toUpperCase());
             }

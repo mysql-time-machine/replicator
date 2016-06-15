@@ -172,37 +172,37 @@ public class EventAugmenter {
      * @return augmentedDataEvent  AugmentedRow
      * @throws TableMapException
      */
-    public AugmentedRowsEvent mapDataEventToSchema (AbstractRowEvent event, PipelineOrchestrator caller) throws TableMapException {
+    public AugmentedRowsEvent mapDataEventToSchema(AbstractRowEvent event, PipelineOrchestrator caller) throws TableMapException {
 
         AugmentedRowsEvent au;
 
         switch (event.getHeader().getEventType()) {
 
-           case MySQLConstants.UPDATE_ROWS_EVENT:
-               UpdateRowsEvent updateRowsEvent = ((UpdateRowsEvent) event);
-               au = augmentUpdateRowsEvent(updateRowsEvent, caller);
-               break;
-           case MySQLConstants.UPDATE_ROWS_EVENT_V2:
-               UpdateRowsEventV2 updateRowsEventV2 = ((UpdateRowsEventV2) event);
-               au = augmentUpdateRowsEventV2(updateRowsEventV2, caller);
-               break;
-           case MySQLConstants.WRITE_ROWS_EVENT:
-               WriteRowsEvent writeRowsEvent = ((WriteRowsEvent) event);
-               au = augmentWriteRowsEvent(writeRowsEvent, caller);
-               break;
-           case MySQLConstants.WRITE_ROWS_EVENT_V2:
-               WriteRowsEventV2 writeRowsEventV2 = ((WriteRowsEventV2) event);
-               au = augmentWriteRowsEventV2(writeRowsEventV2, caller);
-               break;
-           case MySQLConstants.DELETE_ROWS_EVENT:
-               DeleteRowsEvent deleteRowsEvent = ((DeleteRowsEvent) event);
-               au = augmentDeleteRowsEvent(deleteRowsEvent, caller);
-               break;
-           case MySQLConstants.DELETE_ROWS_EVENT_V2:
-               DeleteRowsEventV2 deleteRowsEventV2 = ((DeleteRowsEventV2) event);
-               au = augmentDeleteRowsEventV2(deleteRowsEventV2, caller);
-               break;
-           default:
+            case MySQLConstants.UPDATE_ROWS_EVENT:
+                UpdateRowsEvent updateRowsEvent = ((UpdateRowsEvent) event);
+                au = augmentUpdateRowsEvent(updateRowsEvent, caller);
+                break;
+            case MySQLConstants.UPDATE_ROWS_EVENT_V2:
+                UpdateRowsEventV2 updateRowsEventV2 = ((UpdateRowsEventV2) event);
+                au = augmentUpdateRowsEventV2(updateRowsEventV2, caller);
+                break;
+            case MySQLConstants.WRITE_ROWS_EVENT:
+                WriteRowsEvent writeRowsEvent = ((WriteRowsEvent) event);
+                au = augmentWriteRowsEvent(writeRowsEvent, caller);
+                break;
+            case MySQLConstants.WRITE_ROWS_EVENT_V2:
+                WriteRowsEventV2 writeRowsEventV2 = ((WriteRowsEventV2) event);
+                au = augmentWriteRowsEventV2(writeRowsEventV2, caller);
+                break;
+            case MySQLConstants.DELETE_ROWS_EVENT:
+                DeleteRowsEvent deleteRowsEvent = ((DeleteRowsEvent) event);
+                au = augmentDeleteRowsEvent(deleteRowsEvent, caller);
+                break;
+            case MySQLConstants.DELETE_ROWS_EVENT_V2:
+                DeleteRowsEventV2 deleteRowsEventV2 = ((DeleteRowsEventV2) event);
+                au = augmentDeleteRowsEventV2(deleteRowsEventV2, caller);
+                break;
+            default:
                 throw new TableMapException("RBR event type expected! Received type: " + event.getHeader().getEventType());
         }
 

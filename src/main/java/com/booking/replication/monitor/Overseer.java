@@ -36,7 +36,7 @@ public class Overseer extends Thread {
                 // make sure that producer is running every 1s
                 Thread.sleep(1000);
                 makeSureProducerIsRunning();
-                // TODO: add status checks for pipelineOrchestrator and applier
+// TODO: add status checks for pipelineOrchestrator and applier
 //                makeSurePipelineIsRunning();
 
             } catch (InterruptedException e) {

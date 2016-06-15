@@ -11,5 +11,5 @@ public interface SafeCheckPoint {
 
     public String getSafeCheckPointMarker();
 
-    public String toJSON();
+    public String toJson();
 }

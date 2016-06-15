@@ -173,9 +173,8 @@ public class Configuration {
         }
 
         if (metadata_store.zookeeper == null && metadata_store.file == null) {
-            throw new RuntimeException(
-                    "No metadata store specified, please provide " +
-                    "either zookeeper or file-based metadata storage.");
+            throw new RuntimeException("No metadata store specified, please provide "
+                    + "either zookeeper or file-based metadata storage.");
         }
 
         if (applierType.equals("hbase")) {

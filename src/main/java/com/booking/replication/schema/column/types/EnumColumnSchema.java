@@ -34,9 +34,9 @@ public class EnumColumnSchema extends ColumnSchema {
 
         matcher.find();
 
-        String enumCSV = matcher.group(1);
+        String enumCsv = matcher.group(1);
 
-        enumValues = StringUtils.split(enumCSV,",");
+        enumValues = StringUtils.split(enumCsv,",");
         for (int i = 0; i < enumValues.length; i++) {
             enumValues[i] = enumValues[i].replace("'","");
         }

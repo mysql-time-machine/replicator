@@ -14,12 +14,12 @@ import java.io.IOException;
 import java.util.HashMap;
 
 /**
- * JSONBuilder
+ * JsonBuilder
  */
 
-public class JSONBuilder {
+public class JsonBuilder {
 
-    public String binlogEventV4ToJSON(BinlogEventV4 event) {
+    public String binlogEventV4ToJson(BinlogEventV4 event) {
 
         String json = null;
         try {
@@ -41,7 +41,7 @@ public class JSONBuilder {
         return json;
     }
 
-    public static String dataEventToJSON (AugmentedRow augmentedRow) {
+    public static String dataEventToJson(AugmentedRow augmentedRow) {
 
         String json = null;
         try {
@@ -54,7 +54,7 @@ public class JSONBuilder {
         return json;
     }
 
-    public static String schemaVersionToJSON(ActiveSchemaVersion activeSchemaVersion) {
+    public static String schemaVersionToJson(ActiveSchemaVersion activeSchemaVersion) {
         String json = null;
         try {
             ObjectMapper mapper = new ObjectMapper();
@@ -68,7 +68,7 @@ public class JSONBuilder {
         return json;
     }
 
-    public static String schemaChangeEventToJSON(AugmentedSchemaChangeEvent augmentedSchemaChangeEvent) {
+    public static String schemaChangeEventToJson(AugmentedSchemaChangeEvent augmentedSchemaChangeEvent) {
         String json = null;
         try {
             ObjectMapper mapper = new ObjectMapper();
@@ -80,7 +80,7 @@ public class JSONBuilder {
         return json;
     }
 
-    public static String schemaTransitionSequenceToJSON(HashMap<String,String> schemaTransitionSequence) {
+    public static String schemaTransitionSequenceToJson(HashMap<String,String> schemaTransitionSequence) {
         String json = null;
         try {
             ObjectMapper mapper = new ObjectMapper();
@@ -93,7 +93,7 @@ public class JSONBuilder {
         return json;
     }
 
-    public static String schemaVersionTablesToJSON(HashMap<String, TableSchema> schemaVersionTables) {
+    public static String schemaVersionTablesToJson(HashMap<String, TableSchema> schemaVersionTables) {
         String json = null;
         try {
             ObjectMapper mapper = new ObjectMapper();
@@ -106,7 +106,7 @@ public class JSONBuilder {
         return json;
     }
 
-    public static String schemaCreateStatementsToJSON(HashMap<String, String> schemaCreateStatements) {
+    public static String schemaCreateStatementsToJson(HashMap<String, String> schemaCreateStatements) {
         String json = null;
         try {
             ObjectMapper mapper = new ObjectMapper();

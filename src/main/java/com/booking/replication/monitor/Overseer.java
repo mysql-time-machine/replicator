@@ -24,10 +24,21 @@ public class Overseer extends Thread {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Overseer.class);
 
-    public Overseer(BinlogEventProducer prod, PipelineOrchestrator orch, ConcurrentHashMap<Integer, BinlogPositionInfo> chm) {
-        producer      = prod;
-        pipelineOrchestrator = orch;
-        lastKnownInfo = chm;
+    /**
+     * Watchdog for various replicator threads.
+     *
+     * @param producer      Producer thread
+     * @param orchestrator  Orchestrator thread
+     * @param positionInfo  Binlog position information
+     */
+    public Overseer(
+            BinlogEventProducer producer,
+            PipelineOrchestrator orchestrator,
+            ConcurrentHashMap<Integer, BinlogPositionInfo> positionInfo
+    ) {
+        this.producer = producer;
+        pipelineOrchestrator = orchestrator;
+        lastKnownInfo = positionInfo;
     }
 
     @Override

@@ -13,6 +13,9 @@ public abstract class MetricsReporter {
 
     public abstract Duration getFrequency();
 
+    /**
+     * Start the reporter.
+     */
     public void start() {
         getReporter().start(
                 getFrequency().getQuantity(),

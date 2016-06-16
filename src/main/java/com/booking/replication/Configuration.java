@@ -81,7 +81,7 @@ public class Configuration {
         public FileConfig file;
 
         private static class FileConfig {
-            public String       path = "/";
+            public String       path;
         }
     }
 
@@ -196,6 +196,10 @@ public class Configuration {
         if (metadata_store.zookeeper == null && metadata_store.file == null) {
             throw new RuntimeException("No metadata store specified, please provide "
                     + "either zookeeper or file-based metadata storage.");
+        } else if (metadata_store.zookeeper != null && metadata_store.zookeeper.quorum == null) {
+            throw new RuntimeException("Metadata store set as zookeeper but no zookeeper quorum is specified");
+        } else if (metadata_store.file != null && metadata_store.file.path == null) {
+            throw new RuntimeException("Metadata store set as file but no path is specified");
         }
 
         if (applierType.equals("hbase")) {

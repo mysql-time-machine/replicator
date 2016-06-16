@@ -16,6 +16,9 @@ import java.nio.file.Paths;
 
 public class Main {
 
+    /**
+     * Main.
+     */
     public static void main(String[] args) throws Exception {
 
         OptionSet optionSet = Cmd.parseArgs(args);

@@ -1,5 +1,7 @@
 package com.booking.replication.augmenter;
 
+import static com.codahale.metrics.MetricRegistry.name;
+
 import com.booking.replication.Configuration;
 import com.booking.replication.Metrics;
 import com.booking.replication.pipeline.PipelineOrchestrator;
@@ -20,6 +22,7 @@ import com.google.code.or.common.glossary.Pair;
 import com.google.code.or.common.glossary.Row;
 import com.google.code.or.common.util.MySQLConstants;
 
+import com.codahale.metrics.Counter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,8 +48,6 @@ public class EventAugmenter {
     private ActiveSchemaVersion activeSchemaVersion;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EventAugmenter.class);
-
-    public static Metrics.PerTableMetricsHash perTableCounters = new Metrics.PerTableMetricsHash("mysql");
 
     /**
      * Event Augmenter constructor.
@@ -225,7 +226,7 @@ public class EventAugmenter {
         // table name
         String tableName =  caller.currentTransactionMetadata.getTableNameFromID(writeRowsEvent.getTableId());
 
-        Metrics.PerTableMetrics tableMetrics = perTableCounters.getOrCreate(tableName);
+        PerTableMetrics tableMetrics = PerTableMetrics.get(tableName);
 
         // getValue schema for that table from activeSchemaVersion
         TableSchema tableSchema = activeSchemaVersion.getActiveSchemaTables().get(tableName);
@@ -281,7 +282,7 @@ public class EventAugmenter {
         // table name
         String tableName = caller.currentTransactionMetadata.getTableNameFromID(writeRowsEvent.getTableId());
 
-        Metrics.PerTableMetrics tableMetrics = perTableCounters.getOrCreate(tableName);
+        PerTableMetrics tableMetrics = PerTableMetrics.get(tableName);
 
         // getValue schema for that table from activeSchemaVersion
         TableSchema tableSchema = activeSchemaVersion.getActiveSchemaTables().get(tableName);
@@ -337,7 +338,7 @@ public class EventAugmenter {
         // table name
         String tableName = pipeline.currentTransactionMetadata.getTableNameFromID(deleteRowsEvent.getTableId());
 
-        Metrics.PerTableMetrics tableMetrics = perTableCounters.getOrCreate(tableName);
+        PerTableMetrics tableMetrics = PerTableMetrics.get(tableName);
 
         // getValue schema for that table from activeSchemaVersion
         TableSchema tableSchema = activeSchemaVersion.getActiveSchemaTables().get(tableName);
@@ -390,7 +391,7 @@ public class EventAugmenter {
         // table name
         String tableName = caller.currentTransactionMetadata.getTableNameFromID(deleteRowsEvent.getTableId());
 
-        Metrics.PerTableMetrics tableMetrics = perTableCounters.getOrCreate(tableName);
+        PerTableMetrics tableMetrics = PerTableMetrics.get(tableName);
 
         // getValue schema for that table from activeSchemaVersion
         TableSchema tableSchema = activeSchemaVersion.getActiveSchemaTables().get(tableName);
@@ -443,7 +444,7 @@ public class EventAugmenter {
         // table name
         String tableName = caller.currentTransactionMetadata.getTableNameFromID(upEvent.getTableId());
 
-        Metrics.PerTableMetrics tableMetrics = perTableCounters.getOrCreate(tableName);
+        PerTableMetrics tableMetrics = PerTableMetrics.get(tableName);
 
         // getValue schema for that table from activeSchemaVersion
         TableSchema tableSchema = activeSchemaVersion.getActiveSchemaTables().get(tableName);
@@ -500,7 +501,7 @@ public class EventAugmenter {
         // table name
         String tableName = caller.currentTransactionMetadata.getTableNameFromID(upEvent.getTableId());
 
-        Metrics.PerTableMetrics tableMetrics = perTableCounters.getOrCreate(tableName);
+        PerTableMetrics tableMetrics = PerTableMetrics.get(tableName);
 
         // getValue schema for that table from activeSchemaVersion
         TableSchema tableSchema = activeSchemaVersion.getActiveSchemaTables().get(tableName);
@@ -554,4 +555,31 @@ public class EventAugmenter {
 
         return augEventGroup;
     }
+
+    private static class PerTableMetrics {
+        private static String prefix = "mysql";
+        private static HashMap<String, PerTableMetrics> tableMetricsHash = new HashMap<>();
+
+        static PerTableMetrics get(String tableName) {
+            if (!tableMetricsHash.containsKey(tableName)) {
+                tableMetricsHash.put(tableName, new PerTableMetrics(tableName));
+            }
+            return tableMetricsHash.get(tableName);
+        }
+
+        final Counter inserted;
+        final Counter processed;
+        final Counter deleted;
+        final Counter updated;
+        final Counter committed;
+
+        PerTableMetrics(String tableName) {
+            inserted    = Metrics.registry.counter(name(prefix, tableName, "inserted"));
+            processed   = Metrics.registry.counter(name(prefix, tableName, "processed"));
+            deleted     = Metrics.registry.counter(name(prefix, tableName, "deleted"));
+            updated     = Metrics.registry.counter(name(prefix, tableName, "updated"));
+            committed   = Metrics.registry.counter(name(prefix, tableName, "committed"));
+        }
+    }
+
 }

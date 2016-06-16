@@ -9,7 +9,7 @@ import com.codahale.metrics.ScheduledReporter;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Created by rmirica on 06/06/16.
+ * This class provides a Console Reporter.
  */
 public class ConsoleReporter extends MetricsReporter {
 
@@ -19,6 +19,9 @@ public class ConsoleReporter extends MetricsReporter {
 
     private com.codahale.metrics.ConsoleReporter reporter;
 
+    /**
+     * Start a metrics console reporter.
+     */
     public ConsoleReporter(Configuration conf) {
         frequency = conf.getReportingFrequency();
 

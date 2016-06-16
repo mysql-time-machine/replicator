@@ -4,15 +4,12 @@ import static com.codahale.metrics.MetricRegistry.name;
 
 import com.booking.replication.metrics.GraphiteReporter;
 
-import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.jvm.ClassLoadingGaugeSet;
 import com.codahale.metrics.jvm.FileDescriptorRatioGauge;
 import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
 import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
 import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
-
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This class provides facilities for using the Dropwizard-Metrics library.
@@ -24,37 +21,9 @@ public class Metrics {
         registry = reg;
     }
 
-    public static class PerTableMetricsHash extends ConcurrentHashMap<String, PerTableMetrics> {
-
-        private final String prefix;
-
-        public PerTableMetricsHash(String prefix) {
-            super();
-            this.prefix = prefix;
-        }
-
-        public PerTableMetrics getOrCreate(String key) {
-            putIfAbsent(key, new Metrics.PerTableMetrics(prefix, key));
-            return get(key);
-        }
-    }
-
-    public static class PerTableMetrics {
-        public final Counter inserted;
-        public final Counter processed;
-        public final Counter deleted;
-        public final Counter updated;
-        public final Counter committed;
-
-        public PerTableMetrics(String prefix, String tableName) {
-            inserted    = Metrics.registry.counter(name(prefix, tableName, "inserted"));
-            processed   = Metrics.registry.counter(name(prefix, tableName, "processed"));
-            deleted     = Metrics.registry.counter(name(prefix, tableName, "deleted"));
-            updated     = Metrics.registry.counter(name(prefix, tableName, "updated"));
-            committed   = Metrics.registry.counter(name(prefix, tableName, "committed"));
-        }
-    }
-
+    /**
+     * Start metric reporters.
+     */
     public static void startReporters(Configuration conf) {
         registry.register(name("jvm", "gc"), new GarbageCollectorMetricSet());
         registry.register(name("jvm", "threads"), new ThreadStatesGaugeSet());

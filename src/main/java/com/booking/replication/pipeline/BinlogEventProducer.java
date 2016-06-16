@@ -39,11 +39,18 @@ public class BinlogEventProducer {
 
     private static final Meter producedEvents = Metrics.registry.meter(name("events", "eventsProduced"));
 
+    /**
+     * Set up and manage the Open Replicator instance.
+     *
+     * @param queue             Event queue.
+     * @param lastKnownInfo     Binlog position information
+     * @param configuration     Replicator configuration
+     */
     public BinlogEventProducer(
             BlockingQueue<BinlogEventV4> queue,
             ConcurrentHashMap<Integer, BinlogPositionInfo> lastKnownInfo,
-            Configuration conf) {
-        configuration = conf;
+            Configuration configuration) {
+        this.configuration = configuration;
         this.queue = queue;
         this.lastKnownInfo = lastKnownInfo;
         LOGGER.info("Created producer with lastKnownInfo position => { "
@@ -64,6 +71,9 @@ public class BinlogEventProducer {
                 });
     }
 
+    /**
+     * Start.
+     */
     public void start() throws Exception {
         // init
         openReplicator.setUser(configuration.getReplicantDBUserName());
@@ -148,6 +158,9 @@ public class BinlogEventProducer {
         }
     }
 
+    /**
+     * Star Open Replicator.
+     */
     public void startOpenReplicatorFromLastKnownMapEventPosition() throws Exception {
         if (openReplicator != null) {
             if (!openReplicator.isRunning()) {

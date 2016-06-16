@@ -24,6 +24,9 @@ public class CurrentTransactionMetadata {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CurrentTransactionMetadata.class);
 
+    /**
+     * Update table map cache.
+     */
     public void updateCache(TableMapEvent event) {
 
         if (firstMapEventInTransaction == null) {
@@ -45,6 +48,9 @@ public class CurrentTransactionMetadata {
         currentTransactionTableMapEvents.put(tableName, event);
     }
 
+    /**
+     * Map table id to table name.
+     */
     public String getTableNameFromID(Long tableID) throws TableMapException {
         if (! tableID2DBName.containsKey(tableID)) {
             LOGGER.error(String.format(
@@ -56,6 +62,9 @@ public class CurrentTransactionMetadata {
         return tableID2Name.get(tableID);
     }
 
+    /**
+     * Map table id to schema name.
+     */
     public String getDBNameFromTableID(Long tableID) throws TableMapException {
         String dbName = tableID2DBName.get(tableID);
 

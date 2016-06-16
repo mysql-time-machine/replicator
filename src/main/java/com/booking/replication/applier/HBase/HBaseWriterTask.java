@@ -17,10 +17,7 @@ import org.apache.hadoop.hbase.util.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Callable;
 
 public class HBaseWriterTask implements Callable<HBaseTaskResult> {
@@ -31,13 +28,11 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
 
     private static final Counter applierTasksInProgressCounter = Metrics.registry.counter(name("HBase", "applierTasksInProgressCounter"));
     private static final Meter rowOpsCommittedToHbase = Metrics.registry.meter(name("HBase", "rowOpsCommittedToHbase"));
-    private static final Metrics.PerTableMetricsHash perHBaseTableCounters = new Metrics.PerTableMetricsHash("HBase");
 
     private final Connection hbaseConnection;
     private final HBaseApplierMutationGenerator mutationGenerator;
     private final String taskUuid;
     private final Map<String, Map<String,List<AugmentedRow>>> taskTransactionBuffer;
-
 
     /**
      * Parallelised worker that generates and applies HBase mutations.
@@ -126,7 +121,8 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
                                     numberOfFlushedTablesInCurrentTransaction++;
                                 }
 
-                                perHBaseTableCounters.getOrCreate(hbaseTableName).committed.inc(puts.size());
+                                PerTableMetrics.get(hbaseTableName).committed.inc(puts.size());
+
                                 rowOpsCommittedToHbase.mark(puts.size());
                             }
                         }
@@ -155,4 +151,24 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
         }
         return null;
     }
+
+    private static class PerTableMetrics {
+        private static String prefix = "HBase";
+        private static Hashtable<String, PerTableMetrics> tableMetricsHash = new Hashtable<>();
+
+        static PerTableMetrics get(String tableName) {
+            if (!tableMetricsHash.containsKey(tableName)) {
+                tableMetricsHash.put(tableName, new PerTableMetrics(tableName));
+            }
+            return tableMetricsHash.get(tableName);
+        }
+
+        final Counter committed;
+
+        PerTableMetrics(String tableName) {
+            committed   = Metrics.registry.counter(name(prefix, tableName, "committed"));
+        }
+    }
+
+
 }

@@ -11,7 +11,7 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Created by rmirica on 06/06/16.
+ * This class provides a Graphite Reporter.
  */
 public class GraphiteReporter extends MetricsReporter {
 
@@ -28,6 +28,9 @@ public class GraphiteReporter extends MetricsReporter {
         return frequency;
     }
 
+    /**
+     * Start a metrics graphite reporter.
+     */
     public GraphiteReporter(Configuration conf) {
         Configuration.MetricsConfig.ReporterConfig metricConf = conf.getReporterConfig(GraphiteReporter.type);
 

@@ -70,23 +70,39 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
         }
     }
 
-    public ZookeeperCoordinator(Configuration configuration) throws Exception {
+    /**
+     * Zookeeper-based Coordinator implementation.
+     *
+     * @param configuration Replicator configuration
+     */
+    public ZookeeperCoordinator(Configuration configuration)  {
         this.configuration = configuration;
         this.checkPointPath = String.format("%s/checkpoint", configuration.getZookeeperPath());
 
         RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
 
         String cluster = configuration.getZookeeperQuorum();
-        if (cluster == null || "".equals(cluster)) {
-            throw new Exception("expecting env ZOOKEEPER_CLUSTER (should be in /etc/sysconfig/bookings.puppet)");
-        }
 
         client = CuratorFrameworkFactory.newClient(cluster, retryPolicy);
         client.start();
 
-        client.createContainers(configuration.getZookeeperPath());
+        try {
+            client.createContainers(configuration.getZookeeperPath());
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException(String.format(
+                "Failed to create Zookeeper Coordinator container at path: %s (Because of: %s)",
+                configuration.getZookeeperPath(),
+                e.getMessage()
+            ));
+        }
     }
 
+    /**
+     * Callback function on aquiring the leader lock.
+     * @param callback              Callback.
+     * @throws InterruptedException This may happen if we lose leadership in the event of zookeeper disconnect.
+     */
     public synchronized void onLeaderElection(Runnable callback) throws InterruptedException {
         LOGGER.info("Waiting to become a leader.");
 

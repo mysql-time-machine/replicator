@@ -8,13 +8,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Created by rmirica on 31/05/16.
+ * This class provides coordination functions based on a CoordinatorInterface implementation,
+ * currently Zookeeper and File coordinators are supported.
  */
 public class Coordinator {
     private static final Logger LOGGER = LoggerFactory.getLogger(Coordinator.class);
 
     private static CoordinatorInterface implementation;
-    private static Configuration configuration;
 
     public static void setImplementation(CoordinatorInterface impl) {
         implementation = impl;
@@ -28,6 +28,11 @@ public class Coordinator {
         implementation.storeSafeCheckPoint(marker);
     }
 
+    /**
+     * Fetch the latest checkpoint marker.
+     *
+     * @return Checkpoint marker
+     */
     public static SafeCheckPoint getCheckpointMarker() {
         SafeCheckPoint cp = implementation.getSafeCheckPoint();
         try {

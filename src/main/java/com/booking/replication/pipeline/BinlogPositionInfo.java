@@ -15,6 +15,12 @@ public class BinlogPositionInfo {
         this.binlogPosition = position;
     }
 
+    /**
+     * Binlog position information.
+     * @param filename          Binlog filename
+     * @param position          Binlog position
+     * @param fakeMsCounter     Fake microsecond counter
+     */
     public BinlogPositionInfo(String filename, long position, long fakeMsCounter) {
         this.binlogFilename = filename;
         this.binlogPosition = position;

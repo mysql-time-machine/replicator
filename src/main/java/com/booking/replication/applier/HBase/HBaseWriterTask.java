@@ -154,13 +154,15 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
 
     private static class PerTableMetrics {
         private static String prefix = "HBase";
-        private static Hashtable<String, PerTableMetrics> tableMetricsHash = new Hashtable<>();
+        private static HashMap<String, PerTableMetrics> tableMetricsHash = new HashMap<>();
 
         static PerTableMetrics get(String tableName) {
-            if (!tableMetricsHash.containsKey(tableName)) {
-                tableMetricsHash.put(tableName, new PerTableMetrics(tableName));
+            synchronized (tableMetricsHash) {
+                if (! tableMetricsHash.containsKey(tableName)) {
+                    tableMetricsHash.put(tableName, new PerTableMetrics(tableName));
+                }
+                return tableMetricsHash.get(tableName);
             }
-            return tableMetricsHash.get(tableName);
         }
 
         final Counter committed;

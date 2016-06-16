@@ -561,7 +561,7 @@ public class EventAugmenter {
         private static HashMap<String, PerTableMetrics> tableMetricsHash = new HashMap<>();
 
         static PerTableMetrics get(String tableName) {
-            if (!tableMetricsHash.containsKey(tableName)) {
+            if (! tableMetricsHash.containsKey(tableName)) {
                 tableMetricsHash.put(tableName, new PerTableMetrics(tableName));
             }
             return tableMetricsHash.get(tableName);

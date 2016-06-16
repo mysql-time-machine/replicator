@@ -44,6 +44,15 @@ public class AugmentedRow {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AugmentedRow.class);
 
+    /**
+     * Add column data.
+     *
+     * @param columnName    Name of the column to update
+     * @param valueBefore   Value before the update
+     * @param valueAfter    Value after the update
+     * @throws InvalidParameterException    Invalid parameter
+     * @throws TableMapException            Invalid table
+     */
     public void addColumnDataForUpdate(
             String columnName,
             String valueBefore,
@@ -65,6 +74,12 @@ public class AugmentedRow {
         }
     }
 
+    /**
+     * Add column data.
+     *
+     * @param columnName Name of the column to insert
+     * @param value      Value to insert
+     */
     public void addColumnDataForInsert(
             String columnName,
             String value
@@ -72,15 +87,25 @@ public class AugmentedRow {
         eventColumns.get(columnName).put("value", value);
     }
 
+    /**
+     * Set table schema.
+     *
+     * @param tableSchema           Schema of the table
+     * @throws TableMapException    Invalid table
+     */
     public void setTableSchema(TableSchema tableSchema) throws TableMapException {
         this.tableSchema = tableSchema;
         initPKList();
         initColumnDataSlots();
     }
 
-    // pre-create objects for speed (this improves overall runtime speed ~10%)
+    /**
+     * Initialize column data slots.
+     *
+     * <p>Pre-create objects for speed (this improves overall runtime speed ~10%)</p>
+     */
     public void initColumnDataSlots() {
-        for (String columnName: this.tableSchema.getColumnIndexToNameMap().values()) {
+        for (String columnName: tableSchema.getColumnIndexToNameMap().values()) {
             eventColumns.put(columnName, new HashMap<String, String>());
         }
     }
@@ -117,8 +142,12 @@ public class AugmentedRow {
         this.primaryKeyColumns = primaryKeyColumns;
     }
 
+    /**
+     * Initialize primary key columns.
+     *
+     * @throws TableMapException    Invalid table.
+     */
     public void initPKList() throws TableMapException {
-
         if (tableSchema == null) {
             throw new TableMapException("Need table schem in order to generate PK list.");
         } else {

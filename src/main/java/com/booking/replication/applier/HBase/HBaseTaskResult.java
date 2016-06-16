@@ -1,15 +1,21 @@
-package com.booking.replication.applier;
+package com.booking.replication.applier.hbase;
 
 /**
  * Created by bosko on 3/17/16.
  */
-public class TaskResult {
+public class HBaseTaskResult {
 
     private final String taskUuid;
     private final int taskStatus;
     private final boolean taskSucceeded;
 
-    public TaskResult(
+    /**
+     * Result after running HBase task.
+     * @param uuid      Task UUID
+     * @param status    Task Status
+     * @param success   Task success
+     */
+    public HBaseTaskResult(
             String uuid,
             int status,
             boolean success

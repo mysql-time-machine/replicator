@@ -1,8 +1,10 @@
-package com.booking.replication.applier;
+package com.booking.replication.applier.hbase;
 
 import static com.codahale.metrics.MetricRegistry.name;
 
 import com.booking.replication.Metrics;
+import com.booking.replication.applier.TaskStatusCatalog;
+import com.booking.replication.applier.TransactionStatus;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 
@@ -77,7 +79,7 @@ public class HBaseApplierWriter {
      * Futures grouped by task UUID.
      */
     private final
-            ConcurrentHashMap<String, Future<TaskResult>>
+            ConcurrentHashMap<String, Future<HBaseTaskResult>>
             taskFutures = new ConcurrentHashMap<>();
 
     /**
@@ -125,8 +127,14 @@ public class HBaseApplierWriter {
     private static final Counter
             applierTasksFailedCounter = Metrics.registry.counter(name("HBase", "applierTasksFailedCounter"));
 
-    //@todo: the logic here is sufficient but not exhaustive, improve robustness of following code
-    boolean areAllTasksDone() {
+
+    /**
+     * Helper function to identify if any tasks are still pending, will return true only when
+     * all tasks have a success status.
+     *
+     * @todo: the logic here is sufficient but not exhaustive, improve robustness of following code
+     */
+    public boolean areAllTasksDone() {
         for (int value: taskStatus.values()) {
             if (value != TaskStatusCatalog.WRITE_SUCCEEDED) {
                 return false;
@@ -184,6 +192,11 @@ public class HBaseApplierWriter {
                 });
     }
 
+    /**
+     * Initialize buffers.
+     *
+     * @todo: Fix bug where this needs to be called on every binlog rotation event.
+     */
     public void initBuffers() {
 
         currentTaskUuid = UUID.randomUUID().toString();
@@ -198,9 +211,11 @@ public class HBaseApplierWriter {
         transactionStatus.put(currentTransactionUUID, TransactionStatus.OPEN);
     }
 
-    // ================================================
-    // Buffering util
-    // ================================================
+    /**
+     * Buffer current event for processing.
+     *
+     * @param augmentedRowsEvent Event
+     */
     public synchronized void pushToCurrentTaskBuffer(AugmentedRowsEvent augmentedRowsEvent) {
 
         // Verify that task uuid exists
@@ -242,9 +257,9 @@ public class HBaseApplierWriter {
         }
     }
 
-    // ================================================
-    // Flushing util
-    // ================================================
+    /**
+     * Flushing utility function.
+     */
     public void markCurrentTransactionForCommit() {
 
         // mark
@@ -256,6 +271,9 @@ public class HBaseApplierWriter {
         transactionStatus.put(currentTransactionUUID, TransactionStatus.OPEN);
     }
 
+    /**
+     * Rotate tasks, mark current task as ready to be submitted and initialize new task buffer.
+     */
     public void markCurrentTaskAsReadyAndCreateNewUuidBuffer() {
         // don't create new buffers if no slots available
         blockIfNoSlotsAvailableForBuffering();
@@ -310,6 +328,9 @@ public class HBaseApplierWriter {
 
     private Long taskQueueSize = 0L;
 
+    /**
+     * Mark currently pending tasks as ready to be processed.
+     */
     public void markAllTasksAsReadyToGo() {
 
         // mark current uuid buffer as READY_FOR_PICK_UP
@@ -391,6 +412,9 @@ public class HBaseApplierWriter {
         }
     }
 
+    /**
+     * Clean up task statuses, requeue tasks where necessary.
+     */
     public void updateTaskStatuses() {
 
         // clean up and re-queue failed tasks
@@ -399,7 +423,7 @@ public class HBaseApplierWriter {
         // Loop submitted tasks
         for (String submittedTaskUuid : taskFuturesUUIDs) {
 
-            Future<TaskResult> taskFuture;
+            Future<HBaseTaskResult> taskFuture;
 
             try {
 
@@ -410,7 +434,7 @@ public class HBaseApplierWriter {
 
                     LOGGER.info("Task " + submittedTaskUuid + " is done");
 
-                    TaskResult taskResult = taskFuture.get(); // raise exceptions if any
+                    HBaseTaskResult taskResult = taskFuture.get(); // raise exceptions if any
                     boolean taskSucceeded = taskResult.isTaskSucceeded();
 
                     int statusOfDoneTask = taskResult.getTaskStatus();

@@ -26,6 +26,13 @@ public class LastVerifiedBinlogFile implements SafeCheckPoint {
         this(slaveId, binlogFileName, 4L);
     }
 
+    /**
+     * Represents the last processed binlog file.
+     *
+     * @param slaveId           Id of the slave that originated the binlog.
+     * @param binlogFileName    File name
+     * @param binlogPosition    File position
+     */
     public LastVerifiedBinlogFile(int slaveId, String binlogFileName, long binlogPosition) {
         this.slaveId = slaveId;
         lastVerifiedBinlogFileName = binlogFileName;

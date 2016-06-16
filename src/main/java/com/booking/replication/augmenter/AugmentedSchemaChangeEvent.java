@@ -19,6 +19,14 @@ public class AugmentedSchemaChangeEvent {
 
     private SchemaVersionSnapshot  postTransitionSchemaSnapshot;
 
+    /**
+     * DDL event.
+     *
+     * @param snapshotBefore        Schema version snapshot
+     * @param transitionSequence    Schema transition sequence
+     * @param snapshotAfter         Schema version snapshot
+     * @param ddlTimestamp          Timestamp
+     */
     public AugmentedSchemaChangeEvent(
             SchemaVersionSnapshot snapshotBefore,
             HashMap<String,String> transitionSequence,

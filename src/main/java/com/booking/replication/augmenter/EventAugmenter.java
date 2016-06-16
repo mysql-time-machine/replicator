@@ -157,6 +157,13 @@ public class EventAugmenter {
         }
     }
 
+    /**
+     * Mangle name of the active schema before applying DDL statements.
+     *
+     * @param query             Query string
+     * @param replicantDbName   Database name
+     * @return                  Rewritten query
+     */
     public String rewriteActiveSchemaName(String query, String replicantDbName) {
         String dbNamePattern = "( " + replicantDbName + ".)|(`" + replicantDbName + "`.)";
         query = query.replaceAll(dbNamePattern, " ");

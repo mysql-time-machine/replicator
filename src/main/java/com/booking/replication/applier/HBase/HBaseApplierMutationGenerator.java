@@ -1,4 +1,4 @@
-package com.booking.replication.applier;
+package com.booking.replication.applier.hbase;
 
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.schema.TableNameMapper;

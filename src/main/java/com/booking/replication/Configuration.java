@@ -88,10 +88,15 @@ public class Configuration {
     public static final int METADATASTORE_ZOOKEEPER = 1;
     public static final int METADATASTORE_FILE      = 2;
 
+    /**
+     * Metadata store type.
+     *
+     * @return Zookeeper/File
+     */
     public int getMetadataStoreType() {
         if (metadata_store.zookeeper != null) {
             return METADATASTORE_ZOOKEEPER;
-        } else if (this.metadata_store.file != null) {
+        } else if (metadata_store.file != null) {
             return METADATASTORE_FILE;
         } else {
             throw new RuntimeException("Metadata store not configured, please define a zookeeper or file metadata store.");
@@ -122,6 +127,12 @@ public class Configuration {
         return metrics.reporters;
     }
 
+    /**
+     * Get metrics reporter configuration.
+     *
+     * @param type  The type of reporter
+     * @return      Configuration object
+     */
     public MetricsConfig.ReporterConfig getReporterConfig(String type) {
         if (! metrics.reporters.containsKey(type)) {
             return null;
@@ -135,6 +146,11 @@ public class Configuration {
     private String          startingBinlogFileName;
     private String          endingBinlogFileName;
 
+    /**
+     * Apply command line parameters to the configuration object.
+     *
+     * @param startupParameters     Startup parameters
+     */
     public void loadStartupParameters(StartupParameters startupParameters ) {
 
         applierType = startupParameters.getApplier();
@@ -162,6 +178,9 @@ public class Configuration {
         }
     }
 
+    /**
+     * Validate configuration.
+     */
     public void validate() {
 
         if (replication_schema.name == null) {
@@ -186,6 +205,11 @@ public class Configuration {
         }
     }
 
+    /**
+     * Serialize configuration.
+     *
+     * @return String Serialized configuration
+     */
     public String toString() {
         try {
             return new ObjectMapper(new YAMLFactory()).writeValueAsString(this);
@@ -273,6 +297,9 @@ public class Configuration {
         return Joiner.on(",").join(hbase.zookeeper_quorum);
     }
 
+    /**
+     * Get metadata store zookeeper quorum.
+     */
     public String getZookeeperQuorum() {
         if (getMetadataStoreType() != Configuration.METADATASTORE_ZOOKEEPER) {
             return "[]";
@@ -280,6 +307,9 @@ public class Configuration {
         return Joiner.on(",").join(metadata_store.zookeeper.quorum);
     }
 
+    /**
+     * Get metadata store zookeeper path.
+     */
     public String getZookeeperPath() {
         if (getMetadataStoreType() != Configuration.METADATASTORE_ZOOKEEPER) {
             return "";
@@ -287,6 +317,9 @@ public class Configuration {
         return metadata_store.zookeeper.path;
     }
 
+    /**
+     * Get metadata store file location.
+     */
     public String getMetadataFile() {
         if (getMetadataStoreType() != Configuration.METADATASTORE_FILE) {
             return "";

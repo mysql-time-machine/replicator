@@ -9,6 +9,7 @@ import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Gauge;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.slf4j.Logger;
@@ -91,6 +92,11 @@ public class HBaseApplierWriter {
     private Connection hbaseConnection;
 
     /**
+     * HBase mutation generator.
+     */
+    private final HBaseApplierMutationGenerator mutationGenerator;
+
+    /**
      * Task thread pool.
      */
     private static ExecutorService taskPool;
@@ -108,11 +114,9 @@ public class HBaseApplierWriter {
     // is full, it is submitted and new one is opened with new taskUUID
     public AtomicInteger rowsBufferedInCurrentTask = new AtomicInteger(0);
 
-    private final Configuration hbaseConf;
-
     private static final Logger LOGGER = LoggerFactory.getLogger(HBaseApplierWriter.class);
 
-    private final  com.booking.replication.Configuration configuration;
+    private final Configuration hbaseConf = HBaseConfiguration.create();
 
     private static final Counter
             applierTasksSubmittedCounter = Metrics.registry.counter(name("HBase", "applierTasksSubmittedCounter"));
@@ -122,29 +126,33 @@ public class HBaseApplierWriter {
             applierTasksFailedCounter = Metrics.registry.counter(name("HBase", "applierTasksFailedCounter"));
 
     //@todo: the logic here is sufficient but not exhaustive, improve robustness of following code
-    public boolean areAllTasksDone() {
-        for (String key: taskStatus.keySet()) {
-            if (taskStatus.get(key) != TaskStatusCatalog.WRITE_SUCCEEDED) {
+    boolean areAllTasksDone() {
+        for (int value: taskStatus.values()) {
+            if (value != TaskStatusCatalog.WRITE_SUCCEEDED) {
                 return false;
             }
         }
         return true;
     }
 
-    // ================================================
-    // Constructor
-    // ================================================
+    /**
+     * HBase Applier writer class.
+     *
+     * <p>The writer manages the worker pool and task status.</p>
+     *
+     * @param poolSize Size of the worker pool
+     * @param configuration Replication configuration object
+     */
     public HBaseApplierWriter(
             int poolSize,
-            org.apache.hadoop.conf.Configuration hbaseConfiguration,
-            com.booking.replication.Configuration repCfg
+            com.booking.replication.Configuration configuration
     ) {
         this.poolSize = poolSize;
         taskPool          = Executors.newFixedThreadPool(this.poolSize);
+        mutationGenerator = new HBaseApplierMutationGenerator(configuration);
 
-        hbaseConf         = hbaseConfiguration;
-
-        configuration     = repCfg;
+        hbaseConf.set("hbase.zookeeper.quorum", configuration.getHBaseQuorum());
+        hbaseConf.set("hbase.client.keyvalue.maxsize", "0");
 
         if (! DRY_RUN) {
             try {
@@ -560,8 +568,8 @@ public class HBaseApplierWriter {
 
                     taskFutures.put(taskUuid, taskPool.submit(
                         new HBaseWriterTask(
-                                configuration,
                                 hbaseConnection,
+                                mutationGenerator,
                                 taskUuid,
                                 taskTransactionBuffer.get(taskUuid)
                         )

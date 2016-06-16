@@ -79,7 +79,6 @@ public class Replicator {
             );
         } else if (configuration.getApplierType().toLowerCase().equals("hbase")) {
             applier = new HBaseApplier(
-                    configuration.getHBaseQuorum(),
                     configuration
             );
         } else if (configuration.getApplierType().toLowerCase().equals("kafka")) {

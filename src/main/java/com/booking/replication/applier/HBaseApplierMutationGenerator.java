@@ -33,10 +33,21 @@ public class HBaseApplierMutationGenerator {
     private static final Logger LOGGER = LoggerFactory.getLogger(HBaseApplierMutationGenerator.class);
 
     // Constructor
-    public HBaseApplierMutationGenerator(com.booking.replication.Configuration repCfg) {
-        configuration = repCfg;
+    public HBaseApplierMutationGenerator(com.booking.replication.Configuration configuration) {
+        this.configuration = configuration;
     }
 
+    /**
+     * Generate Mutations.
+     *
+     * <p>
+     *  The return data structure looks like: { mirrored: #mutations, delta: #mutations }
+     *  Where: #mutations = { #tableName: [(#hbaseTableName, #hbaseRowId, #mutation)] }
+     * </p>
+     *
+     * @param augmentedRows List of augmented rows
+     * @return Hash Map of mutations, divided by type (mirrored/delta)
+     */
     public HashMap<String,HashMap<String,List<Triple<String,String,Put>>>>
         generateMutationsFromAugmentedRows(List<AugmentedRow> augmentedRows) {
 
@@ -283,7 +294,7 @@ public class HBaseApplierMutationGenerator {
         return new Triple<>(deltaTableName,hbaseRowID,put);
     }
 
-    public static String getHBaseRowKey(AugmentedRow row) {
+    private static String getHBaseRowKey(AugmentedRow row) {
         // RowID
         // This is sorted by column OP (from information schema)
         List<String> pkColumnNames  = row.getPrimaryKeyColumns();

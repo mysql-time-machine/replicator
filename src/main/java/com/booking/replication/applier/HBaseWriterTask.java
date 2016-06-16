@@ -2,7 +2,6 @@ package com.booking.replication.applier;
 
 import static com.codahale.metrics.MetricRegistry.name;
 
-import com.booking.replication.Configuration;
 import com.booking.replication.Metrics;
 import com.booking.replication.augmenter.AugmentedRow;
 
@@ -36,20 +35,20 @@ public class HBaseWriterTask implements Callable<TaskResult> {
 
     private static final Metrics.PerTableMetricsHash perHBaseTableCounters = new Metrics.PerTableMetricsHash("HBase");
 
-    private final Configuration configuration;
     private final Connection hbaseConnection;
 
+    private final HBaseApplierMutationGenerator mutationGenerator;
+
     public HBaseWriterTask(
-            Configuration config,
             Connection conn,
+            HBaseApplierMutationGenerator generator,
             String id,
             Map<String, Map<String, List<AugmentedRow>>> taskBuffer
     ) {
         super();
-        configuration = config;
         hbaseConnection = conn;
         taskUuid = id;
-        taskTransactionBuffer = taskBuffer;
+        mutationGenerator = generator;
     }
 
     private Map<String, Map<String,List<AugmentedRow>>>
@@ -92,11 +91,8 @@ public class HBaseWriterTask implements Callable<TaskResult> {
                     } else {
                         List<AugmentedRow> rowOps = taskTransactionBuffer.get(transactionUuid).get(bufferedMySQLTableName);
 
-                        HBaseApplierMutationGenerator hbaseApplierMutationGenerator =
-                                new HBaseApplierMutationGenerator(configuration);
-
                         HashMap<String, HashMap<String, List<Triple<String, String, Put>>>> preparedMutations =
-                                hbaseApplierMutationGenerator.generateMutationsFromAugmentedRows(rowOps);
+                                mutationGenerator.generateMutationsFromAugmentedRows(rowOps);
 
                         if (!preparedMutations.containsKey("mirrored")) {
                             LOGGER.error("Missing mirrored key from preparedMutations!");

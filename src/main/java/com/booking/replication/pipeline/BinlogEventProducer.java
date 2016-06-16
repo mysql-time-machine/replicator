@@ -130,7 +130,7 @@ public class BinlogEventProducer {
     private void backPressureSleep() {
         int queueSize = queue.size();
 
-        backPressureSleep = 2 ^ ((int) (13 * ((float) queueSize / Constants.MAX_RAW_QUEUE_SIZE)));
+        backPressureSleep = (long) Math.pow(2, ((int) (13 * ((float) queueSize / Constants.MAX_RAW_QUEUE_SIZE))));
 
         if (backPressureSleep < 64) {
             return;

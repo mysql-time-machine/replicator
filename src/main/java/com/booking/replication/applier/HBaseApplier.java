@@ -41,8 +41,6 @@ public class HBaseApplier implements Applier {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HBaseApplier.class);
 
-    private static final Configuration hbaseConf = HBaseConfiguration.create();
-
     private final HBaseSchemaManager hbaseSchemaManager;
 
     private final HBaseApplierWriter hbaseApplierWriter;
@@ -53,23 +51,16 @@ public class HBaseApplier implements Applier {
 
     /**
      * HBaseApplier constructor.
-     *
-     * @param zookeeperQuorum Zookeeper quorum of the HBase cluster we are writing tp
      */
     public HBaseApplier(
-            String                                zookeeperQuorum,
-            com.booking.replication.Configuration repCfg
+        com.booking.replication.Configuration config
     ) {
-        configuration     = repCfg;
-
-        hbaseConf.set("hbase.zookeeper.quorum", zookeeperQuorum);
-        hbaseConf.set("hbase.client.keyvalue.maxsize", "0");
+        configuration = config;
 
         hbaseApplierWriter =
             new HBaseApplierWriter(
                 POOL_SIZE,
-                hbaseConf,
-                repCfg
+                configuration
             );
 
         hbaseSchemaManager = new HBaseSchemaManager(configuration.getHBaseQuorum());

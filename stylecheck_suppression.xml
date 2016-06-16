@@ -8,7 +8,7 @@
     <suppress files="com/booking/replication/Configuration.java" checks="MemberName"/>
 
     <!-- Allow * imports due to heavy use of java.util.concurrent.* in this class -->
-    <suppress files="com/booking/replication/applier/HBaseApplierWriter.java" checks="AvoidStarImport"/>
+    <suppress files="com/booking/replication/applier/hbase/HBaseApplierWriter.java" checks="AvoidStarImport"/>
 
     <!-- Allow * imports due to heavy use of com.google.code.or.binlog.impl.event.* in this class -->
     <suppress files="com/booking/replication/augmenter/EventAugmenter.java" checks="AvoidStarImport"/>

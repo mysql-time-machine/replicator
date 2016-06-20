@@ -89,7 +89,7 @@ public class KafkaApplier implements Applier {
                         if (sendException != null) {
                             LOGGER.error("Error producing to topic " + recordMetadata.topic());
                             sendException.printStackTrace();
-                            throw new RuntimeException("Kafka should stop");
+                            producer.close();
                         }
                     }
                 });

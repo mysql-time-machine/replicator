@@ -1,5 +1,8 @@
 package com.booking.replication.applier;
 
+import static com.codahale.metrics.MetricRegistry.name;
+import static org.apache.kafka.common.protocol.Protocol.BROKER;
+
 import com.booking.replication.Configuration;
 import com.booking.replication.Metrics;
 import com.booking.replication.augmenter.AugmentedRow;
@@ -7,26 +10,21 @@ import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 
-import com.codahale.metrics.Counter;
 import com.google.code.or.binlog.impl.event.FormatDescriptionEvent;
 import com.google.code.or.binlog.impl.event.QueryEvent;
 import com.google.code.or.binlog.impl.event.RotateEvent;
 import com.google.code.or.binlog.impl.event.XidEvent;
 
-import java.util.*;
-
+import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
+import org.apache.commons.lang.mutable.MutableLong;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
-
-
-import static com.codahale.metrics.MetricRegistry.name;
-import static org.apache.kafka.common.protocol.Protocol.BROKER;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import org.apache.commons.lang.mutable.MutableLong;
+import java.util.*;
 
 /**
  * Created by raynald on 08/06/16.

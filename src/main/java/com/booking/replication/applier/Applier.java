@@ -8,8 +8,6 @@ import com.google.code.or.binlog.impl.event.QueryEvent;
 import com.google.code.or.binlog.impl.event.RotateEvent;
 import com.google.code.or.binlog.impl.event.XidEvent;
 
-import java.io.IOException;
-
 /**
  * Created by bosko on 11/14/15.
  */
@@ -28,8 +26,6 @@ public interface Applier {
             PipelineOrchestrator caller);
 
     void forceFlush();
-
-    void resubmitIfThereAreFailedTasks();
 
     void applyFormatDescriptionEvent(FormatDescriptionEvent event);
 

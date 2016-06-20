@@ -1,9 +1,7 @@
 package com.booking.replication.util;
 
 import joptsimple.OptionSet;
-import org.apache.commons.cli.MissingArgumentException;
 import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**

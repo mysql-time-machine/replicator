@@ -118,7 +118,6 @@ public class KafkaApplier implements Applier {
 
     }
 
-    @Override
     public void resubmitIfThereAreFailedTasks() {
 
     }

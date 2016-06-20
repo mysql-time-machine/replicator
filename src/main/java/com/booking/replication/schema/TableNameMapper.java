@@ -1,10 +1,5 @@
 package com.booking.replication.schema;
 
-import com.google.code.or.binlog.impl.event.TableMapEvent;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;

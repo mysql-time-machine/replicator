@@ -161,7 +161,6 @@ public class HBaseApplier implements Applier {
         timeOfLastFlush = System.currentTimeMillis();
     }
 
-    @Override
     public void resubmitIfThereAreFailedTasks() {
         hbaseApplierWriter.markAllTasksAsReadyToGo();
         submitAllTasksThatAreReadyToGo();

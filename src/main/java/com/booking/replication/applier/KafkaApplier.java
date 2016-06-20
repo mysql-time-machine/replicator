@@ -18,8 +18,10 @@ import com.google.code.or.binlog.impl.event.XidEvent;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
 import org.apache.commons.lang.mutable.MutableLong;
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,7 +84,15 @@ public class KafkaApplier implements Applier {
             if (topicList.contains(topic)) {
                 message = new ProducerRecord<>(topic, row.toJson());
                 totalRowsCounter ++;
-                producer.send(message);
+                producer.send(message, new Callback() {
+                    @Override
+                    public void onCompletion(RecordMetadata recordMetadata, Exception sendException) {
+                        if (sendException != null) {
+                            System.out.println("Error producing to topic " + recordMetadata.topic());
+                            sendException.printStackTrace();
+                        }
+                    }
+                });
                 if (totalRowsCounter % 500 == 0) {
                     LOGGER.info("500 lines have been sent to Kafka broker...");
                 }

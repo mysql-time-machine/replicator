@@ -20,20 +20,21 @@ import java.util.HashMap;
 
 public class JsonBuilder {
 
+    private static final ObjectMapper om = new ObjectMapper();
+
     public String binlogEventV4ToJson(BinlogEventV4 event) {
 
         String json = null;
         try {
-            ObjectMapper mapper = new ObjectMapper();
             switch (event.getHeader().getEventType()) {
 
                 // todo: make this nicer - currently it is just a quick fix since jackson cant parse tableMapEvent
                 case MySQLConstants.TABLE_MAP_EVENT:
-                    json =  mapper.writeValueAsString(((TableMapEvent) event).toString());
+                    json =  om.writeValueAsString(((TableMapEvent) event).toString());
                     break;
 
                 default:
-                    json = mapper.writeValueAsString(event);
+                    json = om.writeValueAsString(event);
                     break;
             }
         } catch (IOException e) {
@@ -46,8 +47,7 @@ public class JsonBuilder {
 
         String json = null;
         try {
-            ObjectMapper mapper = new ObjectMapper();
-            json = mapper.writeValueAsString(augmentedRow);
+            json = om.writeValueAsString(augmentedRow);
         } catch (IOException e) {
             System.out.println("ERROR: could not serialize event");
             e.printStackTrace();
@@ -58,9 +58,8 @@ public class JsonBuilder {
     public static String schemaVersionToJson(ActiveSchemaVersion activeSchemaVersion) {
         String json = null;
         try {
-            ObjectMapper mapper = new ObjectMapper();
             //json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(activeSchemaVersion);
-            json = mapper.writeValueAsString(activeSchemaVersion);
+            json = om.writeValueAsString(activeSchemaVersion);
 
         } catch (IOException e) {
             System.out.println("ERROR: could not serialize event");
@@ -72,8 +71,7 @@ public class JsonBuilder {
     public static String schemaChangeEventToJson(AugmentedSchemaChangeEvent augmentedSchemaChangeEvent) {
         String json = null;
         try {
-            ObjectMapper mapper = new ObjectMapper();
-            json = mapper.writeValueAsString(augmentedSchemaChangeEvent);
+            json = om.writeValueAsString(augmentedSchemaChangeEvent);
         } catch (IOException e) {
             System.out.println("ERROR: could not serialize event");
             e.printStackTrace();
@@ -84,9 +82,7 @@ public class JsonBuilder {
     public static String schemaTransitionSequenceToJson(HashMap<String,String> schemaTransitionSequence) {
         String json = null;
         try {
-            ObjectMapper mapper = new ObjectMapper();
-            json = mapper.writeValueAsString(schemaTransitionSequence);
-
+            json = om.writeValueAsString(schemaTransitionSequence);
         } catch (IOException e) {
             System.out.println("ERROR: could not serialize event");
             e.printStackTrace();
@@ -97,9 +93,7 @@ public class JsonBuilder {
     public static String schemaVersionTablesToJson(HashMap<String, TableSchema> schemaVersionTables) {
         String json = null;
         try {
-            ObjectMapper mapper = new ObjectMapper();
-            json = mapper.writeValueAsString(schemaVersionTables);
-
+            json = om.writeValueAsString(schemaVersionTables);
         } catch (IOException e) {
             System.out.println("ERROR: could not serialize event");
             e.printStackTrace();
@@ -110,9 +104,7 @@ public class JsonBuilder {
     public static String schemaCreateStatementsToJson(HashMap<String, String> schemaCreateStatements) {
         String json = null;
         try {
-            ObjectMapper mapper = new ObjectMapper();
-            json = mapper.writeValueAsString(schemaCreateStatements);
-
+            json = om.writeValueAsString(schemaCreateStatements);
         } catch (IOException e) {
             System.out.println("ERROR: could not serialize event");
             e.printStackTrace();

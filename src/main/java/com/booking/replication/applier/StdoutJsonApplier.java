@@ -44,11 +44,6 @@ public class StdoutJsonApplier implements Applier  {
     }
 
     @Override
-    public void resubmitIfThereAreFailedTasks() {
-
-    }
-
-    @Override
     public void waitUntilAllRowsAreCommitted() {
 
         try {

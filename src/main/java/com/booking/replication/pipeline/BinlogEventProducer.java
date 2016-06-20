@@ -103,15 +103,12 @@ public class BinlogEventProducer {
                 // This call is blocking the writes from server side. If time goes above
                 // net_write_timeout (which defaults to 60s) server will drop connection.
                 //      => Use back pressure to regulate the write rate to the queue.
-                backPressureSleep();
 
                 if (isRunning()) {
-
                     boolean eventQueued = false;
-
                     while (!eventQueued) { // blocking block
-
                         try {
+                            backPressureSleep();
                             boolean added = queue.offer(event, 100, TimeUnit.MILLISECONDS);
 
                             if (added) {
@@ -140,12 +137,18 @@ public class BinlogEventProducer {
     private void backPressureSleep() {
         int queueSize = queue.size();
 
-        backPressureSleep = (long) Math.pow(2, ((int) (13 * ((float) queueSize / Constants.MAX_RAW_QUEUE_SIZE))));
+        // For an explanation please plug "max(0, 20*(10000/(10000+1-x)-10)) x from 6000 to 10000" into WolframAlpha
+        backPressureSleep = Math.max(
+            20 * ( Constants.MAX_RAW_QUEUE_SIZE / (Constants.MAX_RAW_QUEUE_SIZE + 1 - queueSize) - 10),
+            0
+        );
 
+        // Queue size is 9243.(42 period) (where MAX_RAW_QUEUE_SIZE = 10000)
         if (backPressureSleep < 64) {
             return;
         }
 
+        // Queue size is 9953.(380952 period)
         if (backPressureSleep > 4000) {
             LOGGER.warn("Queue is getting big, back pressure is getting high");
         }

@@ -32,7 +32,7 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
     private final Connection hbaseConnection;
     private final HBaseApplierMutationGenerator mutationGenerator;
     private final String taskUuid;
-    private final Map<String, Map<String,List<AugmentedRow>>> taskTransactionBuffer;
+    private final Map<String, TransactionProxy> taskTransactionBuffer;
 
     /**
      * Parallelised worker that generates and applies HBase mutations.
@@ -46,7 +46,7 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
             Connection conn,
             HBaseApplierMutationGenerator generator,
             String id,
-            Map<String, Map<String, List<AugmentedRow>>> taskBuffer
+            Map<String, TransactionProxy> taskBuffer
     ) {
         super();
         hbaseConnection = conn;

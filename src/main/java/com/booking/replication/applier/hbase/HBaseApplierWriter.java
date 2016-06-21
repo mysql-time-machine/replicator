@@ -72,7 +72,7 @@ public class HBaseApplierWriter {
      * from the binlog and if there are multiple operations on the same row all versions are kept in HBase.</p>
      */
     private final
-            ConcurrentHashMap<String, Map<String, Map<String,List<AugmentedRow>>>>
+            ConcurrentHashMap<String, Map<String, TransactionProxy>>
             taskTransactionBuffer = new ConcurrentHashMap<>();
 
     /**
@@ -86,7 +86,6 @@ public class HBaseApplierWriter {
      * Status tracking helper structures.
      */
     private final ConcurrentHashMap<String, Integer>      taskStatus        = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, Integer>      transactionStatus = new ConcurrentHashMap<>();
 
     /**
      * Shared connection used by all tasks in applier.
@@ -190,6 +189,30 @@ public class HBaseApplierWriter {
                         return System.currentTimeMillis() - slotWaitTime;
                     }
                 });
+
+        Metrics.registry.register(name("HBase", "transactionBufferSize"),
+                new Gauge<Integer>() {
+                    @Override
+                    public Integer getValue() {
+                        return taskTransactionBuffer.size();
+                    }
+                });
+
+        Metrics.registry.register(name("HBase", "futuresListSize"),
+                new Gauge<Integer>() {
+                    @Override
+                    public Integer getValue() {
+                        return taskFutures.size();
+                    }
+                });
+
+        Metrics.registry.register(name("HBase", "taskStatusListSize"),
+                new Gauge<Integer>() {
+                    @Override
+                    public Integer getValue() {
+                        return taskStatus.size();
+                    }
+                });
     }
 
     /**
@@ -203,12 +226,11 @@ public class HBaseApplierWriter {
         currentTransactionUUID = UUID.randomUUID().toString();
 
         taskTransactionBuffer
-                .put(currentTaskUuid, new HashMap<String, Map<String, List<AugmentedRow>>>());
+                .put(currentTaskUuid, new HashMap<String, TransactionProxy>());
         taskTransactionBuffer.get(currentTaskUuid)
-                .put(currentTransactionUUID, new HashMap<String, List<AugmentedRow>>());
+                .put(currentTransactionUUID, new TransactionProxy());
 
         taskStatus.put(currentTaskUuid, TaskStatusCatalog.READY_FOR_BUFFERING);
-        transactionStatus.put(currentTransactionUUID, TransactionStatus.OPEN);
     }
 
     /**
@@ -263,12 +285,11 @@ public class HBaseApplierWriter {
     public void markCurrentTransactionForCommit() {
 
         // mark
-        transactionStatus.put(currentTransactionUUID, TransactionStatus.READY_FOR_COMMIT);
+        taskTransactionBuffer.get(currentTaskUuid).get(currentTransactionUUID).setStatus(TransactionStatus.READY_FOR_COMMIT);
 
         // open a new transaction slot and set it as the current transaction
         currentTransactionUUID = UUID.randomUUID().toString();
-        taskTransactionBuffer.get(currentTaskUuid).put(currentTransactionUUID, new HashMap<String,List<AugmentedRow>>());
-        transactionStatus.put(currentTransactionUUID, TransactionStatus.OPEN);
+        taskTransactionBuffer.get(currentTaskUuid).put(currentTransactionUUID, new TransactionProxy());
     }
 
     /**
@@ -289,7 +310,7 @@ public class HBaseApplierWriter {
         // create new uuid buffer
         String newTaskUuid = UUID.randomUUID().toString();
 
-        taskTransactionBuffer.put(newTaskUuid, new HashMap<String, Map<String, List<AugmentedRow>>>());
+        taskTransactionBuffer.put(newTaskUuid, new HashMap<String, TransactionProxy>());
 
         // Check if there is an open/unfinished transaction in current UUID task buffer and
         // if so, create/reserve the corresponding transaction UUID in the new UUID task buffer
@@ -299,13 +320,13 @@ public class HBaseApplierWriter {
         // to be able to identify mutations in HBase which were part of the same transaction.
         int openTransactions = 0;
         for (String transactionUuid : taskTransactionBuffer.get(currentTaskUuid).keySet()) {
-            if (transactionStatus.get(transactionUuid) == TransactionStatus.OPEN) {
+            if (taskTransactionBuffer.get(currentTaskUuid).get(transactionUuid).getStatus() == TransactionStatus.OPEN) {
                 openTransactions++;
                 if (openTransactions > 1) {
                     LOGGER.error("More than one partial transaction in the buffer. Should never happen! Exiting...");
                     System.exit(-1);
                 }
-                taskTransactionBuffer.get(newTaskUuid).put(transactionUuid, new HashMap<String,List<AugmentedRow>>() );
+                taskTransactionBuffer.get(newTaskUuid).put(transactionUuid, new TransactionProxy() );
                 currentTransactionUUID = transactionUuid; // <- important
             }
         }
@@ -459,7 +480,7 @@ public class HBaseApplierWriter {
 
                     } else if (statusOfDoneTask == TaskStatusCatalog.WRITE_FAILED) {
                         if (taskSucceeded) {
-                            throw new Exception("Inconsistent success reports for task " + submittedTaskUuid);
+                            throw new Exception("Inconsistent failure reports for task " + submittedTaskUuid);
                         }
                         LOGGER.warn("Task " + submittedTaskUuid + " failed. Task will be retried.");
                         requeueTask(submittedTaskUuid);
@@ -488,6 +509,7 @@ public class HBaseApplierWriter {
             } catch (Exception e) {
                 LOGGER.error(String.format("Inconsistent success reports for task %s. Will retry the task.",
                         submittedTaskUuid));
+                e.printStackTrace();
                 requeueTask(submittedTaskUuid);
                 applierTasksFailedCounter.inc();
             }
@@ -512,11 +534,10 @@ public class HBaseApplierWriter {
 
         boolean taskHasRows = false;
 
-        Map<String, Map<String, List<AugmentedRow>>> task = taskTransactionBuffer.get(taskUuid);
+        Map<String, TransactionProxy> task = taskTransactionBuffer.get(taskUuid);
 
         for (String transactionUuid : task.keySet()) {
-            Set<String> transactionTables = task.get(transactionUuid).keySet();
-            for (String tableName : transactionTables) {
+            for (String tableName : task.get(transactionUuid).keySet()) {
                 List<AugmentedRow> bufferedOPS = task.get(transactionUuid).get(tableName);
                 if (bufferedOPS != null && bufferedOPS.size() > 0) {
                     taskHasRows = true;
@@ -563,7 +584,7 @@ public class HBaseApplierWriter {
 
             boolean taskHasRows = false;
 
-            Map<String, Map<String, List<AugmentedRow>>> task = taskTransactionBuffer.get(taskUuid);
+            Map<String, TransactionProxy> task = taskTransactionBuffer.get(taskUuid);
             if (task == null) {
                 throw new RuntimeException(String.format("Task %s is null", taskUuid));
             }

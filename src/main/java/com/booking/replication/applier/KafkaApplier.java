@@ -35,6 +35,7 @@ public class KafkaApplier implements Applier {
     private final com.booking.replication.Configuration replicatorConfiguration;
     private static long totalEventsCounter = 0;
     private static long totalRowsCounter = 0;
+    private static long totalOutlierCounter = 0;
     private Properties props;
     private KafkaProducer<String, String> producer;
     private ProducerRecord<String, String> message;
@@ -73,6 +74,7 @@ public class KafkaApplier implements Applier {
 
     @Override
     public void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedSingleRowEvent, PipelineOrchestrator caller) {
+        totalEventsCounter ++;
         for (AugmentedRow row : augmentedSingleRowEvent.getSingleRowEvents()) {
             if (row.getTableName() == null) {
                 LOGGER.error("tableName not exists");
@@ -98,7 +100,10 @@ public class KafkaApplier implements Applier {
                 }
                 kafka_messages.mark();
             } else {
-                // LOGGER.warn("No supported topic: " + topic);
+                totalOutlierCounter ++;
+                if (totalOutlierCounter % 500 == 0) {
+                    LOGGER.warn("Over 500 non-supported topics, for example: " + topic);
+                }
             }
         }
     }

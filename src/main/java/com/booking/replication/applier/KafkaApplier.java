@@ -15,7 +15,9 @@ import com.google.code.or.binlog.impl.event.QueryEvent;
 import com.google.code.or.binlog.impl.event.RotateEvent;
 import com.google.code.or.binlog.impl.event.XidEvent;
 
+import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
+import com.codahale.metrics.Timer;
 import org.apache.commons.lang.mutable.MutableLong;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -26,10 +28,13 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Created by raynald on 08/06/16.
  */
+
+// TODO: Kafka Metrics: record-send-rate
 
 public class KafkaApplier implements Applier {
     private final com.booking.replication.Configuration replicatorConfiguration;
@@ -41,7 +46,10 @@ public class KafkaApplier implements Applier {
     private ProducerRecord<String, String> message;
     private static List<String> topicList;
 
+    private AtomicBoolean exceptionFlag = new AtomicBoolean(false);
     private static final Meter kafka_messages = Metrics.registry.meter(name("Kafka", "producerToBroker"));
+    private static final Counter exception_counters = Metrics.registry.counter(name("Kafka", "exceptionCounter"));
+    private static final Timer closureTimer = Metrics.registry.timer(name("Kafka", "producerCloseTimer"));
     private static final HashMap<String, MutableLong> stats = new HashMap<>();
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaApplier.class);
@@ -76,6 +84,9 @@ public class KafkaApplier implements Applier {
     public void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedSingleRowEvent, PipelineOrchestrator caller) {
         totalEventsCounter ++;
         for (AugmentedRow row : augmentedSingleRowEvent.getSingleRowEvents()) {
+            if (exceptionFlag.get()) {
+                throw new RuntimeException("Error found in Producer");
+            }
             if (row.getTableName() == null) {
                 LOGGER.error("tableName not exists");
                 throw new RuntimeException("tableName does not exist");
@@ -91,7 +102,8 @@ public class KafkaApplier implements Applier {
                         if (sendException != null) {
                             LOGGER.error("Error producing to topic " + recordMetadata.topic());
                             sendException.printStackTrace();
-                            producer.close();
+                            exceptionFlag.set(true);
+                            exception_counters.inc();
                         }
                     }
                 });
@@ -133,10 +145,6 @@ public class KafkaApplier implements Applier {
 
     }
 
-    public void resubmitIfThereAreFailedTasks() {
-
-    }
-
     @Override
     public void applyFormatDescriptionEvent(FormatDescriptionEvent event) {
 
@@ -144,20 +152,9 @@ public class KafkaApplier implements Applier {
 
     @Override
     public void waitUntilAllRowsAreCommitted() {
-        boolean wait = true;
-
-        while (wait) {
-            if (true) {
-                LOGGER.debug("All tasks have completed!");
-                wait = false;
-            } else {
-                resubmitIfThereAreFailedTasks();
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
+        final Timer.Context context = closureTimer.time();
+        producer.close();
+        context.stop();
+        producer = new KafkaProducer<>(props);
     }
 }

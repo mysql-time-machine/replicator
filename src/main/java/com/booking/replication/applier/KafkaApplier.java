@@ -15,11 +15,12 @@ import com.google.code.or.binlog.impl.event.QueryEvent;
 import com.google.code.or.binlog.impl.event.RotateEvent;
 import com.google.code.or.binlog.impl.event.XidEvent;
 
-import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
 import org.apache.commons.lang.mutable.MutableLong;
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,7 +63,7 @@ public class KafkaApplier implements Applier {
         props.put("acks", "all"); // Default 1
         props.put("retries", 1); // Default value: 0
         props.put("batch.size", 16384); // Default value: 16384
-        props.put("linger.ms", 1); // Default 0, Artificial delay
+        props.put("linger.ms", 20); // Default 0, Artificial delay
         props.put("buffer.memory", 33554432); // Default value: 33554432
         props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
@@ -81,8 +82,17 @@ public class KafkaApplier implements Applier {
             String topic = row.getTableName();
             if (topicList.contains(topic)) {
                 message = new ProducerRecord<>(topic, row.toJson());
-                totalRowsCounter ++;
-                producer.send(message);
+                totalRowsCounter++;
+                producer.send(message, new Callback() {
+                    @Override
+                    public void onCompletion(RecordMetadata recordMetadata, Exception sendException) {
+                        if (sendException != null) {
+                            LOGGER.error("Error producing to topic " + recordMetadata.topic());
+                            sendException.printStackTrace();
+                            producer.close();
+                        }
+                    }
+                });
                 if (totalRowsCounter % 500 == 0) {
                     LOGGER.info("500 lines have been sent to Kafka broker...");
                 }

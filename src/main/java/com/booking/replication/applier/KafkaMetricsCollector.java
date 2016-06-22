@@ -1,6 +1,9 @@
 package com.booking.replication.applier;
 
+import static com.codahale.metrics.MetricRegistry.name;
+
 import com.booking.replication.Metrics;
+
 import com.codahale.metrics.Gauge;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.metrics.KafkaMetric;
@@ -12,9 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.codahale.metrics.MetricRegistry.name;
-
-class KafkaMetricsCollector implements MetricsReporter {
+public class KafkaMetricsCollector implements MetricsReporter {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaMetricsCollector.class);
 
     private Map<KafkaMetric, Boolean> monitored = new HashMap<>();

@@ -7,6 +7,8 @@ import com.booking.replication.util.JsonBuilder;
 
 import com.google.code.or.binlog.BinlogEventV4Header;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,6 +25,8 @@ import java.util.*;
  *  event which has both schema and data.
  *  This class encapsulates this type of event.
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties({"tableSchema"})
 public class AugmentedRow {
 
     private BinlogEventV4Header eventV4Header;

@@ -23,9 +23,6 @@ import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,7 +95,7 @@ public class KafkaApplier implements Applier {
 
             String topic = row.getTableName();
             if (topicList.contains(topic)) {
-                message = new ProducerRecord<>(topic, getKafkaMessage(row.toJson()));
+                message = new ProducerRecord<>(topic, row.toJson());
                 totalRowsCounter++;
                 producer.send(message, new Callback() {
                     @Override
@@ -122,23 +119,6 @@ public class KafkaApplier implements Applier {
                 }
             }
         }
-    }
-
-    public String getKafkaMessage(String rowString) {
-        /**
-         * We remove tableSchema from the rowString for now, as its size is extremely large.
-         */
-        final String toRemove = "tableSchema";
-        JSONParser parser = new JSONParser();
-        try {
-            JSONObject obj = ((JSONObject) parser.parse(rowString));
-            obj.remove(toRemove);
-            return obj.toString();
-        } catch (ParseException parseException) {
-            LOGGER.warn("Error parsing JSON from rowString");
-            parseException.printStackTrace();
-        }
-        return "";
     }
 
     @Override

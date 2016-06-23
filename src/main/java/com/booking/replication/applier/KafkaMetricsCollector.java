@@ -12,7 +12,6 @@ import org.apache.kafka.common.metrics.MetricsReporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,27 +19,37 @@ import java.util.concurrent.ConcurrentHashMap;
 public class KafkaMetricsCollector implements MetricsReporter {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaMetricsCollector.class);
 
-    private static ConcurrentHashMap<KafkaMetric, Boolean> monitored = new ConcurrentHashMap<>();
+    private static ConcurrentHashMap<String, KafkaMetricGauge> monitored = new ConcurrentHashMap<>();
+
+    private KafkaMetricGauge kafkaGauge;
 
     @Override
     public void init(List<KafkaMetric> metrics) {
         for (KafkaMetric metric: metrics) {
-            if (!monitored.containsKey(metric)) {
-                monitored.put(metric, true);
-                LOGGER.debug("Adding kafka metric: " + sanitizeName(metric.metricName()));
-                Metrics.registry.remove(name("Kafka", sanitizeName(metric.metricName())));
-                Metrics.registry.register(name("Kafka", sanitizeName(metric.metricName())), new KafkaMetricGauge(metric));
+            String saName = sanitizeName(metric.metricName());
+            if (!monitored.containsKey(saName)) {
+                LOGGER.debug("Adding kafka metric: " + saName);
+                kafkaGauge = new KafkaMetricGauge(metric);
+                Metrics.registry.register(name("Kafka", saName), kafkaGauge);
+                monitored.put(saName, kafkaGauge);
+            } else {
+                LOGGER.debug("Changing kafka metric: " + saName);
+                monitored.get(saName).setMetric(metric);
             }
         }
     }
 
     @Override
     public void metricChange(KafkaMetric metric) {
-        if (!monitored.containsKey(metric)) {
-            monitored.put(metric, true);
-            LOGGER.debug("Adding kafka metric: " + sanitizeName(metric.metricName()));
-            Metrics.registry.remove(name("Kafka", sanitizeName(metric.metricName())));
-            Metrics.registry.register(name("Kafka", sanitizeName(metric.metricName())), new KafkaMetricGauge(metric));
+        String saName = sanitizeName(metric.metricName());
+        if (!monitored.containsKey(saName)) {
+            LOGGER.debug("Adding kafka metric: " + saName);
+            kafkaGauge = new KafkaMetricGauge(metric);
+            Metrics.registry.register(name("Kafka", saName), kafkaGauge);
+            monitored.put(saName, kafkaGauge);
+        } else {
+            LOGGER.debug("Changing kafka metric: " + saName);
+            monitored.get(saName).setMetric(metric);
         }
     }
 
@@ -50,6 +59,10 @@ public class KafkaMetricsCollector implements MetricsReporter {
         private KafkaMetric metric;
 
         KafkaMetricGauge(KafkaMetric metric) {
+            this.metric = metric;
+        }
+
+        public void setMetric(KafkaMetric metric) {
             this.metric = metric;
         }
 

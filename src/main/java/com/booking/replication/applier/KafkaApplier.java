@@ -70,7 +70,7 @@ public class KafkaApplier implements Applier {
         props = new Properties();
         props.put("bootstrap.servers", broker);
         props.put("acks", "all"); // Default 1
-        props.put("retries", 1); // Default value: 0
+        props.put("retries", 3); // Default value: 0
         props.put("batch.size", 16384); // Default value: 16384
         props.put("linger.ms", 20); // Default 0, Artificial delay
         props.put("buffer.memory", 33554432); // Default value: 33554432

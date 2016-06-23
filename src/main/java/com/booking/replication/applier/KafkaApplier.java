@@ -156,6 +156,7 @@ public class KafkaApplier implements Applier {
         final Timer.Context context = closureTimer.time();
         producer.close();
         context.stop();
+        LOGGER.warn("New producer");
         producer = new KafkaProducer<>(props);
     }
 }

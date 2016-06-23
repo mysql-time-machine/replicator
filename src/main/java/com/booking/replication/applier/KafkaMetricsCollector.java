@@ -2,6 +2,7 @@ package com.booking.replication.applier;
 
 import static com.codahale.metrics.MetricRegistry.name;
 
+import com.booking.replication.Configuration;
 import com.booking.replication.Metrics;
 
 import com.codahale.metrics.Gauge;
@@ -14,11 +15,12 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class KafkaMetricsCollector implements MetricsReporter {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaMetricsCollector.class);
 
-    private Map<KafkaMetric, Boolean> monitored = new HashMap<>();
+    private static ConcurrentHashMap<KafkaMetric, Boolean> monitored = new ConcurrentHashMap<>();
 
     @Override
     public void init(List<KafkaMetric> metrics) {
@@ -26,6 +28,7 @@ public class KafkaMetricsCollector implements MetricsReporter {
             if (!monitored.containsKey(metric)) {
                 monitored.put(metric, true);
                 LOGGER.debug("Adding kafka metric: " + sanitizeName(metric.metricName()));
+                Metrics.registry.remove(name("Kafka", sanitizeName(metric.metricName())));
                 Metrics.registry.register(name("Kafka", sanitizeName(metric.metricName())), new KafkaMetricGauge(metric));
             }
         }
@@ -36,6 +39,7 @@ public class KafkaMetricsCollector implements MetricsReporter {
         if (!monitored.containsKey(metric)) {
             monitored.put(metric, true);
             LOGGER.debug("Adding kafka metric: " + sanitizeName(metric.metricName()));
+            Metrics.registry.remove(name("Kafka", sanitizeName(metric.metricName())));
             Metrics.registry.register(name("Kafka", sanitizeName(metric.metricName())), new KafkaMetricGauge(metric));
         }
     }
@@ -58,6 +62,9 @@ public class KafkaMetricsCollector implements MetricsReporter {
     private String sanitizeName(MetricName name) {
         StringBuilder result = new StringBuilder().append(name.group()).append('.');
         for (Map.Entry<String, String> tag : name.tags().entrySet()) {
+            if (tag.getKey().equals("client-id")) {
+                continue;
+            }
             result.append(tag.getValue()).append('.');
         }
         return result.append(name.name()).toString().replace(' ', '_').replace("\\.", "_");

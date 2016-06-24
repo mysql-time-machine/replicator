@@ -34,6 +34,8 @@ public class AugmentedRow {
     private TableSchema tableSchema;
     private String tableName;
     private List<String> primaryKeyColumns = new ArrayList<>();
+    private String uniqueID = UUID.randomUUID().toString();
+
     // eventColumns: {
     //      column_name => $name,
     //          value_before => $1,
@@ -116,6 +118,14 @@ public class AugmentedRow {
 
     public String toJson() {
         return JsonBuilder.dataEventToJson(this);
+    }
+
+    public String getUniqueID() {
+        return uniqueID;
+    }
+
+    public void setUniqueID(String uuid) {
+        this.uniqueID = uuid;
     }
 
     public String getTableName() {

@@ -1,7 +1,6 @@
 package com.booking.replication.applier;
 
 import static com.codahale.metrics.MetricRegistry.name;
-import static org.apache.kafka.common.protocol.Protocol.BROKER;
 
 import com.booking.replication.Configuration;
 import com.booking.replication.Metrics;
@@ -26,15 +25,12 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Created by raynald on 08/06/16.
  */
-
-// TODO: Kafka Metrics: record-send-rate
 
 public class KafkaApplier implements Applier {
     private final com.booking.replication.Configuration replicatorConfiguration;

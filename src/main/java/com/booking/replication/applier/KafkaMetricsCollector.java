@@ -88,4 +88,7 @@ public class KafkaMetricsCollector implements MetricsReporter {
 
     @Override
     public void configure(Map<String, ?> configs) {}
+
+    @Override
+    public void metricRemoval(KafkaMetric var1) {}
 }

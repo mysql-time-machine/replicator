@@ -17,14 +17,22 @@ import com.google.code.or.binlog.impl.event.XidEvent;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
+import jdk.nashorn.internal.parser.JSONParser;
 import org.apache.commons.lang.mutable.MutableLong;
+import org.apache.htrace.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.util.parsing.json.JSONObject;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -37,20 +45,24 @@ public class KafkaApplier implements Applier {
     private static long totalEventsCounter = 0;
     private static long totalRowsCounter = 0;
     private static long totalOutlierCounter = 0;
-    private Properties props;
+    private Properties producerProps;
+    private Properties consumerProps;
     private KafkaProducer<String, String> producer;
+    private KafkaConsumer<String, String> consumer;
     private ProducerRecord<String, String> message;
     private static List<String> topicList;
+    private String schemaName;
 
     private AtomicBoolean exceptionFlag = new AtomicBoolean(false);
     private static final Meter kafka_messages = Metrics.registry.meter(name("Kafka", "producerToBroker"));
     private static final Counter exception_counters = Metrics.registry.counter(name("Kafka", "exceptionCounter"));
     private static final Timer closureTimer = Metrics.registry.timer(name("Kafka", "producerCloseTimer"));
     private static final HashMap<String, MutableLong> stats = new HashMap<>();
+    private static final HashMap<Long, Long> lastCommited = new HashMap<>();
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaApplier.class);
 
-    public KafkaApplier(String broker, List<String> topics, Configuration configuration) {
+    public KafkaApplier(Configuration configuration) throws IOException {
         replicatorConfiguration = configuration;
 
         /**
@@ -62,24 +74,59 @@ public class KafkaApplier implements Applier {
          * the appropriate kafka broker partition.
          */
 
-        // Below is the new version of Configuration
-        props = new Properties();
-        props.put("bootstrap.servers", broker);
-        props.put("acks", "all"); // Default 1
-        props.put("retries", 3); // Default value: 0
-        props.put("batch.size", 16384); // Default value: 16384
-        props.put("linger.ms", 20); // Default 0, Artificial delay
-        props.put("buffer.memory", 33554432); // Default value: 33554432
-        props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        props.put("metric.reporters", "com.booking.replication.applier.KafkaMetricsCollector");
-        producer = new KafkaProducer<>(props);
-        topicList = topics;
+        // Below is the new version of producer configuration
+        producerProps = new Properties();
+        producerProps.put("bootstrap.servers", configuration.getKafkaBrokerAddress());
+        producerProps.put("acks", "all"); // Default 1
+        producerProps.put("retries", 3); // Default value: 0
+        producerProps.put("batch.size", 16384); // Default value: 16384
+        producerProps.put("linger.ms", 20); // Default 0, Artificial delay
+        producerProps.put("buffer.memory", 33554432); // Default value: 33554432
+        producerProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        producerProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        producerProps.put("metric.reporters", "com.booking.replication.applier.KafkaMetricsCollector");
+
+        // Consumer configuration
+        consumerProps = new Properties();
+        consumerProps.put("bootstrap.servers", configuration.getKafkaBrokerAddress());
+        consumerProps.put("group.id", "producer_wingman");
+        consumerProps.put("enable.auto.commit", "false");
+        consumerProps.put("auto.commit.interval.ms", "1000");
+        consumerProps.put("session.timeout.ms", "30000");
+        consumerProps.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+        consumerProps.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+
+        producer = new KafkaProducer<>(producerProps);
+        consumer = new KafkaConsumer<>(consumerProps);
+        topicList = configuration.getKafkaTopicList();
+        schemaName = configuration.getReplicantSchemaName();
+        getLastPosition();
+    }
+
+    public void getLastPosition() throws IOException {
+        for (int i = 0;i < producer.partitionsFor(schemaName).size();i ++) {
+            TopicPartition partition = new TopicPartition(schemaName, i);
+            consumer.seekToEnd(partition);
+            ConsumerRecords<String, String> records = consumer.poll(1000); // TODO: change to parameter
+            for (ConsumerRecord<String, String> record: records) {
+                ObjectMapper mapper = new ObjectMapper();
+                AugmentedRow row = mapper.readValue(record.value(), AugmentedRow.class);
+                Long uuid = Long.parseLong(row.getUniqueID());
+                if (!lastCommited.keySet().contains(i) || lastCommited.get(Long.valueOf(i)) < uuid) {
+                    lastCommited.put(Long.valueOf(i), uuid);
+                }
+            }
+        }
     }
 
     @Override
     public void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedSingleRowEvent, PipelineOrchestrator caller) {
+        long singleRowsCounter = 0;
+        int partitionNum;
+        Long rowUniqueID;
+
         totalEventsCounter ++;
+
         for (AugmentedRow row : augmentedSingleRowEvent.getSingleRowEvents()) {
             if (exceptionFlag.get()) {
                 throw new RuntimeException("Error found in Producer");
@@ -91,23 +138,32 @@ public class KafkaApplier implements Applier {
 
             String topic = row.getTableName();
             if (topicList.contains(topic)) {
-                message = new ProducerRecord<>(topic, row.toJson());
                 totalRowsCounter++;
-                producer.send(message, new Callback() {
-                    @Override
-                    public void onCompletion(RecordMetadata recordMetadata, Exception sendException) {
-                        if (sendException != null) {
-                            LOGGER.error("Error producing to Kafka broker");
-                            sendException.printStackTrace();
-                            exceptionFlag.set(true);
-                            exception_counters.inc();
+                rowUniqueID = Long.valueOf(totalEventsCounter * 100 + singleRowsCounter ++);
+                partitionNum = row.getTableName().hashCode() % producer.partitionsFor(schemaName).size();
+                if (rowUniqueID.compareTo(lastCommited.get(Long.valueOf(partitionNum))) > 0) {
+                    row.setUniqueID(rowUniqueID.toString());
+                    message = new ProducerRecord<>(
+                            schemaName,
+                            partitionNum,
+                            String.valueOf(row.getEventV4Header().getPosition()),
+                            row.toJson());
+                    producer.send(message, new Callback() {
+                        @Override
+                        public void onCompletion(RecordMetadata recordMetadata, Exception sendException) {
+                            if (sendException != null) {
+                                LOGGER.error("Error producing to Kafka broker");
+                                sendException.printStackTrace();
+                                exceptionFlag.set(true);
+                                exception_counters.inc();
+                            }
                         }
+                    });
+                    if (totalRowsCounter % 500 == 0) {
+                        LOGGER.debug("500 lines have been sent to Kafka broker...");
                     }
-                });
-                if (totalRowsCounter % 500 == 0) {
-                    LOGGER.debug("500 lines have been sent to Kafka broker...");
+                    kafka_messages.mark();
                 }
-                kafka_messages.mark();
             } else {
                 totalOutlierCounter ++;
                 if (totalOutlierCounter % 500 == 0) {
@@ -153,6 +209,6 @@ public class KafkaApplier implements Applier {
         producer.close();
         context.stop();
         LOGGER.warn("New producer");
-        producer = new KafkaProducer<>(props);
+        producer = new KafkaProducer<>(producerProps);
     }
 }

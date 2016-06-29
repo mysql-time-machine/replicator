@@ -17,9 +17,7 @@ import com.google.code.or.binlog.impl.event.XidEvent;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
-import jdk.nashorn.internal.parser.JSONParser;
 import org.apache.commons.lang.mutable.MutableLong;
-import org.apache.htrace.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -30,7 +28,6 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.util.parsing.json.JSONObject;
 
 import java.io.IOException;
 import java.util.*;
@@ -59,6 +56,7 @@ public class KafkaApplier implements Applier {
     private static final Timer closureTimer = Metrics.registry.timer(name("Kafka", "producerCloseTimer"));
     private static final HashMap<String, MutableLong> stats = new HashMap<>();
     private static final HashMap<Long, Long> lastCommited = new HashMap<>();
+    private ConsumerRecords<String, String> records;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaApplier.class);
 
@@ -90,6 +88,7 @@ public class KafkaApplier implements Applier {
         consumerProps = new Properties();
         consumerProps.put("bootstrap.servers", configuration.getKafkaBrokerAddress());
         consumerProps.put("group.id", "producer_wingman");
+        // consumerProps.put("auto.offset.reset", "latest");
         consumerProps.put("enable.auto.commit", "false");
         consumerProps.put("auto.commit.interval.ms", "1000");
         consumerProps.put("session.timeout.ms", "30000");
@@ -101,17 +100,23 @@ public class KafkaApplier implements Applier {
         topicList = configuration.getKafkaTopicList();
         schemaName = configuration.getReplicantSchemaName();
         getLastPosition();
+        LOGGER.info("Size of last commited hashmap: " + lastCommited.size());
+        for (Long i: lastCommited.keySet()) {
+            LOGGER.info("Show lastCommited partition: " + i.toString() + " -> uniqueID: " + lastCommited.get(i).toString());
+        }
     }
 
     public void getLastPosition() throws IOException {
         for (int i = 0;i < producer.partitionsFor(schemaName).size();i ++) {
             TopicPartition partition = new TopicPartition(schemaName, i);
-            consumer.seekToEnd(partition);
-            ConsumerRecords<String, String> records = consumer.poll(1000); // TODO: change to parameter
+            consumer.assign(Arrays.asList(partition));
+            consumer.seek(partition, consumer.position(partition) - 1);
+            records = consumer.poll(1000); // TODO: change to parameter
             for (ConsumerRecord<String, String> record: records) {
-                ObjectMapper mapper = new ObjectMapper();
-                AugmentedRow row = mapper.readValue(record.value(), AugmentedRow.class);
-                Long uuid = Long.parseLong(row.getUniqueID());
+                String cutString = record.value().substring(record.value().indexOf("uniqueID"));
+                // TODO: JsonDeserialization doesn't work for BinlogEventV4Header
+                // Now extracting uuid from String by index instead
+                Long uuid = Long.parseLong(cutString.substring("uniqueID', '".length(), cutString.indexOf(",") - 1));
                 if (!lastCommited.keySet().contains(i) || lastCommited.get(Long.valueOf(i)) < uuid) {
                     lastCommited.put(Long.valueOf(i), uuid);
                 }
@@ -123,6 +128,7 @@ public class KafkaApplier implements Applier {
     public void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedSingleRowEvent, PipelineOrchestrator caller) {
         long singleRowsCounter = 0;
         int partitionNum;
+        int numberOfPartition = producer.partitionsFor(schemaName).size();
         Long rowUniqueID;
 
         totalEventsCounter ++;
@@ -140,8 +146,9 @@ public class KafkaApplier implements Applier {
             if (topicList.contains(topic)) {
                 totalRowsCounter++;
                 rowUniqueID = Long.valueOf(totalEventsCounter * 100 + singleRowsCounter ++);
-                partitionNum = row.getTableName().hashCode() % producer.partitionsFor(schemaName).size();
-                if (rowUniqueID.compareTo(lastCommited.get(Long.valueOf(partitionNum))) > 0) {
+                partitionNum = (row.getTableName().hashCode() % numberOfPartition + numberOfPartition) % numberOfPartition;
+                if (!lastCommited.keySet().contains(Long.valueOf(partitionNum))
+                        || rowUniqueID.compareTo(lastCommited.get(Long.valueOf(partitionNum))) > 0) {
                     row.setUniqueID(rowUniqueID.toString());
                     message = new ProducerRecord<>(
                             schemaName,

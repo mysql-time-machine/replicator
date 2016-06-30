@@ -116,7 +116,7 @@ public class KafkaApplier implements Applier {
                 String cutString = record.value().substring(record.value().indexOf("uniqueID"));
                 // TODO: JsonDeserialization doesn't work for BinlogEventV4Header
                 // Now extracting uuid from String by index instead
-                Long uuid = Long.parseLong(cutString.substring("uniqueID', '".length(), cutString.indexOf(",") - 1));
+                Long uuid = Long.parseLong(cutString.substring("uniqueID': ".length(), cutString.indexOf(",") - 1));
                 if (!lastCommited.keySet().contains(i) || lastCommited.get(Long.valueOf(i)) < uuid) {
                     lastCommited.put(Long.valueOf(i), uuid);
                 }

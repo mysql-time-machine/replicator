@@ -76,13 +76,14 @@ public class KafkaApplier implements Applier {
         producerProps = new Properties();
         producerProps.put("bootstrap.servers", configuration.getKafkaBrokerAddress());
         producerProps.put("acks", "all"); // Default 1
-        producerProps.put("retries", 3); // Default value: 0
+        producerProps.put("retries", 30); // Default value: 0
         producerProps.put("batch.size", 16384); // Default value: 16384
         producerProps.put("linger.ms", 20); // Default 0, Artificial delay
         producerProps.put("buffer.memory", 33554432); // Default value: 33554432
         producerProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         producerProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         producerProps.put("metric.reporters", "com.booking.replication.applier.KafkaMetricsCollector");
+        producerProps.put("request.timeout.ms", 100000);
 
         // Consumer configuration
         consumerProps = new Properties();
@@ -135,7 +136,7 @@ public class KafkaApplier implements Applier {
 
         for (AugmentedRow row : augmentedSingleRowEvent.getSingleRowEvents()) {
             if (exceptionFlag.get()) {
-                throw new RuntimeException("Error found in Producer");
+                throw new RuntimeException("Producer has problem with sending messages, could be a connection issue");
             }
             if (row.getTableName() == null) {
                 LOGGER.error("tableName not exists");

@@ -6,7 +6,7 @@ are convenient for fast and cheap imports from HBase to Hive.
 ### Usage
 #### Replicate initial binlog snapshot to hbase
 ````
-java -jar hbrepl-0.9.9-3.jar --hbase-namespace $hbase-namespace --applier hbase --schema $schema --binlog-filename $first-binlog-filename --config-path $config-path [--shard $shard] --initial-snapshot
+java -jar hbrepl-0.9.9-6.jar --hbase-namespace $hbase-namespace --applier hbase --schema $schema --binlog-filename $first-binlog-filename --config-path $config-path [--shard $shard] --initial-snapshot
 ````
 
 #### Replication after initial snapshot

@@ -10,6 +10,8 @@ public class BinlogPositionInfo {
 
     private long fakeMicrosecondsCounter;
 
+    public BinlogPositionInfo() {}
+
     public BinlogPositionInfo(String filename, long position) {
         this.binlogFilename = filename;
         this.binlogPosition = position;
@@ -25,6 +27,20 @@ public class BinlogPositionInfo {
         this.binlogFilename = filename;
         this.binlogPosition = position;
         this.fakeMicrosecondsCounter = fakeMsCounter;
+    }
+
+    public boolean equals(BinlogPositionInfo other) {
+        return (this.getBinlogFilename().equals(other.getBinlogFilename()) && this.getBinlogPosition() == other.getBinlogPosition());
+    }
+
+    public boolean greaterThan(BinlogPositionInfo other) {
+        int ourBinlogFile = Integer.parseInt(this.binlogFilename.split("\\.")[1]);
+        int otherBinlogFile = Integer.parseInt(other.getBinlogFilename().split("\\.")[1]);
+
+        return (
+                ourBinlogFile > otherBinlogFile
+                || (ourBinlogFile == otherBinlogFile && this.getBinlogPosition() > other.getBinlogPosition())
+            );
     }
 
     public String getBinlogFilename() {

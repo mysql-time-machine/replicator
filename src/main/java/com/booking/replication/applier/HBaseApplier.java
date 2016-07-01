@@ -185,7 +185,7 @@ public class HBaseApplier implements Applier {
     }
 
     @Override
-    public void waitUntilAllRowsAreCommitted() {
+    public void waitUntilAllRowsAreCommitted(RotateEvent event) {
         boolean wait = true;
 
         while (wait) {

@@ -162,10 +162,6 @@ public class PipelineOrchestrator extends Thread {
         this.running = running;
     }
 
-    public void stopRunning() {
-        setRunning(false);
-    }
-
     @Override
     public void run() {
         setRunning(true);
@@ -382,19 +378,19 @@ public class PipelineOrchestrator extends Thread {
 
             // flush buffer at the end of binlog file
             case MySQLConstants.ROTATE_EVENT:
-                RotateEvent re = (RotateEvent) event;
-                applier.applyRotateEvent(re);
+                RotateEvent rotateEvent = (RotateEvent) event;
+                applier.applyRotateEvent(rotateEvent);
                 LOGGER.info("End of binlog file. Waiting for all tasks to finish before moving forward...");
 
                 //TODO: Investigate if this is the right thing to do.
-                applier.waitUntilAllRowsAreCommitted();
+                applier.waitUntilAllRowsAreCommitted(rotateEvent);
 
                 LOGGER.info("All rows committed");
                 String currentBinlogFileName =
                         binlogPositionLastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION).getBinlogFilename();
 
-                String nextBinlogFileName = re.getBinlogFileName().toString();
-                long nextBinlogPosition = re.getBinlogPosition();
+                String nextBinlogFileName = rotateEvent.getBinlogFileName().toString();
+                long nextBinlogPosition = rotateEvent.getBinlogPosition();
 
                 int currentSlaveId = configuration.getReplicantDBServerID();
                 LastVerifiedBinlogFile marker = new LastVerifiedBinlogFile(currentSlaveId, nextBinlogFileName, nextBinlogPosition);

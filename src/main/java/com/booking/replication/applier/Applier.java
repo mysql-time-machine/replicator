@@ -29,5 +29,5 @@ public interface Applier {
 
     void applyFormatDescriptionEvent(FormatDescriptionEvent event);
 
-    void waitUntilAllRowsAreCommitted();
+    void waitUntilAllRowsAreCommitted(RotateEvent event);
 }

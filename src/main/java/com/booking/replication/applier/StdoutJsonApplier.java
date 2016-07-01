@@ -44,7 +44,7 @@ public class StdoutJsonApplier implements Applier  {
     }
 
     @Override
-    public void waitUntilAllRowsAreCommitted() {
+    public void waitUntilAllRowsAreCommitted(RotateEvent event) {
 
         try {
             LOGGER.info("Sleeping as to simulate waiting for all rows being committed");

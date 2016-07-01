@@ -212,7 +212,7 @@ public class KafkaApplier implements Applier {
     }
 
     @Override
-    public void waitUntilAllRowsAreCommitted() {
+    public void waitUntilAllRowsAreCommitted(RotateEvent event) {
         final Timer.Context context = closureTimer.time();
         producer.close();
         context.stop();

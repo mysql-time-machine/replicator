@@ -6,9 +6,11 @@ import com.booking.replication.schema.table.TableSchema;
 import com.booking.replication.util.JsonBuilder;
 
 import com.google.code.or.binlog.BinlogEventV4Header;
+import com.google.code.or.binlog.impl.event.BinlogEventV4HeaderImpl;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +31,8 @@ import java.util.*;
 @JsonIgnoreProperties({"tableSchema"})
 public class AugmentedRow {
 
+    @JsonDeserialize(as = BinlogEventV4HeaderImpl.class)
+    @JsonIgnoreProperties({"headerLength", "position"})
     private BinlogEventV4Header eventV4Header;
 
     private TableSchema tableSchema;

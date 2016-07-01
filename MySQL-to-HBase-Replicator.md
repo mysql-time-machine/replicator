@@ -11,12 +11,12 @@ java -jar hbrepl-0.9.9-3.jar --hbase-namespace $hbase-namespace --applier hbase 
 
 #### Replication after initial snapshot
 ````
-java -jar hbrepl-0.9.9-3.jar --hbase-namespace $hbase-namespace --applier hbase --schema $schema --binlog-filename $binlog-filename --config-path $config-path [--shard $shard] [--delta]
+java -jar hbrepl-0.9.9-6.jar --hbase-namespace $hbase-namespace --applier hbase --schema $schema --binlog-filename $binlog-filename --config-path $config-path [--shard $shard] [--delta]
 ````
 
 #### Replicate range of binlog files and output db events as JSON to STDOUT:
 ````
-java -jar hbrepl-0.9.9-3.jar --applier STDOUT --schema $schema --binlog-filename $binlog-filename --last-binlog-filename $last-binlog-filename-to-process --config-path $config-path 
+java -jar hbrepl-0.9.9-6.jar --applier STDOUT --schema $schema --binlog-filename $binlog-filename --last-binlog-filename $last-binlog-filename-to-process --config-path $config-path 
 ````
 
 #### Configuration file structure:

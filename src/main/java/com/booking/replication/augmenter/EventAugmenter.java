@@ -235,7 +235,7 @@ public class EventAugmenter {
             throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.");
         }
 
-        AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent();
+        AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent(writeRowsEvent);
         augEventGroup.setMysqlTableName(tableName);
 
         int numberOfColumns = writeRowsEvent.getColumnCount().intValue();
@@ -294,7 +294,7 @@ public class EventAugmenter {
 
         int numberOfColumns = writeRowsEvent.getColumnCount().intValue();
 
-        AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent();
+        AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent(writeRowsEvent);
         augEventGroup.setMysqlTableName(tableName);
         
         for (Row row : writeRowsEvent.getRows()) {
@@ -347,7 +347,7 @@ public class EventAugmenter {
         if (tableSchema == null) {
             throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.");
         }
-        AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent();
+        AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent(deleteRowsEvent);
         augEventGroup.setMysqlTableName(tableName);
 
         int numberOfColumns = deleteRowsEvent.getColumnCount().intValue();
@@ -401,7 +401,7 @@ public class EventAugmenter {
             throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.");
         }
 
-        AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent();
+        AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent(deleteRowsEvent);
         augEventGroup.setMysqlTableName(tableName);
 
         int numberOfColumns = deleteRowsEvent.getColumnCount().intValue();
@@ -454,7 +454,7 @@ public class EventAugmenter {
             throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.");
         }
 
-        AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent();
+        AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent(upEvent);
         augEventGroup.setMysqlTableName(tableName);
 
         int numberOfColumns = upEvent.getColumnCount().intValue();
@@ -511,7 +511,7 @@ public class EventAugmenter {
             throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.");
         }
 
-        AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent();
+        AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent(upEvent);
         augEventGroup.setMysqlTableName(tableName);
 
         int numberOfColumns = upEvent.getColumnCount().intValue();

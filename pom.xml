@@ -6,7 +6,7 @@
 
     <groupId>com.booking</groupId>
     <artifactId>hbrepl</artifactId>
-    <version>0.9.9-5</version>
+    <version>0.9.9-6</version>
     <packaging>jar</packaging>
 
     <name>hbrepl</name>

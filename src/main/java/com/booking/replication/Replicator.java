@@ -39,17 +39,13 @@ public class Replicator {
     // Replicator()
     public Replicator(Configuration configuration) throws SQLException, URISyntaxException, IOException {
 
-
-        // Queues
-        ReplicatorQueues replicatorQueues = new ReplicatorQueues();
-
         // Position Tracking
         ConcurrentHashMap<Integer, BinlogPositionInfo> lastKnownInfo = new ConcurrentHashMap<>();
-        BinlogPositionInfo position;
+        BinlogPositionInfo startBinlogPosition;
 
         if (configuration.getStartingBinlogFileName() != null) {
             LOGGER.info(String.format("Start filename: %s", configuration.getStartingBinlogFileName()));
-            position = new BinlogPositionInfo(
+            startBinlogPosition = new BinlogPositionInfo(
                     configuration.getStartingBinlogFileName(),
                     configuration.getStartingBinlogPosition()
             );
@@ -59,13 +55,30 @@ public class Replicator {
 
             if ( safeCheckPoint != null ) {
                 LOGGER.info("Start binlog not specified, reading metadata from coordinator");
-                position = new BinlogPositionInfo(safeCheckPoint.getSafeCheckPointMarker(), 4L);
+                startBinlogPosition = new BinlogPositionInfo(safeCheckPoint.getSafeCheckPointMarker(), 4L);
             } else {
                 throw new RuntimeException("Could not find start binlog in metadata or startup options");
             }
         }
 
-        lastKnownInfo.put(Constants.LAST_KNOWN_BINLOG_POSITION, position);
+        lastKnownInfo.put(Constants.LAST_KNOWN_BINLOG_POSITION, startBinlogPosition);
+
+        if (startBinlogPosition.greaterThan(new BinlogPositionInfo(configuration.getLastBinlogFileName(), 4L))) {
+            LOGGER.info(String.format(
+                    "The current position is beyond the last position you configured.\nThe current position is: %s %s",
+                    startBinlogPosition.getBinlogFilename(),
+                    startBinlogPosition.getBinlogPosition())
+            );
+            System.exit(1);
+        }
+
+        LOGGER.info(String.format(
+                "Starting replication from: %s %s",
+                startBinlogPosition.getBinlogFilename(),
+                startBinlogPosition.getBinlogPosition()));
+
+        // Queues
+        ReplicatorQueues replicatorQueues = new ReplicatorQueues();
 
         // Producer
         binlogEventProducer = new BinlogEventProducer(replicatorQueues.rawQueue, lastKnownInfo, configuration);

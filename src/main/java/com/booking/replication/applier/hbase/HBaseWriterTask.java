@@ -9,6 +9,7 @@ import com.booking.replication.augmenter.AugmentedRow;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
+import com.codahale.metrics.Timer;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.Put;
@@ -28,6 +29,7 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
 
     private static final Counter applierTasksInProgressCounter = Metrics.registry.counter(name("HBase", "applierTasksInProgressCounter"));
     private static final Meter rowOpsCommittedToHbase = Metrics.registry.meter(name("HBase", "rowOpsCommittedToHbase"));
+    private static final Timer putLatencyTimer = Metrics.registry.timer(name("HBase", "writerTaskLatency"));
 
     private final Connection hbaseConnection;
     private final HBaseApplierMutationGenerator mutationGenerator;
@@ -83,6 +85,7 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
 
                 int numberOfFlushedTablesInCurrentTransaction = 0;
 
+                final Timer.Context timerContext = putLatencyTimer.time();
                 for (final String bufferedMySQLTableName : taskTransactionBuffer.get(transactionUuid).keySet()) {
 
                     if (chaosMonkey.feelsLikeThrowingExceptionBeforeFlushingData()) {
@@ -128,6 +131,7 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
                         }
                     }
                 } // next table
+                timerContext.stop();
 
                 // data integrity check
                 if (numberOfTablesInCurrentTransaction != numberOfFlushedTablesInCurrentTransaction) {
@@ -154,7 +158,7 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
 
     private static class PerTableMetrics {
         private static String prefix = "HBase";
-        private static HashMap<String, PerTableMetrics> tableMetricsHash = new HashMap<>();
+        private static final HashMap<String, PerTableMetrics> tableMetricsHash = new HashMap<>();
 
         static PerTableMetrics get(String tableName) {
             synchronized (tableMetricsHash) {

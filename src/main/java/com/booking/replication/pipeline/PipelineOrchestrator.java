@@ -291,7 +291,7 @@ public class PipelineOrchestrator extends Thread {
                     String dbName = currentTransactionMetadata.getDBNameFromTableID(tableID);
                     LOGGER.debug("processing events for { db => " + dbName + " table => " + tableName + " } ");
                     LOGGER.debug("fakeMicrosecondCounter at tableMap event => " + fakeMicrosecondCounter);
-                    String hbaseTableName = dbName.toLowerCase()
+                    String hbaseTableName = configuration.getHbaseNamespace().toLowerCase()
                             + ":"
                             + tableName.toLowerCase();
                     if (configuration.getApplierType().equals("hbase")) {

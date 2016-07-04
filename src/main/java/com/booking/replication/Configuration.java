@@ -39,7 +39,6 @@ public class Configuration {
         public String       host;
         public int          port        = 3306;
         public int          server_id   = 1;
-        public int          shard_id;
     }
 
     @JsonDeserialize
@@ -164,7 +163,6 @@ public class Configuration {
         startingBinlogPosition = startupParameters.getBinlogPosition();
         endingBinlogFileName   = startupParameters.getLastBinlogFileName();
 
-        replication_schema.shard_id = startupParameters.getShard();
 
         // delta tables
         hbase.writeRecentChangesToDeltaTables = startupParameters.isDeltaTables();
@@ -291,10 +289,6 @@ public class Configuration {
 
     public String getActiveSchemaDB() {
         return metadata_store.database;
-    }
-
-    public int getReplicantShardID() {
-        return replication_schema.shard_id;
     }
 
     public String getHBaseQuorum() {

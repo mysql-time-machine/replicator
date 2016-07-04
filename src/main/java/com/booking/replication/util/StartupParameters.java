@@ -15,7 +15,6 @@ public class StartupParameters {
     private String  binlogFileName;
     private Long    binlogPosition;
     private String  lastBinlogFileName;
-    private Integer shard;
     private boolean deltaTables;
     private boolean initialSnapshot;
     private String  hbaseNamespace;
@@ -33,17 +32,8 @@ public class StartupParameters {
         // schema
         if (optionSet.hasArgument("schema")) {
             schema = optionSet.valueOf("schema").toString();
-            // shards can be specified in config file as ${schema_name}${shard_id}
-            String maybeNumber = schema.replaceAll("[A-Za-z]", "");
-            shard = StringUtils.isNotBlank(maybeNumber) ? Integer.parseInt(maybeNumber) : 0;
-            schema = schema.replaceAll("[0-9]","");
         } else {
             schema = "test";
-        }
-
-        // shard_id can also be explicity passed as cmd argument - that will overide config file setting
-        if (optionSet.hasArgument("shard")) {
-            shard = (Integer) optionSet.valueOf("shard");
         }
 
         // config-path
@@ -100,10 +90,6 @@ public class StartupParameters {
 
     public Long getBinlogPosition() {
         return binlogPosition;
-    }
-
-    public Integer getShard() {
-        return shard;
     }
 
     public boolean isDeltaTables() {

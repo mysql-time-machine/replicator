@@ -191,10 +191,6 @@ public class HBaseSchemaManager {
         Long eventTimestamp = event.getSchemaChangeEventTimestamp();
 
         String hbaseTableName = "schema_history:" + mySqlDbName.toLowerCase();
-        int shard = configuration.getReplicantShardID();
-        if (shard > 0) {
-            hbaseTableName += shard;
-        }
 
         String hbaseRowKey = eventTimestamp.toString();
         if (configuration.isInitialSnapshotMode()) {

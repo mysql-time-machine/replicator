@@ -36,7 +36,7 @@ public class Configuration {
         public String       name;
         public String       username;
         public String       password;
-        public List<String> slaves;
+        public String       host;
         public int          port        = 3306;
         public int          server_id   = 1;
         public int          shard_id;
@@ -186,8 +186,8 @@ public class Configuration {
         if (replication_schema.name == null) {
             throw new RuntimeException("Replication schema name cannot be null.");
         }
-        if (replication_schema.slaves == null) {
-            throw new RuntimeException("Replication schema slave list cannot be null.");
+        if (replication_schema.host == null) {
+            throw new RuntimeException("Replication schema host name cannot be null.");
         }
         if (replication_schema.username == null) {
             throw new RuntimeException("Replication schema user name cannot be null.");
@@ -244,7 +244,7 @@ public class Configuration {
     }
 
     public String getReplicantDBActiveHost() {
-        return this.replication_schema.slaves.get(0);
+        return this.replication_schema.host;
     }
 
     public String getReplicantDBUserName() {

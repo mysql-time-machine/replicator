@@ -20,10 +20,12 @@ import com.codahale.metrics.Timer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.OffsetOutOfRangeException;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,7 +52,7 @@ public class KafkaApplier implements Applier {
     private static final Counter exception_counter = Metrics.registry.counter(name("Kafka", "exceptionCounter"));
     private static final Counter outlier_counter = Metrics.registry.counter(name("Kafka", "outliersCounter"));
     private static final Timer closureTimer = Metrics.registry.timer(name("Kafka", "producerCloseTimer"));
-    private static final HashMap<Long, Long> lastCommited = new HashMap<>();
+    private static final HashMap<Integer, String> lastCommited = new HashMap<>();
     private int numberOfPartition;
     private String brokerAddress;
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaApplier.class);
@@ -104,32 +106,42 @@ public class KafkaApplier implements Applier {
         // Enable it to prevent duplicate messages
         LOGGER.info("Start to fetch last positions");
         getLastPosition();
-        LOGGER.info("Size of last commited hashmap: " + lastCommited.size());
-        for (Long i: lastCommited.keySet()) {
-            LOGGER.info("Show lastCommited partition: " + i.toString() + " -> uniqueID: " + lastCommited.get(i).toString());
+        LOGGER.info("Size of last committed hashmap: " + lastCommited.size());
+        for (Integer i: lastCommited.keySet()) {
+            LOGGER.info("Show last committed partition: " + i.toString() + " -> uniqueID: " + lastCommited.get(i));
         }
     }
 
     private void getLastPosition() throws IOException {
+        final int RoundLimit = 100;
         ConsumerRecords<String, String> records;
         final int POLL_TIME_OUT = 1000;
 
-        for (int i = 0;i < producer.partitionsFor(schemaName).size();i ++) {
-            TopicPartition partition = new TopicPartition(schemaName, i);
-            consumer.assign(Arrays.asList(partition));
+        for (PartitionInfo pi: producer.partitionsFor(schemaName)) {
+            TopicPartition partition = new TopicPartition(schemaName, pi.partition());
+            consumer.assign(Collections.singletonList(partition));
             // Edge case: brand new partition, offset 0
+            LOGGER.error("Position: " + String.valueOf(consumer.position(partition)));
             if (consumer.position(partition) > 0) {
                 LOGGER.info("Consumer seek to position -1");
                 consumer.seek(partition, consumer.position(partition) - 1);
-            }
-            records = consumer.poll(POLL_TIME_OUT);
-            for (ConsumerRecord<String, String> record : records) {
-                String cutString = record.value().substring(record.value().indexOf("uniqueID"));
-                // TODO: JsonDeserialization doesn't work for BinlogEventV4Header
-                // Now extracting uuid from String by index instead
-                Long uuid = Long.parseLong(cutString.substring("uniqueID': ".length(), cutString.indexOf(",") - 1));
-                if (!lastCommited.keySet().contains(i) || lastCommited.get(Long.valueOf(i)) < uuid) {
-                    lastCommited.put(Long.valueOf(i), uuid);
+                int round = 0;
+                while (!lastCommited.containsKey(pi.partition()) && round < RoundLimit) {
+                    records = consumer.poll(POLL_TIME_OUT);
+                    for (ConsumerRecord<String, String> record : records) {
+                        String cutString = record.value().substring(record.value().indexOf("uniqueID"));
+                        // TODO: JsonDeserialization doesn't work for BinlogEventV4Header
+                        // Now extracting uuid from String by index instead
+                        String uuid = cutString.substring("uniqueID': ".length(), cutString.indexOf(",") - 1);
+                        if (!lastCommited.containsKey(pi.partition()) || lastCommited.get(pi.partition()).compareTo(uuid) < 0) {
+                            lastCommited.put(pi.partition(), uuid);
+                        }
+                    }
+                    round++;
+                }
+                if (!lastCommited.containsKey(pi.partition())) {
+                    LOGGER.error("Poll failed, probably the messages get purged!");
+                    System.exit(1);
                 }
             }
         }
@@ -140,10 +152,10 @@ public class KafkaApplier implements Applier {
         ProducerRecord<String, String> message;
         long singleRowsCounter = 0;
         int partitionNum;
-        Long rowUniqueID;
+        String rowUniqueID;
+        String binlogFileName = augmentedSingleRowEvent.getBinlogFileName();
 
         totalEventsCounter ++;
-
         for (AugmentedRow row : augmentedSingleRowEvent.getSingleRowEvents()) {
             if (exceptionFlag.get()) {
                 throw new RuntimeException("Producer has problem with sending messages, could be a connection issue");
@@ -156,15 +168,15 @@ public class KafkaApplier implements Applier {
             String topic = row.getTableName();
             if (topicList.contains(topic)) {
                 totalRowsCounter++;
-                rowUniqueID = totalEventsCounter * 100 + singleRowsCounter ++;
+                rowUniqueID = binlogFileName + ":" + String.valueOf(totalEventsCounter * 100 + singleRowsCounter ++);
                 partitionNum = (row.getTableName().hashCode() % numberOfPartition + numberOfPartition) % numberOfPartition;
-                if (!lastCommited.keySet().contains(Long.valueOf(partitionNum))
-                        || rowUniqueID.compareTo(lastCommited.get(Long.valueOf(partitionNum))) > 0) {
-                    row.setUniqueID(rowUniqueID.toString());
+                if (!lastCommited.containsKey(partitionNum)
+                        || rowUniqueID.compareTo(lastCommited.get(partitionNum)) > 0) {
+                    row.setUniqueID(rowUniqueID);
                     message = new ProducerRecord<>(
                             schemaName,
                             partitionNum,
-                            String.valueOf(row.getEventV4Header().getPosition()),
+                            binlogFileName + ": " + String.valueOf(row.getEventV4Header().getPosition()),
                             row.toJson());
                     producer.send(message, new Callback() {
                         @Override
@@ -178,7 +190,7 @@ public class KafkaApplier implements Applier {
                         }
                     });
                     if (totalRowsCounter % 500 == 0) {
-                        LOGGER.warn("500 lines have been sent to Kafka broker...");
+                        LOGGER.info("500 lines have been sent to Kafka broker...");
                     }
                     kafka_messages.mark();
                 }

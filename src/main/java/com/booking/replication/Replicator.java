@@ -63,7 +63,8 @@ public class Replicator {
 
         lastKnownInfo.put(Constants.LAST_KNOWN_BINLOG_POSITION, startBinlogPosition);
 
-        if (startBinlogPosition.greaterThan(new BinlogPositionInfo(configuration.getLastBinlogFileName(), 4L))) {
+        if (configuration.getLastBinlogFileName() != null
+                && startBinlogPosition.greaterThan(new BinlogPositionInfo(configuration.getLastBinlogFileName(), 4L))) {
             LOGGER.info(String.format(
                     "The current position is beyond the last position you configured.\nThe current position is: %s %s",
                     startBinlogPosition.getBinlogFilename(),

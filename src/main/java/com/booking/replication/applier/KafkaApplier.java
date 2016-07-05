@@ -20,7 +20,6 @@ import com.codahale.metrics.Timer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.consumer.OffsetOutOfRangeException;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -56,6 +55,7 @@ public class KafkaApplier implements Applier {
     private int numberOfPartition;
     private String brokerAddress;
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaApplier.class);
+    private long eventPastPosition = 0;
 
     private static Properties getProducerProperties(String broker) {
         // Below is the new version of producer configuration
@@ -77,7 +77,7 @@ public class KafkaApplier implements Applier {
         // Consumer configuration
         Properties prop = new Properties();
         prop.put("bootstrap.servers", broker);
-        prop.put("group.id", "producer_wingman");
+        prop.put("group.id", "getLastCommittedMessages");
         prop.put("auto.offset.reset", "latest");
         prop.put("enable.auto.commit", "false");
         prop.put("auto.commit.interval.ms", "1000");
@@ -87,24 +87,23 @@ public class KafkaApplier implements Applier {
         return prop;
     }
 
+    /**
+     * kafka.producer.Producer provides the ability to batch multiple produce requests (producer.type=async),
+     * before serializing and dispatching them to the appropriate kafka broker partition. The size of the batch
+     * can be controlled by a few config parameters. As events enter a queue, they are buffered in a queue, until
+     * either queue.time or batch.size is reached. A background thread (kafka.producer.async.ProducerSendThread)
+     * dequeues the batch of data and lets the kafka.producer.DefaultEventHandler serialize and send the data to
+     * the appropriate kafka broker partition.
+     */
     public KafkaApplier(Configuration configuration) throws IOException {
-        /**
-         * kafka.producer.Producer provides the ability to batch multiple produce requests (producer.type=async),
-         * before serializing and dispatching them to the appropriate kafka broker partition. The size of the batch
-         * can be controlled by a few config parameters. As events enter a queue, they are buffered in a queue, until
-         * either queue.time or batch.size is reached. A background thread (kafka.producer.async.ProducerSendThread)
-         * dequeues the batch of data and lets the kafka.producer.DefaultEventHandler serialize and send the data to
-         * the appropriate kafka broker partition.
-         */
-
         brokerAddress = configuration.getKafkaBrokerAddress();
         producer = new KafkaProducer<>(getProducerProperties(brokerAddress));
         schemaName = configuration.getReplicantSchemaName();
         numberOfPartition = producer.partitionsFor(schemaName).size();
         consumer = new KafkaConsumer<>(getConsumerProperties(brokerAddress));
         topicList = configuration.getKafkaTopicList();
-        // Enable it to prevent duplicate messages
         LOGGER.info("Start to fetch last positions");
+        // Enable it to prevent duplicate messages
         getLastPosition();
         LOGGER.info("Size of last committed hashmap: " + lastCommited.size());
         for (Integer i: lastCommited.keySet()) {
@@ -118,13 +117,20 @@ public class KafkaApplier implements Applier {
         final int POLL_TIME_OUT = 1000;
 
         for (PartitionInfo pi: producer.partitionsFor(schemaName)) {
+            if (pi.partition() != 5 && pi.partition() != 1) {
+                continue;
+            }
             TopicPartition partition = new TopicPartition(schemaName, pi.partition());
             consumer.assign(Collections.singletonList(partition));
             // Edge case: brand new partition, offset 0
             LOGGER.error("Position: " + String.valueOf(consumer.position(partition)));
-            if (consumer.position(partition) > 0) {
+            long lastPosition = consumer.position(partition);
+            if (lastPosition > 0) {
                 LOGGER.info("Consumer seek to position -1");
-                consumer.seek(partition, consumer.position(partition) - 1);
+                consumer.seek(partition, lastPosition - 1);
+                if (consumer.position(partition) != lastPosition - 1) {
+                    LOGGER.error("Error seek position -1");
+                }
                 int round = 0;
                 while (!lastCommited.containsKey(pi.partition()) && round < RoundLimit) {
                     records = consumer.poll(POLL_TIME_OUT);
@@ -152,6 +158,8 @@ public class KafkaApplier implements Applier {
         ProducerRecord<String, String> message;
         long singleRowsCounter = 0;
         int partitionNum;
+        long eventPosition;
+        String topic;
         String rowUniqueID;
         String binlogFileName = augmentedSingleRowEvent.getBinlogFileName();
 
@@ -165,10 +173,15 @@ public class KafkaApplier implements Applier {
                 throw new RuntimeException("tableName does not exist");
             }
 
-            String topic = row.getTableName();
+            topic = row.getTableName();
+            eventPosition = row.getEventV4Header().getPosition();
+            if (eventPosition <= eventPastPosition) {
+                throw new RuntimeException("Something wrong with the event position. This should never happen.");
+            }
+            eventPastPosition = eventPosition;
             if (topicList.contains(topic)) {
                 totalRowsCounter++;
-                rowUniqueID = binlogFileName + ":" + String.valueOf(totalEventsCounter * 100 + singleRowsCounter ++);
+                rowUniqueID = String.format("%s:%020d:%03d", binlogFileName, eventPosition, singleRowsCounter ++);
                 partitionNum = (row.getTableName().hashCode() % numberOfPartition + numberOfPartition) % numberOfPartition;
                 if (!lastCommited.containsKey(partitionNum)
                         || rowUniqueID.compareTo(lastCommited.get(partitionNum)) > 0) {
@@ -176,7 +189,7 @@ public class KafkaApplier implements Applier {
                     message = new ProducerRecord<>(
                             schemaName,
                             partitionNum,
-                            binlogFileName + ": " + String.valueOf(row.getEventV4Header().getPosition()),
+                            rowUniqueID,
                             row.toJson());
                     producer.send(message, new Callback() {
                         @Override

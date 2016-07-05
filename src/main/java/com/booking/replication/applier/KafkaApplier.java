@@ -49,7 +49,7 @@ public class KafkaApplier implements Applier {
     private static final Meter kafka_messages = Metrics.registry.meter(name("Kafka", "producerToBroker"));
     private static final Counter exception_counter = Metrics.registry.counter(name("Kafka", "exceptionCounter"));
     private static final Counter outlier_counter = Metrics.registry.counter(name("Kafka", "outliersCounter"));
-    private static final Timer closureTimer = Metrics.registry.timer(name("Kafka", "producerCloseTimer"));
+    private static final Timer closingTimer = Metrics.registry.timer(name("Kafka", "producerCloseTimer"));
     private static final HashMap<Integer, String> lastCommited = new HashMap<>();
     private int numberOfPartition;
     private String brokerAddress;
@@ -105,38 +105,32 @@ public class KafkaApplier implements Applier {
 
     private void getLastPosition() throws IOException {
         // Method to fetch the last committed message in each partition of each topic.
-        final int RoundLimit = 100;
-        ConsumerRecords<String, String> records;
+        final int RetriesLimit = 100;
         final int POLL_TIME_OUT = 1000;
+        ConsumerRecord<String, String> lastRecord;
 
         for (PartitionInfo pi: producer.partitionsFor(schemaName)) {
-            if (pi.partition() != 5 && pi.partition() != 1) {
-                continue;
-            }
             TopicPartition partition = new TopicPartition(schemaName, pi.partition());
             consumer.assign(Collections.singletonList(partition));
             LOGGER.info("Position: " + String.valueOf(consumer.position(partition)));
-            long lastPosition = consumer.position(partition);
+            long endPosition = consumer.position(partition);
             // There is an edge case here. With a brand new partition, consumer position is equal to 0
-            if (lastPosition > 0) {
-                LOGGER.info("Consumer seek to position minus one");
-                consumer.seek(partition, lastPosition - 1);
-                if (consumer.position(partition) != lastPosition - 1) {
+            if (endPosition > 0) {
+                LOGGER.info(String.format("Consumer seek to position minus one, current position %d", endPosition));
+                consumer.seek(partition, endPosition - 1);
+                if (consumer.position(partition) != endPosition - 1) {
                     LOGGER.error("Error seek position minus one");
                 }
-                int round = 0;
-                while (!lastCommited.containsKey(pi.partition()) && round < RoundLimit) {
-                    records = consumer.poll(POLL_TIME_OUT);
-                    for (ConsumerRecord<String, String> record : records) {
-                        String cutString = record.value().substring(record.value().indexOf("uniqueID"));
-                        // TODO: JsonDeserialization doesn't work for BinlogEventV4Header
-                        // Now extracting uuid from String by index instead
-                        String uuid = cutString.substring("uniqueID': ".length(), cutString.indexOf(",") - 1);
-                        if (!lastCommited.containsKey(pi.partition()) || lastCommited.get(pi.partition()).compareTo(uuid) < 0) {
-                            lastCommited.put(pi.partition(), uuid);
-                        }
+                int retries = 0;
+                while (!lastCommited.containsKey(pi.partition()) && retries < RetriesLimit) {
+                    // We rewinded one element from the last one, the poll method will only returns a list contains one element,
+                    lastRecord = consumer.poll(POLL_TIME_OUT).iterator().next();
+                    // Now extracting uuid from String by index instead
+                    String uuid = lastRecord.key();
+                    if (!lastCommited.containsKey(pi.partition()) || lastCommited.get(pi.partition()).compareTo(uuid) < 0) {
+                        lastCommited.put(pi.partition(), uuid);
                     }
-                    round++;
+                    retries++;
                 }
                 if (!lastCommited.containsKey(pi.partition())) {
                     LOGGER.error("Poll failed, probably the messages get purged!");
@@ -176,6 +170,9 @@ public class KafkaApplier implements Applier {
                 }
                 eventLastUuid = rowUniqueID;
                 partitionNum = (row.getTableName().hashCode() % numberOfPartition + numberOfPartition) % numberOfPartition;
+                // Push to Kafka broker one of the following is true:
+                //     1. there are no rows on current partition
+                //     2. If current row's unique ID is greater than the last committed unique ID
                 if (!lastCommited.containsKey(partitionNum)
                         || rowUniqueID.compareTo(lastCommited.get(partitionNum)) > 0) {
                     row.setUniqueID(rowUniqueID);
@@ -232,7 +229,12 @@ public class KafkaApplier implements Applier {
 
     @Override
     public void forceFlush() {
-
+        final Timer.Context context = closingTimer.time();
+        // Producer close does the waiting, see documentation.
+        producer.close();
+        context.stop();
+        producer = new KafkaProducer<>(getProducerProperties(brokerAddress));
+        LOGGER.info("A new producer has been created");
     }
 
     @Override
@@ -242,7 +244,8 @@ public class KafkaApplier implements Applier {
 
     @Override
     public void waitUntilAllRowsAreCommitted(RotateEvent event) {
-        final Timer.Context context = closureTimer.time();
+        final Timer.Context context = closingTimer.time();
+        // Producer close does the waiting, see documentation.
         producer.close();
         context.stop();
         producer = new KafkaProducer<>(getProducerProperties(brokerAddress));

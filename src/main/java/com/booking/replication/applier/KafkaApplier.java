@@ -38,7 +38,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 
 public class KafkaApplier implements Applier {
-    private static long totalEventsCounter = 0;
     private static long totalRowsCounter = 0;
     private static long totalOutliersCounter = 0;
     private KafkaProducer<String, String> producer;
@@ -55,7 +54,7 @@ public class KafkaApplier implements Applier {
     private int numberOfPartition;
     private String brokerAddress;
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaApplier.class);
-    private long eventPastPosition = 0;
+    private String eventLastUuid = "";
 
     private static Properties getProducerProperties(String broker) {
         // Below is the new version of producer configuration
@@ -87,15 +86,8 @@ public class KafkaApplier implements Applier {
         return prop;
     }
 
-    /**
-     * kafka.producer.Producer provides the ability to batch multiple produce requests (producer.type=async),
-     * before serializing and dispatching them to the appropriate kafka broker partition. The size of the batch
-     * can be controlled by a few config parameters. As events enter a queue, they are buffered in a queue, until
-     * either queue.time or batch.size is reached. A background thread (kafka.producer.async.ProducerSendThread)
-     * dequeues the batch of data and lets the kafka.producer.DefaultEventHandler serialize and send the data to
-     * the appropriate kafka broker partition.
-     */
     public KafkaApplier(Configuration configuration) throws IOException {
+        // Constructor of KafkaApplier
         brokerAddress = configuration.getKafkaBrokerAddress();
         producer = new KafkaProducer<>(getProducerProperties(brokerAddress));
         schemaName = configuration.getReplicantSchemaName();
@@ -103,7 +95,7 @@ public class KafkaApplier implements Applier {
         consumer = new KafkaConsumer<>(getConsumerProperties(brokerAddress));
         topicList = configuration.getKafkaTopicList();
         LOGGER.info("Start to fetch last positions");
-        // Enable it to prevent duplicate messages
+        // Enable it to fetch lats committed messages on each partition to prevent duplicate messages
         getLastPosition();
         LOGGER.info("Size of last committed hashmap: " + lastCommited.size());
         for (Integer i: lastCommited.keySet()) {
@@ -112,6 +104,7 @@ public class KafkaApplier implements Applier {
     }
 
     private void getLastPosition() throws IOException {
+        // Method to fetch the last committed message in each partition of each topic.
         final int RoundLimit = 100;
         ConsumerRecords<String, String> records;
         final int POLL_TIME_OUT = 1000;
@@ -122,14 +115,14 @@ public class KafkaApplier implements Applier {
             }
             TopicPartition partition = new TopicPartition(schemaName, pi.partition());
             consumer.assign(Collections.singletonList(partition));
-            // Edge case: brand new partition, offset 0
-            LOGGER.error("Position: " + String.valueOf(consumer.position(partition)));
+            LOGGER.info("Position: " + String.valueOf(consumer.position(partition)));
             long lastPosition = consumer.position(partition);
+            // There is an edge case here. With a brand new partition, consumer position is equal to 0
             if (lastPosition > 0) {
-                LOGGER.info("Consumer seek to position -1");
+                LOGGER.info("Consumer seek to position minus one");
                 consumer.seek(partition, lastPosition - 1);
                 if (consumer.position(partition) != lastPosition - 1) {
-                    LOGGER.error("Error seek position -1");
+                    LOGGER.error("Error seek position minus one");
                 }
                 int round = 0;
                 while (!lastCommited.containsKey(pi.partition()) && round < RoundLimit) {
@@ -155,6 +148,7 @@ public class KafkaApplier implements Applier {
 
     @Override
     public void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedSingleRowEvent, PipelineOrchestrator caller) {
+        final int AggregationLimit = 500;
         ProducerRecord<String, String> message;
         long singleRowsCounter = 0;
         int partitionNum;
@@ -163,7 +157,6 @@ public class KafkaApplier implements Applier {
         String rowUniqueID;
         String binlogFileName = augmentedSingleRowEvent.getBinlogFileName();
 
-        totalEventsCounter ++;
         for (AugmentedRow row : augmentedSingleRowEvent.getSingleRowEvents()) {
             if (exceptionFlag.get()) {
                 throw new RuntimeException("Producer has problem with sending messages, could be a connection issue");
@@ -175,13 +168,13 @@ public class KafkaApplier implements Applier {
 
             topic = row.getTableName();
             eventPosition = row.getEventV4Header().getPosition();
-            if (eventPosition <= eventPastPosition) {
-                throw new RuntimeException("Something wrong with the event position. This should never happen.");
-            }
-            eventPastPosition = eventPosition;
             if (topicList.contains(topic)) {
                 totalRowsCounter++;
                 rowUniqueID = String.format("%s:%020d:%03d", binlogFileName, eventPosition, singleRowsCounter ++);
+                if (rowUniqueID.compareTo(eventLastUuid) <= 0) {
+                    throw new RuntimeException("Something wrong with the event position. This should never happen.");
+                }
+                eventLastUuid = rowUniqueID;
                 partitionNum = (row.getTableName().hashCode() % numberOfPartition + numberOfPartition) % numberOfPartition;
                 if (!lastCommited.containsKey(partitionNum)
                         || rowUniqueID.compareTo(lastCommited.get(partitionNum)) > 0) {
@@ -202,15 +195,15 @@ public class KafkaApplier implements Applier {
                             }
                         }
                     });
-                    if (totalRowsCounter % 500 == 0) {
-                        LOGGER.info("500 lines have been sent to Kafka broker...");
+                    if (totalRowsCounter % AggregationLimit == 0) {
+                        LOGGER.info(String.format("%d lines have been sent to Kafka broker...", AggregationLimit));
                     }
                     kafka_messages.mark();
                 }
             } else {
                 totalOutliersCounter ++;
                 if (totalOutliersCounter % 500 == 0) {
-                    LOGGER.warn("Over 500 non-supported topics, for example: " + topic);
+                    LOGGER.warn(String.format("Over %d non-supported topics, for example: %s", AggregationLimit, topic));
                 }
                 outlier_counter.inc();
             }
@@ -252,7 +245,7 @@ public class KafkaApplier implements Applier {
         final Timer.Context context = closureTimer.time();
         producer.close();
         context.stop();
-        LOGGER.warn("New producer");
         producer = new KafkaProducer<>(getProducerProperties(brokerAddress));
+        LOGGER.info("A new producer has been created");
     }
 }

@@ -1,12 +1,14 @@
 package com.booking.replication.applier.hbase;
 
+import com.booking.replication.applier.TaskStatus;
+
 /**
  * Created by bosko on 3/17/16.
  */
 public class HBaseTaskResult {
 
     private final String taskUuid;
-    private final int taskStatus;
+    private final TaskStatus taskStatus;
     private final boolean taskSucceeded;
 
     /**
@@ -17,7 +19,7 @@ public class HBaseTaskResult {
      */
     public HBaseTaskResult(
             String uuid,
-            int status,
+            TaskStatus status,
             boolean success
     ) {
         taskSucceeded = success;
@@ -33,7 +35,7 @@ public class HBaseTaskResult {
         return taskSucceeded;
     }
 
-    public int getTaskStatus() {
+    public TaskStatus getTaskStatus() {
         return taskStatus;
     }
 

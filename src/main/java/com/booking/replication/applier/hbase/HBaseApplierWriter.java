@@ -3,8 +3,7 @@ package com.booking.replication.applier.hbase;
 import static com.codahale.metrics.MetricRegistry.name;
 
 import com.booking.replication.Metrics;
-import com.booking.replication.applier.TaskStatusCatalog;
-import com.booking.replication.applier.TransactionStatus;
+import com.booking.replication.applier.TaskStatus;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 
@@ -123,7 +122,7 @@ public class HBaseApplierWriter {
      */
     public boolean areAllTasksDone() {
         for (ApplierTask v: taskTransactionBuffer.values()) {
-            if (v.getTaskStatus() != TaskStatusCatalog.WRITE_SUCCEEDED) {
+            if (v.getTaskStatus() != TaskStatus.WRITE_SUCCEEDED) {
                 return false;
             }
         }
@@ -198,7 +197,7 @@ public class HBaseApplierWriter {
         currentTransactionUUID = UUID.randomUUID().toString();
 
         taskTransactionBuffer
-                .put(currentTaskUuid, new ApplierTask(TaskStatusCatalog.READY_FOR_BUFFERING));
+                .put(currentTaskUuid, new ApplierTask(TaskStatus.READY_FOR_BUFFERING));
         taskTransactionBuffer.get(currentTaskUuid)
                 .put(currentTransactionUUID, new TransactionProxy());
     }
@@ -253,9 +252,8 @@ public class HBaseApplierWriter {
      * Flushing utility function.
      */
     public void markCurrentTransactionForCommit() {
-
         // mark
-        taskTransactionBuffer.get(currentTaskUuid).get(currentTransactionUUID).setStatus(TransactionStatus.READY_FOR_COMMIT);
+        taskTransactionBuffer.get(currentTaskUuid).get(currentTransactionUUID).setReadyForCommit();
 
         // open a new transaction slot and set it as the current transaction
         currentTransactionUUID = UUID.randomUUID().toString();
@@ -272,7 +270,7 @@ public class HBaseApplierWriter {
         // mark current uuid buffer as READY_FOR_PICK_UP unless there are no
         // rows buffered (then just keep the buffer ready for next binlog file)
         if (rowsBufferedInCurrentTask.get() > 0) {
-            taskTransactionBuffer.get(currentTaskUuid).setTaskStatus(TaskStatusCatalog.READY_FOR_PICK_UP);
+            taskTransactionBuffer.get(currentTaskUuid).setTaskStatus(TaskStatus.READY_FOR_PICK_UP);
         } else {
             return;
         }
@@ -280,7 +278,7 @@ public class HBaseApplierWriter {
         // create new uuid buffer
         String newTaskUuid = UUID.randomUUID().toString();
 
-        taskTransactionBuffer.put(newTaskUuid, new ApplierTask(TaskStatusCatalog.READY_FOR_BUFFERING));
+        taskTransactionBuffer.put(newTaskUuid, new ApplierTask(TaskStatus.READY_FOR_BUFFERING));
 
         // Check if there is an open/unfinished transaction in current UUID task buffer and
         // if so, create/reserve the corresponding transaction UUID in the new UUID task buffer
@@ -290,7 +288,7 @@ public class HBaseApplierWriter {
         // to be able to identify mutations in HBase which were part of the same transaction.
         int openTransactions = 0;
         for (String transactionUuid : taskTransactionBuffer.get(currentTaskUuid).keySet()) {
-            if (taskTransactionBuffer.get(currentTaskUuid).get(transactionUuid).getStatus() == TransactionStatus.OPEN) {
+            if (!taskTransactionBuffer.get(currentTaskUuid).get(transactionUuid).isReadyForCommit()) {
                 openTransactions++;
                 if (openTransactions > 1) {
                     LOGGER.error("More than one partial transaction in the buffer. Should never happen! Exiting...");
@@ -308,7 +306,7 @@ public class HBaseApplierWriter {
         // update task queue size
         long queueSize = 0;
         for (ApplierTask v : taskTransactionBuffer.values()) {
-            if (v.getTaskStatus() == TaskStatusCatalog.READY_FOR_PICK_UP) {
+            if (v.getTaskStatus() == TaskStatus.READY_FOR_PICK_UP) {
                 queueSize++;
             }
         }
@@ -330,39 +328,15 @@ public class HBaseApplierWriter {
         }
 
         for (String taskUuid : taskUUIDs) {
-            switch (taskTransactionBuffer.get(taskUuid).getTaskStatus()) {
-                case TaskStatusCatalog.WRITE_IN_PROGRESS:
-                    LOGGER.info("task " + taskUuid + " => " + "WRITE_IN_PROGRESS");
-                    break;
-                case TaskStatusCatalog.WRITE_FAILED:
-                    LOGGER.info("task " + taskUuid + " => " + "WRITE_FAILED");
-                    break;
-                case TaskStatusCatalog.TASK_SUBMITTED:
-                    LOGGER.info("task " + taskUuid + " => " + "TASK_SUBMITTED");
-                    break;
-                case TaskStatusCatalog.READY_FOR_PICK_UP:
-                    LOGGER.info("task " + taskUuid + " => " + "READY_FOR_PICK_UP");
-                    break;
-                case TaskStatusCatalog.READY_FOR_BUFFERING:
-                    LOGGER.info("task " + taskUuid + " => " + "READY_FOR_BUFFERING");
-                    if (taskHasRowsBuffered(taskUuid)) {
-                        taskTransactionBuffer.get(taskUuid).setTaskStatus(TaskStatusCatalog.READY_FOR_PICK_UP);
-                        LOGGER.info("Marked task " + taskUuid + " as READY_FOR_PICK_UP");
-                    } else {
-                        // cant flush empty task
-                        taskTransactionBuffer.remove(taskUuid);
-                    }
-                    break;
-                case TaskStatusCatalog.WRITE_SUCCEEDED:
-                    LOGGER.info("task " + taskUuid + " => " + "WRITE_SUCCEEDED");
-                    break;
-                default:
-                    LOGGER.info(String.format(
-                            "task %s => " + "UNKNOWN STATUS => %s",
-                            taskUuid,
-                            taskTransactionBuffer.get(taskUuid).getTaskStatus()
-                    ));
-                    break;
+            LOGGER.info(String.format("Task %s => %s", taskUuid, taskTransactionBuffer.get(taskUuid).getTaskStatus().toString()));
+            if (taskTransactionBuffer.get(taskUuid).getTaskStatus() == TaskStatus.READY_FOR_BUFFERING) {
+                if (taskHasRowsBuffered(taskUuid)) {
+                    taskTransactionBuffer.get(taskUuid).setTaskStatus(TaskStatus.READY_FOR_PICK_UP);
+                    LOGGER.info("Marked task " + taskUuid + " as READY_FOR_PICK_UP");
+                } else {
+                    // cant flush empty task
+                    taskTransactionBuffer.remove(taskUuid);
+                }
             }
         }
     }
@@ -426,9 +400,9 @@ public class HBaseApplierWriter {
                     HBaseTaskResult taskResult = taskFuture.get(); // raise exceptions if any
                     boolean taskSucceeded = taskResult.isTaskSucceeded();
 
-                    int statusOfDoneTask = taskResult.getTaskStatus();
+                    TaskStatus statusOfDoneTask = taskResult.getTaskStatus();
 
-                    if (statusOfDoneTask == TaskStatusCatalog.WRITE_SUCCEEDED) {
+                    if (statusOfDoneTask == TaskStatus.WRITE_SUCCEEDED) {
                         if (!taskSucceeded) {
                             throw new Exception("Inconsistent success reports for task " + submittedTaskUuid);
                         }
@@ -439,7 +413,7 @@ public class HBaseApplierWriter {
                         // if there is an open transaction UUID in this task, it has
                         // already been copied to the new/next task
                         taskTransactionBuffer.remove(submittedTaskUuid);
-                    } else if (statusOfDoneTask == TaskStatusCatalog.WRITE_FAILED) {
+                    } else if (statusOfDoneTask == TaskStatus.WRITE_FAILED) {
                         if (taskSucceeded) {
                             throw new Exception("Inconsistent failure reports for task " + submittedTaskUuid);
                         }
@@ -485,7 +459,7 @@ public class HBaseApplierWriter {
     private void requeueTask(String failedTaskUuid) {
         // keep the mutation buffer, just change the status so this task is picked up again
         taskTransactionBuffer.get(failedTaskUuid).setTaskFuture(null);
-        taskTransactionBuffer.get(failedTaskUuid).setTaskStatus(TaskStatusCatalog.READY_FOR_PICK_UP);
+        taskTransactionBuffer.get(failedTaskUuid).setTaskStatus(TaskStatus.READY_FOR_PICK_UP);
     }
 
     private boolean taskHasRowsBuffered(String taskUuid) {
@@ -560,11 +534,11 @@ public class HBaseApplierWriter {
             }
 
             // submit task
-            if ((taskTransactionBuffer.get(taskUuid).getTaskStatus() == TaskStatusCatalog.READY_FOR_PICK_UP)) {
+            if ((taskTransactionBuffer.get(taskUuid).getTaskStatus() == TaskStatus.READY_FOR_PICK_UP)) {
                 if (taskHasRows) {
                     LOGGER.info("Submitting task " + taskUuid);
 
-                    taskTransactionBuffer.get(taskUuid).setTaskStatus(TaskStatusCatalog.TASK_SUBMITTED);
+                    taskTransactionBuffer.get(taskUuid).setTaskStatus(TaskStatus.TASK_SUBMITTED);
 
                     applierTasksSubmittedCounter.inc();
 

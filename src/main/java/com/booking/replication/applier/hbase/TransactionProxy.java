@@ -1,19 +1,18 @@
 package com.booking.replication.applier.hbase;
 
-import com.booking.replication.applier.TransactionStatus;
 import com.booking.replication.augmenter.AugmentedRow;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 
 class TransactionProxy extends HashMap<String, ArrayList<AugmentedRow>> {
-    private int status = TransactionStatus.OPEN;
+    private Boolean isReady = false;
 
-    int getStatus() {
-        return status;
+    Boolean isReadyForCommit() {
+        return isReady;
     }
 
-    void setStatus(int status) {
-        this.status = status;
+    void setReadyForCommit() {
+        this.isReady = true;
     }
 }

@@ -4,7 +4,7 @@ import static com.codahale.metrics.MetricRegistry.name;
 
 import com.booking.replication.Metrics;
 import com.booking.replication.applier.ChaosMonkey;
-import com.booking.replication.applier.TaskStatusCatalog;
+import com.booking.replication.applier.TaskStatus;
 import com.booking.replication.augmenter.AugmentedRow;
 
 import com.codahale.metrics.Counter;
@@ -59,101 +59,94 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
 
     @Override
     public HBaseTaskResult call() throws Exception {
-        try {
-            ChaosMonkey chaosMonkey = new ChaosMonkey();
+        ChaosMonkey chaosMonkey = new ChaosMonkey();
 
-            if (chaosMonkey.feelsLikeThrowingExceptionAfterTaskSubmitted()) {
-                throw new Exception("Chaos monkey exception for submitted task!");
-            }
+        if (chaosMonkey.feelsLikeThrowingExceptionAfterTaskSubmitted()) {
+            throw new Exception("Chaos monkey exception for submitted task!");
+        }
 
-            if (chaosMonkey.feelsLikeFailingSubmitedTaskWithoutException()) {
-                return new HBaseTaskResult(taskUuid, TaskStatusCatalog.WRITE_FAILED, false);
-            }
+        if (chaosMonkey.feelsLikeFailingSubmitedTaskWithoutException()) {
+            return new HBaseTaskResult(taskUuid, TaskStatus.WRITE_FAILED, false);
+        }
 
-            applierTasksInProgressCounter.inc();
+        applierTasksInProgressCounter.inc();
 
-            if (chaosMonkey.feelsLikeThrowingExceptionForTaskInProgress()) {
-                throw new Exception("Chaos monkey exception for task in progress!");
-            }
-            if (chaosMonkey.feelsLikeFailingTaskInProgessWithoutException()) {
-                return new HBaseTaskResult(taskUuid, TaskStatusCatalog.WRITE_FAILED, false);
-            }
+        if (chaosMonkey.feelsLikeThrowingExceptionForTaskInProgress()) {
+            throw new Exception("Chaos monkey exception for task in progress!");
+        }
+        if (chaosMonkey.feelsLikeFailingTaskInProgessWithoutException()) {
+            return new HBaseTaskResult(taskUuid, TaskStatus.WRITE_FAILED, false);
+        }
 
-            for (final String transactionUuid : taskTransactionBuffer.keySet()) {
+        for (final String transactionUuid : taskTransactionBuffer.keySet()) {
 
-                int numberOfTablesInCurrentTransaction = taskTransactionBuffer.get(transactionUuid).keySet().size();
+            int numberOfTablesInCurrentTransaction = taskTransactionBuffer.get(transactionUuid).keySet().size();
 
-                int numberOfFlushedTablesInCurrentTransaction = 0;
+            int numberOfFlushedTablesInCurrentTransaction = 0;
 
-                final Timer.Context timerContext = putLatencyTimer.time();
-                for (final String bufferedMySQLTableName : taskTransactionBuffer.get(transactionUuid).keySet()) {
+            final Timer.Context timerContext = putLatencyTimer.time();
+            for (final String bufferedMySQLTableName : taskTransactionBuffer.get(transactionUuid).keySet()) {
 
-                    if (chaosMonkey.feelsLikeThrowingExceptionBeforeFlushingData()) {
-                        throw new Exception("Chaos monkey is here to prevent call to flush!!!");
-                    } else if (chaosMonkey.feelsLikeFailingDataFlushWithoutException()) {
-                        return new HBaseTaskResult(taskUuid, TaskStatusCatalog.WRITE_FAILED, false);
-                    } else {
-                        List<AugmentedRow> rowOps = taskTransactionBuffer.get(transactionUuid).get(bufferedMySQLTableName);
+                if (chaosMonkey.feelsLikeThrowingExceptionBeforeFlushingData()) {
+                    throw new Exception("Chaos monkey is here to prevent call to flush!!!");
+                } else if (chaosMonkey.feelsLikeFailingDataFlushWithoutException()) {
+                    return new HBaseTaskResult(taskUuid, TaskStatus.WRITE_FAILED, false);
+                } else {
+                    List<AugmentedRow> rowOps = taskTransactionBuffer.get(transactionUuid).get(bufferedMySQLTableName);
 
-                        HashMap<String, HashMap<String, List<Triple<String, String, Put>>>> preparedMutations =
-                                mutationGenerator.generateMutationsFromAugmentedRows(rowOps);
+                    HashMap<String, HashMap<String, List<Triple<String, String, Put>>>> preparedMutations =
+                            mutationGenerator.generateMutationsFromAugmentedRows(rowOps);
 
-                        if (!preparedMutations.containsKey("mirrored")) {
-                            LOGGER.error("Missing mirrored key from preparedMutations!");
-                            System.exit(-1);
-                        }
+                    if (!preparedMutations.containsKey("mirrored")) {
+                        LOGGER.error("Missing mirrored key from preparedMutations!");
+                        System.exit(-1);
+                    }
 
-                        for (String type: "mirrored delta".split(" ")) {
+                    for (String type: "mirrored delta".split(" ")) {
 
-                            for (String hbaseTableName : preparedMutations.get(type).keySet()) {
+                        for (String hbaseTableName : preparedMutations.get(type).keySet()) {
 
-                                List<Put> puts = new ArrayList<>();
+                            List<Put> puts = new ArrayList<>();
 
-                                for (Triple<String, String, Put> augmentedMutation :
-                                        preparedMutations.get(type).get(hbaseTableName)) {
-                                    puts.add(augmentedMutation.getThird());
-                                }
-
-                                if (!DRY_RUN) {
-                                    TableName tableName = TableName.valueOf(hbaseTableName);
-                                    Table hbaseTable = hbaseConnection.getTable(tableName);
-                                    hbaseTable.put(puts);
-                                }
-
-                                if (type.equals("mirrored")) {
-                                    numberOfFlushedTablesInCurrentTransaction++;
-                                }
-
-                                PerTableMetrics.get(hbaseTableName).committed.inc(puts.size());
-
-                                rowOpsCommittedToHbase.mark(puts.size());
+                            for (Triple<String, String, Put> augmentedMutation :
+                                    preparedMutations.get(type).get(hbaseTableName)) {
+                                puts.add(augmentedMutation.getThird());
                             }
+
+                            if (!DRY_RUN) {
+                                TableName tableName = TableName.valueOf(hbaseTableName);
+                                Table hbaseTable = hbaseConnection.getTable(tableName);
+                                hbaseTable.put(puts);
+                            }
+
+                            if (type.equals("mirrored")) {
+                                numberOfFlushedTablesInCurrentTransaction++;
+                            }
+
+                            PerTableMetrics.get(hbaseTableName).committed.inc(puts.size());
+
+                            rowOpsCommittedToHbase.mark(puts.size());
                         }
                     }
-                } // next table
-                timerContext.stop();
-
-                // data integrity check
-                if (numberOfTablesInCurrentTransaction != numberOfFlushedTablesInCurrentTransaction) {
-                    LOGGER.error(String.format("Failed integrity check number of tables: %s != %s",
-                            numberOfTablesInCurrentTransaction,
-                            numberOfFlushedTablesInCurrentTransaction));
-                    return new HBaseTaskResult(taskUuid, TaskStatusCatalog.WRITE_FAILED, false);
                 }
-            } // next transaction
+            } // next table
+            timerContext.stop();
 
-            // task result
-            return new HBaseTaskResult(
-                    taskUuid,
-                    TaskStatusCatalog.WRITE_SUCCEEDED,
-                    true
-            );
-        } catch (NullPointerException e) {
-            LOGGER.error("NullPointerException in future", e);
-            e.printStackTrace();
-            System.exit(1);
-        }
-        return null;
+            // data integrity check
+            if (numberOfTablesInCurrentTransaction != numberOfFlushedTablesInCurrentTransaction) {
+                LOGGER.error(String.format("Failed integrity check number of tables: %s != %s",
+                        numberOfTablesInCurrentTransaction,
+                        numberOfFlushedTablesInCurrentTransaction));
+                return new HBaseTaskResult(taskUuid, TaskStatus.WRITE_FAILED, false);
+            }
+        } // next transaction
+
+        // task result
+        return new HBaseTaskResult(
+                taskUuid,
+                TaskStatus.WRITE_SUCCEEDED,
+                true
+        );
     }
 
     private static class PerTableMetrics {
@@ -175,6 +168,4 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
             committed   = Metrics.registry.counter(name(prefix, tableName, "committed"));
         }
     }
-
-
 }

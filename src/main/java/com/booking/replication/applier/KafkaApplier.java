@@ -108,6 +108,7 @@ public class KafkaApplier implements Applier {
         final int RetriesLimit = 100;
         final int POLL_TIME_OUT = 1000;
         ConsumerRecord<String, String> lastRecord;
+        ConsumerRecords<String, String> records;
 
         for (PartitionInfo pi: producer.partitionsFor(schemaName)) {
             TopicPartition partition = new TopicPartition(schemaName, pi.partition());
@@ -123,18 +124,21 @@ public class KafkaApplier implements Applier {
                 }
                 int retries = 0;
                 while (!lastCommited.containsKey(pi.partition()) && retries < RetriesLimit) {
-                    // We rewinded one element from the last one, the poll method will only returns a list contains one element,
-                    lastRecord = consumer.poll(POLL_TIME_OUT).iterator().next();
-                    // Now extracting uuid from String by index instead
-                    String uuid = lastRecord.key();
-                    if (!lastCommited.containsKey(pi.partition()) || lastCommited.get(pi.partition()).compareTo(uuid) < 0) {
-                        lastCommited.put(pi.partition(), uuid);
+                    // We rewound one element from the last one, the poll method will only returns a list contains one element,
+                    records = consumer.poll(POLL_TIME_OUT);
+                    if (!records.isEmpty()) {
+                        lastRecord = records.iterator().next();
+                        // Now extracting uuid from String by index instead
+                        String uuid = lastRecord.key();
+                        if (!lastCommited.containsKey(pi.partition()) || lastCommited.get(pi.partition()).compareTo(uuid) < 0) {
+                            lastCommited.put(pi.partition(), uuid);
+                        }
                     }
                     retries++;
                 }
                 if (!lastCommited.containsKey(pi.partition())) {
                     LOGGER.error("Poll failed, probably the messages get purged!");
-                    System.exit(1);
+                    throw new RuntimeException("Poll failed, probably the messages get purged!");
                 }
             }
         }
@@ -193,7 +197,7 @@ public class KafkaApplier implements Applier {
                         }
                     });
                     if (totalRowsCounter % AggregationLimit == 0) {
-                        LOGGER.info(String.format("%d lines have been sent to Kafka broker...", AggregationLimit));
+                        LOGGER.info(String.format("%d lines have been batched, will send to Kafka broker...", AggregationLimit));
                     }
                     kafka_messages.mark();
                 }

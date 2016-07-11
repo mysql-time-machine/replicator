@@ -4,6 +4,7 @@ import com.booking.replication.Configuration;
 import com.booking.replication.schema.column.ColumnSchema;
 import com.booking.replication.schema.column.types.EnumColumnSchema;
 import com.booking.replication.schema.column.types.SetColumnSchema;
+import com.booking.replication.schema.exception.SchemaTransitionException;
 import com.booking.replication.schema.table.TableSchema;
 import com.booking.replication.util.JsonBuilder;
 
@@ -187,11 +188,14 @@ public class ActiveSchemaVersion {
      * @param sequence Sequence of DDL statements for schema transition
      * @return ActiveSchemaVersion
      */
-    public ActiveSchemaVersion applyDDL(HashMap<String,String> sequence) {
+    public ActiveSchemaVersion applyDDL(HashMap<String,String> sequence)
+            throws SchemaTransitionException {
 
         LOGGER.info("GOT DDL => " + sequence.get("ddl"));
 
         Connection con = null;
+
+        boolean ddlApplied = false;
 
         try {
             // applyAugmentedRowsEvent DDL
@@ -220,6 +224,8 @@ public class ActiveSchemaVersion {
             this.loadActiveSchema();
             LOGGER.info("Successfully loaded new active schema version");
 
+            ddlApplied = true;
+
         } catch (SQLException e) {
             e.printStackTrace();
             LOGGER.error("FATAL: failed to execute DDL statement on active schema.", e);
@@ -231,6 +237,10 @@ public class ActiveSchemaVersion {
             } catch (SQLException e) {
                 e.printStackTrace();
             }
+        }
+
+        if (!ddlApplied) {
+            throw new SchemaTransitionException("Failed to apply DDL statement on active schema");
         }
         return this;
     }

@@ -66,15 +66,6 @@ public class Overseer extends Thread {
         doMonitor = true;
     }
 
-    //todo: Make this check better
-    private void makeSurePipelineIsRunning() {
-        if (!pipelineOrchestrator.isRunning()) {
-            LOGGER.info("PipelineOrchestrator is not running!");
-        } else {
-            System.exit(-1);
-        }
-    }
-
     private void makeSureProducerIsRunning() {
         if (!producer.getOpenReplicator().isRunning()) {
             LOGGER.warn("Producer stopped running. OR position: "

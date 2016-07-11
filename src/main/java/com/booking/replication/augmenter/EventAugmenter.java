@@ -211,11 +211,11 @@ public class EventAugmenter {
                 au = augmentDeleteRowsEventV2(deleteRowsEventV2, caller);
                 break;
             default:
-                throw new TableMapException("RBR event type expected! Received type: " + event.getHeader().getEventType());
+                throw new TableMapException("RBR event type expected! Received type: " + event.getHeader().getEventType(), event);
         }
 
         if (au == null) {
-            throw  new TableMapException("Augmented event ended up as null - something went wrong!");
+            throw  new TableMapException("Augmented event ended up as null - something went wrong!", event);
         }
 
         return au;
@@ -232,7 +232,7 @@ public class EventAugmenter {
         TableSchema tableSchema = activeSchemaVersion.getActiveSchemaTables().get(tableName);
 
         if (tableSchema == null) {
-            throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.");
+            throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.", writeRowsEvent);
         }
 
         AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent(writeRowsEvent);
@@ -289,7 +289,7 @@ public class EventAugmenter {
 
         // TODO: refactor
         if (tableSchema == null) {
-            throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.");
+            throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.", writeRowsEvent);
         }
 
         int numberOfColumns = writeRowsEvent.getColumnCount().intValue();
@@ -345,7 +345,7 @@ public class EventAugmenter {
 
         // TODO: refactor
         if (tableSchema == null) {
-            throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.");
+            throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.", deleteRowsEvent);
         }
         AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent(deleteRowsEvent);
         augEventGroup.setMysqlTableName(tableName);
@@ -398,7 +398,7 @@ public class EventAugmenter {
 
         // TODO: refactor
         if (tableSchema == null) {
-            throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.");
+            throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.", deleteRowsEvent);
         }
 
         AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent(deleteRowsEvent);
@@ -451,7 +451,7 @@ public class EventAugmenter {
 
         // TODO: refactor
         if (tableSchema == null) {
-            throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.");
+            throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.", upEvent);
         }
 
         AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent(upEvent);
@@ -508,7 +508,7 @@ public class EventAugmenter {
 
         // TODO: refactor
         if (tableSchema == null) {
-            throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.");
+            throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.", upEvent);
         }
 
         AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent(upEvent);
@@ -535,7 +535,7 @@ public class EventAugmenter {
 
                 if (columnName == null) {
                     LOGGER.error("null columnName for { columnIndex => " + columnIndex + ", tableName => " + tableName + " }" );
-                    throw new TableMapException("columnName cant be null");
+                    throw new TableMapException("columnName cant be null", upEvent);
                 }
 
                 // but here index goes from 0..

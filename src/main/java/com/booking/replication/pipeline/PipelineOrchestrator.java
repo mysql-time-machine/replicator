@@ -295,7 +295,7 @@ public class PipelineOrchestrator extends Thread {
                             + ":"
                             + tableName.toLowerCase();
                     if (configuration.getApplierType().equals("hbase")) {
-                        if (!hBaseSchemaManager.isTableKnownToHBase(hbaseTableName)) {
+                        if (! hBaseSchemaManager.isTableKnownToHBase(hbaseTableName)) {
                             // This should not happen in tableMapEvent, unless we are
                             // replaying the binlog.
                             // TODO: load hbase tables on start-up so this never happens
@@ -314,7 +314,7 @@ public class PipelineOrchestrator extends Thread {
                                         configuration.getHbaseNamespace(),
                                         mysqlTableName,
                                         configuration.isInitialSnapshotMode());
-                                if (!hBaseSchemaManager.isTableKnownToHBase(deltaTableName)) {
+                                if (! hBaseSchemaManager.isTableKnownToHBase(deltaTableName)) {
                                     boolean isInitialSnapshotMode = configuration.isInitialSnapshotMode();
                                     hBaseSchemaManager.createDeltaTableIfNotExists(deltaTableName, isInitialSnapshotMode);
                                 }

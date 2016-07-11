@@ -545,10 +545,14 @@ public class EventAugmenter {
                 // We need schema for proper type casting
                 ColumnSchema columnSchema = tableSchema.getColumnSchemaByColumnName(columnName);
 
-                String valueBefore = Converter.orTypeToString(columnValueBefore, columnSchema);
-                String valueAfter  = Converter.orTypeToString(columnValueAfter, columnSchema);
+                try {
+                    String valueBefore = Converter.orTypeToString(columnValueBefore, columnSchema);
+                    String valueAfter = Converter.orTypeToString(columnValueAfter, columnSchema);
 
-                augEvent.addColumnDataForUpdate(columnName, valueBefore, valueAfter);
+                    augEvent.addColumnDataForUpdate(columnName, valueBefore, valueAfter);
+                } catch (TableMapException e) {
+                    throw new TableMapException(e.getMessage(), upEvent);
+                }
             }
             augEventGroup.addSingleRowEvent(augEvent);
         }

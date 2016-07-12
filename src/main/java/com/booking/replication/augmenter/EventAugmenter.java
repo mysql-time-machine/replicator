@@ -98,7 +98,7 @@ public class EventAugmenter {
 
             String replicatedSchema = schemaTransitionSequence.get("databaseName");
             String activeSchemaTransitionDDL = rewriteActiveSchemaName(ddl, replicatedSchema);
-            LOGGER.debug(String.format("Active schema: %s\nApplying alter table:\n%s",
+            LOGGER.debug(String.format("Active schema: %s Applying alter table: %s",
                     replicatedSchema,
                     activeSchemaTransitionDDL
                     ));

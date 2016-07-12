@@ -190,7 +190,7 @@ public class PipelineOrchestrator extends Thread {
                         eventsSkippedCounter.mark();
                     }
                 } else {
-                    LOGGER.info("Pipeline report: no items in producer event rawQueue. Will sleep for 0.5s and check again.");
+                    LOGGER.debug("Pipeline report: no items in producer event rawQueue. Will sleep for 0.5s and check again.");
                     Thread.sleep(500);
                     long currentTime = System.currentTimeMillis();
                     long timeDiff = currentTime - timeOfLastEvent;

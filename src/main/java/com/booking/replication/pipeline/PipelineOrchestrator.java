@@ -14,6 +14,7 @@ import com.booking.replication.checkpoints.LastVerifiedBinlogFile;
 import com.booking.replication.queues.ReplicatorQueues;
 import com.booking.replication.schema.HBaseSchemaManager;
 import com.booking.replication.schema.TableNameMapper;
+import com.booking.replication.schema.exception.SchemaTransitionException;
 import com.booking.replication.schema.exception.TableMapException;
 
 import com.google.code.or.binlog.BinlogEventV4;
@@ -233,7 +234,8 @@ public class PipelineOrchestrator extends Thread {
      *      b. calculateAndPropagateChanges event to AugmentedQueue
      * </p>
      */
-    public void calculateAndPropagateChanges(BinlogEventV4 event) throws IOException, TableMapException {
+    public void calculateAndPropagateChanges(BinlogEventV4 event)
+            throws IOException, TableMapException, SchemaTransitionException {
 
         AugmentedRowsEvent augmentedRowsEvent;
         AugmentedSchemaChangeEvent augmentedSchemaChangeEvent;

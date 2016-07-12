@@ -1,11 +1,11 @@
 package com.booking.replication.schema.exception;
 
-import java.io.IOException;
+import java.sql.SQLException;
 
 /**
  * Created by bosko on 11/1/15.
  */
-public class SchemaTransitionException extends IOException {
+public class SchemaTransitionException extends Exception {
 
     public SchemaTransitionException() {
 
@@ -13,5 +13,9 @@ public class SchemaTransitionException extends IOException {
 
     public SchemaTransitionException(String message) {
         super(message);
+    }
+
+    public SchemaTransitionException(String message, SQLException ex) {
+
     }
 }

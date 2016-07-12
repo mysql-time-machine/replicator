@@ -195,8 +195,6 @@ public class ActiveSchemaVersion {
 
         Connection con = null;
 
-        boolean ddlApplied = false;
-
         try {
             // applyAugmentedRowsEvent DDL
             con = activeSchemaDataSource.getConnection();
@@ -224,11 +222,8 @@ public class ActiveSchemaVersion {
             this.loadActiveSchema();
             LOGGER.info("Successfully loaded new active schema version");
 
-            ddlApplied = true;
-
         } catch (SQLException e) {
-            e.printStackTrace();
-            LOGGER.error("FATAL: failed to execute DDL statement on active schema.", e);
+            throw new SchemaTransitionException("Failed to apply DDL statement on active schema", e);
         } finally {
             try {
                 if (con != null) {
@@ -239,9 +234,6 @@ public class ActiveSchemaVersion {
             }
         }
 
-        if (!ddlApplied) {
-            throw new SchemaTransitionException("Failed to apply DDL statement on active schema");
-        }
         return this;
     }
 }

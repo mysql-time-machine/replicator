@@ -90,7 +90,7 @@ public class EventAugmenter {
                 new SchemaVersionSnapshot(activeSchemaVersion);
 
         // 2. transition to the new schema
-        HashMap<String, String> schemaTransitionSequence = getDDLFromEvent(event);
+        HashMap<String, String> schemaTransitionSequence = getSchemaTransitionSequence(event);
         if (schemaTransitionSequence != null) {
             // since active schema has a postfix, we need to make sure that queires that
             // specify schema explictly are rewriten so they work properly on active schema
@@ -131,7 +131,7 @@ public class EventAugmenter {
         );
     }
 
-    private HashMap<String,String> getDDLFromEvent(BinlogEventV4 event) throws SchemaTransitionException {
+    private HashMap<String, String> getSchemaTransitionSequence(BinlogEventV4 event) throws SchemaTransitionException {
 
         if (event instanceof QueryEvent) {
             String ddl = ((QueryEvent) event).getSql().toString();
@@ -139,6 +139,7 @@ public class EventAugmenter {
             // query
             HashMap<String, String> sqlCommands = new HashMap<>();
             sqlCommands.put("ddl", ddl);
+            sqlCommands.put("databaseName", ((QueryEvent) event).getDatabaseName().toString());
 
             // status variables
             for (StatusVariable av : ((QueryEvent) event).getStatusVariables()) {

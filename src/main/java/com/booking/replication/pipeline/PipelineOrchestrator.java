@@ -483,27 +483,6 @@ public class PipelineOrchestrator extends Thread {
         return schemaName.equals(configuration.getReplicantSchemaName());
     }
 
-    public boolean isCreateOnly(String querySQL) {
-
-        // TODO: use this to skip table create for tables that allready exists
-
-        String createPattern = "(create)\\s+(table)";
-
-        boolean hasCreate = Pattern
-                .compile(createPattern, Pattern.CASE_INSENSITIVE)
-                .matcher(querySQL)
-                .find();
-
-        String otherPattern = "(alter|drop|rename|truncate|modify)\\s+(table|column)";
-
-        boolean hasOther = Pattern
-                .compile(otherPattern, Pattern.CASE_INSENSITIVE)
-                .matcher(querySQL)
-                .find();
-
-        return hasCreate && !hasOther;
-    }
-
     /**
      * Returns true if event type is not tracked, or does not belong to the
      * tracked database.

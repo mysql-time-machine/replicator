@@ -3,6 +3,7 @@ package com.booking.replication.applier;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.pipeline.PipelineOrchestrator;
+import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.impl.event.FormatDescriptionEvent;
 import com.google.code.or.binlog.impl.event.QueryEvent;
 import com.google.code.or.binlog.impl.event.RotateEvent;
@@ -29,5 +30,5 @@ public interface Applier {
 
     void applyFormatDescriptionEvent(FormatDescriptionEvent event);
 
-    void waitUntilAllRowsAreCommitted(RotateEvent event);
+    void waitUntilAllRowsAreCommitted(BinlogEventV4 event);
 }

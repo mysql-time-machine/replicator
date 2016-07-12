@@ -555,7 +555,9 @@ public class EventAugmenter {
 
                     augEvent.addColumnDataForUpdate(columnName, valueBefore, valueAfter);
                 } catch (TableMapException e) {
-                    throw new TableMapException(e.getMessage(), upEvent);
+                    TableMapException rethrow = new TableMapException(e.getMessage(), upEvent);
+                    rethrow.setStackTrace(e.getStackTrace());
+                    throw rethrow;
                 }
             }
             augEventGroup.addSingleRowEvent(augEvent);

@@ -29,7 +29,8 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
 
     private static final Counter applierTasksInProgressCounter = Metrics.registry.counter(name("HBase", "applierTasksInProgressCounter"));
     private static final Meter rowOpsCommittedToHbase = Metrics.registry.meter(name("HBase", "rowOpsCommittedToHbase"));
-    private static final Timer putLatencyTimer = Metrics.registry.timer(name("HBase", "writerTaskLatency"));
+    private static final Timer putLatencyTimer = Metrics.registry.timer(name("HBase", "writerPutLatency"));
+    private static final Timer taskLatencyTimer = Metrics.registry.timer(name("HBase", "writerTaskLatency"));
 
     private final Connection hbaseConnection;
     private final HBaseApplierMutationGenerator mutationGenerator;
@@ -59,6 +60,8 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
 
     @Override
     public HBaseTaskResult call() throws Exception {
+        final Timer.Context taskTimer = taskLatencyTimer.time();
+
         ChaosMonkey chaosMonkey = new ChaosMonkey();
 
         if (chaosMonkey.feelsLikeThrowingExceptionAfterTaskSubmitted()) {
@@ -140,6 +143,8 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
                 return new HBaseTaskResult(taskUuid, TaskStatus.WRITE_FAILED, false);
             }
         } // next transaction
+
+        taskTimer.stop();
 
         // task result
         return new HBaseTaskResult(

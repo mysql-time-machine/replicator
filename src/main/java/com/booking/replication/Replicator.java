@@ -4,7 +4,7 @@ import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.HBaseApplier;
 import com.booking.replication.applier.KafkaApplier;
 import com.booking.replication.applier.StdoutJsonApplier;
-import com.booking.replication.checkpoints.SafeCheckPoint;
+import com.booking.replication.checkpoints.LastVerifiedBinlogFile;
 import com.booking.replication.monitor.Overseer;
 import com.booking.replication.pipeline.BinlogEventProducer;
 import com.booking.replication.pipeline.BinlogPositionInfo;
@@ -51,11 +51,14 @@ public class Replicator {
             );
         } else {
             // Safe Check Point
-            SafeCheckPoint safeCheckPoint = Coordinator.getCheckpointMarker();
+            LastVerifiedBinlogFile safeCheckPoint = Coordinator.getCheckpointMarker();
 
             if ( safeCheckPoint != null ) {
                 LOGGER.info("Start binlog not specified, reading metadata from coordinator");
-                startBinlogPosition = new BinlogPositionInfo(safeCheckPoint.getSafeCheckPointMarker(), 4L);
+                startBinlogPosition = new BinlogPositionInfo(
+                        safeCheckPoint.getSafeCheckPointMarker(),
+                        safeCheckPoint.getSafeCheckPointPosition()
+                );
             } else {
                 throw new RuntimeException("Could not find start binlog in metadata or startup options");
             }

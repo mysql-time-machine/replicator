@@ -150,7 +150,7 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
     }
 
     @Override
-    public SafeCheckPoint getSafeCheckPoint() {
+    public LastVerifiedBinlogFile getSafeCheckPoint() {
         // TODO: get from zk
 
         try {

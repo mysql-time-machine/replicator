@@ -1,5 +1,6 @@
 package com.booking.replication.coordinator;
 
+import com.booking.replication.checkpoints.LastVerifiedBinlogFile;
 import com.booking.replication.checkpoints.SafeCheckPoint;
 
 /**
@@ -11,7 +12,7 @@ public interface CoordinatorInterface {
 
     public void storeSafeCheckPoint(SafeCheckPoint safeCheckPoint) throws Exception;
 
-    public SafeCheckPoint getSafeCheckPoint();
+    public LastVerifiedBinlogFile getSafeCheckPoint();
 
     public String serialize(SafeCheckPoint checkPoint) throws Exception;
 }

@@ -74,7 +74,7 @@ public class FileCoordinator implements CoordinatorInterface {
     }
 
     @Override
-    public SafeCheckPoint getSafeCheckPoint() {
+    public LastVerifiedBinlogFile getSafeCheckPoint() {
         try {
             return mapper.readValue(Files.newInputStream(checkPointPath), LastVerifiedBinlogFile.class);
         } catch (JsonProcessingException e) {

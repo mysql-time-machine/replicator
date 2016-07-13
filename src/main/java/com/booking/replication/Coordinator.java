@@ -33,8 +33,8 @@ public class Coordinator {
      *
      * @return Checkpoint marker
      */
-    public static SafeCheckPoint getCheckpointMarker() {
-        SafeCheckPoint cp = implementation.getSafeCheckPoint();
+    public static LastVerifiedBinlogFile getCheckpointMarker() {
+        LastVerifiedBinlogFile cp = implementation.getSafeCheckPoint();
         try {
             LOGGER.info(String.format("Got checkpoint: %s", implementation.serialize(cp)));
         } catch (Exception e) {

@@ -16,7 +16,7 @@ public class LastVerifiedBinlogFile implements SafeCheckPoint {
     private final int checkpointType = SafeCheckpointType.BINLOG_FILENAME;
 
     private String lastVerifiedBinlogFileName;
-    private long lastVerifiedBinlogPosition;
+    private long lastVerifiedBinlogPosition = 4L;
 
     private int slaveId;
 

@@ -44,13 +44,21 @@ public class LastVerifiedBinlogFile implements SafeCheckPoint {
         return this.checkpointType;
     }
 
+    public int getSlaveId() {
+        return slaveId;
+    }
+
+    public void setSafeCheckPointPosition( long lastVerifiedBinlogPosition) {
+        this.lastVerifiedBinlogPosition = lastVerifiedBinlogPosition;
+    }
+
+    public Long getSafeCheckPointPosition() {
+        return  lastVerifiedBinlogPosition;
+    }
+
     @Override
     public String getSafeCheckPointMarker() {
         return lastVerifiedBinlogFileName;
-    }
-
-    public int getSlaveId() {
-        return slaveId;
     }
 
     @Override

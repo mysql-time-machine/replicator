@@ -41,11 +41,10 @@ public class AugmentedRow {
     private String uniqueID = UUID.randomUUID().toString();
 
     // eventColumns: {
-    //      column_name => $name,
+    //          column_name  => $name,
     //          value_before => $1,
-    //          value_after => $v2,
-    //          ...,
-    //          type => $type
+    //          value_after  => $v2,
+    //          type         => $type
     //      }
     // }
     private HashMap<String,Map<String,String>> eventColumns = new HashMap<>();
@@ -60,13 +59,15 @@ public class AugmentedRow {
      * @param columnName    Name of the column to update
      * @param valueBefore   Value before the update
      * @param valueAfter    Value after the update
+     * @param columnType    Column type
      * @throws InvalidParameterException    Invalid parameter
      * @throws TableMapException            Invalid table
      */
     public void addColumnDataForUpdate(
             String columnName,
             String valueBefore,
-            String valueAfter
+            String valueAfter,
+            String columnType
     ) throws InvalidParameterException, TableMapException {
 
         if (columnName == null) {
@@ -81,20 +82,22 @@ public class AugmentedRow {
         } else {
             eventColumns.get(columnName).put("value_before", valueBefore);
             eventColumns.get(columnName).put("value_after", valueAfter);
+            eventColumns.get(columnName).put("type", columnType);
         }
     }
 
     /**
      * Add column data.
-     *
      * @param columnName Name of the column to insert
-     * @param value      Value to insert
+     * @param value       Value to insert
+     * @param columnType  Column type
      */
     public void addColumnDataForInsert(
             String columnName,
-            String value
-    ) {
+            String value,
+            String columnType) {
         eventColumns.get(columnName).put("value", value);
+        eventColumns.get(columnName).put("type", columnType);
     }
 
     /**

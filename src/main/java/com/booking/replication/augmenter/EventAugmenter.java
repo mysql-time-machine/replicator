@@ -270,7 +270,7 @@ public class EventAugmenter {
 
                 String value = Converter.orTypeToString(columnValue, columnSchema);
 
-                augEvent.addColumnDataForInsert(columnName, value);
+                augEvent.addColumnDataForInsert(columnName, value, columnSchema.getColumnType());
             }
             augEventGroup.addSingleRowEvent(augEvent);
         }
@@ -329,7 +329,7 @@ public class EventAugmenter {
                 // type cast
                 String value = Converter.orTypeToString(columnValue, columnSchema);
 
-                augEvent.addColumnDataForInsert(columnName, value);
+                augEvent.addColumnDataForInsert(columnName, value, columnSchema.getColumnType());
             }
             augEventGroup.addSingleRowEvent(augEvent);
         }
@@ -381,7 +381,7 @@ public class EventAugmenter {
 
                 String value = Converter.orTypeToString(columnValue, columnSchema);
 
-                augEvent.addColumnDataForInsert(columnName, value);
+                augEvent.addColumnDataForInsert(columnName, value, columnSchema.getColumnType());
             }
             augEventGroup.addSingleRowEvent(augEvent);
         }
@@ -436,7 +436,7 @@ public class EventAugmenter {
                 String value = Converter.orTypeToString(columnValue, columnSchema);
 
                 // TODO: delete has same content as insert, but add a differently named method for clarity
-                augEvent.addColumnDataForInsert(columnName, value);
+                augEvent.addColumnDataForInsert(columnName, value, columnSchema.getColumnType());
             }
             augEventGroup.addSingleRowEvent(augEvent);
         }
@@ -492,7 +492,9 @@ public class EventAugmenter {
                 String valueBefore = Converter.orTypeToString(columnValueBefore, columnSchema);
                 String valueAfter  = Converter.orTypeToString(columnValueAfter, columnSchema);
 
-                augEvent.addColumnDataForUpdate(columnName, valueBefore, valueAfter);
+                String columnType  = columnSchema.getColumnType();
+
+                augEvent.addColumnDataForUpdate(columnName, valueBefore, valueAfter, columnType);
             }
             augEventGroup.addSingleRowEvent(augEvent);
         }
@@ -552,9 +554,10 @@ public class EventAugmenter {
 
                 try {
                     String valueBefore = Converter.orTypeToString(columnValueBefore, columnSchema);
-                    String valueAfter = Converter.orTypeToString(columnValueAfter, columnSchema);
+                    String valueAfter  = Converter.orTypeToString(columnValueAfter, columnSchema);
+                    String columnType  = columnSchema.getColumnType();
 
-                    augEvent.addColumnDataForUpdate(columnName, valueBefore, valueAfter);
+                    augEvent.addColumnDataForUpdate(columnName, valueBefore, valueAfter, columnType);
                 } catch (TableMapException e) {
                     TableMapException rethrow = new TableMapException(e.getMessage(), upEvent);
                     rethrow.setStackTrace(e.getStackTrace());

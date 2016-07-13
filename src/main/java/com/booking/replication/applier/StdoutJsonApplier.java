@@ -26,7 +26,7 @@ public class StdoutJsonApplier implements Applier  {
     public static final String FILTERED_TABLE_NAME = null;
     public static final Boolean VERBOSE = false;
     public static final Boolean STATS_OUT = true;
-    public static final Boolean DATA_OUT = false;
+    public static final Boolean DATA_OUT = true;
     public static final Boolean SCHEMA_OUT = false;
 
     private static final Map<String, Long> stats = new ConcurrentHashMap<>();

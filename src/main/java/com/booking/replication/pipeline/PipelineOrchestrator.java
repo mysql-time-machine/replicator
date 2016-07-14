@@ -12,6 +12,7 @@ import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.augmenter.EventAugmenter;
 import com.booking.replication.checkpoints.LastVerifiedBinlogFile;
 import com.booking.replication.queues.ReplicatorQueues;
+import com.booking.replication.schema.ActiveSchemaVersion;
 import com.booking.replication.schema.HBaseSchemaManager;
 import com.booking.replication.schema.TableNameMapper;
 import com.booking.replication.schema.exception.SchemaTransitionException;
@@ -56,6 +57,8 @@ public class PipelineOrchestrator extends Thread {
     private final  Applier            applier;
     private final  ReplicatorQueues   queues;
     private static EventAugmenter     eventAugmenter;
+    private static ActiveSchemaVersion activeSchemaVersion;
+
     private static HBaseSchemaManager hBaseSchemaManager;
 
     public CurrentTransactionMetadata currentTransactionMetadata;
@@ -126,7 +129,8 @@ public class PipelineOrchestrator extends Thread {
         queues = repQueues;
         configuration = repcfg;
 
-        eventAugmenter = new EventAugmenter(repcfg);
+        activeSchemaVersion =  new ActiveSchemaVersion(configuration);
+        eventAugmenter = new EventAugmenter(activeSchemaVersion);
 
         currentTransactionMetadata = new CurrentTransactionMetadata();
 
@@ -184,7 +188,7 @@ public class PipelineOrchestrator extends Thread {
                     timeOfLastEvent = System.currentTimeMillis();
                     eventsReceivedCounter.mark();
 
-                    if (!skipEvent(event)) {
+                    if (! skipEvent(event)) {
                         calculateAndPropagateChanges(event);
                         eventsProcessedCounter.mark();
                     } else {
@@ -200,6 +204,10 @@ public class PipelineOrchestrator extends Thread {
                         applier.forceFlush();
                     }
                 }
+            } catch (SchemaTransitionException e) {
+                LOGGER.error("SchemaTransitionException, requesting replicator shutdown...", e);
+                LOGGER.error("Original exception:", e.getOriginalException());
+                requestReplicatorShutdown();
             } catch (InterruptedException e) {
                 LOGGER.error("InterruptedException, requesting replicator shutdown...", e);
                 requestReplicatorShutdown();
@@ -238,7 +246,6 @@ public class PipelineOrchestrator extends Thread {
             throws IOException, TableMapException, SchemaTransitionException {
 
         AugmentedRowsEvent augmentedRowsEvent;
-        AugmentedSchemaChangeEvent augmentedSchemaChangeEvent;
 
         if (fakeMicrosecondCounter > 999998) {
             fakeMicrosecondCounter = 0;
@@ -262,8 +269,41 @@ public class PipelineOrchestrator extends Thread {
                 } else if (isBegin(querySQL, isDDL)) {
                     currentTransactionMetadata = new CurrentTransactionMetadata();
                 } else if (isDDL) {
-                    augmentedSchemaChangeEvent = eventAugmenter.transitionSchemaToNextVersion(event);
-                    applier.applyAugmentedSchemaChangeEvent(augmentedSchemaChangeEvent, this);
+                    // Sync all the things here.
+                    applier.forceFlush();
+                    applier.waitUntilAllRowsAreCommitted(event);
+
+                    try {
+                        AugmentedSchemaChangeEvent augmentedSchemaChangeEvent = activeSchemaVersion.transitionSchemaToNextVersion(
+                                eventAugmenter.getSchemaTransitionSequence(event),
+                                event.getHeader().getTimestamp()
+                        );
+
+                        String currentBinlogFileName =
+                                binlogPositionLastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogFilename();
+
+                        long nextBinlogPosition = event.getHeader().getPosition();
+
+                        int currentSlaveId = configuration.getReplicantDBServerID();
+                        LastVerifiedBinlogFile marker = new LastVerifiedBinlogFile(
+                                currentSlaveId,
+                                currentBinlogFileName,
+                                nextBinlogPosition
+                        );
+
+                        LOGGER.info("Save new marker: " + marker.toJson());
+                        Coordinator.saveCheckpointMarker(marker);
+                        applier.applyAugmentedSchemaChangeEvent(augmentedSchemaChangeEvent, this);
+                    } catch (SchemaTransitionException e) {
+                        setRunning(false);
+                        requestReplicatorShutdown();
+                        throw e;
+                    } catch (Exception e) {
+                        LOGGER.error("Failed to save checkpoint marker!");
+                        e.printStackTrace();
+                        setRunning(false);
+                        requestReplicatorShutdown();
+                    }
                 } else {
                     LOGGER.warn("Unexpected query event: " + querySQL);
                 }

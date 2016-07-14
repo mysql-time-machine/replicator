@@ -137,17 +137,15 @@ public class HBaseApplier implements Applier {
                 .toString();
 
         String hbaseNamespace = null;
-        if (currentTransactionDB != null) {
-            if (currentTransactionDB.equals(mySqlDbName)) {
-                hbaseNamespace = mySqlDbName.toLowerCase();
-            } else if (currentTransactionDB.equals(Constants.BLACKLISTED_DB)) {
-                return null;
-            } else {
-                LOGGER.error("Invalid database name: " + currentTransactionDB);
-            }
+
+        if (currentTransactionDB.equals(mySqlDbName)) {
+            hbaseNamespace = mySqlDbName.toLowerCase();
+        } else if (currentTransactionDB.equals(Constants.BLACKLISTED_DB)) {
+            return null;
         } else {
-            LOGGER.error("CurrentTransactionDB can not be null");
+            LOGGER.error("Invalid database name: " + currentTransactionDB);
         }
+
         return hbaseNamespace;
     }
 
@@ -162,8 +160,7 @@ public class HBaseApplier implements Applier {
         timeOfLastFlush = System.currentTimeMillis();
     }
 
-    public void resubmitIfThereAreFailedTasks() {
-        hbaseApplierWriter.markAllTasksAsReadyToGo();
+    private void resubmitIfThereAreFailedTasks() {
         submitAllTasksThatAreReadyToGo();
         hbaseApplierWriter.updateTaskStatuses();
         timeOfLastFlush = System.currentTimeMillis();
@@ -182,7 +179,6 @@ public class HBaseApplier implements Applier {
     @Override
     public void applyFormatDescriptionEvent(FormatDescriptionEvent event) {
         LOGGER.info("Processing file " + event.getBinlogFilename());
-        hbaseApplierWriter.initBuffers();
     }
 
     @Override

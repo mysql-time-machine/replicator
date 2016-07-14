@@ -2,11 +2,9 @@ package com.booking.replication.augmenter;
 
 import static com.codahale.metrics.MetricRegistry.name;
 
-import com.booking.replication.Configuration;
 import com.booking.replication.Metrics;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.schema.ActiveSchemaVersion;
-import com.booking.replication.schema.SchemaVersionSnapshot;
 import com.booking.replication.schema.column.ColumnSchema;
 import com.booking.replication.schema.column.types.Converter;
 import com.booking.replication.schema.exception.SchemaTransitionException;
@@ -52,10 +50,10 @@ public class EventAugmenter {
     /**
      * Event Augmenter constructor.
      *
-     * @param  replicatorConfiguration Replicator Configuration object
+     * @param ActiveSchemaVersion asv Active schema version
      */
-    public EventAugmenter(Configuration replicatorConfiguration) throws SQLException, URISyntaxException {
-        activeSchemaVersion = new ActiveSchemaVersion(replicatorConfiguration);
+    public EventAugmenter(ActiveSchemaVersion asv) throws SQLException, URISyntaxException {
+        activeSchemaVersion = asv;
     }
 
     /**
@@ -67,79 +65,19 @@ public class EventAugmenter {
         return activeSchemaVersion;
     }
 
-    /**
-     * Transitions active schema to a new state that corresponds
-     * to the current binlog position.
-     *
-     * <p>Steps performed are:
-     *
-     *       1. make snapshot of active schema before change
-     *       2. transition to the new schema
-     *       3. snapshot schema after change
-     *       4. create augmentedSchemaChangeEvent
-     *       5. return augmentedSchemaChangeEvent
-     * </p>
-     */
-    public AugmentedSchemaChangeEvent transitionSchemaToNextVersion(BinlogEventV4 event)
-            throws SchemaTransitionException {
-
-        ActiveSchemaVersion futureSchemaVersion;
-
-        // 1. make snapshot of active schema before change
-        SchemaVersionSnapshot schemaVersionSnapshotBeforeTransition =
-                new SchemaVersionSnapshot(activeSchemaVersion);
-
-        // 2. transition to the new schema
-        HashMap<String, String> schemaTransitionSequence = getSchemaTransitionSequence(event);
-        if (schemaTransitionSequence != null) {
-            // since active schema has a postfix, we need to make sure that queires that
-            // specify schema explictly are rewriten so they work properly on active schema
-            String ddl = schemaTransitionSequence.get("ddl"); // TODO: FIX sometimes null!!!
-
-            String replicatedSchema = schemaTransitionSequence.get("databaseName");
-            String activeSchemaTransitionDDL = rewriteActiveSchemaName(ddl, replicatedSchema);
-            LOGGER.debug(String.format("Active schema: %s Applying alter table: %s",
-                    replicatedSchema,
-                    activeSchemaTransitionDDL
-                    ));
-
-            schemaTransitionSequence.put("ddl", activeSchemaTransitionDDL);
-            futureSchemaVersion = activeSchemaVersion.applyDDL(schemaTransitionSequence);
-            if (futureSchemaVersion != null) {
-                activeSchemaVersion = futureSchemaVersion;
-            } else {
-                throw new SchemaTransitionException(String.format(
-                        "Failed to calculateAndPropagateChanges with DDL statement: %s",
-                        activeSchemaTransitionDDL));
-            }
-        } else {
-            throw new SchemaTransitionException("DDL statement can not be null!");
-        }
-
-        // 3. snapshot schema after change
-        SchemaVersionSnapshot schemaVersionSnapshotAfterTransition =
-                new SchemaVersionSnapshot(activeSchemaVersion);
-
-        // 4. create & return augmentedSchemaChangeEvent
-        Long   timestamp = event.getHeader().getTimestamp();
-
-        return new AugmentedSchemaChangeEvent(
-                schemaVersionSnapshotBeforeTransition,
-                schemaTransitionSequence,
-                schemaVersionSnapshotAfterTransition,
-                timestamp
-        );
-    }
-
-    private HashMap<String, String> getSchemaTransitionSequence(BinlogEventV4 event) throws SchemaTransitionException {
+    public HashMap<String, String> getSchemaTransitionSequence(BinlogEventV4 event) throws SchemaTransitionException {
 
         if (event instanceof QueryEvent) {
             String ddl = ((QueryEvent) event).getSql().toString();
 
             // query
             HashMap<String, String> sqlCommands = new HashMap<>();
-            sqlCommands.put("ddl", ddl);
             sqlCommands.put("databaseName", ((QueryEvent) event).getDatabaseName().toString());
+            sqlCommands.put("originalDDL", ddl);
+
+            // since active schema has a postfix, we need to make sure that queires that
+            // specify schema explictly are rewriten so they work properly on active schema
+            sqlCommands.put("ddl", rewriteActiveSchemaName(ddl, ((QueryEvent) event).getDatabaseName().toString()));
 
             // status variables
             for (StatusVariable av : ((QueryEvent) event).getStatusVariables()) {

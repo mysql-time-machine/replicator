@@ -1,6 +1,7 @@
 package com.booking.replication.schema;
 
 import com.booking.replication.Configuration;
+import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.schema.column.ColumnSchema;
 import com.booking.replication.schema.column.types.EnumColumnSchema;
 import com.booking.replication.schema.column.types.SetColumnSchema;
@@ -180,6 +181,54 @@ public class ActiveSchemaVersion {
     }
 
     /**
+     * Transitions active schema to a new state that corresponds
+     * to the current binlog position.
+     *
+     * <p>Steps performed are:
+     *
+     *       1. make snapshot of active schema before change
+     *       2. transition to the new schema
+     *       3. snapshot schema after change
+     *       4. create augmentedSchemaChangeEvent
+     *       5. return augmentedSchemaChangeEvent
+     * </p>
+     */
+    public AugmentedSchemaChangeEvent transitionSchemaToNextVersion(HashMap<String, String> schemaTransitionSequence, Long timestamp)
+            throws SchemaTransitionException {
+
+        // 1. make snapshot of active schema before change
+        final SchemaVersionSnapshot schemaVersionSnapshotBeforeTransition =
+                new SchemaVersionSnapshot(this);
+
+        // 2. transition to the new schema
+        if (schemaTransitionSequence == null) {
+            throw new SchemaTransitionException("DDL statement can not be null!");
+        }
+
+        try {
+            applyDDL(schemaTransitionSequence);
+        } catch (Exception e) {
+            String activeSchemaTransitionDDL = schemaTransitionSequence.get("ddl");
+            throw new SchemaTransitionException(String.format(
+                    "Failed to calculateAndPropagateChanges with DDL statement: %s",
+                    activeSchemaTransitionDDL),
+                    e);
+        }
+
+        // 3. snapshot schema after change
+        final SchemaVersionSnapshot schemaVersionSnapshotAfterTransition =
+                new SchemaVersionSnapshot(this);
+
+        // 4. create & return augmentedSchemaChangeEvent
+        return new AugmentedSchemaChangeEvent(
+                schemaVersionSnapshotBeforeTransition,
+                schemaTransitionSequence,
+                schemaVersionSnapshotAfterTransition,
+                timestamp
+        );
+    }
+
+    /**
      * Apply DDL statements.
      *
      * <p>Changes the active schema by executing ddl on active schema db
@@ -188,8 +237,8 @@ public class ActiveSchemaVersion {
      * @param sequence Sequence of DDL statements for schema transition
      * @return ActiveSchemaVersion
      */
-    public ActiveSchemaVersion applyDDL(HashMap<String,String> sequence)
-            throws SchemaTransitionException {
+    public void applyDDL(HashMap<String,String> sequence)
+            throws SchemaTransitionException, SQLException {
 
         LOGGER.info("GOT DDL => " + sequence.get("ddl"));
 
@@ -221,19 +270,10 @@ public class ActiveSchemaVersion {
             // load new schema
             this.loadActiveSchema();
             LOGGER.info("Successfully loaded new active schema version");
-
-        } catch (SQLException e) {
-            throw new SchemaTransitionException("Failed to apply DDL statement on active schema", e);
         } finally {
-            try {
-                if (con != null) {
-                    con.close();
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
+            if (con != null) {
+                con.close();
             }
         }
-
-        return this;
     }
 }

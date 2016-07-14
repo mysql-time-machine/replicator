@@ -145,7 +145,6 @@ public class HBaseSchemaManager {
                 }
             }
             knownHBaseTables.put(hbaseTableName,1);
-
         } catch (IOException e) {
             LOGGER.info("Failed to create table in HBase.");
             // TODO: wait and retry if failed. After a while set status of applier

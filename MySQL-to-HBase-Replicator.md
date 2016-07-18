@@ -25,7 +25,7 @@ replication_schema:
     name:     'replicated_schema_name'
     username: 'user'
     password: 'pass'
-    slaves:   ['localhost', 'localhost']
+    host:     'localhost'
 metadata_store:
     username: 'user'
     password: 'pass'

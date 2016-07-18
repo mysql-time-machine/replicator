@@ -1,5 +1,5 @@
 ## MySQL to HBase Replicator.
-Replicates data changes from MySQL binlog to HBase, preserving the previous data versions. Intended
+Replicates data changes from MySQL binlog to HBase/Kafka, preserving the previous data versions. Intended
 for auditing purposes of historical data. In addition can maintain special daily-changes tables which
 are convenient for fast and cheap imports from HBase to Hive.
 

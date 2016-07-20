@@ -4,12 +4,12 @@ Replicates data changes from MySQL binlog to HBase or Kafka. In case of HBase, p
 ### Usage
 #### Replicate initial binlog snapshot to HBase
 ````
-java -jar hbrepl-0.10.0.jar --hbase-namespace $hbase-namespace --applier hbase --schema $schema --binlog-filename $first-binlog-filename --config-path $config-path [--shard $shard] --initial-snapshot
+java -jar hbrepl-0.10.0.jar --hbase-namespace $hbase-namespace --applier hbase --schema $schema --binlog-filename $first-binlog-filename --config-path $config-path --initial-snapshot
 ````
 
 #### Replication to HBase after initial snapshot
 ````
-java -jar hbrepl-0.10.0.jar --hbase-namespace $hbase-namespace --applier hbase --schema $schema --binlog-filename $binlog-filename --config-path $config-path [--shard $shard] [--delta]
+java -jar hbrepl-0.10.0.jar --hbase-namespace $hbase-namespace --applier hbase --schema $schema --binlog-filename $binlog-filename --config-path $config-path  [--delta]
 ````
 
 #### Replication to Kafka

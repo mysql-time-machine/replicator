@@ -227,6 +227,7 @@ public class Configuration {
     private static class KafkaConfiguration {
         public String broker;
         public List<String> topics;
+        public List<String> excludes;
     }
 
     public int getReplicantPort() {
@@ -347,5 +348,9 @@ public class Configuration {
 
     public List<String> getKafkaTopicList() {
         return kafka.topics;
+    }
+
+    public List<String> getKafkaExcludeList() {
+        return kafka.excludes;
     }
 }

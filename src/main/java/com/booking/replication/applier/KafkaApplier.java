@@ -44,6 +44,7 @@ public class KafkaApplier implements Applier {
     private KafkaProducer<String, String> producer;
     private KafkaConsumer<String, String> consumer;
     private static List<String> topicList;
+    private static List<String> excludeList;
     private String schemaName;
 
     private AtomicBoolean exceptionFlag = new AtomicBoolean(false);
@@ -95,6 +96,7 @@ public class KafkaApplier implements Applier {
         numberOfPartition = producer.partitionsFor(schemaName).size();
         consumer = new KafkaConsumer<>(getConsumerProperties(brokerAddress));
         topicList = configuration.getKafkaTopicList();
+        excludeList = configuration.getKafkaExcludeList();
         LOGGER.info("Start to fetch last positions");
         // Enable it to fetch lats committed messages on each partition to prevent duplicate messages
         getLastPosition();
@@ -145,6 +147,22 @@ public class KafkaApplier implements Applier {
         }
     }
 
+    private boolean topicIsWanted(String topicName) {
+        boolean ans = false;
+        for (String topic: topicList) {
+            if (topicName.matches(topic)) {
+                ans = true;
+                break;
+            }
+        }
+        for (String exc: excludeList) {
+            if (topicName.matches(exc)) {
+                return false;
+            }
+        }
+        return ans;
+    }
+
     @Override
     public void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedSingleRowEvent, PipelineOrchestrator caller) {
         final int AggregationLimit = 500;
@@ -167,7 +185,7 @@ public class KafkaApplier implements Applier {
 
             topic = row.getTableName();
             eventPosition = row.getEventV4Header().getPosition();
-            if (topicList.contains(topic)) {
+            if (topicIsWanted(topic)) {
                 totalRowsCounter++;
                 rowUniqueID = String.format("%s:%020d:%03d", binlogFileName, eventPosition, singleRowsCounter ++);
                 if (rowUniqueID.compareTo(eventLastUuid) <= 0) {

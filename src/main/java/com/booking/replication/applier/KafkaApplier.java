@@ -13,11 +13,13 @@ import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.impl.event.FormatDescriptionEvent;
 import com.google.code.or.binlog.impl.event.QueryEvent;
 import com.google.code.or.binlog.impl.event.RotateEvent;
+import com.google.code.or.binlog.impl.event.TableMapEvent;
 import com.google.code.or.binlog.impl.event.XidEvent;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
+
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -27,12 +29,17 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
+
 
 /**
  * Created by raynald on 08/06/16.
@@ -262,6 +269,11 @@ public class KafkaApplier implements Applier {
 
     @Override
     public void applyFormatDescriptionEvent(FormatDescriptionEvent event) {
+
+    }
+
+    @Override
+    public void applyTableMapEvent(TableMapEvent event) {
 
     }
 

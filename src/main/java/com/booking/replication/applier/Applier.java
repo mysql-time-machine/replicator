@@ -7,6 +7,7 @@ import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.impl.event.FormatDescriptionEvent;
 import com.google.code.or.binlog.impl.event.QueryEvent;
 import com.google.code.or.binlog.impl.event.RotateEvent;
+import com.google.code.or.binlog.impl.event.TableMapEvent;
 import com.google.code.or.binlog.impl.event.XidEvent;
 
 /**
@@ -29,6 +30,8 @@ public interface Applier {
     void forceFlush();
 
     void applyFormatDescriptionEvent(FormatDescriptionEvent event);
+
+    void applyTableMapEvent(TableMapEvent event);
 
     void waitUntilAllRowsAreCommitted(BinlogEventV4 event);
 }

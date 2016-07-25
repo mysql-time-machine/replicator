@@ -163,15 +163,16 @@ public class Configuration {
         startingBinlogPosition = startupParameters.getBinlogPosition();
         endingBinlogFileName   = startupParameters.getLastBinlogFileName();
 
-
         // delta tables
-        hbase.writeRecentChangesToDeltaTables = startupParameters.isDeltaTables();
+        if (applierType.equals("hbase") && hbase != null) {
+            hbase.writeRecentChangesToDeltaTables = startupParameters.isDeltaTables();
+        }
 
         // initial snapshot mode
         initialSnapshotMode = startupParameters.isInitialSnapshot();
 
         //Hbase namespace
-        if (startupParameters.getHbaseNamespace() != null) {
+        if (applierType.equals("hbase") && startupParameters.getHbaseNamespace() != null) {
             hbase.namespace = startupParameters.getHbaseNamespace();
         }
     }

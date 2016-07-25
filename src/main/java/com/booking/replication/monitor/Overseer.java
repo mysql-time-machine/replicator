@@ -1,15 +1,14 @@
 package com.booking.replication.monitor;
 
-import com.booking.replication.Constants;
 import com.booking.replication.pipeline.BinlogEventProducer;
 import com.booking.replication.pipeline.BinlogPositionInfo;
 import com.booking.replication.pipeline.PipelineOrchestrator;
+import com.booking.replication.pipeline.PipelinePosition;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.rmi.ConnectException;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by bdevetak on 26/11/15.
@@ -18,7 +17,7 @@ public class Overseer extends Thread {
 
     private PipelineOrchestrator pipelineOrchestrator;
     private BinlogEventProducer producer;
-    private final ConcurrentHashMap<Integer, BinlogPositionInfo> lastKnownInfo;
+    private final PipelinePosition pipelinePosition;
 
     private volatile boolean doMonitor = true;
 
@@ -27,18 +26,18 @@ public class Overseer extends Thread {
     /**
      * Watchdog for various replicator threads.
      *
-     * @param producer      Producer thread
-     * @param orchestrator  Orchestrator thread
-     * @param positionInfo  Binlog position information
+     * @param producer         Producer thread
+     * @param orchestrator     Orchestrator thread
+     * @param pipelinePosition Binlog position information
      */
     public Overseer(
             BinlogEventProducer producer,
             PipelineOrchestrator orchestrator,
-            ConcurrentHashMap<Integer, BinlogPositionInfo> positionInfo
+            PipelinePosition pipelinePosition
     ) {
         this.producer = producer;
         pipelineOrchestrator = orchestrator;
-        lastKnownInfo = positionInfo;
+        this.pipelinePosition = pipelinePosition;
     }
 
     @Override
@@ -69,16 +68,15 @@ public class Overseer extends Thread {
     private void makeSureProducerIsRunning() {
         if (!producer.getOpenReplicator().isRunning()) {
             LOGGER.warn("Producer stopped running. OR position: "
-                    + lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogFilename()
+                    + pipelinePosition.getCurrentPosition().getBinlogFilename()
                     + ":"
-                    + lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogPosition()
-                    + "Trying to restart it...");
+                    + pipelinePosition.getCurrentPosition().getBinlogPosition()
+                    + ". Trying to restart it...");
             try {
-
                 //todo: Investigate potential race condition in setting the microsecond counter,
                 //the PO may still have queued up events when this reset happens
-                BinlogPositionInfo lastMapEventFakeMCounter = lastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION);
-                Long   lastFakeMCounter = lastMapEventFakeMCounter.getFakeMicrosecondsCounter();
+                BinlogPositionInfo lastMapEventFakeMCounter = pipelinePosition.getLastMapEventPosition();
+                Long lastFakeMCounter = lastMapEventFakeMCounter.getFakeMicrosecondsCounter();
 
                 PipelineOrchestrator.setFakeMicrosecondCounter(lastFakeMCounter);
 

@@ -5,7 +5,6 @@ import static com.codahale.metrics.MetricRegistry.name;
 import com.booking.replication.Configuration;
 import com.booking.replication.Constants;
 import com.booking.replication.Metrics;
-
 import com.google.code.or.OpenReplicator;
 import com.google.code.or.binlog.BinlogEventListener;
 import com.google.code.or.binlog.BinlogEventV4;
@@ -16,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -28,7 +26,7 @@ public class BinlogEventProducer {
     // as the consumer object
     private final BlockingQueue<BinlogEventV4> queue;
 
-    private final ConcurrentHashMap<Integer,BinlogPositionInfo> lastKnownInfo;
+    private final PipelinePosition pipelinePosition;
 
     private final OpenReplicator openReplicator;
     private final Configuration configuration;
@@ -43,21 +41,21 @@ public class BinlogEventProducer {
      * Set up and manage the Open Replicator instance.
      *
      * @param queue             Event queue.
-     * @param lastKnownInfo     Binlog position information
+     * @param pipelinePosition  Binlog position information
      * @param configuration     Replicator configuration
      */
     public BinlogEventProducer(
             BlockingQueue<BinlogEventV4> queue,
-            ConcurrentHashMap<Integer, BinlogPositionInfo> lastKnownInfo,
+            PipelinePosition pipelinePosition,
             Configuration configuration) {
         this.configuration = configuration;
         this.queue = queue;
-        this.lastKnownInfo = lastKnownInfo;
-        LOGGER.info("Created producer with lastKnownInfo position => { "
+        this.pipelinePosition = pipelinePosition;
+        LOGGER.info("Created producer with current binlog position => { "
                 + " binlogFileName => "
-                +   this.lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogFilename()
+                +   this.pipelinePosition.getCurrentPosition().getBinlogFilename()
                 + ", binlogPosition => "
-                +   this.lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogPosition()
+                +   this.pipelinePosition.getCurrentPosition().getBinlogPosition()
                 + " }"
         );
         openReplicator = new OpenReplicator();
@@ -82,8 +80,8 @@ public class BinlogEventProducer {
         openReplicator.setPort(configuration.getReplicantPort());
         openReplicator.setServerId(configuration.getReplicantDBServerID());
 
-        openReplicator.setBinlogPosition(lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogPosition());
-        openReplicator.setBinlogFileName(lastKnownInfo.get(Constants.LAST_KNOWN_BINLOG_POSITION).getBinlogFilename());
+        openReplicator.setBinlogPosition(pipelinePosition.getCurrentPosition().getBinlogPosition());
+        openReplicator.setBinlogFileName(pipelinePosition.getCurrentPosition().getBinlogFilename());
 
         // disable lv2 buffer
         openReplicator.setLevel2BufferSize(-1);
@@ -162,13 +160,15 @@ public class BinlogEventProducer {
     }
 
     /**
-     * Star Open Replicator.
+     * Start Open Replicator.
      */
     public void startOpenReplicatorFromLastKnownMapEventPosition() throws Exception {
+
         if (openReplicator != null) {
             if (!openReplicator.isRunning()) {
-                if (lastKnownInfo != null) {
-                    BinlogPositionInfo lastMapEventPosition = lastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION);
+                if (pipelinePosition != null) {
+
+                    BinlogPositionInfo lastMapEventPosition = pipelinePosition.getLastMapEventPosition();
                     if (lastMapEventPosition != null) {
                         String binlogFileName   = lastMapEventPosition.getBinlogFilename();
                         Long   binlogPosition   = lastMapEventPosition.getBinlogPosition();
@@ -179,15 +179,11 @@ public class BinlogEventProducer {
                                     + binlogPosition
                                     + " }"
                             );
-                            openReplicator.setBinlogFileName(
-                                    lastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION).getBinlogFilename()
-                            );
-                            openReplicator.setBinlogPosition(
-                                    lastKnownInfo.get(Constants.LAST_KNOWN_MAP_EVENT_POSITION).getBinlogPosition()
-                            );
+                            openReplicator.setBinlogFileName(pipelinePosition.getLastMapEventPosition().getBinlogFilename());
+                            openReplicator.setBinlogPosition(pipelinePosition.getLastMapEventPosition().getBinlogPosition());
                             openReplicator.start();
                         } else {
-                            LOGGER.error("last mapEvent position object is not initialized. This should not happen. Shuting down...");
+                            LOGGER.error("lastMapEvent position object is not initialized. This should not happen. Shuting down...");
                         }
                     } else {
                         LOGGER.error("lastMapEventPosition object is null. This should not happen. Shuting down...");
@@ -195,7 +191,7 @@ public class BinlogEventProducer {
                     }
                 }
             } else {
-                LOGGER.error("lastKnownInfo is gone. This should never happen. Shutting down...");
+                LOGGER.error("pipelinePosition is gone. This should never happen. Shutting down...");
                 Runtime.getRuntime().exit(1);
             }
         } else {

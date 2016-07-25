@@ -17,7 +17,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.sql.SQLException;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -40,7 +39,9 @@ public class Replicator {
     public Replicator(Configuration configuration) throws SQLException, URISyntaxException, IOException {
 
         // Position Tracking
-        ConcurrentHashMap<Integer, BinlogPositionInfo> lastKnownInfo = new ConcurrentHashMap<>();
+        com.booking.replication.pipeline.PipelinePosition pipelinePosition =
+                new com.booking.replication.pipeline.PipelinePosition();
+
         BinlogPositionInfo startBinlogPosition;
 
         if (configuration.getStartingBinlogFileName() != null) {
@@ -64,7 +65,7 @@ public class Replicator {
             }
         }
 
-        lastKnownInfo.put(Constants.LAST_KNOWN_BINLOG_POSITION, startBinlogPosition);
+        pipelinePosition.setCurrentPosition(startBinlogPosition);
 
         if (configuration.getLastBinlogFileName() != null
                 && startBinlogPosition.greaterThan(new BinlogPositionInfo(configuration.getLastBinlogFileName(), 4L))) {
@@ -85,7 +86,11 @@ public class Replicator {
         ReplicatorQueues replicatorQueues = new ReplicatorQueues();
 
         // Producer
-        binlogEventProducer = new BinlogEventProducer(replicatorQueues.rawQueue, lastKnownInfo, configuration);
+        binlogEventProducer = new BinlogEventProducer(
+                replicatorQueues.rawQueue,
+                pipelinePosition,
+                configuration
+            );
 
         // Applier
         Applier applier;
@@ -109,7 +114,7 @@ public class Replicator {
         // Orchestrator
         pipelineOrchestrator = new PipelineOrchestrator(
                 replicatorQueues,
-                lastKnownInfo,
+                pipelinePosition,
                 configuration,
                 applier
         );
@@ -118,7 +123,7 @@ public class Replicator {
         overseer = new Overseer(
                 binlogEventProducer,
                 pipelineOrchestrator,
-                lastKnownInfo
+                pipelinePosition
         );
     }
 

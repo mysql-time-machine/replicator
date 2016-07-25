@@ -8,7 +8,7 @@ public class BinlogPositionInfo {
     private String binlogFilename;
     private long   binlogPosition;
 
-    private long fakeMicrosecondsCounter;
+    private long   fakeMicrosecondsCounter;
 
     public BinlogPositionInfo() {}
 

@@ -95,7 +95,6 @@ public class ActiveSchemaVersion {
             // 2. For each table:
             //       a. getValue and cache its create statement
             //       b. create and initialize TableSchema object
-            //       b. create and initialize TableSchema object
             for (String tableName : tableNames) {
 
                 // a. getValue and cache table's create statement
@@ -115,6 +114,7 @@ public class ActiveSchemaVersion {
                     }
                     String returnedCreateStatement = showCreateTableResultSet.getString(2);
 
+                    // TODO: improve this to contian schema versions per table name
                     this.activeSchemaCreateStatements.put(tableName,returnedCreateStatement);
                 }
                 showCreateTableResultSet.close();

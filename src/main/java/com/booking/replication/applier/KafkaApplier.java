@@ -162,9 +162,11 @@ public class KafkaApplier implements Applier {
                 break;
             }
         }
-        for (String exc: excludeTableList) {
-            if (tableName.matches(exc)) {
-                return false;
+        if (excludeTableList != null) {
+            for (String exc : excludeTableList) {
+                if (tableName.matches(exc)) {
+                    return false;
+                }
             }
         }
         return res;

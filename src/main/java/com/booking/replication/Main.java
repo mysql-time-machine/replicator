@@ -41,8 +41,11 @@ public class Main {
             configuration.loadStartupParameters(startupParameters);
             configuration.validate();
 
-            System.out.println("loaded configuration: \n" + configuration.toString());
-
+            try {
+                System.out.println("loaded configuration: \n" + configuration.toString());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
             CoordinatorInterface coordinator;
             switch (configuration.getMetadataStoreType()) {
                 case Configuration.METADATASTORE_ZOOKEEPER:

@@ -50,9 +50,9 @@ public class KafkaApplier implements Applier {
     private static long totalOutliersCounter = 0;
     private KafkaProducer<String, String> producer;
     private KafkaConsumer<String, String> consumer;
-    private static List<String> topicList;
-    private static List<String> excludeList;
-    private String schemaName;
+    private static List<String> tableList;
+    private static List<String> excludeTableList;
+    private String topicName;
 
     private AtomicBoolean exceptionFlag = new AtomicBoolean(false);
     private static final Meter kafka_messages = Metrics.registry.meter(name("Kafka", "producerToBroker"));
@@ -99,11 +99,11 @@ public class KafkaApplier implements Applier {
         // Constructor of KafkaApplier
         brokerAddress = configuration.getKafkaBrokerAddress();
         producer = new KafkaProducer<>(getProducerProperties(brokerAddress));
-        schemaName = configuration.getReplicantSchemaName();
-        numberOfPartition = producer.partitionsFor(schemaName).size();
+        topicName = configuration.getKafkaTopicName();
+        numberOfPartition = producer.partitionsFor(topicName).size();
         consumer = new KafkaConsumer<>(getConsumerProperties(brokerAddress));
-        topicList = configuration.getKafkaTopicList();
-        excludeList = configuration.getKafkaExcludeList();
+        tableList = configuration.getKafkaTableList();
+        excludeTableList = configuration.getKafkaExcludeTableList();
         LOGGER.info("Start to fetch last positions");
         // Enable it to fetch lats committed messages on each partition to prevent duplicate messages
         getLastPosition();
@@ -120,8 +120,8 @@ public class KafkaApplier implements Applier {
         ConsumerRecord<String, String> lastRecord;
         ConsumerRecords<String, String> records;
 
-        for (PartitionInfo pi: producer.partitionsFor(schemaName)) {
-            TopicPartition partition = new TopicPartition(schemaName, pi.partition());
+        for (PartitionInfo pi: producer.partitionsFor(topicName)) {
+            TopicPartition partition = new TopicPartition(topicName, pi.partition());
             consumer.assign(Collections.singletonList(partition));
             LOGGER.info("Position: " + String.valueOf(consumer.position(partition)));
             long endPosition = consumer.position(partition);
@@ -154,20 +154,20 @@ public class KafkaApplier implements Applier {
         }
     }
 
-    private boolean topicIsWanted(String topicName) {
-        boolean ans = false;
-        for (String topic: topicList) {
-            if (topicName.matches(topic)) {
-                ans = true;
+    private boolean tableIsWanted(String tableName) {
+        boolean res = false;
+        for (String table: tableList) {
+            if (tableName.matches(table)) {
+                res = true;
                 break;
             }
         }
-        for (String exc: excludeList) {
-            if (topicName.matches(exc)) {
+        for (String exc: excludeTableList) {
+            if (tableName.matches(exc)) {
                 return false;
             }
         }
-        return ans;
+        return res;
     }
 
     @Override
@@ -177,7 +177,7 @@ public class KafkaApplier implements Applier {
         long singleRowsCounter = 0;
         int partitionNum;
         long eventPosition;
-        String topic;
+        String table;
         String rowUniqueID;
         String binlogFileName = augmentedSingleRowEvent.getBinlogFileName();
 
@@ -190,9 +190,9 @@ public class KafkaApplier implements Applier {
                 throw new RuntimeException("tableName does not exist");
             }
 
-            topic = row.getTableName();
+            table = row.getTableName();
             eventPosition = row.getEventV4Header().getPosition();
-            if (topicIsWanted(topic)) {
+            if (tableIsWanted(table)) {
                 totalRowsCounter++;
                 rowUniqueID = String.format("%s:%020d:%03d", binlogFileName, eventPosition, singleRowsCounter ++);
                 if (rowUniqueID.compareTo(eventLastUuid) <= 0) {
@@ -207,7 +207,7 @@ public class KafkaApplier implements Applier {
                         || rowUniqueID.compareTo(lastCommited.get(partitionNum)) > 0) {
                     row.setUniqueID(rowUniqueID);
                     message = new ProducerRecord<>(
-                            schemaName,
+                            topicName,
                             partitionNum,
                             rowUniqueID,
                             row.toJson());
@@ -230,7 +230,7 @@ public class KafkaApplier implements Applier {
             } else {
                 totalOutliersCounter ++;
                 if (totalOutliersCounter % 500 == 0) {
-                    LOGGER.warn(String.format("Over %d non-supported topics, for example: %s", AggregationLimit, topic));
+                    LOGGER.warn(String.format("Over %d non-supported tables, for example: %s", AggregationLimit, table));
                 }
                 outlier_counter.inc();
             }

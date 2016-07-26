@@ -110,8 +110,9 @@ public class Configuration {
 
     private static class KafkaConfiguration {
         public String broker;
-        public List<String> topics;
-        public List<String> excludes;
+        public List<String> tables;
+        public List<String> excludetables;
+        public String topic;
     }
 
     @JsonDeserialize
@@ -379,11 +380,15 @@ public class Configuration {
         return kafka.broker;
     }
 
-    public List<String> getKafkaTopicList() {
-        return kafka.topics;
+    public List<String> getKafkaTableList() {
+        return kafka.tables;
     }
 
-    public List<String> getKafkaExcludeList() {
-        return kafka.excludes;
+    public List<String> getKafkaExcludeTableList() {
+        return kafka.excludetables;
+    }
+
+    public String getKafkaTopicName() {
+        return kafka.topic;
     }
 }

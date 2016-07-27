@@ -5,6 +5,7 @@ import com.booking.replication.util.StartupParameters;
 import com.google.common.base.Joiner;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -46,6 +47,7 @@ public class Configuration {
     }
 
     @JsonDeserialize
+    @JsonProperty("hbase")
     private HBaseConfiguration hbaseConfiguration;
 
     private static class HBaseConfiguration {

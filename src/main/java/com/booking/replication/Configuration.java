@@ -178,7 +178,9 @@ public class Configuration {
             // delta tables
             hbaseConfiguration.writeRecentChangesToDeltaTables = startupParameters.isDeltaTables();
             // namespace
-            hbaseConfiguration.namespace = startupParameters.getHbaseNamespace();
+            if (startupParameters.getHbaseNamespace() != null) {
+                hbaseConfiguration.namespace = startupParameters.getHbaseNamespace();
+            }
         }
 
         // initial snapshot mode

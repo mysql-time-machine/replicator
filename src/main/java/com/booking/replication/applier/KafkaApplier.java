@@ -34,11 +34,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 /**
@@ -50,8 +49,9 @@ public class KafkaApplier implements Applier {
     private static long totalOutliersCounter = 0;
     private KafkaProducer<String, String> producer;
     private KafkaConsumer<String, String> consumer;
-    private static List<String> tableList;
-    private static List<String> excludeTableList;
+    private static List<String> fixedListOfIncludedTables;
+    private static List<String> excludeTablePatterns;
+    private static final HashMap<String,Boolean> wantedTables = new HashMap<String,Boolean>();
     private String topicName;
 
     private AtomicBoolean exceptionFlag = new AtomicBoolean(false);
@@ -102,8 +102,8 @@ public class KafkaApplier implements Applier {
         topicName = configuration.getKafkaTopicName();
         numberOfPartition = producer.partitionsFor(topicName).size();
         consumer = new KafkaConsumer<>(getConsumerProperties(brokerAddress));
-        tableList = configuration.getKafkaTableList();
-        excludeTableList = configuration.getKafkaExcludeTableList();
+        fixedListOfIncludedTables = configuration.getKafkaTableList();
+        excludeTablePatterns = configuration.getKafkaExcludeTableList();
         LOGGER.info("Start to fetch last positions");
         // Enable it to fetch lats committed messages on each partition to prevent duplicate messages
         getLastPosition();
@@ -155,21 +155,42 @@ public class KafkaApplier implements Applier {
     }
 
     private boolean tableIsWanted(String tableName) {
-        boolean res = false;
-        for (String table: tableList) {
-            if (tableName.matches(table)) {
-                res = true;
-                break;
-            }
-        }
-        if (excludeTableList != null) {
-            for (String exc : excludeTableList) {
-                if (tableName.matches(exc)) {
-                    return false;
+
+        if (wantedTables.containsKey(tableName)) {
+            return wantedTables.get(tableName);
+        } else {
+            // First check if the exclude pattern is specified. If
+            // there is no exclude pattern, then check for the fixed
+            // list of tables. If the exclude pattern is present it
+            // overrides the fixed list of tables.
+            if (excludeTablePatterns != null) {
+                for (String excludePattern : excludeTablePatterns) {
+                    Pattern compiledExcludePattern = Pattern.compile(excludePattern, Pattern.CASE_INSENSITIVE);
+                    Matcher matcher = compiledExcludePattern.matcher(tableName);
+                    if (matcher.find()) {
+                        wantedTables.put(tableName,false);
+                        return false;
+                    }
                 }
+                // still here, meaning table should not be excluded
+                wantedTables.put(tableName,true);
+                return true;
+            } else {
+                // using fixed list of tables since the exclude pattern is
+                // not specified
+                for (String includedTable : fixedListOfIncludedTables) {
+                    Pattern compiledIncludePattern = Pattern.compile(includedTable, Pattern.CASE_INSENSITIVE);
+                    Matcher matcher = compiledIncludePattern.matcher(tableName);
+                    if (matcher.find()) {
+                        wantedTables.put(tableName,true);
+                        return true;
+                    }
+                }
+                // table is not in the included list, so should not be replicated
+                wantedTables.put(tableName,false);
+                return false;
             }
         }
-        return res;
     }
 
     @Override

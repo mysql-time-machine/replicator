@@ -4,6 +4,8 @@ import static com.codahale.metrics.MetricRegistry.name;
 
 import com.booking.replication.Configuration;
 import com.booking.replication.Metrics;
+import com.booking.replication.applier.kafka.KafkaMessageBufferException;
+import com.booking.replication.applier.kafka.RowListMessage;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
@@ -45,25 +47,44 @@ import java.util.regex.Pattern;
  */
 
 public class KafkaApplier implements Applier {
+
+    // how many rows go into one message
+    private static final int MESSAGE_BATCH_SIZE = 500;
+
     private static long totalRowsCounter = 0;
     private static long totalOutliersCounter = 0;
+
+    private static long currentBatchSize = 0;
+
     private KafkaProducer<String, String> producer;
     private KafkaConsumer<String, String> consumer;
+
     private static List<String> fixedListOfIncludedTables;
     private static List<String> excludeTablePatterns;
-    private static final HashMap<String,Boolean> wantedTables = new HashMap<String,Boolean>();
-    private String topicName;
 
+    private static final HashMap<String,Boolean> wantedTables = new HashMap<String,Boolean>();
+
+    // We need to make sure that all rows from one table end up on the same
+    // partition. That is why we have a separate buffer for each parition, so
+    // during buffering the right buffer is choosen.
+    private HashMap<Integer,RowListMessage> partitionCurrentMessageBuffer = new HashMap<>();
+
+    private String topicName;
     private AtomicBoolean exceptionFlag = new AtomicBoolean(false);
+
     private static final Meter kafka_messages = Metrics.registry.meter(name("Kafka", "producerToBroker"));
     private static final Counter exception_counter = Metrics.registry.counter(name("Kafka", "exceptionCounter"));
     private static final Counter outlier_counter = Metrics.registry.counter(name("Kafka", "outliersCounter"));
     private static final Timer closingTimer = Metrics.registry.timer(name("Kafka", "producerCloseTimer"));
-    private static final HashMap<Integer, String> lastCommited = new HashMap<>();
+
+    private static final HashMap<Integer, String> partitionLastBufferedRow = new HashMap<>();
+    private static final HashMap<Integer, String> partitionLastCommittedMessage = new HashMap<>();
+
     private int numberOfPartition;
     private String brokerAddress;
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaApplier.class);
-    private String eventLastUuid = "";
+    private String rowLastPositionID = "";
+    private String messageLastPositionID = "";
 
     private static Properties getProducerProperties(String broker) {
         // Below is the new version of producer configuration
@@ -105,26 +126,32 @@ public class KafkaApplier implements Applier {
         fixedListOfIncludedTables = configuration.getKafkaTableList();
         excludeTablePatterns = configuration.getKafkaExcludeTableList();
         LOGGER.info("Start to fetch last positions");
-        // Enable it to fetch lats committed messages on each partition to prevent duplicate messages
-        getLastPosition();
-        LOGGER.info("Size of last committed hashmap: " + lastCommited.size());
-        for (Integer i: lastCommited.keySet()) {
-            LOGGER.info("Show last committed partition: " + i.toString() + " -> uniqueID: " + lastCommited.get(i));
+        // Fetch last committed messages on each partition in order to prevent duplicate messages
+        getLastMessagePosition();
+        LOGGER.info("Size of partitionLastCommittedMessage: " + partitionLastCommittedMessage.size());
+        for (Integer i: partitionLastCommittedMessage.keySet()) {
+            LOGGER.info("{ partition: " + i.toString()
+                    + "} -> { lastCommittedMessageUniqueID: "
+                    + partitionLastCommittedMessage.get(i)
+                    + " }");
         }
     }
 
-    private void getLastPosition() throws IOException {
+    private void getLastMessagePosition() throws IOException {
         // Method to fetch the last committed message in each partition of each topic.
         final int RetriesLimit = 100;
         final int POLL_TIME_OUT = 1000;
-        ConsumerRecord<String, String> lastRecord;
-        ConsumerRecords<String, String> records;
+        ConsumerRecord<String, String> lastMessage;
+        ConsumerRecords<String, String> messages;
 
+        // loop partitions
         for (PartitionInfo pi: producer.partitionsFor(topicName)) {
+
             TopicPartition partition = new TopicPartition(topicName, pi.partition());
             consumer.assign(Collections.singletonList(partition));
             LOGGER.info("Position: " + String.valueOf(consumer.position(partition)));
             long endPosition = consumer.position(partition);
+
             // There is an edge case here. With a brand new partition, consumer position is equal to 0
             if (endPosition > 0) {
                 LOGGER.info(String.format("Consumer seek to position minus one, current position %d", endPosition));
@@ -133,22 +160,40 @@ public class KafkaApplier implements Applier {
                     LOGGER.error("Error seek position minus one");
                 }
                 int retries = 0;
-                while (!lastCommited.containsKey(pi.partition()) && retries < RetriesLimit) {
-                    // We rewound one element from the last one, the poll method will only returns a list contains one element,
-                    records = consumer.poll(POLL_TIME_OUT);
-                    if (!records.isEmpty()) {
-                        lastRecord = records.iterator().next();
-                        // Now extracting uuid from String by index instead
-                        String uuid = lastRecord.key();
-                        if (!lastCommited.containsKey(pi.partition()) || lastCommited.get(pi.partition()).compareTo(uuid) < 0) {
-                            lastCommited.put(pi.partition(), uuid);
+                while (!partitionLastCommittedMessage.containsKey(pi.partition()) && retries < RetriesLimit) {
+                    // We have rewinded the position one element back from the last one, so the list of messages
+                    // returned by poll method will only contain one message
+                    messages = consumer.poll(POLL_TIME_OUT);
+                    if (!messages.isEmpty()) {
+
+                        lastMessage = messages.iterator().next();
+
+                        // ------------------------------------------------------------------------------
+                        // Update last message position cache:
+                        // if this message ID is not cached in the last committed message cache, or if
+                        // there is a cached message ID that is older than the last message, update cache
+                        // with the last message ID for this parition
+                        String messageUniqueID = lastMessage.key();
+                        if (!partitionLastCommittedMessage.containsKey(pi.partition())
+                                || partitionLastCommittedMessage.get(pi.partition()).compareTo(messageUniqueID) < 0) {
+                            partitionLastCommittedMessage.put(pi.partition(), messageUniqueID);
                         }
+
+                        // ------------------------------------------------------------------------------
+                        // now we need to get the last row id that was in that last message and update last
+                        // row position cache (that is needed to compare with rows arrving from producer)
+                        // in order to avoid duplicate rows being pushed to kafka
+                        //
+                        // RowListMessage rowListMessage = RowListMessage.decode_json(lastMessage);
+                        // String lastRowPosition = rowListMessage.get_last_row_id();
+
+
                     }
                     retries++;
                 }
-                if (!lastCommited.containsKey(pi.partition())) {
-                    LOGGER.error("Poll failed, probably the messages get purged!");
-                    throw new RuntimeException("Poll failed, probably the messages get purged!");
+                if (!partitionLastCommittedMessage.containsKey(pi.partition())) {
+                    LOGGER.error("Poll failed, probably the messages got purged!");
+                    throw new RuntimeException("Poll failed, probably the messages got purged!");
                 }
             }
         }
@@ -200,11 +245,14 @@ public class KafkaApplier implements Applier {
         long singleRowsCounter = 0;
         int partitionNum;
         long eventPosition;
+
         String table;
-        String rowUniqueID;
+        String rowPositionID;
+        String messageUniqueID;
         String binlogFileName = augmentedSingleRowEvent.getBinlogFileName();
 
         for (AugmentedRow row : augmentedSingleRowEvent.getSingleRowEvents()) {
+
             if (exceptionFlag.get()) {
                 throw new RuntimeException("Producer has problem with sending messages, could be a connection issue");
             }
@@ -215,39 +263,54 @@ public class KafkaApplier implements Applier {
 
             table = row.getTableName();
             eventPosition = row.getEventV4Header().getPosition();
+
             if (tableIsWanted(table)) {
                 totalRowsCounter++;
-                rowUniqueID = String.format("%s:%020d:%03d", binlogFileName, eventPosition, singleRowsCounter ++);
-                if (rowUniqueID.compareTo(eventLastUuid) <= 0) {
-                    throw new RuntimeException("Something wrong with the event position. This should never happen.");
+
+                // Row UUID
+                rowPositionID = row.getRowBinlogPositionID();
+                if (rowPositionID.compareTo(rowLastPositionID) <= 0) {
+                    throw new RuntimeException("Something wrong with the row position. This should never happen.");
                 }
-                eventLastUuid = rowUniqueID;
+                rowLastPositionID = rowPositionID;
+
                 partitionNum = (row.getTableName().hashCode() % numberOfPartition + numberOfPartition) % numberOfPartition;
+
                 // Push to Kafka broker one of the following is true:
                 //     1. there are no rows on current partition
-                //     2. If current row's unique ID is greater than the last committed unique ID
-                if (!lastCommited.containsKey(partitionNum)
-                        || rowUniqueID.compareTo(lastCommited.get(partitionNum)) > 0) {
-                    row.setUniqueID(rowUniqueID);
-                    message = new ProducerRecord<>(
-                            topicName,
-                            partitionNum,
-                            rowUniqueID,
-                            row.toJson());
-                    producer.send(message, new Callback() {
-                        @Override
-                        public void onCompletion(RecordMetadata recordMetadata, Exception sendException) {
-                            if (sendException != null) {
-                                LOGGER.error("Error producing to Kafka broker");
-                                sendException.printStackTrace();
-                                exceptionFlag.set(true);
-                                exception_counter.inc();
-                            }
+                //     2. If current message unique ID is greater than the last committed message unique ID
+                if (!partitionLastBufferedRow.containsKey(partitionNum)
+                        || rowPositionID.compareTo(partitionLastBufferedRow.get(partitionNum)) > 0) {
+
+                    // if buffer is full do:
+                    //      (close) -> (send message) -> (create new buffer - sets current row as the first in the buffer)
+                    // else:
+                    //      (add current row to the buffer)
+                    if (partitionCurrentMessageBuffer.get(partitionNum).isFull()) {
+
+                        // 1. close buffer
+                        partitionCurrentMessageBuffer.get(partitionNum).closeMessageBuffer();
+
+                        // 2. send message
+                        sendMessage(partitionNum, messageLastPositionID);
+
+                        // 3. open new buffer with current row as buffer-start-row
+                        partitionCurrentMessageBuffer.put(partitionNum, new RowListMessage(MESSAGE_BATCH_SIZE, row));
+
+                    } else {
+                        // buffer row to current buffer
+                        try {
+                            partitionCurrentMessageBuffer.get(partitionNum).addRowToMessage(row);
+                        } catch (KafkaMessageBufferException ke) {
+                            LOGGER.error("Trying to write to a closed buffer. This should never happen. Exiting...");
+                            System.exit(-1);
                         }
-                    });
-                    if (totalRowsCounter % AggregationLimit == 0) {
-                        LOGGER.info(String.format("%d lines have been batched, will send to Kafka broker...", AggregationLimit));
                     }
+
+                    if (totalRowsCounter % AggregationLimit == 0) {
+                        LOGGER.info(String.format("%d messages have been batched, will send to Kafka broker...", AggregationLimit));
+                    }
+
                     kafka_messages.mark();
                 }
             } else {
@@ -258,6 +321,33 @@ public class KafkaApplier implements Applier {
                 outlier_counter.inc();
             }
         }
+    }
+
+    private void sendMessage(int partitionNum, String messageUniqueID) {
+
+        ProducerRecord<String, String> message;
+
+        RowListMessage rowListMessage = partitionCurrentMessageBuffer.get(partitionNum);
+
+        String jsonMessage = rowListMessage.toJSON();
+
+        message = new ProducerRecord<>(
+                topicName,
+                partitionNum,
+                messageUniqueID,
+                jsonMessage);
+
+        producer.send(message, new Callback() {
+            @Override
+            public void onCompletion(RecordMetadata recordMetadata, Exception sendException) {
+                if (sendException != null) {
+                    LOGGER.error("Error producing to Kafka broker");
+                    sendException.printStackTrace();
+                    exceptionFlag.set(true);
+                    exception_counter.inc();
+                }
+            }
+        });
     }
 
     @Override

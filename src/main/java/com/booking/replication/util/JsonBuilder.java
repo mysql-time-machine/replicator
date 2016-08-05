@@ -1,5 +1,6 @@
 package com.booking.replication.util;
 
+import com.booking.replication.applier.kafka.RowListMessage;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.schema.ActiveSchemaVersion;
@@ -10,6 +11,8 @@ import com.google.code.or.binlog.impl.event.TableMapEvent;
 import com.google.code.or.common.util.MySQLConstants;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -21,6 +24,8 @@ import java.util.HashMap;
 public class JsonBuilder {
 
     private static final ObjectMapper om = new ObjectMapper();
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(JsonBuilder.class);
 
     public String binlogEventV4ToJson(BinlogEventV4 event) {
 
@@ -43,8 +48,7 @@ public class JsonBuilder {
         return json;
     }
 
-    public static String dataEventToJson(AugmentedRow augmentedRow) {
-
+    public static String augmentedRowToJson(AugmentedRow augmentedRow) {
         String json = null;
         try {
             json = om.writeValueAsString(augmentedRow);
@@ -53,6 +57,28 @@ public class JsonBuilder {
             e.printStackTrace();
         }
         return json;
+    }
+
+    public static String rowListMessageToJSON(RowListMessage rowListMessage) {
+        String json = null;
+        try {
+            json = om.writeValueAsString(rowListMessage);
+        } catch (IOException e) {
+            LOGGER.error("ERROR: could not serialize RowListMessage object.", e);
+            System.exit(-1);
+        }
+        return json;
+    }
+
+    public static RowListMessage rowListMessageFromJSON(String jsonString) {
+        RowListMessage rowListMessageFrom = null;
+        try {
+            rowListMessageFrom = om.readValue(jsonString, RowListMessage.class);
+        } catch (IOException e) {
+            LOGGER.error("ERROR: could not deserialize RowListMessage object from jsonString" + jsonString, e);
+            System.exit(-1);
+        }
+        return rowListMessageFrom;
     }
 
     public static String schemaVersionToJson(ActiveSchemaVersion activeSchemaVersion) {

@@ -127,7 +127,7 @@ public class KafkaApplier implements Applier {
         excludeTablePatterns = configuration.getKafkaExcludeTableList();
         LOGGER.info("Start to fetch last positions");
         // Fetch last committed messages on each partition in order to prevent duplicate messages
-        getLastMessagePosition();
+        loadLastMessagePositionForEachPartition();
         LOGGER.info("Size of partitionLastCommittedMessage: " + partitionLastCommittedMessage.size());
         for (Integer i: partitionLastCommittedMessage.keySet()) {
             LOGGER.info("{ partition: " + i.toString()
@@ -137,7 +137,7 @@ public class KafkaApplier implements Applier {
         }
     }
 
-    private void getLastMessagePosition() throws IOException {
+    private void loadLastMessagePositionForEachPartition() throws IOException {
         // Method to fetch the last committed message in each partition of each topic.
         final int RetriesLimit = 100;
         final int POLL_TIME_OUT = 1000;
@@ -173,21 +173,25 @@ public class KafkaApplier implements Applier {
                         // if this message ID is not cached in the last committed message cache, or if
                         // there is a cached message ID that is older than the last message, update cache
                         // with the last message ID for this parition
-                        String messageUniqueID = lastMessage.key();
+                        String lastMessageBinlogPositionID = lastMessage.key();
                         if (!partitionLastCommittedMessage.containsKey(pi.partition())
-                                || partitionLastCommittedMessage.get(pi.partition()).compareTo(messageUniqueID) < 0) {
-                            partitionLastCommittedMessage.put(pi.partition(), messageUniqueID);
+                                || partitionLastCommittedMessage.get(pi.partition()).compareTo(lastMessageBinlogPositionID) < 0) {
+                            partitionLastCommittedMessage.put(pi.partition(), lastMessageBinlogPositionID);
                         }
 
                         // ------------------------------------------------------------------------------
+                        // Update row position cache:
+                        //
                         // now we need to get the last row id that was in that last message and update last
                         // row position cache (that is needed to compare with rows arrving from producer)
                         // in order to avoid duplicate rows being pushed to kafka
-                        //
-                        // RowListMessage rowListMessage = RowListMessage.decode_json(lastMessage);
-                        // String lastRowPosition = rowListMessage.get_last_row_id();
-
-
+                        String lastMessageJSON = lastMessage.value();
+                        RowListMessage lastMessageDecoded = RowListMessage.fromJSON(lastMessageJSON);
+                        String lastRowBinlogPositionID = lastMessageDecoded.getLastRowBinlogPositionID();
+                        if (!partitionLastBufferedRow.containsKey(pi.partition())
+                                || partitionLastBufferedRow.get(pi.partition()).compareTo(lastRowBinlogPositionID) < 0) {
+                            partitionLastBufferedRow.put(pi.partition(), lastRowBinlogPositionID);
+                        }
                     }
                     retries++;
                 }
@@ -239,19 +243,16 @@ public class KafkaApplier implements Applier {
     }
 
     @Override
-    public void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedSingleRowEvent, PipelineOrchestrator caller) {
+    public void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedRowsEvent, PipelineOrchestrator caller) {
         final int AggregationLimit = 500;
         ProducerRecord<String, String> message;
-        long singleRowsCounter = 0;
         int partitionNum;
-        long eventPosition;
 
-        String table;
-        String rowPositionID;
-        String messageUniqueID;
-        String binlogFileName = augmentedSingleRowEvent.getBinlogFileName();
+        String rowBinlogPositionID;
 
-        for (AugmentedRow row : augmentedSingleRowEvent.getSingleRowEvents()) {
+        String binlogFileName = augmentedRowsEvent.getBinlogFileName();
+
+        for (AugmentedRow row : augmentedRowsEvent.getSingleRowEvents()) {
 
             if (exceptionFlag.get()) {
                 throw new RuntimeException("Producer has problem with sending messages, could be a connection issue");
@@ -261,26 +262,27 @@ public class KafkaApplier implements Applier {
                 throw new RuntimeException("tableName does not exist");
             }
 
-            table = row.getTableName();
-            eventPosition = row.getEventV4Header().getPosition();
+            String table = row.getTableName();
 
             if (tableIsWanted(table)) {
+
                 totalRowsCounter++;
 
-                // Row UUID
-                rowPositionID = row.getRowBinlogPositionID();
-                if (rowPositionID.compareTo(rowLastPositionID) <= 0) {
+                // Row binlog position id
+                rowBinlogPositionID = row.getRowBinlogPositionID();
+                if (rowBinlogPositionID.compareTo(rowLastPositionID) <= 0) {
                     throw new RuntimeException("Something wrong with the row position. This should never happen.");
                 }
-                rowLastPositionID = rowPositionID;
+                rowLastPositionID = rowBinlogPositionID;
 
                 partitionNum = (row.getTableName().hashCode() % numberOfPartition + numberOfPartition) % numberOfPartition;
 
                 // Push to Kafka broker one of the following is true:
                 //     1. there are no rows on current partition
                 //     2. If current message unique ID is greater than the last committed message unique ID
+                // TODO: move to isAfterLastRow() method
                 if (!partitionLastBufferedRow.containsKey(partitionNum)
-                        || rowPositionID.compareTo(partitionLastBufferedRow.get(partitionNum)) > 0) {
+                        || rowBinlogPositionID.compareTo(partitionLastBufferedRow.get(partitionNum)) > 0) {
 
                     // if buffer is full do:
                     //      (close) -> (send message) -> (create new buffer - sets current row as the first in the buffer)
@@ -320,7 +322,7 @@ public class KafkaApplier implements Applier {
                 }
                 outlier_counter.inc();
             }
-        }
+        } // next row
     }
 
     private void sendMessage(int partitionNum, String messageUniqueID) {

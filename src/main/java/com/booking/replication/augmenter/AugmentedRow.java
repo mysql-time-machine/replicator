@@ -36,13 +36,13 @@ public class AugmentedRow {
     @JsonDeserialize(as = TableSchema.class)
     private TableSchema tableSchema;
 
-    private final String       binlogFileName;
-    private final long         rowBinlogEventOrdinal;
-    private final String       tableName;
-    private final List<String> primaryKeyColumns = new ArrayList<>();
+    private String       binlogFileName;
+    private long         rowBinlogEventOrdinal;
+    private String       tableName;
+    private List<String> primaryKeyColumns = new ArrayList<>();
 
-    private final String       rowUUID;
-    private final String       rowBinlogPositionID;
+    private String       rowUUID;
+    private String       rowBinlogPositionID;
 
     // eventColumns: {
     //          column_name  => $name,
@@ -54,6 +54,10 @@ public class AugmentedRow {
     private HashMap<String,Map<String,String>> eventColumns = new HashMap<>();
 
     private String eventType;
+
+    public AugmentedRow() {
+
+    }
 
     /**
      * Create AugmentedRow.

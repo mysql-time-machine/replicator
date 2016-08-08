@@ -3,6 +3,10 @@ package com.booking.replication.applier.kafka;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.util.JsonBuilder;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,20 +25,23 @@ public class RowListMessage {
     private boolean isOpen;
 
     // payload
-    private final List<AugmentedRow> rows;
+    private List<AugmentedRow> rows;
 
-    // constructor
-    public RowListMessage(int messageSize, AugmentedRow firstRow) {
+
+    @JsonCreator
+    public RowListMessage(
+            @JsonProperty("messageSize") int messageSize,
+            @JsonProperty("rows") List<AugmentedRow> rowsInitialBucket) {
 
         // init meta
         this.messageSize              = messageSize;
-        this.firstRowBinlogPositionID = firstRow.getRowBinlogPositionID();
         this.messageBinlogPositionID  = "M-" + firstRowBinlogPositionID;
-        this.isOpen                   = true;
+        this.isOpen                   = true; // TODO: add separate 'committed' property
 
-        // init payload with first row
-        rows = new ArrayList<>();
-        rows.add(firstRow);
+        // init payload
+        AugmentedRow firstRow         = rowsInitialBucket.get(0);
+        this.firstRowBinlogPositionID = firstRow.getRowBinlogPositionID();
+        rows                          = rowsInitialBucket;
     }
 
     public static RowListMessage fromJSON(String jsonString) {
@@ -46,6 +53,7 @@ public class RowListMessage {
         return json;
     }
 
+    @JsonIgnore
     public boolean isFull() {
         return (!(messageSize > rows.size()));
     }

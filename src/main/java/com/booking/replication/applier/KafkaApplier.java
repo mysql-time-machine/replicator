@@ -290,7 +290,9 @@ public class KafkaApplier implements Applier {
 
                     // if buffer is not initialized for partition, do init
                     if (partitionCurrentMessageBuffer.get(partitionNum) == null) {
-                        partitionCurrentMessageBuffer.put(partitionNum, new RowListMessage(MESSAGE_BATCH_SIZE, row));
+                        List<AugmentedRow> rowsBucket = new ArrayList();
+                        rowsBucket.add(row);
+                        partitionCurrentMessageBuffer.put(partitionNum, new RowListMessage(MESSAGE_BATCH_SIZE, rowsBucket));
                     } else {
                         // if buffer is full do:
                         //      (close) -> (send message) -> (create new buffer - sets current row as the first in the buffer)
@@ -305,7 +307,9 @@ public class KafkaApplier implements Applier {
                             sendMessage(partitionNum, messageLastPositionID);
 
                             // 3. open new buffer with current row as buffer-start-row
-                            partitionCurrentMessageBuffer.put(partitionNum, new RowListMessage(MESSAGE_BATCH_SIZE, row));
+                            List<AugmentedRow> rowsBucket = new ArrayList();
+                            rowsBucket.add(row);
+                            partitionCurrentMessageBuffer.put(partitionNum, new RowListMessage(MESSAGE_BATCH_SIZE, rowsBucket));
 
                         } else {
                             // buffer row to current buffer

@@ -74,14 +74,15 @@ public class AugmentedRow {
             String              tableName,
             TableSchema         tableSchema,
             String              eventType,
-            BinlogEventV4Header binlogEventV4Header
-    ) {
+            BinlogEventV4Header binlogEventV4Header)  throws TableMapException {
+
         this.rowBinlogEventOrdinal = rowOrdinal;
         this.binlogFileName = binlogFileName;
         this.tableName = tableName;
-        this.tableSchema = tableSchema;
         this.eventType = eventType;
         this.eventV4Header = binlogEventV4Header;
+
+        initTableSchema(tableSchema);
 
         Long eventPosition = eventV4Header.getPosition();
 
@@ -142,7 +143,7 @@ public class AugmentedRow {
      * @param tableSchema           Schema of the table
      * @throws TableMapException    Invalid table
      */
-    public void setTableSchema(TableSchema tableSchema) throws TableMapException {
+    private void initTableSchema(TableSchema tableSchema) throws TableMapException {
         this.tableSchema = tableSchema;
         initPKList();
         initColumnDataSlots();
@@ -199,16 +200,8 @@ public class AugmentedRow {
         return eventType;
     }
 
-    public void setEventType(String eventType) {
-        this.eventType = eventType;
-    }
-
     public BinlogEventV4Header getEventV4Header() {
         return eventV4Header;
-    }
-
-    public void setEventV4Header(BinlogEventV4Header eventV4Header) {
-        this.eventV4Header = eventV4Header;
     }
 
     public String getRowBinlogPositionID() {
@@ -225,10 +218,6 @@ public class AugmentedRow {
 
     public HashMap<String, Map<String, String>> getEventColumns() {
         return eventColumns;
-    }
-
-    public void setEventColumns(HashMap<String, Map<String, String>> eventColumns) {
-        this.eventColumns = eventColumns;
     }
 
     public TableSchema getTableSchema() {

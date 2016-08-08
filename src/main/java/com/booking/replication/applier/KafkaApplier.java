@@ -347,8 +347,7 @@ public class KafkaApplier implements Applier {
             @Override
             public void onCompletion(RecordMetadata recordMetadata, Exception sendException) {
                 if (sendException != null) {
-                    LOGGER.error("Error producing to Kafka broker");
-                    sendException.printStackTrace();
+                    LOGGER.error("Error producing to Kafka broker", sendException);
                     exceptionFlag.set(true);
                     exception_counter.inc();
                 }

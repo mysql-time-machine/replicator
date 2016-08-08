@@ -25,7 +25,7 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HBaseWriterTask.class);
 
-    private static final boolean DRY_RUN = false;
+    private static boolean DRY_RUN;
 
     private static final Counter applierTasksInProgressCounter = Metrics.registry.counter(name("HBase", "applierTasksInProgressCounter"));
     private static final Meter rowOpsCommittedToHbase = Metrics.registry.meter(name("HBase", "rowOpsCommittedToHbase"));
@@ -49,9 +49,13 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
             Connection conn,
             HBaseApplierMutationGenerator generator,
             String id,
-            Map<String, TransactionProxy> taskBuffer
+            Map<String, TransactionProxy> taskBuffer,
+            boolean dryRun
     ) {
         super();
+        
+        DRY_RUN = dryRun;
+
         hbaseConnection = conn;
         taskUuid = id;
         mutationGenerator = generator;
@@ -120,6 +124,8 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
                                 TableName tableName = TableName.valueOf(hbaseTableName);
                                 Table hbaseTable = hbaseConnection.getTable(tableName);
                                 hbaseTable.put(puts);
+                            } else {
+                                System.out.println("Running in dry-run mode, prepared " + puts.size() + " mutations.");
                             }
 
                             if (type.equals("mirrored")) {

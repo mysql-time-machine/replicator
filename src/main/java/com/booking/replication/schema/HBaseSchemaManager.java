@@ -47,11 +47,13 @@ public class HBaseSchemaManager {
 
     private static final int SCHEMA_HISTORY_TABLE_DEFAULT_REGIONS = 1;
 
-    private static final boolean DRY_RUN = false;
+    private static boolean DRY_RUN;
 
     private static final byte[] CF = Bytes.toBytes("d");
 
-    public HBaseSchemaManager(String zookeeperQuorum) {
+    public HBaseSchemaManager(String zookeeperQuorum, boolean dryRun) {
+
+        DRY_RUN = dryRun;
 
         hbaseConf.set("hbase.zookeeper.quorum", zookeeperQuorum);
 

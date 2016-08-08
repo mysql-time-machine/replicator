@@ -49,12 +49,12 @@ import java.util.regex.Pattern;
 public class KafkaApplier implements Applier {
 
     // how many rows go into one message
-    private static final int MESSAGE_BATCH_SIZE = 500;
+    private static final int MESSAGE_BATCH_SIZE = 10;
+
+    private static boolean DRY_RUN;
 
     private static long totalRowsCounter = 0;
     private static long totalOutliersCounter = 0;
-
-    private static long currentBatchSize = 0;
 
     private KafkaProducer<String, String> producer;
     private KafkaConsumer<String, String> consumer;
@@ -92,7 +92,7 @@ public class KafkaApplier implements Applier {
         prop.put("bootstrap.servers", broker);
         prop.put("acks", "all"); // Default 1
         prop.put("retries", 30); // Default value: 0
-        prop.put("batch.size", 5384); // Default value: 16384
+        prop.put("batch.size", 16384); // Default value: 16384
         prop.put("linger.ms", 20); // Default 0, Artificial delay
         prop.put("buffer.memory", 33554432); // Default value: 33554432
         prop.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
@@ -117,23 +117,28 @@ public class KafkaApplier implements Applier {
     }
 
     public KafkaApplier(Configuration configuration) throws IOException {
-        // Constructor of KafkaApplier
-        brokerAddress = configuration.getKafkaBrokerAddress();
-        producer = new KafkaProducer<>(getProducerProperties(brokerAddress));
-        topicName = configuration.getKafkaTopicName();
-        numberOfPartition = producer.partitionsFor(topicName).size();
-        consumer = new KafkaConsumer<>(getConsumerProperties(brokerAddress));
+
+        DRY_RUN = configuration.isDryRunMode();
+
         fixedListOfIncludedTables = configuration.getKafkaTableList();
         excludeTablePatterns = configuration.getKafkaExcludeTableList();
-        LOGGER.info("Start to fetch last positions");
-        // Fetch last committed messages on each partition in order to prevent duplicate messages
-        loadLastMessagePositionForEachPartition();
-        LOGGER.info("Size of partitionLastCommittedMessage: " + partitionLastCommittedMessage.size());
-        for (Integer i: partitionLastCommittedMessage.keySet()) {
-            LOGGER.info("{ partition: " + i.toString()
-                    + "} -> { lastCommittedMessageUniqueID: "
-                    + partitionLastCommittedMessage.get(i)
-                    + " }");
+        topicName = configuration.getKafkaTopicName();
+        brokerAddress = configuration.getKafkaBrokerAddress();
+
+        if (!DRY_RUN) {
+            producer = new KafkaProducer<>(getProducerProperties(brokerAddress));
+            numberOfPartition = producer.partitionsFor(topicName).size();
+            consumer = new KafkaConsumer<>(getConsumerProperties(brokerAddress));
+            LOGGER.info("Start to fetch last positions");
+            // Fetch last committed messages on each partition in order to prevent duplicate messages
+            loadLastMessagePositionForEachPartition();
+            LOGGER.info("Size of partitionLastCommittedMessage: " + partitionLastCommittedMessage.size());
+            for (Integer i : partitionLastCommittedMessage.keySet()) {
+                LOGGER.info("{ partition: " + i.toString()
+                        + "} -> { lastCommittedMessageUniqueID: "
+                        + partitionLastCommittedMessage.get(i)
+                        + " }");
+            }
         }
     }
 
@@ -244,13 +249,9 @@ public class KafkaApplier implements Applier {
 
     @Override
     public void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedRowsEvent, PipelineOrchestrator caller) {
-        final int AggregationLimit = 500;
-        ProducerRecord<String, String> message;
+
         int partitionNum;
-
         String rowBinlogPositionID;
-
-        String binlogFileName = augmentedRowsEvent.getBinlogFileName();
 
         for (AugmentedRow row : augmentedRowsEvent.getSingleRowEvents()) {
 
@@ -275,8 +276,11 @@ public class KafkaApplier implements Applier {
                 }
                 rowLastPositionID = rowBinlogPositionID;
 
-                partitionNum = (row.getTableName().hashCode() % numberOfPartition + numberOfPartition) % numberOfPartition;
-
+                if (!DRY_RUN) {
+                    partitionNum = (row.getTableName().hashCode() % numberOfPartition + numberOfPartition) % numberOfPartition;
+                } else {
+                    partitionNum = 0;
+                }
                 // Push to Kafka broker one of the following is true:
                 //     1. there are no rows on current partition
                 //     2. If current message unique ID is greater than the last committed message unique ID
@@ -313,17 +317,10 @@ public class KafkaApplier implements Applier {
                             }
                         }
                     }
-                    if (totalRowsCounter % AggregationLimit == 0) {
-                        LOGGER.info(String.format("%d messages have been batched, will send to Kafka broker...", AggregationLimit));
-                    }
-
                     kafka_messages.mark();
                 }
             } else {
                 totalOutliersCounter ++;
-                if (totalOutliersCounter % 500 == 0) {
-                    LOGGER.warn(String.format("Over %d non-supported tables, for example: %s", AggregationLimit, table));
-                }
                 outlier_counter.inc();
             }
         } // next row
@@ -331,28 +328,32 @@ public class KafkaApplier implements Applier {
 
     private void sendMessage(int partitionNum, String messageUniqueID) {
 
-        ProducerRecord<String, String> message;
-
         RowListMessage rowListMessage = partitionCurrentMessageBuffer.get(partitionNum);
 
         String jsonMessage = rowListMessage.toJSON();
 
-        message = new ProducerRecord<>(
-                topicName,
-                partitionNum,
-                messageUniqueID,
-                jsonMessage);
+        if (!DRY_RUN) {
+            ProducerRecord<String, String> message;
 
-        producer.send(message, new Callback() {
-            @Override
-            public void onCompletion(RecordMetadata recordMetadata, Exception sendException) {
-                if (sendException != null) {
-                    LOGGER.error("Error producing to Kafka broker", sendException);
-                    exceptionFlag.set(true);
-                    exception_counter.inc();
+            message = new ProducerRecord<>(
+                    topicName,
+                    partitionNum,
+                    messageUniqueID,
+                    jsonMessage);
+
+            producer.send(message, new Callback() {
+                @Override
+                public void onCompletion(RecordMetadata recordMetadata, Exception sendException) {
+                    if (sendException != null) {
+                        LOGGER.error("Error producing to Kafka broker", sendException);
+                        exceptionFlag.set(true);
+                        exception_counter.inc();
+                    }
                 }
-            }
-        });
+            });
+        } else {
+            System.out.println(jsonMessage);
+        }
     }
 
     @Override

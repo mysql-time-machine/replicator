@@ -29,6 +29,7 @@ public class Configuration {
     public Configuration() {}
 
     private boolean initialSnapshotMode;
+    private boolean dryRunMode;
     private long    startingBinlogPosition;
     private String  startingBinlogFileName;
     private String  endingBinlogFileName;
@@ -185,6 +186,8 @@ public class Configuration {
 
         // initial snapshot mode
         initialSnapshotMode = startupParameters.isInitialSnapshot();
+
+        dryRunMode = startupParameters.isDryrun();
 
     }
 
@@ -394,5 +397,9 @@ public class Configuration {
 
     public String getKafkaTopicName() {
         return kafka.topic;
+    }
+
+    public boolean isDryRunMode() {
+        return dryRunMode;
     }
 }

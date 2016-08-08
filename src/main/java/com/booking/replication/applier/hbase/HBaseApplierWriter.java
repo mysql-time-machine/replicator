@@ -92,8 +92,7 @@ public class HBaseApplierWriter {
     // TODO: add to startup options
     private final int poolSize;
 
-    // dry run option; TODO: add to startup options
-    private static final boolean DRY_RUN = false;
+    private static boolean DRY_RUN;
 
     private static volatile String currentTaskUuid = UUID.randomUUID().toString();
     private static volatile String currentTransactionUUID = UUID.randomUUID().toString();
@@ -145,6 +144,8 @@ public class HBaseApplierWriter {
             int poolSize,
             com.booking.replication.Configuration configuration
     ) {
+        DRY_RUN = configuration.isDryRunMode();
+
         this.poolSize = poolSize;
         taskPool          = Executors.newFixedThreadPool(this.poolSize);
         mutationGenerator = new HBaseApplierMutationGenerator(configuration);
@@ -527,7 +528,8 @@ public class HBaseApplierWriter {
                                 hbaseConnection,
                                 mutationGenerator,
                                 taskUuid,
-                                taskTransactionBuffer.get(taskUuid)
+                                taskTransactionBuffer.get(taskUuid),
+                                DRY_RUN
                         )
                     ));
                 } else {

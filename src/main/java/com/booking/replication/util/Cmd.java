@@ -23,6 +23,7 @@ public class Cmd {
         parser.accepts("last-binlog-filename").withRequiredArg().ofType(String.class);
         parser.accepts("config-path").withRequiredArg().ofType(String.class).defaultsTo("./config.yml");
         parser.accepts("delta");
+        parser.accepts("dryrun");
         parser.accepts("initial-snapshot");
 
         return parser.parse(args);

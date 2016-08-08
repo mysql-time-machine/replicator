@@ -18,6 +18,7 @@ public class StartupParameters {
     private boolean deltaTables;
     private boolean initialSnapshot;
     private String  hbaseNamespace;
+    private boolean dryrun;
 
     private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(StartupParameters.class);
 
@@ -25,6 +26,9 @@ public class StartupParameters {
 
         // use delta tables
         deltaTables = optionSet.has("delta");
+
+        // run in dry-run mode
+        dryrun = optionSet.has("dryrun");
 
         // initial snapshot mode
         initialSnapshot  = optionSet.has("initial-snapshot");
@@ -94,6 +98,10 @@ public class StartupParameters {
 
     public boolean isDeltaTables() {
         return deltaTables;
+    }
+
+    public boolean isDryrun() {
+        return dryrun;
     }
 
     public boolean isInitialSnapshot() {

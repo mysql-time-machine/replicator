@@ -66,7 +66,8 @@ public class HBaseApplier implements Applier {
                 configuration
             );
 
-        hbaseSchemaManager = new HBaseSchemaManager(configuration.getHBaseQuorum());
+        hbaseSchemaManager = new HBaseSchemaManager(
+                configuration.getHBaseQuorum(), configuration.isDryRunMode());
     }
 
 

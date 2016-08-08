@@ -284,31 +284,35 @@ public class KafkaApplier implements Applier {
                 if (!partitionLastBufferedRow.containsKey(partitionNum)
                         || rowBinlogPositionID.compareTo(partitionLastBufferedRow.get(partitionNum)) > 0) {
 
-                    // if buffer is full do:
-                    //      (close) -> (send message) -> (create new buffer - sets current row as the first in the buffer)
-                    // else:
-                    //      (add current row to the buffer)
-                    if (partitionCurrentMessageBuffer.get(partitionNum).isFull()) {
-
-                        // 1. close buffer
-                        partitionCurrentMessageBuffer.get(partitionNum).closeMessageBuffer();
-
-                        // 2. send message
-                        sendMessage(partitionNum, messageLastPositionID);
-
-                        // 3. open new buffer with current row as buffer-start-row
+                    // if buffer is not initialized for partition, do init
+                    if (partitionCurrentMessageBuffer.get(partitionNum) == null) {
                         partitionCurrentMessageBuffer.put(partitionNum, new RowListMessage(MESSAGE_BATCH_SIZE, row));
-
                     } else {
-                        // buffer row to current buffer
-                        try {
-                            partitionCurrentMessageBuffer.get(partitionNum).addRowToMessage(row);
-                        } catch (KafkaMessageBufferException ke) {
-                            LOGGER.error("Trying to write to a closed buffer. This should never happen. Exiting...");
-                            System.exit(-1);
+                        // if buffer is full do:
+                        //      (close) -> (send message) -> (create new buffer - sets current row as the first in the buffer)
+                        // else:
+                        //      (add current row to the buffer)
+                        if (partitionCurrentMessageBuffer.get(partitionNum).isFull()) {
+
+                            // 1. close buffer
+                            partitionCurrentMessageBuffer.get(partitionNum).closeMessageBuffer();
+
+                            // 2. send message
+                            sendMessage(partitionNum, messageLastPositionID);
+
+                            // 3. open new buffer with current row as buffer-start-row
+                            partitionCurrentMessageBuffer.put(partitionNum, new RowListMessage(MESSAGE_BATCH_SIZE, row));
+
+                        } else {
+                            // buffer row to current buffer
+                            try {
+                                partitionCurrentMessageBuffer.get(partitionNum).addRowToMessage(row);
+                            } catch (KafkaMessageBufferException ke) {
+                                LOGGER.error("Trying to write to a closed buffer. This should never happen. Exiting...");
+                                System.exit(-1);
+                            }
                         }
                     }
-
                     if (totalRowsCounter % AggregationLimit == 0) {
                         LOGGER.info(String.format("%d messages have been batched, will send to Kafka broker...", AggregationLimit));
                     }

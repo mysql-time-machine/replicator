@@ -3,7 +3,6 @@ package com.booking.replication.applier.kafka;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.util.JsonBuilder;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 

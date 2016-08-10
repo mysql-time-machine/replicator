@@ -28,7 +28,7 @@ public class TableNameMapper {
         } else {
             long eventTimestamp = (long) eventTimestampMicroSec / 1000; // microsec => milisec
 
-            TimeZone timeZone = TimeZone.getDefault();
+            TimeZone timeZone = TimeZone.getTimeZone("UTC");
             SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
             sdf.setTimeZone(timeZone);
             Date resultDate = new Date(eventTimestamp);

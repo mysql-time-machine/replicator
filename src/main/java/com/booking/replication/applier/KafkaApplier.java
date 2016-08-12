@@ -304,7 +304,7 @@ public class KafkaApplier implements Applier {
                             partitionCurrentMessageBuffer.get(partitionNum).closeMessageBuffer();
 
                             // 2. send message
-                            sendMessage(partitionNum, messageLastPositionID);
+                            sendMessage(partitionNum);
 
                             // 3. open new buffer with current row as buffer-start-row
                             List<AugmentedRow> rowsBucket = new ArrayList();
@@ -330,7 +330,7 @@ public class KafkaApplier implements Applier {
         } // next row
     }
 
-    private void sendMessage(int partitionNum, String messageUniqueID) {
+    private void sendMessage(int partitionNum) {
 
         RowListMessage rowListMessage = partitionCurrentMessageBuffer.get(partitionNum);
 
@@ -342,7 +342,7 @@ public class KafkaApplier implements Applier {
             message = new ProducerRecord<>(
                     topicName,
                     partitionNum,
-                    messageUniqueID,
+                    rowListMessage.getMessageBinlogPositionID(),
                     jsonMessage);
 
             producer.send(message, new Callback() {

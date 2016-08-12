@@ -35,12 +35,11 @@ public class RowListMessage {
 
         // init meta
         this.messageSize              = messageSize;
+        this.firstRowBinlogPositionID = rowsInitialBucket.get(0).getRowBinlogPositionID();
         this.messageBinlogPositionID  = "M-" + firstRowBinlogPositionID;
         this.isOpen                   = true; // TODO: add separate 'committed' property
 
         // init payload
-        AugmentedRow firstRow         = rowsInitialBucket.get(0);
-        this.firstRowBinlogPositionID = firstRow.getRowBinlogPositionID();
         rows                          = rowsInitialBucket;
     }
 

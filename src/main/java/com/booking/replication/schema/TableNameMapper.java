@@ -1,5 +1,7 @@
 package com.booking.replication.schema;
 
+import com.booking.replication.Configuration;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
@@ -39,8 +41,8 @@ public class TableNameMapper {
         return "delta:" + replicantNamespace.toLowerCase() + "_" + mysqlTableName.toLowerCase() + "_" + suffix;
     }
 
-    public static String mysqlTableNameToHBaseTableName(String schemaName, String mysqlTableName) {
-        return schemaName.toLowerCase() + ":" + mysqlTableName.toLowerCase();
+    public static String getSchemaHistoryHBaseTableName(Configuration configuration) {
+        return "schema_history:" + configuration.getHbaseNamespace();
     }
 
 }

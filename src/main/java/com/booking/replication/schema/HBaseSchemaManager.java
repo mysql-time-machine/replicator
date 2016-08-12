@@ -191,7 +191,7 @@ public class HBaseSchemaManager {
         // get event timestamp
         Long eventTimestamp = event.getSchemaChangeEventTimestamp();
 
-        String hbaseTableName = "schema_history:" + mySqlDbName.toLowerCase();
+        String hbaseTableName = TableNameMapper.getSchemaHistoryHBaseTableName(configuration);
 
         String hbaseRowKey = eventTimestamp.toString();
         if (configuration.isInitialSnapshotMode()) {

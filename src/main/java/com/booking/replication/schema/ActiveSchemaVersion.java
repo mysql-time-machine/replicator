@@ -25,6 +25,8 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 /**
@@ -42,6 +44,8 @@ public class ActiveSchemaVersion {
 
     private final HashMap<String,String> activeSchemaCreateStatements = new HashMap<>();
     private final HashMap<String,TableSchema> activeSchemaTables      = new HashMap<>();
+
+    private String lastReceivedDDL = null;
 
     private final Configuration configuration;
 
@@ -75,77 +79,16 @@ public class ActiveSchemaVersion {
         try {
             con = activeSchemaDataSource.getConnection();
 
-            // 1. Get list of tables in active schema
-            Statement         showTablesStatement         = con.createStatement();
-            ResultSet         showTablesResultSet         = showTablesStatement.executeQuery(SHOW_TABLES_SQL);
-            ResultSetMetaData showTablesResultSetMetaData = showTablesResultSet.getMetaData();
+            // 1 .Get list of tables in active schema
+            List<String> tableNames = getTableList(con);
 
-            List<String> tableNames = new ArrayList<>();
-            while (showTablesResultSet.next()) {
-                int columnCount = showTablesResultSetMetaData.getColumnCount();
-                if (columnCount != 1) {
-                    throw new SQLException("SHOW TABLES result set should have only one column!");
-                }
-                String tableName = showTablesResultSet.getString(1);
-                tableNames.add(tableName);
-            }
-            showTablesResultSet.close();
-            showTablesStatement.close();
-
-            // 2. For each table:
-            //       a. getValue and cache its create statement
-            //       b. create and initialize TableSchema object
+            // 2. For each table check if needed to:
+            //  - get and cache its create statement
+            //  - create and initialize TableSchema object
             for (String tableName : tableNames) {
-
-                // a. getValue and cache table's create statement
-                PreparedStatement showCreateTableStatement         = con.prepareStatement(SHOW_CREATE_TABLE_SQL + tableName);
-                ResultSet         showCreateTableResultSet         = showCreateTableStatement.executeQuery();
-                ResultSetMetaData showCreateTableResultSetMetadata = showCreateTableResultSet.getMetaData();
-
-                while (showCreateTableResultSet.next()) {
-
-                    if (showCreateTableResultSetMetadata.getColumnCount() != 2) {
-                        throw new SQLException("SHOW CREATE TABLE should return 2 columns.");
-                    }
-
-                    String returnedTableName = showCreateTableResultSet.getString(1);
-                    if (!returnedTableName.equalsIgnoreCase(tableName)) {
-                        throw new SQLException("We asked for '" + tableName + "' and got '" + returnedTableName + "'");
-                    }
-                    String returnedCreateStatement = showCreateTableResultSet.getString(2);
-
-                    // TODO: improve this to contian schema versions per table name
-                    this.activeSchemaCreateStatements.put(tableName,returnedCreateStatement);
+                if (!skipLoadTable(tableName, lastReceivedDDL)) {
+                    loadAndCacheTableSchemaInfo(con, tableName);
                 }
-                showCreateTableResultSet.close();
-                showCreateTableStatement.close();
-
-                // b. create and initialize TableSchema object
-                this.activeSchemaTables.put(tableName, new TableSchema());
-
-                PreparedStatement getTableInfoStatement =
-                        con.prepareStatement(INFORMATION_SCHEMA_SQL);
-                getTableInfoStatement.setString(1, this.configuration.getActiveSchemaDB());
-                getTableInfoStatement.setString(2, tableName);
-
-                ResultSet getTableInfoResultSet = getTableInfoStatement.executeQuery();
-
-                while (getTableInfoResultSet.next()) {
-
-                    ColumnSchema columnSchema;
-
-                    if (getTableInfoResultSet.getString("DATA_TYPE").equals("enum")) {
-                        columnSchema = new EnumColumnSchema(getTableInfoResultSet);
-                    } else if (getTableInfoResultSet.getString("DATA_TYPE").equals("set")) {
-                        columnSchema = new SetColumnSchema(getTableInfoResultSet);
-                    } else {
-                        columnSchema = new ColumnSchema(getTableInfoResultSet);
-                    }
-
-                    this.activeSchemaTables.get(tableName).addColumn(columnSchema);
-                }
-                getTableInfoResultSet.close();
-                getTableInfoStatement.close();
             }
             con.close();
         } finally {
@@ -158,6 +101,76 @@ public class ActiveSchemaVersion {
                 e.printStackTrace();
             }
         }
+    }
+
+    private List<String> getTableList(Connection con) throws SQLException {
+        Statement showTablesStatement         = con.createStatement();
+        ResultSet showTablesResultSet         = showTablesStatement.executeQuery(SHOW_TABLES_SQL);
+        ResultSetMetaData showTablesResultSetMetaData = showTablesResultSet.getMetaData();
+
+        List<String> tableNames = new ArrayList<>();
+        while (showTablesResultSet.next()) {
+            int columnCount = showTablesResultSetMetaData.getColumnCount();
+            if (columnCount != 1) {
+                throw new SQLException("SHOW TABLES result set should have only one column!");
+            }
+            String tableName = showTablesResultSet.getString(1);
+            tableNames.add(tableName);
+        }
+        showTablesResultSet.close();
+        showTablesStatement.close();
+        return tableNames;
+    }
+
+    private void loadAndCacheTableSchemaInfo(Connection con, String tableName) throws SQLException {
+
+        // get and cache table's create statement
+        PreparedStatement showCreateTableStatement = con.prepareStatement(SHOW_CREATE_TABLE_SQL + tableName);
+        ResultSet showCreateTableResultSet = showCreateTableStatement.executeQuery();
+        ResultSetMetaData showCreateTableResultSetMetadata = showCreateTableResultSet.getMetaData();
+
+        while (showCreateTableResultSet.next()) {
+            if (showCreateTableResultSetMetadata.getColumnCount() != 2) {
+                throw new SQLException("SHOW CREATE TABLE should return 2 columns.");
+            }
+            String returnedTableName = showCreateTableResultSet.getString(1);
+            if (!returnedTableName.equalsIgnoreCase(tableName)) {
+                throw new SQLException("We asked for '" + tableName + "' and got '" + returnedTableName + "'");
+            }
+            String returnedCreateStatement = showCreateTableResultSet.getString(2);
+
+            // TODO: improve this to contian schema versions per table name
+            this.activeSchemaCreateStatements.put(tableName, returnedCreateStatement);
+        }
+        showCreateTableResultSet.close();
+        showCreateTableStatement.close();
+
+        // create and initialize TableSchema object
+        this.activeSchemaTables.put(tableName, new TableSchema());
+
+        PreparedStatement getTableInfoStatement =
+                con.prepareStatement(INFORMATION_SCHEMA_SQL);
+        getTableInfoStatement.setString(1, this.configuration.getActiveSchemaDB());
+        getTableInfoStatement.setString(2, tableName);
+
+        ResultSet getTableInfoResultSet = getTableInfoStatement.executeQuery();
+
+        while (getTableInfoResultSet.next()) {
+
+            ColumnSchema columnSchema;
+
+            if (getTableInfoResultSet.getString("DATA_TYPE").equals("enum")) {
+                columnSchema = new EnumColumnSchema(getTableInfoResultSet);
+            } else if (getTableInfoResultSet.getString("DATA_TYPE").equals("set")) {
+                columnSchema = new SetColumnSchema(getTableInfoResultSet);
+            } else {
+                columnSchema = new ColumnSchema(getTableInfoResultSet);
+            }
+
+            this.activeSchemaTables.get(tableName).addColumn(columnSchema);
+        }
+        getTableInfoResultSet.close();
+        getTableInfoStatement.close();
     }
 
     public String schemaTablesToJson() {
@@ -276,4 +289,25 @@ public class ActiveSchemaVersion {
             }
         }
     }
+
+    private boolean skipLoadTable(String tableName, String ddlStatement) {
+        // Skip if:
+        //  1. table is allready cached and it is not mentioned in DDL statement
+        if  (!isMentionedInDDLStatement(tableName, ddlStatement) && activeSchemaTables.containsKey(tableName)) {
+            return true;
+        } else {
+            return false;
+        }
+
+    }
+
+    private boolean isMentionedInDDLStatement(String tableName, String ddlStatement) {
+
+        Pattern pattern = Pattern.compile(tableName, Pattern.CASE_INSENSITIVE);
+
+        Matcher matcher = pattern.matcher(ddlStatement);
+
+        return matcher.find();
+    }
+
 }

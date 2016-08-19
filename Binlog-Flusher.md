@@ -9,8 +9,10 @@ Assuming you adhere to the above warning, you can flush the contents of a databa
 ````
 python data-flusher.py [--mycnf .my.cnf] [--db $db] [--table $table] [--stop-slave/--no-stop-slave] [--start-slave/--no-start-slave] --host $host [--skip $skip]
 ````
-
-Where .my.cnf contains the admin privileges used for the blackhole_copy of initial snapshot.
+Where parameters are: 
+- skip: separated list of schemas to skip (not to flush in the binlog)
+- mycnf: filename that contains the admin privileges used for the blackhole_copy of initial snapshot.
+- table: if you want to flush only the specific tables
 
 ````
 [client]
@@ -24,7 +26,7 @@ Then start replication with
 mysql> start slave;
 ````
 
-In case something happened, the database is left in an inconsistent state, you can run db-recovery.py to recovery the database.
+In case binlog flusher didn't exit gracefully and the database has been left in an inconsistent state, you can run db-recovery.py to recover the database.
 
 ````
 python db-recovery.py [--mycnf .my.cnf] [--db $db] [--table $table] [--stop-slave/--no-stop-slave] [--start-slave/--no-start-slave] --host $host --hashfile $hashfile [--skip $skip]

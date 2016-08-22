@@ -86,8 +86,13 @@ public class ActiveSchemaVersion {
             //  - get and cache its create statement
             //  - create and initialize TableSchema object
             for (String tableName : tableNames) {
-                if (!skipLoadTable(tableName, lastReceivedDDL)) {
+                if (lastReceivedDDL == null) {
+                    // replicator is starting
                     loadAndCacheTableSchemaInfo(con, tableName);
+                } else {
+                    if (!skipLoadTable(tableName, lastReceivedDDL)) {
+                        loadAndCacheTableSchemaInfo(con, tableName);
+                    }
                 }
             }
             con.close();

@@ -3,6 +3,7 @@ package com.booking.replication.schema.table;
 import com.booking.replication.schema.column.ColumnSchema;
 
 import java.util.HashMap;
+import java.util.UUID;
 
 
 public class TableSchemaVersion {
@@ -11,11 +12,15 @@ public class TableSchemaVersion {
 
     private HashMap<Integer,String> columnIndexToColumnNameMap = new HashMap<>();
 
+    private final String tableSchemaVersionUUID;
+
     // TODO: load table CHARACTER_SET_NAME
     // private String CHARACTER_SET_NAME;
 
     public TableSchemaVersion() {
         columns = new HashMap<>();
+
+        tableSchemaVersionUUID = UUID.randomUUID().toString();;
     }
 
     public void addColumn(ColumnSchema columnSchema) {

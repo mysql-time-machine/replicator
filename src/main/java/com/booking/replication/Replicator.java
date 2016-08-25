@@ -9,6 +9,7 @@ import com.booking.replication.monitor.Overseer;
 import com.booking.replication.pipeline.BinlogEventProducer;
 import com.booking.replication.pipeline.BinlogPositionInfo;
 import com.booking.replication.pipeline.PipelineOrchestrator;
+import com.booking.replication.pipeline.PipelinePosition;
 import com.booking.replication.queues.ReplicatorQueues;
 
 import org.slf4j.Logger;
@@ -39,37 +40,68 @@ public class Replicator {
     public Replicator(Configuration configuration) throws SQLException, URISyntaxException, IOException {
 
         // Position Tracking
-        com.booking.replication.pipeline.PipelinePosition pipelinePosition =
-                new com.booking.replication.pipeline.PipelinePosition();
+        PipelinePosition   pipelinePosition = new PipelinePosition();
 
         BinlogPositionInfo startBinlogPosition;
+        BinlogPositionInfo currentBinlogPosition;
+        BinlogPositionInfo lastSafeCheckPointBinlogPosition;
 
         if (configuration.getStartingBinlogFileName() != null) {
+
             LOGGER.info(String.format("Start filename: %s", configuration.getStartingBinlogFileName()));
+
             startBinlogPosition = new BinlogPositionInfo(
                     configuration.getStartingBinlogFileName(),
                     configuration.getStartingBinlogPosition()
             );
+            pipelinePosition.setStartPosition(startBinlogPosition);
+
+            currentBinlogPosition = new BinlogPositionInfo(
+                    configuration.getStartingBinlogFileName(),
+                    configuration.getStartingBinlogPosition()
+            );
+            pipelinePosition.setCurrentPosition(currentBinlogPosition);
         } else {
             // Safe Check Point
             LastVerifiedBinlogFile safeCheckPoint = Coordinator.getCheckpointMarker();
 
             if ( safeCheckPoint != null ) {
+
                 LOGGER.info("Start binlog not specified, reading metadata from coordinator");
+
                 startBinlogPosition = new BinlogPositionInfo(
+                    safeCheckPoint.getSafeCheckPointMarker(),
+                    safeCheckPoint.getSafeCheckPointPosition()
+                );
+                pipelinePosition.setStartPosition(startBinlogPosition);
+
+                currentBinlogPosition = new BinlogPositionInfo(
                         safeCheckPoint.getSafeCheckPointMarker(),
                         safeCheckPoint.getSafeCheckPointPosition()
+                );
+                pipelinePosition.setCurrentPosition(currentBinlogPosition);
+
+                lastSafeCheckPointBinlogPosition = new BinlogPositionInfo(
+                        safeCheckPoint.getSafeCheckPointMarker(),
+                        safeCheckPoint.getSafeCheckPointPosition()
+                );
+                pipelinePosition.setLastSafeCheckPointPosition(lastSafeCheckPointBinlogPosition);
+
+                LOGGER.info(
+                        "Got safe checkpoint from coordinator: { binlog-file => "
+                                + safeCheckPoint.getSafeCheckPointMarker()
+                                + ", binlog-position => "
+                                + safeCheckPoint.getSafeCheckPointPosition()
+                                + " }"
                 );
             } else {
                 throw new RuntimeException("Could not find start binlog in metadata or startup options");
             }
         }
 
-        pipelinePosition.setCurrentPosition(startBinlogPosition);
-
         if (configuration.getLastBinlogFileName() != null
                 && startBinlogPosition.greaterThan(new BinlogPositionInfo(configuration.getLastBinlogFileName(), 4L))) {
-            LOGGER.info(String.format(
+            LOGGER.error(String.format(
                     "The current position is beyond the last position you configured.\nThe current position is: %s %s",
                     startBinlogPosition.getBinlogFilename(),
                     startBinlogPosition.getBinlogPosition())

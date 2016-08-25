@@ -57,7 +57,7 @@ public class PipelineOrchestrator extends Thread {
 
     public CurrentTransactionMetadata currentTransactionMetadata;
 
-    private final com.booking.replication.pipeline.PipelinePosition pipelinePosition;
+    private final PipelinePosition pipelinePosition;
 
     private volatile boolean running = false;
 
@@ -178,6 +178,10 @@ public class PipelineOrchestrator extends Thread {
                     timeOfLastEvent = System.currentTimeMillis();
                     eventsReceivedCounter.mark();
 
+                    // Update pipeline position
+                    fakeMicrosecondCounter++;
+                    pipelinePosition.updatCurrentPipelinePosition(event, fakeMicrosecondCounter);
+
                     if (! skipEvent(event)) {
                         calculateAndPropagateChanges(event);
                         eventsProcessedCounter.mark();
@@ -249,7 +253,6 @@ public class PipelineOrchestrator extends Thread {
 
             // DDL Event:
             case MySQLConstants.QUERY_EVENT:
-                fakeMicrosecondCounter++;
                 doTimestampOverride(event);
                 String querySQL = ((QueryEvent) event).getSql().toString();
                 boolean isDDL = isDDL(querySQL);
@@ -314,7 +317,6 @@ public class PipelineOrchestrator extends Thread {
                     doTimestampOverride(event);
                     heartBeatCounter.mark();
                 } else {
-                    fakeMicrosecondCounter++;
                     doTimestampOverride(event);
                 }
 
@@ -329,7 +331,7 @@ public class PipelineOrchestrator extends Thread {
 
                     applier.applyTableMapEvent((TableMapEvent) event);
 
-                    updatePipelinePositionForMapEvent((TableMapEvent) event, fakeMicrosecondCounter);
+                    this.pipelinePosition.updatePipelineLastMapEventPosition((TableMapEvent) event, fakeMicrosecondCounter);
 
                 } catch (Exception e) {
                     LOGGER.error("Could not execute mapEvent block. Requesting replicator shutdown...", e);
@@ -341,39 +343,31 @@ public class PipelineOrchestrator extends Thread {
             // Data event:
             case MySQLConstants.UPDATE_ROWS_EVENT:
             case MySQLConstants.UPDATE_ROWS_EVENT_V2:
-                fakeMicrosecondCounter++;
                 doTimestampOverride(event);
                 augmentedRowsEvent = eventAugmenter.mapDataEventToSchema((AbstractRowEvent) event, this);
                 applier.applyAugmentedRowsEvent(augmentedRowsEvent,this);
-                updatCurrentPipelinePosition((AbstractRowEvent) event, fakeMicrosecondCounter);
                 updateEventCounter.mark();
                 break;
 
             case MySQLConstants.WRITE_ROWS_EVENT:
             case MySQLConstants.WRITE_ROWS_EVENT_V2:
-                fakeMicrosecondCounter++;
                 doTimestampOverride(event);
                 augmentedRowsEvent = eventAugmenter.mapDataEventToSchema((AbstractRowEvent) event, this);
                 applier.applyAugmentedRowsEvent(augmentedRowsEvent,this);
-                updatCurrentPipelinePosition((AbstractRowEvent) event, fakeMicrosecondCounter);
                 insertEventCounter.mark();
                 break;
 
             case MySQLConstants.DELETE_ROWS_EVENT:
             case MySQLConstants.DELETE_ROWS_EVENT_V2:
-                fakeMicrosecondCounter++;
                 doTimestampOverride(event);
                 augmentedRowsEvent = eventAugmenter.mapDataEventToSchema((AbstractRowEvent) event, this);
                 applier.applyAugmentedRowsEvent(augmentedRowsEvent,this);
-                updatCurrentPipelinePosition((AbstractRowEvent) event, fakeMicrosecondCounter);
                 deleteEventCounter.mark();
                 break;
 
             case MySQLConstants.XID_EVENT:
                 // Later we may want to tag previous data events with xid_id
                 // (so we can know if events were in the same transaction).
-                // For now we just increase the counter.
-                fakeMicrosecondCounter++;
                 doTimestampOverride(event);
                 applier.applyXidEvent((XidEvent) event);
                 XIDCounter.mark();
@@ -504,6 +498,25 @@ public class PipelineOrchestrator extends Thread {
      */
     public boolean skipEvent(BinlogEventV4 event) throws Exception {
         boolean eventIsTracked      = false;
+        boolean skipEvent;
+
+        // if there is a last safe checkpoint, skip events that are before
+        // or equal to it, so that the same events are not writen multiple
+        // times (beside wasting IO, this would fail the DDL operations,
+        // for example trying to create a table that allready exists)
+        if (pipelinePosition.getLastSafeCheckPointPosition() != null) {
+            if ((pipelinePosition.getLastSafeCheckPointPosition().greaterThan(pipelinePosition.getCurrentPosition()))
+                    || (pipelinePosition.getLastSafeCheckPointPosition().equals(pipelinePosition.getCurrentPosition()))) {
+                LOGGER.info("Event position "
+                        + pipelinePosition.getCurrentPosition().getBinlogPosition()
+                        + " is lower or equal then last safe checkpoint position "
+                        + pipelinePosition.getLastSafeCheckPointPosition().getBinlogPosition()
+                        + ". Skipping event...");
+                skipEvent = true;
+                return skipEvent;
+            }
+        }
+
         switch (event.getHeader().getEventType()) {
             // Query Event:
             case MySQLConstants.QUERY_EVENT:
@@ -634,30 +647,5 @@ public class PipelineOrchestrator extends Thread {
             overriddenTimestamp = 0;
             ((BinlogEventV4HeaderImpl)(event.getHeader())).setTimestamp(overriddenTimestamp);
         }
-    }
-
-    private void updatePipelinePositionForMapEvent(TableMapEvent event, long fakeMicrosecondCounter) {
-
-        if (this.pipelinePosition.getLastMapEventPosition() == null) {
-            this.pipelinePosition.setLastMapEventPosition(new BinlogPositionInfo(
-                    event.getBinlogFilename(),
-                    event.getHeader().getPosition(),
-                    fakeMicrosecondCounter
-            ));
-        }
-
-        this.pipelinePosition.getLastMapEventPosition().setBinlogFilename(((TableMapEvent) event).getBinlogFilename());
-        this.pipelinePosition.getLastMapEventPosition().setBinlogPosition(((TableMapEvent) event).getHeader().getPosition());
-        this.pipelinePosition.getLastMapEventPosition().setFakeMicrosecondsCounter(fakeMicrosecondCounter);
-
-        this.pipelinePosition.getCurrentPosition().setBinlogFilename(((TableMapEvent) event).getBinlogFilename());
-        this.pipelinePosition.getCurrentPosition().setBinlogPosition(((TableMapEvent) event).getHeader().getPosition());
-        this.pipelinePosition.getCurrentPosition().setFakeMicrosecondsCounter(fakeMicrosecondCounter);
-    }
-
-    private void updatCurrentPipelinePosition(AbstractRowEvent event, long fakeMicrosecondCounter) {
-        this.pipelinePosition.getCurrentPosition().setBinlogFilename(event.getBinlogFilename());
-        this.pipelinePosition.getCurrentPosition().setBinlogPosition(event.getHeader().getPosition());
-        this.pipelinePosition.getCurrentPosition().setFakeMicrosecondsCounter(fakeMicrosecondCounter);
     }
 }

@@ -224,6 +224,7 @@ public class ActiveSchemaVersion {
         }
 
         try {
+            LOGGER.info("Try DDL");
             applyDDL(schemaTransitionSequence);
         } catch (Exception e) {
             String activeSchemaTransitionDDL = schemaTransitionSequence.get("ddl");

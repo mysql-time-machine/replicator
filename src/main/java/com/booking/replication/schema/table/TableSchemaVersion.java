@@ -5,7 +5,7 @@ import com.booking.replication.schema.column.ColumnSchema;
 import java.util.HashMap;
 
 
-public class TableSchema {
+public class TableSchemaVersion {
 
     private HashMap<String,ColumnSchema> columns;
 
@@ -14,7 +14,7 @@ public class TableSchema {
     // TODO: load table CHARACTER_SET_NAME
     // private String CHARACTER_SET_NAME;
 
-    public TableSchema() {
+    public TableSchemaVersion() {
         columns = new HashMap<>();
     }
 

@@ -4,13 +4,12 @@ import com.booking.replication.applier.kafka.RowListMessage;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.schema.ActiveSchemaVersion;
-import com.booking.replication.schema.table.TableSchema;
+import com.booking.replication.schema.table.TableSchemaVersion;
 
 import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.impl.event.TableMapEvent;
 import com.google.code.or.common.util.MySQLConstants;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.slf4j.Logger;
@@ -118,7 +117,7 @@ public class JsonBuilder {
         return json;
     }
 
-    public static String schemaVersionTablesToJson(HashMap<String, TableSchema> schemaVersionTables) {
+    public static String schemaVersionTablesToJson(HashMap<String, TableSchemaVersion> schemaVersionTables) {
         String json = null;
         try {
             json = om.writeValueAsString(schemaVersionTables);

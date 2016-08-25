@@ -9,7 +9,7 @@ import com.booking.replication.schema.column.ColumnSchema;
 import com.booking.replication.schema.column.types.Converter;
 import com.booking.replication.schema.exception.SchemaTransitionException;
 import com.booking.replication.schema.exception.TableMapException;
-import com.booking.replication.schema.table.TableSchema;
+import com.booking.replication.schema.table.TableSchemaVersion;
 
 import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.StatusVariable;
@@ -172,9 +172,9 @@ public class EventAugmenter {
         PerTableMetrics tableMetrics = PerTableMetrics.get(tableName);
 
         // getValue schema for that table from activeSchemaVersion
-        TableSchema tableSchema = activeSchemaVersion.getActiveSchemaTables().get(tableName);
+        TableSchemaVersion tableSchemaVersion = activeSchemaVersion.getActiveSchemaTables().get(tableName);
 
-        if (tableSchema == null) {
+        if (tableSchemaVersion == null) {
             throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.", writeRowsEvent);
         }
 
@@ -195,7 +195,7 @@ public class EventAugmenter {
                     augEventGroup.getBinlogFileName(),
                     rowBinlogEventOrdinal,
                     tableName,
-                    tableSchema,
+                    tableSchemaVersion,
                     evType,
                     writeRowsEvent.getHeader()
             );
@@ -206,13 +206,13 @@ public class EventAugmenter {
             //column index counting starts with 1
             for (int columnIndex = 1; columnIndex <= numberOfColumns ; columnIndex++ ) {
 
-                String columnName = tableSchema.getColumnIndexToNameMap().get(columnIndex);
+                String columnName = tableSchemaVersion.getColumnIndexToNameMap().get(columnIndex);
 
                 // but here index goes from 0..
                 Column columnValue = row.getColumns().get(columnIndex - 1);
 
                 // We need schema for proper type casting
-                ColumnSchema columnSchema = tableSchema.getColumnSchemaByColumnName(columnName);
+                ColumnSchema columnSchema = tableSchemaVersion.getColumnSchemaByColumnName(columnName);
 
                 String value = Converter.orTypeToString(columnValue, columnSchema);
 
@@ -236,10 +236,10 @@ public class EventAugmenter {
         PerTableMetrics tableMetrics = PerTableMetrics.get(tableName);
 
         // getValue schema for that table from activeSchemaVersion
-        TableSchema tableSchema = activeSchemaVersion.getActiveSchemaTables().get(tableName);
+        TableSchemaVersion tableSchemaVersion = activeSchemaVersion.getActiveSchemaTables().get(tableName);
 
         // TODO: refactor
-        if (tableSchema == null) {
+        if (tableSchemaVersion == null) {
             throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.", writeRowsEvent);
         }
 
@@ -258,7 +258,7 @@ public class EventAugmenter {
                 augEventGroup.getBinlogFileName(),
                 rowBinlogEventOrdinal,
                 tableName,
-                tableSchema,
+                    tableSchemaVersion,
                 evType,
                 writeRowsEvent.getHeader()
             );
@@ -267,13 +267,13 @@ public class EventAugmenter {
             for (int columnIndex = 1; columnIndex <= numberOfColumns ; columnIndex++ ) {
 
                 // getValue column name from indexToNameMap
-                String columnName = tableSchema.getColumnIndexToNameMap().get(columnIndex);
+                String columnName = tableSchemaVersion.getColumnIndexToNameMap().get(columnIndex);
 
                 // but here index goes from 0..
                 Column columnValue = row.getColumns().get(columnIndex - 1);
 
                 // We need schema for proper type casting
-                ColumnSchema columnSchema = tableSchema.getColumnSchemaByColumnName(columnName);
+                ColumnSchema columnSchema = tableSchemaVersion.getColumnSchemaByColumnName(columnName);
 
                 // type cast
                 String value = Converter.orTypeToString(columnValue, columnSchema);
@@ -298,10 +298,10 @@ public class EventAugmenter {
         PerTableMetrics tableMetrics = PerTableMetrics.get(tableName);
 
         // getValue schema for that table from activeSchemaVersion
-        TableSchema tableSchema = activeSchemaVersion.getActiveSchemaTables().get(tableName);
+        TableSchemaVersion tableSchemaVersion = activeSchemaVersion.getActiveSchemaTables().get(tableName);
 
         // TODO: refactor
-        if (tableSchema == null) {
+        if (tableSchemaVersion == null) {
             throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.", deleteRowsEvent);
         }
         AugmentedRowsEvent augEventGroup = new AugmentedRowsEvent(deleteRowsEvent);
@@ -318,7 +318,7 @@ public class EventAugmenter {
                     augEventGroup.getBinlogFileName(),
                     rowBinlogEventOrdinal,
                     tableName,
-                    tableSchema,
+                    tableSchemaVersion,
                     evType,
                     deleteRowsEvent.getHeader()
             );
@@ -326,13 +326,13 @@ public class EventAugmenter {
             //column index counting starts with 1
             for (int columnIndex = 1; columnIndex <= numberOfColumns ; columnIndex++ ) {
 
-                String columnName = tableSchema.getColumnIndexToNameMap().get(columnIndex);
+                String columnName = tableSchemaVersion.getColumnIndexToNameMap().get(columnIndex);
 
                 // but here index goes from 0..
                 Column columnValue = row.getColumns().get(columnIndex - 1);
 
                 // We need schema for proper type casting
-                ColumnSchema columnSchema = tableSchema.getColumnSchemaByColumnName(columnName);
+                ColumnSchema columnSchema = tableSchemaVersion.getColumnSchemaByColumnName(columnName);
 
                 String value = Converter.orTypeToString(columnValue, columnSchema);
 
@@ -357,10 +357,10 @@ public class EventAugmenter {
         PerTableMetrics tableMetrics = PerTableMetrics.get(tableName);
 
         // getValue schema for that table from activeSchemaVersion
-        TableSchema tableSchema = activeSchemaVersion.getActiveSchemaTables().get(tableName);
+        TableSchemaVersion tableSchemaVersion = activeSchemaVersion.getActiveSchemaTables().get(tableName);
 
         // TODO: refactor
-        if (tableSchema == null) {
+        if (tableSchemaVersion == null) {
             throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.", deleteRowsEvent);
         }
 
@@ -379,7 +379,7 @@ public class EventAugmenter {
                     augEventGroup.getBinlogFileName(),
                     rowBinlogEventOrdinal,
                     tableName,
-                    tableSchema,
+                    tableSchemaVersion,
                     evType,
                     deleteRowsEvent.getHeader()
             );
@@ -387,13 +387,13 @@ public class EventAugmenter {
             //column index counting starts with 1
             for (int columnIndex = 1; columnIndex <= numberOfColumns ; columnIndex++ ) {
 
-                String columnName = tableSchema.getColumnIndexToNameMap().get(columnIndex);
+                String columnName = tableSchemaVersion.getColumnIndexToNameMap().get(columnIndex);
 
                 // but here index goes from 0..
                 Column columnValue = row.getColumns().get(columnIndex - 1);
 
                 // We need schema for proper type casting
-                ColumnSchema columnSchema = tableSchema.getColumnSchemaByColumnName(columnName);
+                ColumnSchema columnSchema = tableSchemaVersion.getColumnSchemaByColumnName(columnName);
 
                 String value = Converter.orTypeToString(columnValue, columnSchema);
 
@@ -417,10 +417,10 @@ public class EventAugmenter {
         PerTableMetrics tableMetrics = PerTableMetrics.get(tableName);
 
         // getValue schema for that table from activeSchemaVersion
-        TableSchema tableSchema = activeSchemaVersion.getActiveSchemaTables().get(tableName);
+        TableSchemaVersion tableSchemaVersion = activeSchemaVersion.getActiveSchemaTables().get(tableName);
 
         // TODO: refactor
-        if (tableSchema == null) {
+        if (tableSchemaVersion == null) {
             throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.", upEvent);
         }
 
@@ -441,7 +441,7 @@ public class EventAugmenter {
                 augEventGroup.getBinlogFileName(),
                 rowBinlogEventOrdinal,
                 tableName,
-                tableSchema,
+                    tableSchemaVersion,
                 evType,
                 upEvent.getHeader()
             );
@@ -449,7 +449,7 @@ public class EventAugmenter {
             //column index counting starts with 1
             for (int columnIndex = 1; columnIndex <= numberOfColumns ; columnIndex++ ) {
 
-                String columnName = tableSchema.getColumnIndexToNameMap().get(columnIndex);
+                String columnName = tableSchemaVersion.getColumnIndexToNameMap().get(columnIndex);
 
                 // but here index goes from 0..
                 Column columnValueBefore = rowPair.getBefore().getColumns().get(columnIndex - 1);
@@ -457,7 +457,7 @@ public class EventAugmenter {
 
                 // We need schema for proper type casting; Since this is RowChange event, schema
                 // is the same for both before and after states
-                ColumnSchema columnSchema = tableSchema.getColumnSchemaByColumnName(columnName);
+                ColumnSchema columnSchema = tableSchemaVersion.getColumnSchemaByColumnName(columnName);
 
                 String valueBefore = Converter.orTypeToString(columnValueBefore, columnSchema);
                 String valueAfter  = Converter.orTypeToString(columnValueAfter, columnSchema);
@@ -484,10 +484,10 @@ public class EventAugmenter {
         PerTableMetrics tableMetrics = PerTableMetrics.get(tableName);
 
         // getValue schema for that table from activeSchemaVersion
-        TableSchema tableSchema = activeSchemaVersion.getActiveSchemaTables().get(tableName);
+        TableSchemaVersion tableSchemaVersion = activeSchemaVersion.getActiveSchemaTables().get(tableName);
 
         // TODO: refactor
-        if (tableSchema == null) {
+        if (tableSchemaVersion == null) {
             throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.", upEvent);
         }
 
@@ -508,7 +508,7 @@ public class EventAugmenter {
                 augEventGroup.getBinlogFileName(),
                 rowBinlogEventOrdinal,
                 tableName,
-                tableSchema,
+                    tableSchemaVersion,
                 evType,
                 upEvent.getHeader()
             );
@@ -516,7 +516,7 @@ public class EventAugmenter {
             //column index counting starts with 1
             for (int columnIndex = 1; columnIndex <= numberOfColumns ; columnIndex++ ) {
 
-                String columnName = tableSchema.getColumnIndexToNameMap().get(columnIndex);
+                String columnName = tableSchemaVersion.getColumnIndexToNameMap().get(columnIndex);
 
                 if (columnName == null) {
                     LOGGER.error("null columnName for { columnIndex => " + columnIndex + ", tableName => " + tableName + " }" );
@@ -528,7 +528,7 @@ public class EventAugmenter {
                 Column columnValueAfter = rowPair.getAfter().getColumns().get(columnIndex - 1);
 
                 // We need schema for proper type casting
-                ColumnSchema columnSchema = tableSchema.getColumnSchemaByColumnName(columnName);
+                ColumnSchema columnSchema = tableSchemaVersion.getColumnSchemaByColumnName(columnName);
 
                 try {
                     String valueBefore = Converter.orTypeToString(columnValueBefore, columnSchema);

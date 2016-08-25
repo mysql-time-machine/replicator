@@ -2,7 +2,7 @@ package com.booking.replication.augmenter;
 
 import com.booking.replication.schema.column.ColumnSchema;
 import com.booking.replication.schema.exception.TableMapException;
-import com.booking.replication.schema.table.TableSchema;
+import com.booking.replication.schema.table.TableSchemaVersion;
 import com.booking.replication.util.JsonBuilder;
 
 import com.google.code.or.binlog.BinlogEventV4Header;
@@ -26,15 +26,15 @@ import java.util.*;
  *  This class encapsulates this type of event.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonIgnoreProperties({"tableSchema"})
+@JsonIgnoreProperties({"tableSchemaVersion"})
 public class AugmentedRow {
 
     @JsonDeserialize(as = BinlogEventV4HeaderImpl.class)
     @JsonIgnoreProperties({"headerLength", "position"})
     private BinlogEventV4Header eventV4Header;
 
-    @JsonDeserialize(as = TableSchema.class)
-    private TableSchema tableSchema;
+    @JsonDeserialize(as = TableSchemaVersion.class)
+    private TableSchemaVersion tableSchemaVersion;
 
     private String       binlogFileName;
     private long         rowBinlogEventOrdinal;
@@ -65,7 +65,7 @@ public class AugmentedRow {
      * @param binlogFileName      Name of the binlog file that contains current row
      * @param rowOrdinal          Order of the row in the binlog event that contains the row
      * @param tableName           Table name of the row
-     * @param tableSchema         TableSchema object
+     * @param tableSchemaVersion         TableSchemaVersion object
      * @param eventType           Event type identifier (INSERT/UPDATE/DELETE)
      * @param binlogEventV4Header BinlogEventV4Header object
      *
@@ -76,7 +76,7 @@ public class AugmentedRow {
             String              binlogFileName,
             long                rowOrdinal,
             String              tableName,
-            TableSchema         tableSchema,
+            TableSchemaVersion tableSchemaVersion,
             String              eventType,
             BinlogEventV4Header binlogEventV4Header)  throws TableMapException {
 
@@ -86,7 +86,7 @@ public class AugmentedRow {
         this.eventType = eventType;
         this.eventV4Header = binlogEventV4Header;
 
-        initTableSchema(tableSchema);
+        initTableSchema(tableSchemaVersion);
 
         Long eventPosition = eventV4Header.getPosition();
 
@@ -144,11 +144,11 @@ public class AugmentedRow {
     /**
      * Set table schema.
      *
-     * @param tableSchema           Schema of the table
+     * @param tableSchemaVersion           Schema of the table
      * @throws TableMapException    Invalid table
      */
-    private void initTableSchema(TableSchema tableSchema) throws TableMapException {
-        this.tableSchema = tableSchema;
+    private void initTableSchema(TableSchemaVersion tableSchemaVersion) throws TableMapException {
+        this.tableSchemaVersion = tableSchemaVersion;
         initPKList();
         initColumnDataSlots();
     }
@@ -159,7 +159,7 @@ public class AugmentedRow {
      * <p>Pre-create objects for speed (this improves overall runtime speed ~10%)</p>
      */
     public void initColumnDataSlots() {
-        for (String columnName: tableSchema.getColumnIndexToNameMap().values()) {
+        for (String columnName: tableSchemaVersion.getColumnIndexToNameMap().values()) {
             eventColumns.put(columnName, new HashMap<String, String>());
         }
     }
@@ -174,15 +174,15 @@ public class AugmentedRow {
      * @throws TableMapException    Invalid table.
      */
     public void initPKList() throws TableMapException {
-        if (tableSchema == null) {
+        if (tableSchemaVersion == null) {
             throw new TableMapException("Need table schem in order to generate PK list.");
         } else {
             Map<Integer, String> pkColumns = new HashMap<>();
 
-            Set<String> columnNames = tableSchema.getColumnsSchema().keySet();
+            Set<String> columnNames = tableSchemaVersion.getColumnsSchema().keySet();
             for (String columnName: columnNames) {
 
-                ColumnSchema cs = tableSchema.getColumnsSchema().get(columnName);
+                ColumnSchema cs = tableSchemaVersion.getColumnsSchema().get(columnName);
 
                 String  ck = cs.getColumnKey();
                 Integer op = cs.getOrdinalPosition();
@@ -224,8 +224,8 @@ public class AugmentedRow {
         return eventColumns;
     }
 
-    public TableSchema getTableSchema() {
-        return tableSchema;
+    public TableSchemaVersion getTableSchemaVersion() {
+        return tableSchemaVersion;
     }
 
     public List<String> getPrimaryKeyColumns() {

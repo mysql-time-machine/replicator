@@ -6,7 +6,7 @@ import com.booking.replication.schema.column.ColumnSchema;
 import com.booking.replication.schema.column.types.EnumColumnSchema;
 import com.booking.replication.schema.column.types.SetColumnSchema;
 import com.booking.replication.schema.exception.SchemaTransitionException;
-import com.booking.replication.schema.table.TableSchema;
+import com.booking.replication.schema.table.TableSchemaVersion;
 import com.booking.replication.util.JsonBuilder;
 
 import org.apache.commons.dbcp2.BasicDataSource;
@@ -43,7 +43,7 @@ public class ActiveSchemaVersion {
             "SELECT * FROM `information_schema`.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?";
 
     private final HashMap<String,String> activeSchemaCreateStatements = new HashMap<>();
-    private final HashMap<String,TableSchema> activeSchemaTables      = new HashMap<>();
+    private final HashMap<String,TableSchemaVersion> activeSchemaTables      = new HashMap<>();
 
     private String lastReceivedDDL = null;
 
@@ -84,7 +84,7 @@ public class ActiveSchemaVersion {
 
             // 2. For each table check if needed to:
             //  - get and cache its create statement
-            //  - create and initialize TableSchema object
+            //  - create and initialize TableSchemaVersion object
             for (String tableName : tableNames) {
                 if (lastReceivedDDL == null) {
                     // replicator is starting
@@ -150,8 +150,8 @@ public class ActiveSchemaVersion {
         showCreateTableResultSet.close();
         showCreateTableStatement.close();
 
-        // create and initialize TableSchema object
-        this.activeSchemaTables.put(tableName, new TableSchema());
+        // create and initialize TableSchemaVersion object
+        this.activeSchemaTables.put(tableName, new TableSchemaVersion());
 
         PreparedStatement getTableInfoStatement =
                 con.prepareStatement(INFORMATION_SCHEMA_SQL);
@@ -190,7 +190,7 @@ public class ActiveSchemaVersion {
         return JsonBuilder.schemaVersionToJson(this);
     }
 
-    public HashMap<String, TableSchema> getActiveSchemaTables() {
+    public HashMap<String, TableSchemaVersion> getActiveSchemaTables() {
         return activeSchemaTables;
     }
 

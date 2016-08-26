@@ -15,6 +15,7 @@ import com.booking.replication.queues.ReplicatorQueues;
 import com.booking.replication.schema.ActiveSchemaVersion;
 import com.booking.replication.schema.exception.SchemaTransitionException;
 import com.booking.replication.schema.exception.TableMapException;
+import com.booking.replication.util.QueryTypeMatcher;
 import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.impl.event.*;
 import com.google.code.or.common.util.MySQLConstants;
@@ -255,11 +256,11 @@ public class PipelineOrchestrator extends Thread {
             case MySQLConstants.QUERY_EVENT:
                 doTimestampOverride(event);
                 String querySQL = ((QueryEvent) event).getSql().toString();
-                boolean isDDL = isDDL(querySQL);
-                if (isCommit(querySQL, isDDL)) {
+                boolean isDDL = QueryTypeMatcher.isDDL(querySQL);
+                if (QueryTypeMatcher.isCommit(querySQL, isDDL)) {
                     commitQueryCounter.mark();
                     applier.applyCommitQueryEvent((QueryEvent) event);
-                } else if (isBegin(querySQL, isDDL)) {
+                } else if (QueryTypeMatcher.isBegin(querySQL, isDDL)) {
                     currentTransactionMetadata = new CurrentTransactionMetadata();
                 } else if (isDDL) {
                     // Sync all the things here.
@@ -428,63 +429,6 @@ public class PipelineOrchestrator extends Thread {
         }
     }
 
-    public boolean isDDL(String querySQL) {
-        // optimization
-        if (querySQL.equals("BEGIN")) {
-            return false;
-        }
-
-        String ddlPattern = "(alter|drop|create|rename|truncate|modify)\\s+(table|column)";
-
-        Pattern pattern = Pattern.compile(ddlPattern, Pattern.CASE_INSENSITIVE);
-
-        Matcher matcher = pattern.matcher(querySQL);
-
-        return matcher.find();
-    }
-
-    public boolean isBegin(String querySQL, boolean isDDL) {
-
-        boolean hasBegin;
-
-        // optimization
-        if (querySQL.equals("COMMIT")) {
-            hasBegin = false;
-        } else {
-
-            String beginPattern = "(begin)";
-
-            Pattern pattern = Pattern.compile(beginPattern, Pattern.CASE_INSENSITIVE);
-
-            Matcher matcher = pattern.matcher(querySQL);
-
-            hasBegin = matcher.find();
-        }
-
-        return (hasBegin && !isDDL);
-    }
-
-    public boolean isCommit(String querySQL, boolean isDDL) {
-
-        boolean hasCommit;
-
-        // optimization
-        if (querySQL.equals("BEGIN")) {
-            hasCommit = false;
-        } else {
-
-            String commitPattern = "(commit)";
-
-            Pattern pattern = Pattern.compile(commitPattern, Pattern.CASE_INSENSITIVE);
-
-            Matcher matcher = pattern.matcher(querySQL);
-
-            hasCommit = matcher.find();
-        }
-
-        return (hasCommit && !isDDL);
-    }
-
     public boolean isReplicant(String schemaName) {
         return schemaName.equals(configuration.getReplicantSchemaName());
     }
@@ -521,9 +465,9 @@ public class PipelineOrchestrator extends Thread {
             // Query Event:
             case MySQLConstants.QUERY_EVENT:
                 String querySQL  = ((QueryEvent) event).getSql().toString();
-                boolean isDDL    = isDDL(querySQL);
-                boolean isCommit = isCommit(querySQL, isDDL);
-                boolean isBegin  = isBegin(querySQL, isDDL);
+                boolean isDDL    = QueryTypeMatcher.isDDL(querySQL);
+                boolean isCommit = QueryTypeMatcher.isCommit(querySQL, isDDL);
+                boolean isBegin  = QueryTypeMatcher.isBegin(querySQL, isDDL);
                 if (isCommit) {
                     // COMMIT does not always contain database name so we get it
                     // from current transaction metadata.

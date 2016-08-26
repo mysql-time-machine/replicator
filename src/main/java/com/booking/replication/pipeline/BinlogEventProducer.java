@@ -51,13 +51,7 @@ public class BinlogEventProducer {
         this.configuration = configuration;
         this.queue = queue;
         this.pipelinePosition = pipelinePosition;
-        LOGGER.info("Created producer with current binlog position => { "
-                + " binlogFileName => "
-                +   this.pipelinePosition.getCurrentPosition().getBinlogFilename()
-                + ", binlogPosition => "
-                +   this.pipelinePosition.getCurrentPosition().getBinlogPosition()
-                + " }"
-        );
+
         openReplicator = new OpenReplicator();
 
         Metrics.registry.register(name("events", "producerBackPressureSleep"),
@@ -85,13 +79,6 @@ public class BinlogEventProducer {
 
         // disable lv2 buffer
         openReplicator.setLevel2BufferSize(-1);
-
-        LOGGER.info("starting OR from: { file => "
-                + openReplicator.getBinlogFileName()
-                + ", position => "
-                + openReplicator.getBinlogPosition()
-                + " }"
-        );
 
         openReplicator.setBinlogEventListener(new BinlogEventListener() {
 
@@ -127,6 +114,12 @@ public class BinlogEventProducer {
             }
         });
 
+        LOGGER.info("starting Open Replicator from: { binlog-file => "
+                + openReplicator.getBinlogFileName()
+                + ", position => "
+                + openReplicator.getBinlogPosition()
+                + " }"
+        );
         openReplicator.start();
     }
 
@@ -156,47 +149,6 @@ public class BinlogEventProducer {
         } catch (InterruptedException e) {
             LOGGER.error("Thread wont sleep");
             e.printStackTrace();
-        }
-    }
-
-    /**
-     * Start Open Replicator.
-     */
-    public void startOpenReplicatorFromLastKnownMapEventPosition() throws Exception {
-
-        if (openReplicator != null) {
-            if (!openReplicator.isRunning()) {
-                if (pipelinePosition != null) {
-
-                    BinlogPositionInfo lastMapEventPosition = pipelinePosition.getLastMapEventPosition();
-                    if (lastMapEventPosition != null) {
-                        String binlogFileName   = lastMapEventPosition.getBinlogFilename();
-                        Long   binlogPosition   = lastMapEventPosition.getBinlogPosition();
-                        if ((binlogFileName != null) && (binlogPosition != null)) {
-                            LOGGER.info("restarting OR from last known map event: { file => "
-                                    + binlogFileName
-                                    + ", position => "
-                                    + binlogPosition
-                                    + " }"
-                            );
-                            openReplicator.setBinlogFileName(pipelinePosition.getLastMapEventPosition().getBinlogFilename());
-                            openReplicator.setBinlogPosition(pipelinePosition.getLastMapEventPosition().getBinlogPosition());
-                            openReplicator.start();
-                        } else {
-                            LOGGER.error("lastMapEvent position object is not initialized. This should not happen. Shuting down...");
-                        }
-                    } else {
-                        LOGGER.error("lastMapEventPosition object is null. This should not happen. Shuting down...");
-                        Runtime.getRuntime().exit(1);
-                    }
-                }
-            } else {
-                LOGGER.error("pipelinePosition is gone. This should never happen. Shutting down...");
-                Runtime.getRuntime().exit(1);
-            }
-        } else {
-            LOGGER.error("OpenReplicator is gone, need to recreate it again, but that is not yet implemented. So for now, just shutdown.");
-            Runtime.getRuntime().exit(1);
         }
     }
 

@@ -77,13 +77,8 @@ public class PipelinePosition {
     }
 
     public void updatCurrentPipelinePosition(BinlogEventV4 event, long fakeMicrosecondCounter) {
-
-        String eventBinlogFileName = getEventBinlogFileName(event);
-        Long   eventBinlogPosition = getEventBinlogPosition(event);
-
-        // current
-        this.getCurrentPosition().setBinlogFilename(eventBinlogFileName);
-        this.getCurrentPosition().setBinlogPosition(eventBinlogPosition);
+        this.getCurrentPosition().setBinlogFilename(getEventBinlogFileName(event));
+        this.getCurrentPosition().setBinlogPosition(getEventBinlogPosition(event));
         this.getCurrentPosition().setFakeMicrosecondsCounter(fakeMicrosecondCounter);
     }
 
@@ -154,7 +149,10 @@ public class PipelinePosition {
                 return ((RotateEvent) event).getHeader().getPosition();
 
             case MySQLConstants.FORMAT_DESCRIPTION_EVENT:
-                return ((FormatDescriptionEvent) event).getHeader().getPosition();
+                // workaround for a bug in open replicator which sets next position to 0, so
+                // position turns out to be negative. Since it is always 4 for this event type,
+                // we just use 4.
+                return 4L;
 
             case MySQLConstants.STOP_EVENT:
                 return ((StopEvent) event).getHeader().getPosition();

@@ -44,6 +44,8 @@ hbase:
     zookeeper_quorum:  ['hbase-zk1-host', 'hbase-zkN-host']
     hive_imports:
         tables: ['sometable']
+pgtid:
+    p_gtid_pattern: $regex_pattern_to_extract_pgtid
 
 metrics:
     frequency: 10 seconds

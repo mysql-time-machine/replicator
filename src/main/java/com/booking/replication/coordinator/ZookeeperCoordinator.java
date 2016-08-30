@@ -1,7 +1,7 @@
 package com.booking.replication.coordinator;
 
 import com.booking.replication.Configuration;
-import com.booking.replication.checkpoints.LastVerifiedBinlogFile;
+import com.booking.replication.checkpoints.LastCommitedPositionCheckpoint;
 import com.booking.replication.checkpoints.SafeCheckPoint;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -150,7 +150,7 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
     }
 
     @Override
-    public LastVerifiedBinlogFile getSafeCheckPoint() {
+    public LastCommitedPositionCheckpoint getSafeCheckPoint() {
         // TODO: get from zk
 
         try {
@@ -159,7 +159,7 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
                 return null;
             }
             byte[] data = client.getData().forPath(checkPointPath);
-            return mapper.readValue(data, LastVerifiedBinlogFile.class);
+            return mapper.readValue(data, LastCommitedPositionCheckpoint.class);
         } catch (JsonProcessingException e) {
             LOGGER.error(String.format("Failed to deserialize checkpoint data. %s", e.getMessage()));
             e.printStackTrace();

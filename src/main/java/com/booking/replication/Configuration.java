@@ -48,6 +48,13 @@ public class Configuration {
     }
 
     @JsonDeserialize
+    private PseudoGTIDConfig pgtid;
+
+    private static class PseudoGTIDConfig implements Serializable {
+        public String p_gtid_pattern;
+    }
+
+    @JsonDeserialize
     @JsonProperty("hbase")
     private HBaseConfiguration hbaseConfiguration;
 
@@ -307,6 +314,9 @@ public class Configuration {
         return metadata_store.database;
     }
 
+    public String getpGTIDPattern() {
+        return pgtid.p_gtid_pattern;
+    }
 
     /**
      * Get metadata store zookeeper quorum.
@@ -402,4 +412,6 @@ public class Configuration {
     public boolean isDryRunMode() {
         return dryRunMode;
     }
+
+
 }

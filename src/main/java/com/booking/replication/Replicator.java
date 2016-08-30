@@ -4,7 +4,7 @@ import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.HBaseApplier;
 import com.booking.replication.applier.KafkaApplier;
 import com.booking.replication.applier.StdoutJsonApplier;
-import com.booking.replication.checkpoints.LastVerifiedBinlogFile;
+import com.booking.replication.checkpoints.LastCommitedPositionCheckpoint;
 import com.booking.replication.monitor.Overseer;
 import com.booking.replication.pipeline.BinlogEventProducer;
 import com.booking.replication.pipeline.BinlogPositionInfo;
@@ -63,7 +63,7 @@ public class Replicator {
             pipelinePosition.setCurrentPosition(currentBinlogPosition);
         } else {
             // Safe Check Point
-            LastVerifiedBinlogFile safeCheckPoint = Coordinator.getCheckpointMarker();
+            LastCommitedPositionCheckpoint safeCheckPoint = Coordinator.getCheckpointMarker();
 
             if ( safeCheckPoint != null ) {
 

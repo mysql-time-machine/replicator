@@ -10,12 +10,13 @@ import com.booking.replication.applier.Applier;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.augmenter.EventAugmenter;
-import com.booking.replication.checkpoints.LastVerifiedBinlogFile;
+import com.booking.replication.checkpoints.LastCommitedPositionCheckpoint;
 import com.booking.replication.queues.ReplicatorQueues;
 import com.booking.replication.schema.ActiveSchemaVersion;
 import com.booking.replication.schema.exception.SchemaTransitionException;
 import com.booking.replication.schema.exception.TableMapException;
-import com.booking.replication.util.QueryTypeMatcher;
+import com.booking.replication.sql.QueryInspector;
+import com.booking.replication.sql.exception.QueryInspectorException;
 import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.impl.event.*;
 import com.google.code.or.common.util.MySQLConstants;
@@ -32,8 +33,6 @@ import java.net.URISyntaxException;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 
 /**
@@ -50,10 +49,11 @@ import java.util.regex.Pattern;
  */
 public class PipelineOrchestrator extends Thread {
 
-    public  final  Configuration      configuration;
-    private final  Applier            applier;
-    private final  ReplicatorQueues   queues;
-    private static EventAugmenter     eventAugmenter;
+    public  final  Configuration       configuration;
+    private final  Applier             applier;
+    private final  ReplicatorQueues    queues;
+    private final  QueryInspector      queryInspector;
+    private static EventAugmenter      eventAugmenter;
     private static ActiveSchemaVersion activeSchemaVersion;
 
     public CurrentTransactionMetadata currentTransactionMetadata;
@@ -72,6 +72,8 @@ public class PipelineOrchestrator extends Thread {
     private static final Meter commitQueryCounter   = Metrics.registry.meter(name("events", "commitQueryCounter"));
     private static final Meter updateEventCounter   = Metrics.registry.meter(name("events", "updateEventCounter"));
     private static final Meter heartBeatCounter     = Metrics.registry.meter(name("events", "heartBeatCounter"));
+    private static final Meter pgtidCounter         = Metrics.registry.meter(name("events", "pgtidCounter"));
+
     private static final Meter eventsReceivedCounter    = Metrics.registry.meter(name("events", "eventsReceivedCounter"));
     private static final Meter eventsProcessedCounter   = Metrics.registry.meter(name("events", "eventsProcessedCounter"));
     private static final Meter eventsSkippedCounter     = Metrics.registry.meter(name("events", "eventsSkippedCounter"));
@@ -148,6 +150,8 @@ public class PipelineOrchestrator extends Thread {
             });
 
         this.pipelinePosition = pipelinePosition;
+
+        this.queryInspector = new QueryInspector(configuration);
     }
 
     public boolean isRunning() {
@@ -256,11 +260,25 @@ public class PipelineOrchestrator extends Thread {
             case MySQLConstants.QUERY_EVENT:
                 doTimestampOverride(event);
                 String querySQL = ((QueryEvent) event).getSql().toString();
-                boolean isDDL = QueryTypeMatcher.isDDL(querySQL);
-                if (QueryTypeMatcher.isCommit(querySQL, isDDL)) {
+
+                boolean isPseudoGTID = queryInspector.isPseudoGTID(querySQL);
+                if (isPseudoGTID) {
+                    pgtidCounter.mark();
+                    try {
+                        String pseudoGTID = queryInspector.extractPseudoGTID(querySQL);
+                        pipelinePosition.setCurrentPseudoGTID(pseudoGTID);
+                    } catch (QueryInspectorException e) {
+                        LOGGER.error("Failed to update pipelinePosition with new pGTID!", e);
+                        setRunning(false);
+                        requestReplicatorShutdown();
+                    }
+                }
+
+                boolean isDDL = queryInspector.isDDL(querySQL);
+                if (queryInspector.isCommit(querySQL, isDDL)) {
                     commitQueryCounter.mark();
                     applier.applyCommitQueryEvent((QueryEvent) event);
-                } else if (QueryTypeMatcher.isBegin(querySQL, isDDL)) {
+                } else if (queryInspector.isBegin(querySQL, isDDL)) {
                     currentTransactionMetadata = new CurrentTransactionMetadata();
                 } else if (isDDL) {
                     // Sync all the things here.
@@ -276,13 +294,16 @@ public class PipelineOrchestrator extends Thread {
                         String currentBinlogFileName =
                                 pipelinePosition.getCurrentPosition().getBinlogFilename();
 
-                        long nextBinlogPosition = event.getHeader().getPosition();
+                        long currentBinlogPosition = event.getHeader().getPosition();
+
+                        String pseudoGTID = pipelinePosition.getCurrentPseudoGTID();
 
                         int currentSlaveId = configuration.getReplicantDBServerID();
-                        LastVerifiedBinlogFile marker = new LastVerifiedBinlogFile(
+                        LastCommitedPositionCheckpoint marker = new LastCommitedPositionCheckpoint(
                                 currentSlaveId,
                                 currentBinlogFileName,
-                                nextBinlogPosition
+                                currentBinlogPosition,
+                                pseudoGTID
                         );
 
                         LOGGER.info("Save new marker: " + marker.toJson());
@@ -394,13 +415,20 @@ public class PipelineOrchestrator extends Thread {
                         pipelinePosition.getCurrentPosition().getBinlogFilename();
 
                 String nextBinlogFileName = rotateEvent.getBinlogFileName().toString();
-                long nextBinlogPosition = rotateEvent.getBinlogPosition();
+                long currentBinlogPosition = rotateEvent.getBinlogPosition();
 
                 LOGGER.info("All rows committed for binlog file "
                         + currentBinlogFileName + ", moving to next binlog " + nextBinlogFileName);
 
+                String pseudoGTID = pipelinePosition.getCurrentPseudoGTID();
+
                 int currentSlaveId = configuration.getReplicantDBServerID();
-                LastVerifiedBinlogFile marker = new LastVerifiedBinlogFile(currentSlaveId, nextBinlogFileName, nextBinlogPosition);
+                LastCommitedPositionCheckpoint marker = new LastCommitedPositionCheckpoint(
+                        currentSlaveId,
+                        nextBinlogFileName,
+                        currentBinlogPosition,
+                        pseudoGTID
+                );
 
                 try {
                     Coordinator.saveCheckpointMarker(marker);
@@ -464,10 +492,19 @@ public class PipelineOrchestrator extends Thread {
         switch (event.getHeader().getEventType()) {
             // Query Event:
             case MySQLConstants.QUERY_EVENT:
+
                 String querySQL  = ((QueryEvent) event).getSql().toString();
-                boolean isDDL    = QueryTypeMatcher.isDDL(querySQL);
-                boolean isCommit = QueryTypeMatcher.isCommit(querySQL, isDDL);
-                boolean isBegin  = QueryTypeMatcher.isBegin(querySQL, isDDL);
+                boolean isDDL    = queryInspector.isDDL(querySQL);
+                boolean isCommit = queryInspector.isCommit(querySQL, isDDL);
+                boolean isBegin  = queryInspector.isBegin(querySQL, isDDL);
+
+                boolean isPseudoGTID = queryInspector.isPseudoGTID(querySQL);
+
+                if (isPseudoGTID) {
+                    skipEvent = false;
+                    return skipEvent;
+                }
+
                 if (isCommit) {
                     // COMMIT does not always contain database name so we get it
                     // from current transaction metadata.

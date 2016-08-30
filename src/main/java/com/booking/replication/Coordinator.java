@@ -1,7 +1,6 @@
 package com.booking.replication;
 
-import com.booking.replication.checkpoints.LastVerifiedBinlogFile;
-import com.booking.replication.checkpoints.SafeCheckPoint;
+import com.booking.replication.checkpoints.LastCommitedPositionCheckpoint;
 import com.booking.replication.coordinator.CoordinatorInterface;
 
 import org.slf4j.Logger;
@@ -24,7 +23,7 @@ public class Coordinator {
         return implementation;
     }
 
-    public static void saveCheckpointMarker(LastVerifiedBinlogFile marker) throws Exception {
+    public static void saveCheckpointMarker(LastCommitedPositionCheckpoint marker) throws Exception {
         implementation.storeSafeCheckPoint(marker);
     }
 
@@ -33,8 +32,8 @@ public class Coordinator {
      *
      * @return Checkpoint marker
      */
-    public static LastVerifiedBinlogFile getCheckpointMarker() {
-        LastVerifiedBinlogFile cp = implementation.getSafeCheckPoint();
+    public static LastCommitedPositionCheckpoint getCheckpointMarker() {
+        LastCommitedPositionCheckpoint cp = implementation.getSafeCheckPoint();
         try {
             LOGGER.info(String.format("Got checkpoint: %s", implementation.serialize(cp)));
         } catch (Exception e) {

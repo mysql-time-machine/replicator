@@ -62,7 +62,7 @@ public class LastCommitedPositionCheckpoint implements SafeCheckPoint {
         return this.checkpointType;
     }
 
-    public Long getSafeCheckPointPosition() {
+    public Long getLastVerifiedBinlogPosition() {
         return  lastVerifiedBinlogPosition;
     }
 
@@ -70,20 +70,16 @@ public class LastCommitedPositionCheckpoint implements SafeCheckPoint {
         return slaveId;
     }
 
-    public void setSlaveId(int slaveId) {
-        this.slaveId = slaveId;
-    }
-
     public String getLastVerifiedBinlogFileName() {
         return lastVerifiedBinlogFileName;
     }
 
-    public void setLastVerifiedBinlogFileName(String lastVerifiedBinlogFileName) {
-        this.lastVerifiedBinlogFileName = lastVerifiedBinlogFileName;
+    public void setSlaveId(int slaveId) {
+        this.slaveId = slaveId;
     }
 
-    public long getLastVerifiedBinlogPosition() {
-        return lastVerifiedBinlogPosition;
+    public void setLastVerifiedBinlogFileName(String lastVerifiedBinlogFileName) {
+        this.lastVerifiedBinlogFileName = lastVerifiedBinlogFileName;
     }
 
     public void setLastVerifiedBinlogPosition(long lastVerifiedBinlogPosition) {

@@ -71,19 +71,19 @@ public class Replicator {
 
                 startBinlogPosition = new BinlogPositionInfo(
                     safeCheckPoint.getSafeCheckPointMarker(),
-                    safeCheckPoint.getSafeCheckPointPosition()
+                    safeCheckPoint.getLastVerifiedBinlogPosition()
                 );
                 pipelinePosition.setStartPosition(startBinlogPosition);
 
                 currentBinlogPosition = new BinlogPositionInfo(
                         safeCheckPoint.getSafeCheckPointMarker(),
-                        safeCheckPoint.getSafeCheckPointPosition()
+                        safeCheckPoint.getLastVerifiedBinlogPosition()
                 );
                 pipelinePosition.setCurrentPosition(currentBinlogPosition);
 
                 lastSafeCheckPointBinlogPosition = new BinlogPositionInfo(
                         safeCheckPoint.getSafeCheckPointMarker(),
-                        safeCheckPoint.getSafeCheckPointPosition()
+                        safeCheckPoint.getLastVerifiedBinlogPosition()
                 );
                 pipelinePosition.setLastSafeCheckPointPosition(lastSafeCheckPointBinlogPosition);
 
@@ -91,7 +91,7 @@ public class Replicator {
                         "Got safe checkpoint from coordinator: { binlog-file => "
                                 + safeCheckPoint.getSafeCheckPointMarker()
                                 + ", binlog-position => "
-                                + safeCheckPoint.getSafeCheckPointPosition()
+                                + safeCheckPoint.getLastVerifiedBinlogPosition()
                                 + " }"
                 );
             } else {

@@ -96,9 +96,7 @@ public class HBaseSchemaManager {
                     byte[][] splitKeys = splitter.split(MIRRORED_TABLE_DEFAULT_REGIONS);
 
                     admin.createTable(tableDescriptor, splitKeys);
-                } else {
-                    LOGGER.info("Table " + hbaseTableName + " allready exists in HBase. Probably a case of replaying the binlog.");
-                }
+                } 
 
                 knownHBaseTables.put(hbaseTableName, 1);
             }

@@ -256,7 +256,7 @@ public class PipelineOrchestrator extends Thread {
         // Process Event
         switch (event.getHeader().getEventType()) {
 
-            // DDL Event:
+            // Check for DDL and pGTID:
             case MySQLConstants.QUERY_EVENT:
                 doTimestampOverride(event);
                 String querySQL = ((QueryEvent) event).getSql().toString();
@@ -274,13 +274,15 @@ public class PipelineOrchestrator extends Thread {
                     }
                 }
 
-                boolean isDDL = queryInspector.isDDL(querySQL);
-                if (queryInspector.isCommit(querySQL, isDDL)) {
+                boolean isDDLTable = queryInspector.isDDLTable(querySQL);
+                boolean isDDLView = queryInspector.isDDLView(querySQL);
+
+                if (queryInspector.isCommit(querySQL, isDDLTable)) {
                     commitQueryCounter.mark();
                     applier.applyCommitQueryEvent((QueryEvent) event);
-                } else if (queryInspector.isBegin(querySQL, isDDL)) {
+                } else if (queryInspector.isBegin(querySQL, isDDLTable)) {
                     currentTransactionMetadata = new CurrentTransactionMetadata();
-                } else if (isDDL) {
+                } else if (isDDLTable) {
                     // Sync all the things here.
                     applier.forceFlush();
                     applier.waitUntilAllRowsAreCommitted(event);
@@ -319,6 +321,8 @@ public class PipelineOrchestrator extends Thread {
                         setRunning(false);
                         requestReplicatorShutdown();
                     }
+                } else if (isDDLView) {
+                    // TODO: add view schema changes to view schema history
                 } else {
                     LOGGER.warn("Unexpected query event: " + querySQL);
                 }
@@ -493,11 +497,11 @@ public class PipelineOrchestrator extends Thread {
             // Query Event:
             case MySQLConstants.QUERY_EVENT:
 
-                String querySQL  = ((QueryEvent) event).getSql().toString();
-                boolean isDDL    = queryInspector.isDDL(querySQL);
-                boolean isCommit = queryInspector.isCommit(querySQL, isDDL);
-                boolean isBegin  = queryInspector.isBegin(querySQL, isDDL);
+                String querySQL = ((QueryEvent) event).getSql().toString();
 
+                boolean isDDLTable   = queryInspector.isDDLTable(querySQL);
+                boolean isCommit     = queryInspector.isCommit(querySQL, isDDLTable);
+                boolean isBegin      = queryInspector.isBegin(querySQL, isDDLTable);
                 boolean isPseudoGTID = queryInspector.isPseudoGTID(querySQL);
 
                 if (isPseudoGTID) {
@@ -529,7 +533,7 @@ public class PipelineOrchestrator extends Thread {
                     }
                 } else if (isBegin) {
                     eventIsTracked = true;
-                } else if (isDDL) {
+                } else if (isDDLTable) {
                     // DDL event should always contain db name
                     String dbName = ((QueryEvent) event).getDatabaseName().toString();
                     if ((dbName == null) || dbName.length() == 0) {

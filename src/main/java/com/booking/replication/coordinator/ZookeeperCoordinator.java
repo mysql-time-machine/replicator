@@ -129,7 +129,7 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
 
     @Override
     public void storeSafeCheckPoint(SafeCheckPoint safeCheckPoint) throws Exception {
-        // TODO: store in zk
+
         try {
             String serializedCP = serialize(safeCheckPoint);
 

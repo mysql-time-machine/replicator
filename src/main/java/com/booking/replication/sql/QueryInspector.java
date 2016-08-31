@@ -14,7 +14,8 @@ import java.util.regex.Pattern;
  */
 public class QueryInspector {
 
-    private final Pattern isDDLPattern;
+    private final Pattern isDDLTablePattern;
+    private final Pattern isDDLViewPattern;
     private final Pattern isBeginPattern;
     private final Pattern isCommitPattern;
     private final Pattern isPseudoGTIDPattern;
@@ -27,21 +28,34 @@ public class QueryInspector {
 
         this.configuration = configuration;
 
-        this.isDDLPattern        = Pattern.compile(QueryPatterns.isDDL, Pattern.CASE_INSENSITIVE);
+        this.isDDLTablePattern = Pattern.compile(QueryPatterns.isDDLTable, Pattern.CASE_INSENSITIVE);
+        this.isDDLViewPattern = Pattern.compile(QueryPatterns.isDDLView, Pattern.CASE_INSENSITIVE);
         this.isBeginPattern      = Pattern.compile(QueryPatterns.isBEGIN, Pattern.CASE_INSENSITIVE);
         this.isCommitPattern     = Pattern.compile(QueryPatterns.isCOMMIT, Pattern.CASE_INSENSITIVE);
         this.isPseudoGTIDPattern = Pattern.compile(configuration.getpGTIDPattern(), Pattern.CASE_INSENSITIVE);
 
     }
 
-    public boolean isDDL(String querySQL) {
+    public boolean isDDLTable(String querySQL) {
 
         // optimization
         if (querySQL.equals("BEGIN")) {
             return false;
         }
 
-        Matcher matcher = isDDLPattern.matcher(querySQL);
+        Matcher matcher = isDDLTablePattern.matcher(querySQL);
+
+        return matcher.find();
+    }
+
+    public boolean isDDLView(String querySQL) {
+
+        // optimization
+        if (querySQL.equals("BEGIN")) {
+            return false;
+        }
+
+        Matcher matcher = isDDLViewPattern.matcher(querySQL);
 
         return matcher.find();
     }

@@ -94,17 +94,6 @@ public class LastCommitedPositionCheckpoint implements SafeCheckPoint {
         this.pseudoGTID = pseudoGTID;
     }
 
-    @Override
-    public String getSafeCheckPointMarker() {
-        return lastVerifiedBinlogFileName;
-    }
-
-    @Override
-    public void setSafeCheckPointMarker(String marker) {
-        lastVerifiedBinlogFileName = marker;
-        LOGGER.info("SafeCheckPoint marker set to: " + lastVerifiedBinlogFileName);
-    }
-
     private ObjectMapper mapper = new ObjectMapper();
 
     @Override

@@ -9,9 +9,5 @@ public interface SafeCheckPoint extends Serializable {
 
     public int getCheckpointType();
 
-    public void setSafeCheckPointMarker(String marker);
-
-    public String getSafeCheckPointMarker();
-
     public String toJson();
 }

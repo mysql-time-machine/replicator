@@ -70,26 +70,26 @@ public class Replicator {
                 LOGGER.info("Start binlog not specified, reading metadata from coordinator");
 
                 startBinlogPosition = new BinlogPositionInfo(
-                    safeCheckPoint.getSafeCheckPointMarker(),
+                    safeCheckPoint.getLastVerifiedBinlogFileName(),
                     safeCheckPoint.getLastVerifiedBinlogPosition()
                 );
                 pipelinePosition.setStartPosition(startBinlogPosition);
 
                 currentBinlogPosition = new BinlogPositionInfo(
-                        safeCheckPoint.getSafeCheckPointMarker(),
+                        safeCheckPoint.getLastVerifiedBinlogFileName(),
                         safeCheckPoint.getLastVerifiedBinlogPosition()
                 );
                 pipelinePosition.setCurrentPosition(currentBinlogPosition);
 
                 lastSafeCheckPointBinlogPosition = new BinlogPositionInfo(
-                        safeCheckPoint.getSafeCheckPointMarker(),
+                        safeCheckPoint.getLastVerifiedBinlogFileName(),
                         safeCheckPoint.getLastVerifiedBinlogPosition()
                 );
                 pipelinePosition.setLastSafeCheckPointPosition(lastSafeCheckPointBinlogPosition);
 
                 LOGGER.info(
                         "Got safe checkpoint from coordinator: { binlog-file => "
-                                + safeCheckPoint.getSafeCheckPointMarker()
+                                + safeCheckPoint.getLastVerifiedBinlogFileName()
                                 + ", binlog-position => "
                                 + safeCheckPoint.getLastVerifiedBinlogPosition()
                                 + " }"

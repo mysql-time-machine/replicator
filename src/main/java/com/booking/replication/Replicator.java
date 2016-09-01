@@ -213,7 +213,12 @@ public class Replicator {
         overseer.start();
 
         while (!pipelineOrchestrator.isReplicatorShutdownRequested()) {
-            Thread.sleep(1000);
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException ie) {
+                LOGGER.error("Main thread interrupted with: ", ie);
+                System.exit(1);
+            }
         }
 
         System.exit(0);

@@ -54,6 +54,16 @@ public class Configuration {
         public String p_gtid_pattern;
     }
 
+
+    @JsonDeserialize
+    private Orchestrator orchestrator;
+
+    private static class Orchestrator {
+        public String username;
+        public String password;
+        public String url;
+    }
+
     @JsonDeserialize
     @JsonProperty("hbase")
     private HBaseConfiguration hbaseConfiguration;
@@ -268,6 +278,21 @@ public class Configuration {
     @JsonIgnore
     public String getReplicantDBPassword() {
         return replication_schema.password;
+    }
+
+    // =========================================================================
+    // Orchestrator config getters
+    public String getOrchestratorUserName() {
+        return orchestrator.username;
+    }
+
+    @JsonIgnore
+    public String getOrchestratorPassword() {
+        return orchestrator.password;
+    }
+
+    public String getOrchestratorUrl() {
+        return orchestrator.url;
     }
 
     // =========================================================================

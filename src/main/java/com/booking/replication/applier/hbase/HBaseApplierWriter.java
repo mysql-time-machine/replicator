@@ -94,6 +94,8 @@ public class HBaseApplierWriter {
 
     private static boolean DRY_RUN;
 
+    private static final long MAX_BLOCKING_TIME = 300000; // 5 min
+
     private static volatile String currentTaskUuid = UUID.randomUUID().toString();
     private static volatile String currentTransactionUUID = UUID.randomUUID().toString();
 
@@ -148,6 +150,7 @@ public class HBaseApplierWriter {
 
         this.poolSize = poolSize;
         taskPool          = Executors.newFixedThreadPool(this.poolSize);
+
         mutationGenerator = new HBaseApplierMutationGenerator(configuration);
 
         hbaseConf.set("hbase.zookeeper.quorum", configuration.getHBaseQuorum());
@@ -329,32 +332,24 @@ public class HBaseApplierWriter {
                 } catch (InterruptedException e) {
                     LOGGER.error("Cant sleep.", e);
                 }
-                if ((blockingTime % 500) == 0) {
-                    LOGGER.warn("Too many tasks already open ( " + currentNumberOfTasks + " ), blocking time is " + blockingTime + "ms");
-                }
-                if (blockingTime == 60000) {
-                    LOGGER.error("We waited for an applier slot for 60s.");
-                    for (String tr: taskTransactionBuffer.keySet()) {
-                        LOGGER.warn(String.format("Task %s, rows: %s, status: %s, future: %s",
-                                tr,
-                                taskRowsBuffered(tr),
-                                taskTransactionBuffer.get(tr).getTaskStatus(),
-                                taskTransactionBuffer.get(tr).getTaskFuture()
-                            )
-                        );
-                        if (taskTransactionBuffer.get(tr).getTaskFuture() != null) {
-                            taskTransactionBuffer.get(tr).getTaskFuture().cancel(true);
-                        }
+
+                if (blockingTime >= MAX_BLOCKING_TIME) {
+                    LOGGER.warn("Waiting for an applier slot more than 300s...");
+                    try {
+                        Thread.sleep(5000);
+                        LOGGER.warn("Too many tasks already open ( "
+                                + currentNumberOfTasks
+                                + " ), blocking time is "
+                                + blockingTime
+                                + "ms");
+                    } catch (InterruptedException ie) {
+                        LOGGER.error("Can't sleep", ie);
                     }
                 }
-                if (blockingTime > 70000) {
-                    throw new RuntimeException("Timed out waiting on applier slot");
-                }
             } else {
-                if (blockingTime > 1000) {
-                    LOGGER.warn("Wait is over with " + currentNumberOfTasks + " current tasks, blocking time was " + blockingTime + "ms");
+                if (blockingTime > 10000) {
+                    LOGGER.info("Wait is over with " + currentNumberOfTasks + " current tasks, blocking time was " + blockingTime + "ms");
                 }
-
                 slotWaitTime = 0;
                 block = false;
             }
@@ -422,8 +417,12 @@ public class HBaseApplierWriter {
                         + "will be retired later by another future.", submittedTaskUuid), ei);
                 requeueTask(submittedTaskUuid);
                 applierTasksFailedCounter.inc();
-            } catch (CancellationException e) {
-                LOGGER.error("Task got canceeled", e);
+            } catch (CancellationException ce) {
+                LOGGER.error(String.format("Future failed for task %s, with exception: %s",
+                        submittedTaskUuid ,
+                        ce.getCause().toString()));
+                requeueTask(submittedTaskUuid);
+                applierTasksFailedCounter.inc();
             } catch (Exception e) {
                 LOGGER.error(String.format("Inconsistent success reports for task %s. Will retry the task.",
                         submittedTaskUuid));

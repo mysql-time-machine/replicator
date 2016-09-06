@@ -234,11 +234,9 @@ public class PipelineOrchestrator extends Thread {
      *
      *  2. if DDL:
      *      a. pass to eventAugmenter which will update the schema
-     *      b. calculateAndPropagateChanges event to AugmentedQueue
      *
      *  3. if DATA:
      *      a. match column names and types
-     *      b. calculateAndPropagateChanges event to AugmentedQueue
      * </p>
      */
     public void calculateAndPropagateChanges(BinlogEventV4 event)

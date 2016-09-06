@@ -43,7 +43,7 @@ public class PipelinePosition {
         this.currentPosition = currentPosition;
     }
 
-    public com.booking.replication.pipeline.BinlogPositionInfo getLastMapEventPosition() {
+    public BinlogPositionInfo getLastMapEventPosition() {
         return lastMapEventPosition;
     }
 
@@ -75,15 +75,11 @@ public class PipelinePosition {
                     event.getHeader().getPosition(),
                     fakeMicrosecondCounter
             ));
+        } else {
+            this.getLastMapEventPosition().setBinlogFilename(getEventBinlogFileName(event));
+            this.getLastMapEventPosition().setBinlogPosition(getEventBinlogPosition(event));
+            this.getLastMapEventPosition().setFakeMicrosecondsCounter(fakeMicrosecondCounter);
         }
-
-        this.getLastMapEventPosition().setBinlogFilename(((TableMapEvent) event).getBinlogFilename());
-        this.getLastMapEventPosition().setBinlogPosition(((TableMapEvent) event).getHeader().getPosition());
-        this.getLastMapEventPosition().setFakeMicrosecondsCounter(fakeMicrosecondCounter);
-
-        this.getCurrentPosition().setBinlogFilename(((TableMapEvent) event).getBinlogFilename());
-        this.getCurrentPosition().setBinlogPosition(((TableMapEvent) event).getHeader().getPosition());
-        this.getCurrentPosition().setFakeMicrosecondsCounter(fakeMicrosecondCounter);
     }
 
     public void updatCurrentPipelinePosition(BinlogEventV4 event, long fakeMicrosecondCounter) {
@@ -168,10 +164,8 @@ public class PipelinePosition {
                 return ((StopEvent) event).getHeader().getPosition();
 
             default:
-                LOGGER.warn("Unexpected event type => " + event.getHeader().getEventType());
-                // since it's not rotate event or format description event, the binlog file
-                // has not changed, so return the last recorded
-                return this.getCurrentPosition().getBinlogPosition();
+                LOGGER.warn("Unexpected event type: " + event.getHeader().getEventType());
+                return event.getHeader().getPosition();
         }
     }
 }

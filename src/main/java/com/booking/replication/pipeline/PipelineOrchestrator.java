@@ -249,7 +249,25 @@ public class PipelineOrchestrator extends Thread {
         }
 
         // Calculate replication delay before the event timestamp is extended with fake miscrosecond part
-        replDelay = event.getHeader().getTimestampOfReceipt() - event.getHeader().getTimestamp();
+        // Note: there is a bug in open replicator which results in rotate event having timestamp value = 0.
+        //       This messes up the replication delay time series. The workaround is not to calculate the
+        //       replication delay at rotate event.
+        if (event.getHeader() != null) {
+            if ((event.getHeader().getTimestampOfReceipt() > 0)
+                    && (event.getHeader().getTimestamp() > 0) ) {
+                replDelay = event.getHeader().getTimestampOfReceipt() - event.getHeader().getTimestamp();
+            } else {
+                if (event.getHeader().getEventType() == MySQLConstants.ROTATE_EVENT) {
+                    // do nothing, expected for rotate event
+                } else {
+                    // warn, not expected for other events
+                    LOGGER.warn("Invalid timestamp value for event " + event.toString());
+                }
+            }
+        } else {
+            LOGGER.error("Event header can not be null");
+            System.exit(1);
+        }
 
         // Process Event
         switch (event.getHeader().getEventType()) {

@@ -41,12 +41,23 @@ class ConnectionDispatch(Thread):
         self.die = False
         self.daemon = True
         self.config = config
-
+        self.MAX_RETRIES = 10
 
     def get_source(self):
-        src = MySQLdb.connect(read_default_file=self.config['source'], cursorclass=Cursor, host=self.config['host'])
-        self._add_id(src.thread_id())
-        return src
+        retry = 1
+        while True:
+            logger.info("trying to connect to mysql...")
+            try:
+                logger.info("attempt %d" % retry)
+                src = MySQLdb.connect(read_default_file=self.config['source'], cursorclass=Cursor, host=self.config['host'])
+                self._add_id(src.thread_id())
+                return src
+            except Exception as e:
+                logger.info(str(e))
+                if (retry > self.MAX_RETRIES):
+                    raise
+                sleep(1)
+                retry += 1
 
     def _add_id(self, tid):
         logger.info("thread id {} added..".format(tid))
@@ -78,7 +89,7 @@ class BlackholeCopyMethod(object):
     def __init__(self, config, tables, condis):
         self.hashCount = 0
         self.hashRep = {}
-        self.MAX_RETRIES = 3
+        self.MAX_RETRIES = 10
         self.config = config
         self.tables = tables
         self.threads = []

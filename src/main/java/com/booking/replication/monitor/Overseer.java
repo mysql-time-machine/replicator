@@ -72,7 +72,7 @@ public class Overseer extends Thread {
                     + pipelinePosition.getCurrentPosition().getBinlogFilename()
                     + ":"
                     + pipelinePosition.getCurrentPosition().getBinlogPosition()
-                    + ". Trying to restart it...");
+                    + ". Requesting shutdown...");
             System.exit(1);
         }
     }

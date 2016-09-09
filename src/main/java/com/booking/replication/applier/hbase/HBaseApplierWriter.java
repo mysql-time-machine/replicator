@@ -202,20 +202,20 @@ public class HBaseApplierWriter {
      *
      * @param augmentedRowsEvent Event
      */
-    public synchronized void pushToCurrentTaskBuffer(AugmentedRowsEvent augmentedRowsEvent) {
+    public synchronized void pushToCurrentTaskBuffer(AugmentedRowsEvent augmentedRowsEvent)
+        throws TaskBufferInconsistencyException {
 
         // Verify that task uuid exists
         if (taskTransactionBuffer.get(currentTaskUuid) == null) {
-            LOGGER.error("ERROR: Missing task UUID (" + currentTaskUuid + ") from taskTransactionBuffer keySet should not happen. "
-                    + "Shutting down...");
-            System.exit(1);
+            throw new TaskBufferInconsistencyException("ERROR: Missing task UUID ("
+                    + currentTaskUuid
+                    + ") from taskTransactionBuffer keySet should not happen. ");
         }
 
         // Verify that transaction_uuid exists
         if (taskTransactionBuffer.get(currentTaskUuid).get(currentTransactionUUID) == null) {
-            LOGGER.error("ERROR: Missing transaction UUID from taskTransactionBuffer keySet should not happen. "
-                    + "Shutting down...");
-            System.exit(1);
+
+            throw  new TaskBufferInconsistencyException("ERROR: Missing transaction UUID from taskTransactionBuffer keySet!");
         }
 
         String mySQLTableName = augmentedRowsEvent.getMysqlTableName();
@@ -258,7 +258,7 @@ public class HBaseApplierWriter {
     /**
      * Rotate tasks, mark current task as ready to be submitted and initialize new task buffer.
      */
-    public void markCurrentTaskAsReadyAndCreateNewUuidBuffer() {
+    public void markCurrentTaskAsReadyAndCreateNewUuidBuffer() throws TaskBufferInconsistencyException {
         // don't create new buffers if no slots available
         blockIfNoSlotsAvailableForBuffering();
 
@@ -286,8 +286,7 @@ public class HBaseApplierWriter {
             if (!taskTransactionBuffer.get(currentTaskUuid).get(transactionUuid).isReadyForCommit()) {
                 openTransactions++;
                 if (openTransactions > 1) {
-                    LOGGER.error("More than one partial transaction in the buffer. Should never happen! Exiting...");
-                    System.exit(-1);
+                    throw new TaskBufferInconsistencyException("More than one partial transaction in the buffer. Should never happen!");
                 }
                 taskTransactionBuffer.get(newTaskUuid).put(transactionUuid, new TransactionProxy() );
                 currentTransactionUUID = transactionUuid; // <- important
@@ -465,7 +464,7 @@ public class HBaseApplierWriter {
     /**
      * Submit tasks that are READY_FOR_PICK_UP.
      */
-    public void submitTasksThatAreReadyForPickUp() {
+    public void submitTasksThatAreReadyForPickUp() throws IOException, TaskBufferInconsistencyException {
 
         if ((! DRY_RUN) && (hbaseConnection == null)) {
             LOGGER.info("HBase connection is gone. Will try to recreate new connection...");
@@ -487,8 +486,8 @@ public class HBaseApplierWriter {
         }
 
         if ((! DRY_RUN) && (hbaseConnection == null)) {
-            LOGGER.error("Could not create HBase connection, all retry attempts failed. Exiting...");
-            System.exit(-1);
+            LOGGER.error("Could not create HBase connection, all retry attempts failed.");
+            throw new IOException("Could not create HBase connection, all retry attempts failed.");
         }
 
         // one future per task
@@ -532,8 +531,8 @@ public class HBaseApplierWriter {
                         )
                     ));
                 } else {
-                    LOGGER.error("Task is marked as READY_FOR_PICK_UP, but has no rows. Exiting...");
-                    System.exit(1);
+                    LOGGER.error("Task is marked as READY_FOR_PICK_UP, but has no rows");
+                    throw new TaskBufferInconsistencyException("Task is marked as READY_FOR_PICK_UP, but has no rows.");
                 }
             }
         }

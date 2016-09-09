@@ -7,6 +7,7 @@ import com.booking.replication.Constants;
 import com.booking.replication.Coordinator;
 import com.booking.replication.Metrics;
 import com.booking.replication.applier.Applier;
+import com.booking.replication.applier.ApplierException;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.augmenter.EventAugmenter;
@@ -240,7 +241,7 @@ public class PipelineOrchestrator extends Thread {
      * </p>
      */
     public void calculateAndPropagateChanges(BinlogEventV4 event)
-            throws IOException, TableMapException, SchemaTransitionException {
+            throws IOException, TableMapException, SchemaTransitionException, ApplierException {
 
         AugmentedRowsEvent augmentedRowsEvent;
 
@@ -265,8 +266,8 @@ public class PipelineOrchestrator extends Thread {
                 }
             }
         } else {
-            LOGGER.error("Event header can not be null");
-            System.exit(1);
+            LOGGER.error("Event header can not be null. Shutting down...");
+            requestReplicatorShutdown();
         }
 
         // Process Event

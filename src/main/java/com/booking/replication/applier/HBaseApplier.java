@@ -3,6 +3,7 @@ package com.booking.replication.applier;
 import com.booking.replication.Constants;
 
 import com.booking.replication.applier.hbase.HBaseApplierWriter;
+import com.booking.replication.applier.hbase.TaskBufferInconsistencyException;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.pipeline.PipelineOrchestrator;
@@ -19,6 +20,8 @@ import com.google.code.or.binlog.impl.event.XidEvent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 
 /**
  * This class abstracts the HBase store.
@@ -84,7 +87,7 @@ public class HBaseApplier implements Applier {
     }
 
     @Override
-    public void applyRotateEvent(RotateEvent event) {
+    public void applyRotateEvent(RotateEvent event) throws ApplierException, IOException {
         LOGGER.info("binlog rotate ["
                 + event.getBinlogFilename()
                 + "], flushing buffer of "
@@ -110,7 +113,7 @@ public class HBaseApplier implements Applier {
     @Override
     public void applyAugmentedRowsEvent(
             final AugmentedRowsEvent augmentedRowsEvent,
-            final PipelineOrchestrator pipeline) {
+            final PipelineOrchestrator pipeline) throws ApplierException, IOException {
 
         String hbaseNamespace = getHBaseNamespace(pipeline);
         if (hbaseNamespace == null) {
@@ -121,7 +124,11 @@ public class HBaseApplier implements Applier {
         //        new HBasePreparedAugmentedRowsEvent(hbaseNamespace, augmentedRowsEvent);
 
         // buffer
-        hbaseApplierWriter.pushToCurrentTaskBuffer(augmentedRowsEvent);
+        try {
+            hbaseApplierWriter.pushToCurrentTaskBuffer(augmentedRowsEvent);
+        } catch (TaskBufferInconsistencyException e) {
+            throw new ApplierException(e);
+        }
 
         // flush on buffer size or time limit
         long currentTime = System.currentTimeMillis();
@@ -156,30 +163,38 @@ public class HBaseApplier implements Applier {
     }
 
     @Override
-    public void forceFlush() {
+    public void forceFlush() throws ApplierException, IOException {
         markAndSubmit();
     }
 
-    private void markAndSubmit() {
+    private void markAndSubmit() throws ApplierException, IOException {
         markCurrentTaskAsReadyToGo();
         submitAllTasksThatAreReadyToGo();
         timeOfLastFlush = System.currentTimeMillis();
     }
 
-    private void resubmitIfThereAreFailedTasks() {
+    private void resubmitIfThereAreFailedTasks() throws IOException, ApplierException {
         submitAllTasksThatAreReadyToGo();
         hbaseApplierWriter.updateTaskStatuses();
         timeOfLastFlush = System.currentTimeMillis();
     }
 
     // mark current uuid buffer as READY_FOR_PICK_UP and create new uuid buffer
-    private void markCurrentTaskAsReadyToGo() {
-        hbaseApplierWriter.markCurrentTaskAsReadyAndCreateNewUuidBuffer();
+    private void markCurrentTaskAsReadyToGo() throws ApplierException {
+        try {
+            hbaseApplierWriter.markCurrentTaskAsReadyAndCreateNewUuidBuffer();
+        } catch (TaskBufferInconsistencyException te) {
+            throw new ApplierException(te);
+        }
     }
 
-    private void submitAllTasksThatAreReadyToGo() {
+    private void submitAllTasksThatAreReadyToGo() throws IOException, ApplierException {
         // Submit all tasks that are ready for pick up
-        hbaseApplierWriter.submitTasksThatAreReadyForPickUp();
+        try {
+            hbaseApplierWriter.submitTasksThatAreReadyForPickUp();
+        } catch (TaskBufferInconsistencyException te) {
+            throw new ApplierException(te);
+        }
     }
 
     @Override
@@ -226,7 +241,7 @@ public class HBaseApplier implements Applier {
     }
 
     @Override
-    public void waitUntilAllRowsAreCommitted(BinlogEventV4 event) {
+    public void waitUntilAllRowsAreCommitted(BinlogEventV4 event) throws IOException, ApplierException {
         boolean wait = true;
 
         while (wait) {

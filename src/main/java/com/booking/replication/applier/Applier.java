@@ -10,28 +10,31 @@ import com.google.code.or.binlog.impl.event.RotateEvent;
 import com.google.code.or.binlog.impl.event.TableMapEvent;
 import com.google.code.or.binlog.impl.event.XidEvent;
 
+import java.io.IOException;
+
 /**
  * Created by bosko on 11/14/15.
  */
 public interface Applier {
 
-    void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedSingleRowEvent, PipelineOrchestrator caller);
+    void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedSingleRowEvent, PipelineOrchestrator caller)
+            throws ApplierException, IOException;
 
     void applyCommitQueryEvent(QueryEvent event);
 
     void applyXidEvent(XidEvent event);
 
-    void applyRotateEvent(RotateEvent event);
+    void applyRotateEvent(RotateEvent event) throws ApplierException, IOException;
 
     void applyAugmentedSchemaChangeEvent(
             AugmentedSchemaChangeEvent augmentedSchemaChangeEvent,
             PipelineOrchestrator caller);
 
-    void forceFlush();
+    void forceFlush() throws ApplierException, IOException;
 
     void applyFormatDescriptionEvent(FormatDescriptionEvent event);
 
     void applyTableMapEvent(TableMapEvent event);
 
-    void waitUntilAllRowsAreCommitted(BinlogEventV4 event);
+    void waitUntilAllRowsAreCommitted(BinlogEventV4 event) throws IOException, ApplierException;
 }

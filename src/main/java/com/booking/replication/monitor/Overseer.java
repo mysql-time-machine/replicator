@@ -48,7 +48,7 @@ public class Overseer extends Thread {
                 Thread.sleep(1000);
                 makeSureProducerIsRunning();
 
-                // TODO: add status checks for pipelineOrchestrator and applier
+                // TODO: add status/health checks for pipelineOrchestrator and applier
                 // makeSurePipelineIsRunning();
 
             } catch (InterruptedException e) {
@@ -72,8 +72,9 @@ public class Overseer extends Thread {
                     + pipelinePosition.getCurrentPosition().getBinlogFilename()
                     + ":"
                     + pipelinePosition.getCurrentPosition().getBinlogPosition()
-                    + ". Requesting shutdown...");
-            System.exit(1);
+                    + ". Requesting pipeline shutdown...");
+            stopMonitoring();
+            pipelineOrchestrator.requestReplicatorShutdown();
         }
     }
 }

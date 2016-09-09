@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.SocketException;
 import java.net.URISyntaxException;
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
@@ -181,15 +182,19 @@ public class Replicator {
                 // Producer
                 try {
                     // let open replicator stop its own threads
-                    LOGGER.info("Stopping Producer...");
-                    binlogEventProducer.stop(1000, TimeUnit.MILLISECONDS);
-                    if (!binlogEventProducer.getOpenReplicator().isRunning()) {
-                        LOGGER.info("Successfully stopped Producer thread");
+                    if (binlogEventProducer.getOpenReplicator().isRunning()) {
+                        LOGGER.info("Stopping Producer...");
+                        binlogEventProducer.stop(10000, TimeUnit.MILLISECONDS);
+                        if (!binlogEventProducer.getOpenReplicator().isRunning()) {
+                            LOGGER.info("Successfully stopped Producer thread");
+                        } else {
+                            throw new Exception("Failed to stop Producer thread");
+                        }
                     } else {
-                        throw new Exception("Failed to stop Producer thread");
+                        LOGGER.info("Producer was allready stopped.");
                     }
-                } catch (InterruptedException e) {
-                    LOGGER.error("Interrupted.", e);
+                } catch (InterruptedException ie) {
+                    LOGGER.error("Interrupted.", ie);
                 } catch (Exception e) {
                     LOGGER.error("Failed to stop Producer thread", e);
                 }
@@ -217,7 +222,7 @@ public class Replicator {
                 Thread.sleep(1000);
             } catch (InterruptedException ie) {
                 LOGGER.error("Main thread interrupted with: ", ie);
-                System.exit(1);
+                pipelineOrchestrator.requestReplicatorShutdown();
             }
         }
 

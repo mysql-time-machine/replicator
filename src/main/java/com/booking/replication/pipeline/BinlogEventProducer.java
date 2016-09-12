@@ -5,7 +5,7 @@ import static com.codahale.metrics.MetricRegistry.name;
 import com.booking.replication.Configuration;
 import com.booking.replication.Constants;
 import com.booking.replication.Metrics;
-import com.booking.replication.mysql.ReplicantPool;
+import com.booking.replication.replicant.ReplicantPool;
 import com.google.code.or.OpenReplicator;
 import com.google.code.or.binlog.BinlogEventListener;
 import com.google.code.or.binlog.BinlogEventV4;

@@ -12,8 +12,8 @@ import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.augmenter.EventAugmenter;
 import com.booking.replication.checkpoints.LastCommitedPositionCheckpoint;
-import com.booking.replication.mysql.ReplicantPool;
 import com.booking.replication.queues.ReplicatorQueues;
+import com.booking.replication.replicant.ReplicantPool;
 import com.booking.replication.schema.ActiveSchemaVersion;
 import com.booking.replication.schema.exception.SchemaTransitionException;
 import com.booking.replication.schema.exception.TableMapException;
@@ -192,7 +192,7 @@ public class PipelineOrchestrator extends Thread {
                     // Update pipeline position
                     fakeMicrosecondCounter++;
                     pipelinePosition.updatCurrentPipelinePosition(
-                        replicantPool.getActiveHost(),
+                        replicantPool.getReplicantDBActiveHost(),
                         replicantPool.getReplicantDBActiveHostServerID(),
                         event,
                         fakeMicrosecondCounter
@@ -385,7 +385,7 @@ public class PipelineOrchestrator extends Thread {
                     applier.applyTableMapEvent((TableMapEvent) event);
 
                     this.pipelinePosition.updatePipelineLastMapEventPosition(
-                        replicantPool.getActiveHost(),
+                        replicantPool.getReplicantDBActiveHost(),
                         replicantPool.getReplicantDBActiveHostServerID(),
                         (TableMapEvent) event,
                         fakeMicrosecondCounter

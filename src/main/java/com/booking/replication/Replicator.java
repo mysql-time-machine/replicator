@@ -6,20 +6,16 @@ import com.booking.replication.applier.KafkaApplier;
 import com.booking.replication.applier.StdoutJsonApplier;
 import com.booking.replication.checkpoints.LastCommitedPositionCheckpoint;
 import com.booking.replication.monitor.Overseer;
-import com.booking.replication.mysql.ReplicantPool;
 import com.booking.replication.pipeline.BinlogEventProducer;
 import com.booking.replication.pipeline.BinlogPositionInfo;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.pipeline.PipelinePosition;
 import com.booking.replication.queues.ReplicatorQueues;
+import com.booking.replication.replicant.ReplicantPool;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.net.SocketException;
-import java.net.URISyntaxException;
-import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -43,7 +39,7 @@ public class Replicator {
     public Replicator(Configuration configuration) throws Exception {
 
         // Replicant Pool
-        replicantPool =  new ReplicantPool(configuration.getReplicantDBHostPool());
+        replicantPool = new ReplicantPool(configuration.getReplicantDBHostPool(), configuration);
 
         // Position Tracking
         PipelinePosition   pipelinePosition = new PipelinePosition();
@@ -57,7 +53,7 @@ public class Replicator {
             LOGGER.info(String.format("Start filename: %s", configuration.getStartingBinlogFileName()));
 
             startBinlogPosition = new BinlogPositionInfo(
-                    replicantPool.getActiveHost(),
+                    replicantPool.getReplicantDBActiveHost(),
                     replicantPool.getReplicantDBActiveHostServerID(),
                     configuration.getStartingBinlogFileName(),
                     configuration.getStartingBinlogPosition()
@@ -65,7 +61,7 @@ public class Replicator {
             pipelinePosition.setStartPosition(startBinlogPosition);
 
             currentBinlogPosition = new BinlogPositionInfo(
-                    replicantPool.getActiveHost(),
+                    replicantPool.getReplicantDBActiveHost(),
                     replicantPool.getReplicantDBActiveHostServerID(),
                     configuration.getStartingBinlogFileName(),
                     configuration.getStartingBinlogPosition()
@@ -80,7 +76,7 @@ public class Replicator {
                 LOGGER.info("Start binlog not specified, reading metadata from coordinator");
 
                 startBinlogPosition = new BinlogPositionInfo(
-                        replicantPool.getActiveHost(),
+                        replicantPool.getReplicantDBActiveHost(),
                         replicantPool.getReplicantDBActiveHostServerID(),
                         safeCheckPoint.getLastVerifiedBinlogFileName(),
                     safeCheckPoint.getLastVerifiedBinlogPosition()
@@ -88,7 +84,7 @@ public class Replicator {
                 pipelinePosition.setStartPosition(startBinlogPosition);
 
                 currentBinlogPosition = new BinlogPositionInfo(
-                        replicantPool.getActiveHost(),
+                        replicantPool.getReplicantDBActiveHost(),
                         replicantPool.getReplicantDBActiveHostServerID(),
                         safeCheckPoint.getLastVerifiedBinlogFileName(),
                         safeCheckPoint.getLastVerifiedBinlogPosition()
@@ -96,7 +92,7 @@ public class Replicator {
                 pipelinePosition.setCurrentPosition(currentBinlogPosition);
 
                 lastSafeCheckPointBinlogPosition = new BinlogPositionInfo(
-                        replicantPool.getActiveHost(),
+                        replicantPool.getReplicantDBActiveHost(),
                         replicantPool.getReplicantDBActiveHostServerID(),
                         safeCheckPoint.getLastVerifiedBinlogFileName(),
                         safeCheckPoint.getLastVerifiedBinlogPosition()
@@ -117,7 +113,7 @@ public class Replicator {
 
         if (configuration.getLastBinlogFileName() != null
                 && startBinlogPosition.greaterThan(new BinlogPositionInfo(
-                    replicantPool.getActiveHost(),
+                    replicantPool.getReplicantDBActiveHost(),
                     replicantPool.getReplicantDBActiveHostServerID(),
                     configuration.getLastBinlogFileName(), 4L))) {
             LOGGER.error(String.format(

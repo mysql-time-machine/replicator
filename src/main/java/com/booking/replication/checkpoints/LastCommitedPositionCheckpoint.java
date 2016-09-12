@@ -15,6 +15,7 @@ public class LastCommitedPositionCheckpoint implements SafeCheckPoint {
 
     private final int checkpointType = SafeCheckpointType.BINLOG_POSITION;
 
+    private String hostName;
     private int    slaveId;
     private String lastVerifiedBinlogFileName;
     private long   lastVerifiedBinlogPosition = 4L;
@@ -22,6 +23,7 @@ public class LastCommitedPositionCheckpoint implements SafeCheckPoint {
     // this is only for tracking purposes. The HA pGTID safe checkpoint will
     // be implemented in different class
     private String pseudoGTID;
+    private String pseudoGTIDFullQuery;
 
     public LastCommitedPositionCheckpoint() {}
 
@@ -45,16 +47,27 @@ public class LastCommitedPositionCheckpoint implements SafeCheckPoint {
     /**
      * Represents the last processed binlog file with last commited postion and pGTID.
      *
-     * @param slaveId           Id of the slave that originated the binlog.
-     * @param binlogFileName    File name
-     * @param binlogPosition    File position
-     * @param pseudoGTID        Pseudo GTID
+     * @param hostName            Host name of the mysql host that originated the binlog
+     * @param slaveId             Server Id of the mysql host that originated the binlog
+     * @param binlogFileName      File name
+     * @param binlogPosition      File position
+     * @param pseudoGTID          Pseudo GTID identifier extracted from full pGTID query
+     * @param pseudoGTIDFullQuery Pseudo GTID Full Query
      */
-    public LastCommitedPositionCheckpoint(int slaveId, String binlogFileName, long binlogPosition, String pseudoGTID) {
-        this.slaveId = slaveId;
-        lastVerifiedBinlogFileName = binlogFileName;
-        lastVerifiedBinlogPosition = binlogPosition;
-        this.pseudoGTID            = pseudoGTID;
+    public LastCommitedPositionCheckpoint(
+        String hostName,
+        int slaveId,
+        String binlogFileName,
+        long binlogPosition,
+        String pseudoGTID,
+        String pseudoGTIDFullQuery
+    ) {
+        this.hostName                   = hostName;
+        this.slaveId                    = slaveId;
+        this.lastVerifiedBinlogFileName = binlogFileName;
+        this.lastVerifiedBinlogPosition = binlogPosition;
+        this.pseudoGTID                 = pseudoGTID;
+        this.pseudoGTIDFullQuery        = pseudoGTIDFullQuery;
     }
 
     @Override
@@ -74,6 +87,23 @@ public class LastCommitedPositionCheckpoint implements SafeCheckPoint {
         return lastVerifiedBinlogFileName;
     }
 
+    public String getPseudoGTID() {
+        return pseudoGTID;
+    }
+
+    public String getHostName() {
+        return hostName;
+    }
+
+    public String getPseudoGTIDFullQuery() {
+        return pseudoGTIDFullQuery;
+    }
+
+    // setters: needed for deserialization
+    public void setHostName(String hostName) {
+        this.hostName = hostName;
+    }
+
     public void setSlaveId(int slaveId) {
         this.slaveId = slaveId;
     }
@@ -86,12 +116,12 @@ public class LastCommitedPositionCheckpoint implements SafeCheckPoint {
         this.lastVerifiedBinlogPosition = lastVerifiedBinlogPosition;
     }
 
-    public String getPseudoGTID() {
-        return pseudoGTID;
-    }
-
     public void setPseudoGTID(String pseudoGTID) {
         this.pseudoGTID = pseudoGTID;
+    }
+
+    public void setPseudoGTIDFullQuery(String pseudoGTIDFullQuery) {
+        this.pseudoGTIDFullQuery = pseudoGTIDFullQuery;
     }
 
     private ObjectMapper mapper = new ObjectMapper();

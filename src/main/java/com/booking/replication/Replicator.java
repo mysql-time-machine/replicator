@@ -69,10 +69,11 @@ public class Replicator {
             pipelinePosition.setCurrentPosition(currentBinlogPosition);
         } else {
             // Safe Check Point
-            LastCommitedPositionCheckpoint safeCheckPoint = Coordinator.getCheckpointMarker();
+            LastCommitedPositionCheckpoint safeCheckPoint = Coordinator.getCheckpointMarker(configuration);
 
             if ( safeCheckPoint != null ) {
 
+                // TODO: if containsPGTID => get_active_host => get_position_and_binglog(pGTID, activeHost)
                 LOGGER.info("Start binlog not specified, reading metadata from coordinator");
 
                 startBinlogPosition = new BinlogPositionInfo(

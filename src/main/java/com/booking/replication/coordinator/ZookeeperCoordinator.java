@@ -151,8 +151,6 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
 
     @Override
     public LastCommitedPositionCheckpoint getSafeCheckPoint() {
-        // TODO: get from zk
-
         try {
             if (client.checkExists().forPath(checkPointPath) == null) {
                 LOGGER.warn("Could not find metadata in zookeeper.");

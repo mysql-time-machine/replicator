@@ -24,6 +24,7 @@ public class PipelinePosition {
     private BinlogPositionInfo lastMapEventPosition;
 
     private String currentPseudoGTID;
+    private String currentPseudoGTIDFullQuery;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PipelinePosition.class);
 
@@ -33,6 +34,14 @@ public class PipelinePosition {
 
     public void setCurrentPseudoGTID(String currentPseudoGTID) {
         this.currentPseudoGTID = currentPseudoGTID;
+    }
+
+    public String getCurrentPseudoGTIDFullQuery() {
+        return currentPseudoGTIDFullQuery;
+    }
+
+    public void setCurrentPseudoGTIDFullQuery(String currentPseudoGTIDFullQuery) {
+        this.currentPseudoGTIDFullQuery = currentPseudoGTIDFullQuery;
     }
 
     public com.booking.replication.pipeline.BinlogPositionInfo getCurrentPosition() {

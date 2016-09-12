@@ -294,6 +294,7 @@ public class PipelineOrchestrator extends Thread {
                     try {
                         String pseudoGTID = queryInspector.extractPseudoGTID(querySQL);
                         pipelinePosition.setCurrentPseudoGTID(pseudoGTID);
+                        pipelinePosition.setCurrentPseudoGTIDFullQuery(querySQL);
                     } catch (QueryInspectorException e) {
                         LOGGER.error("Failed to update pipelinePosition with new pGTID!", e);
                         setRunning(false);
@@ -325,14 +326,17 @@ public class PipelineOrchestrator extends Thread {
 
                         long currentBinlogPosition = event.getHeader().getPosition();
 
-                        String pseudoGTID  = pipelinePosition.getCurrentPseudoGTID();
-                        int currentSlaveId = pipelinePosition.getCurrentPosition().getServerID();
+                        String pseudoGTID          = pipelinePosition.getCurrentPseudoGTID();
+                        String pseudoGTIDFullQuery = pipelinePosition.getCurrentPseudoGTIDFullQuery();
+                        int currentSlaveId         = pipelinePosition.getCurrentPosition().getServerID();
 
                         LastCommitedPositionCheckpoint marker = new LastCommitedPositionCheckpoint(
+                                pipelinePosition.getCurrentPosition().getHost(),
                                 currentSlaveId,
                                 currentBinlogFileName,
                                 currentBinlogPosition,
-                                pseudoGTID
+                                pseudoGTID,
+                                pseudoGTIDFullQuery
                         );
 
                         LOGGER.info("Save new marker: " + marker.toJson());
@@ -456,14 +460,17 @@ public class PipelineOrchestrator extends Thread {
                 LOGGER.info("All rows committed for binlog file "
                         + currentBinlogFileName + ", moving to next binlog " + nextBinlogFileName);
 
-                String pseudoGTID  = pipelinePosition.getCurrentPseudoGTID();
-                int currentSlaveId = pipelinePosition.getCurrentPosition().getServerID();
+                String pseudoGTID          = pipelinePosition.getCurrentPseudoGTID();
+                String pseudoGTIDFullQuery = pipelinePosition.getCurrentPseudoGTIDFullQuery();
+                int currentSlaveId         = pipelinePosition.getCurrentPosition().getServerID();
 
                 LastCommitedPositionCheckpoint marker = new LastCommitedPositionCheckpoint(
+                        pipelinePosition.getCurrentPosition().getHost(),
                         currentSlaveId,
                         nextBinlogFileName,
                         currentBinlogPosition,
-                        pseudoGTID
+                        pseudoGTID,
+                        pseudoGTIDFullQuery
                 );
 
                 try {

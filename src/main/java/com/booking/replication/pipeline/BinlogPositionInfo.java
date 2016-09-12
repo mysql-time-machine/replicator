@@ -7,12 +7,21 @@ public class BinlogPositionInfo {
 
     private String binlogFilename;
     private long   binlogPosition;
+    private int serverID;
+    private String host;
 
     private long   fakeMicrosecondsCounter;
 
     public BinlogPositionInfo() {}
 
-    public BinlogPositionInfo(String filename, long position) {
+    public BinlogPositionInfo(
+        String host,
+        int serverID,
+        String filename,
+        long position
+    ) {
+        this.host           = host;
+        this.serverID = serverID;
         this.binlogFilename = filename;
         this.binlogPosition = position;
     }
@@ -23,17 +32,32 @@ public class BinlogPositionInfo {
      * @param position          Binlog position
      * @param fakeMsCounter     Fake microsecond counter
      */
-    public BinlogPositionInfo(String filename, long position, long fakeMsCounter) {
+    public BinlogPositionInfo(
+        String host,
+        int    serverID,
+        String filename,
+        long   position,
+        long   fakeMsCounter
+    ) {
+        this.host = host;
+        this.serverID = serverID;
         this.binlogFilename = filename;
         this.binlogPosition = position;
         this.fakeMicrosecondsCounter = fakeMsCounter;
     }
 
-    public boolean equals(BinlogPositionInfo other) {
+    public boolean equals(BinlogPositionInfo other) throws Exception {
+        if (!this.host.equals(other.host)) {
+            throw new Exception("Can't compare binlog positions for equality between different hosts");
+        }
         return (this.getBinlogFilename().equals(other.getBinlogFilename()) && this.getBinlogPosition() == other.getBinlogPosition());
     }
 
-    public boolean greaterThan(BinlogPositionInfo other) {
+    public boolean greaterThan(BinlogPositionInfo other) throws Exception {
+        if (!this.host.equals(other.host)) {
+            throw new Exception("Can't compare binlog positions for equality between different hosts");
+        }
+
         int ourBinlogFile = Integer.parseInt(this.binlogFilename.split("\\.")[1]);
         int otherBinlogFile = Integer.parseInt(other.getBinlogFilename().split("\\.")[1]);
 
@@ -65,5 +89,21 @@ public class BinlogPositionInfo {
 
     public void setFakeMicrosecondsCounter(long fakeMicrosecondsCounter) {
         this.fakeMicrosecondsCounter = fakeMicrosecondsCounter;
+    }
+
+    public int getServerID() {
+        return serverID;
+    }
+
+    public void setServerID(int serverID) {
+        this.serverID = serverID;
+    }
+
+    public String getHost() {
+        return host;
+    }
+
+    public void setHost(String host) {
+        this.host = host;
     }
 }

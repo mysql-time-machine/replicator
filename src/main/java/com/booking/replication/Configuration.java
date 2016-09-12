@@ -42,9 +42,8 @@ public class Configuration {
         public String       name;
         public String       username;
         public String       password;
-        public String       host;
+        public List<String> host_pool;
         public int          port        = 3306;
-        public int          server_id   = 1;
     }
 
     @JsonDeserialize
@@ -216,8 +215,8 @@ public class Configuration {
         if (replication_schema.name == null) {
             throw new RuntimeException("Replication schema name cannot be null.");
         }
-        if (replication_schema.host == null) {
-            throw new RuntimeException("Replication schema host name cannot be null.");
+        if (replication_schema.host_pool == null) {
+            throw new RuntimeException("Replication schema host_pool cannot be null.");
         }
         if (replication_schema.username == null) {
             throw new RuntimeException("Replication schema user name cannot be null.");
@@ -259,12 +258,8 @@ public class Configuration {
         return replication_schema.port;
     }
 
-    public int getReplicantDBServerID() {
-        return replication_schema.server_id;
-    }
-
-    public String getReplicantDBActiveHost() {
-        return this.replication_schema.host;
+    public List<String> getReplicantDBHostPool() {
+        return this.replication_schema.host_pool;
     }
 
     public String getReplicantSchemaName() {

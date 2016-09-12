@@ -18,10 +18,10 @@ import org.slf4j.LoggerFactory;
  */
 public class PipelinePosition {
 
-    private com.booking.replication.pipeline.BinlogPositionInfo lastSafeCheckPointPosition;
-    private com.booking.replication.pipeline.BinlogPositionInfo startPosition;
-    private com.booking.replication.pipeline.BinlogPositionInfo currentPosition;
-    private com.booking.replication.pipeline.BinlogPositionInfo lastMapEventPosition;
+    private BinlogPositionInfo lastSafeCheckPointPosition;
+    private BinlogPositionInfo startPosition;
+    private BinlogPositionInfo currentPosition;
+    private BinlogPositionInfo lastMapEventPosition;
 
     private String currentPseudoGTID;
 
@@ -67,22 +67,37 @@ public class PipelinePosition {
         this.startPosition = startPosition;
     }
 
-    public void updatePipelineLastMapEventPosition(TableMapEvent event, long fakeMicrosecondCounter) {
-
+    public void updatePipelineLastMapEventPosition(
+        String host,
+        int serverID,
+        TableMapEvent event,
+        long fakeMicrosecondCounter
+    ) {
         if (this.getLastMapEventPosition() == null) {
             this.setLastMapEventPosition(new BinlogPositionInfo(
+                    host,
+                    serverID,
                     event.getBinlogFilename(),
                     event.getHeader().getPosition(),
                     fakeMicrosecondCounter
             ));
         } else {
+            this.getLastMapEventPosition().setHost(host);
+            this.getLastMapEventPosition().setServerID(serverID);
             this.getLastMapEventPosition().setBinlogFilename(getEventBinlogFileName(event));
             this.getLastMapEventPosition().setBinlogPosition(getEventBinlogPosition(event));
             this.getLastMapEventPosition().setFakeMicrosecondsCounter(fakeMicrosecondCounter);
         }
     }
 
-    public void updatCurrentPipelinePosition(BinlogEventV4 event, long fakeMicrosecondCounter) {
+    public void updatCurrentPipelinePosition(
+        String host,
+        int serverID,
+        BinlogEventV4 event,
+        long fakeMicrosecondCounter
+    ) {
+        this.getCurrentPosition().setHost(host);
+        this.getCurrentPosition().setServerID(serverID);
         this.getCurrentPosition().setBinlogFilename(getEventBinlogFileName(event));
         this.getCurrentPosition().setBinlogPosition(getEventBinlogPosition(event));
         this.getCurrentPosition().setFakeMicrosecondsCounter(fakeMicrosecondCounter);

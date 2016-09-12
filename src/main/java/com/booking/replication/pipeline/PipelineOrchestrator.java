@@ -12,6 +12,7 @@ import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.augmenter.EventAugmenter;
 import com.booking.replication.checkpoints.LastCommitedPositionCheckpoint;
+import com.booking.replication.mysql.ReplicantPool;
 import com.booking.replication.queues.ReplicatorQueues;
 import com.booking.replication.schema.ActiveSchemaVersion;
 import com.booking.replication.schema.exception.SchemaTransitionException;
@@ -51,6 +52,7 @@ import java.util.concurrent.TimeUnit;
 public class PipelineOrchestrator extends Thread {
 
     public  final  Configuration       configuration;
+    private final  ReplicantPool       replicantPool;
     private final  Applier             applier;
     private final  ReplicatorQueues    queues;
     private final  QueryInspector      queryInspector;
@@ -119,13 +121,16 @@ public class PipelineOrchestrator extends Thread {
     }
 
     public PipelineOrchestrator(
-            ReplicatorQueues                  repQueues,
-            PipelinePosition                  pipelinePosition,
-            Configuration                     repcfg,
-            Applier                           applier
-    ) throws SQLException, URISyntaxException {
+            ReplicatorQueues repQueues,
+            PipelinePosition pipelinePosition,
+            Configuration repcfg,
+            Applier applier,
+            ReplicantPool replicantPool) throws SQLException, URISyntaxException {
+
         queues = repQueues;
         configuration = repcfg;
+
+        this.replicantPool = replicantPool;
 
         activeSchemaVersion =  new ActiveSchemaVersion(configuration);
         eventAugmenter = new EventAugmenter(activeSchemaVersion);
@@ -186,7 +191,12 @@ public class PipelineOrchestrator extends Thread {
 
                     // Update pipeline position
                     fakeMicrosecondCounter++;
-                    pipelinePosition.updatCurrentPipelinePosition(event, fakeMicrosecondCounter);
+                    pipelinePosition.updatCurrentPipelinePosition(
+                        replicantPool.getActiveHost(),
+                        replicantPool.getReplicantDBActiveHostServerID(),
+                        event,
+                        fakeMicrosecondCounter
+                    );
 
                     if (! skipEvent(event)) {
                         calculateAndPropagateChanges(event);
@@ -315,9 +325,9 @@ public class PipelineOrchestrator extends Thread {
 
                         long currentBinlogPosition = event.getHeader().getPosition();
 
-                        String pseudoGTID = pipelinePosition.getCurrentPseudoGTID();
+                        String pseudoGTID  = pipelinePosition.getCurrentPseudoGTID();
+                        int currentSlaveId = pipelinePosition.getCurrentPosition().getServerID();
 
-                        int currentSlaveId = configuration.getReplicantDBServerID();
                         LastCommitedPositionCheckpoint marker = new LastCommitedPositionCheckpoint(
                                 currentSlaveId,
                                 currentBinlogFileName,
@@ -374,7 +384,12 @@ public class PipelineOrchestrator extends Thread {
 
                     applier.applyTableMapEvent((TableMapEvent) event);
 
-                    this.pipelinePosition.updatePipelineLastMapEventPosition((TableMapEvent) event, fakeMicrosecondCounter);
+                    this.pipelinePosition.updatePipelineLastMapEventPosition(
+                        replicantPool.getActiveHost(),
+                        replicantPool.getReplicantDBActiveHostServerID(),
+                        (TableMapEvent) event,
+                        fakeMicrosecondCounter
+                    );
 
                 } catch (Exception e) {
                     LOGGER.error("Could not execute mapEvent block. Requesting replicator shutdown...", e);
@@ -441,9 +456,9 @@ public class PipelineOrchestrator extends Thread {
                 LOGGER.info("All rows committed for binlog file "
                         + currentBinlogFileName + ", moving to next binlog " + nextBinlogFileName);
 
-                String pseudoGTID = pipelinePosition.getCurrentPseudoGTID();
+                String pseudoGTID  = pipelinePosition.getCurrentPseudoGTID();
+                int currentSlaveId = pipelinePosition.getCurrentPosition().getServerID();
 
-                int currentSlaveId = configuration.getReplicantDBServerID();
                 LastCommitedPositionCheckpoint marker = new LastCommitedPositionCheckpoint(
                         currentSlaveId,
                         nextBinlogFileName,

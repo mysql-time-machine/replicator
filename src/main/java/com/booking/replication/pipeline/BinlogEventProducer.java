@@ -5,6 +5,7 @@ import static com.codahale.metrics.MetricRegistry.name;
 import com.booking.replication.Configuration;
 import com.booking.replication.Constants;
 import com.booking.replication.Metrics;
+import com.booking.replication.mysql.ReplicantPool;
 import com.google.code.or.OpenReplicator;
 import com.google.code.or.binlog.BinlogEventListener;
 import com.google.code.or.binlog.BinlogEventV4;
@@ -28,8 +29,9 @@ public class BinlogEventProducer {
 
     private final PipelinePosition pipelinePosition;
 
-    private final OpenReplicator openReplicator;
-    private final Configuration configuration;
+    private final OpenReplicator   openReplicator;
+    private final Configuration    configuration;
+    private final ReplicantPool    replicantPool;
 
     private long opCounter = 0;
 
@@ -47,10 +49,12 @@ public class BinlogEventProducer {
     public BinlogEventProducer(
             BlockingQueue<BinlogEventV4> queue,
             PipelinePosition pipelinePosition,
-            Configuration configuration) {
+            Configuration configuration,
+            ReplicantPool replicantPool) {
         this.configuration = configuration;
         this.queue = queue;
         this.pipelinePosition = pipelinePosition;
+        this.replicantPool = replicantPool;
 
         openReplicator = new OpenReplicator();
 
@@ -61,19 +65,24 @@ public class BinlogEventProducer {
                         return backPressureSleep;
                     }
                 });
+
     }
 
     /**
      * Start.
      */
     public void start() throws Exception {
-        // init
+
+        // config
         openReplicator.setUser(configuration.getReplicantDBUserName());
         openReplicator.setPassword(configuration.getReplicantDBPassword());
-        openReplicator.setHost(configuration.getReplicantDBActiveHost());
         openReplicator.setPort(configuration.getReplicantPort());
-        openReplicator.setServerId(configuration.getReplicantDBServerID());
 
+        // pool
+        openReplicator.setHost(replicantPool.getReplicantDBActiveHost());
+        openReplicator.setServerId(replicantPool.getReplicantDBActiveHostServerID());
+
+        // position
         openReplicator.setBinlogPosition(pipelinePosition.getCurrentPosition().getBinlogPosition());
         openReplicator.setBinlogFileName(pipelinePosition.getCurrentPosition().getBinlogFilename());
 

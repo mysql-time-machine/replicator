@@ -13,22 +13,22 @@ public class LastCommittedPositionCheckpoint implements SafeCheckPoint {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LastCommittedPositionCheckpoint.class);
 
-    private final int checkpointType = SafeCheckpointType.BINLOG_POSITION;
+    private final int checkpointType;
 
     private String hostName;
     private int    slaveId;
     private String lastVerifiedBinlogFileName;
     private long   lastVerifiedBinlogPosition = 4L;
 
-    // this is only for tracking purposes. The HA pGTID safe checkpoint will
-    // be implemented in different class
     private String pseudoGTID;
     private String pseudoGTIDFullQuery;
 
-    public LastCommittedPositionCheckpoint() {}
-
     public LastCommittedPositionCheckpoint(int slaveId, String binlogFileName) {
         this(slaveId, binlogFileName, 4L);
+    }
+
+    public LastCommittedPositionCheckpoint() {
+        checkpointType = SafeCheckpointType.BINLOG_POSITION;
     }
 
     /**
@@ -38,10 +38,15 @@ public class LastCommittedPositionCheckpoint implements SafeCheckPoint {
      * @param binlogFileName    File name
      * @param binlogPosition    File position
      */
-    public LastCommittedPositionCheckpoint(int slaveId, String binlogFileName, long binlogPosition) {
+    public LastCommittedPositionCheckpoint(
+        int slaveId,
+        String binlogFileName,
+        long binlogPosition
+    ) {
         this.slaveId = slaveId;
         lastVerifiedBinlogFileName = binlogFileName;
         lastVerifiedBinlogPosition = binlogPosition;
+        checkpointType = SafeCheckpointType.BINLOG_POSITION;
     }
 
     /**
@@ -68,6 +73,7 @@ public class LastCommittedPositionCheckpoint implements SafeCheckPoint {
         this.lastVerifiedBinlogPosition = binlogPosition;
         this.pseudoGTID                 = pseudoGTID;
         this.pseudoGTIDFullQuery        = pseudoGTIDFullQuery;
+        this.checkpointType             = SafeCheckpointType.GLOBAL_PSEUDO_GTID;
     }
 
     @Override

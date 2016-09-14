@@ -1,8 +1,7 @@
 package com.booking.replication;
 
-import com.booking.replication.checkpoints.LastCommitedPositionCheckpoint;
+import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
 import com.booking.replication.coordinator.CoordinatorInterface;
-import com.booking.replication.replicant.MySQLOrchestratorProxy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +23,7 @@ public class Coordinator {
         return implementation;
     }
 
-    public static void saveCheckpointMarker(LastCommitedPositionCheckpoint marker) throws Exception {
+    public static void saveCheckpointMarker(LastCommittedPositionCheckpoint marker) throws Exception {
         implementation.storeSafeCheckPoint(marker);
     }
 
@@ -33,25 +32,14 @@ public class Coordinator {
      *
      * @return Checkpoint marker
      */
-    public static LastCommitedPositionCheckpoint getCheckpointMarker(Configuration configuration) {
-        LastCommitedPositionCheckpoint cp = implementation.getSafeCheckPoint();
-
+    public static LastCommittedPositionCheckpoint getSafeCheckpoint() {
+        LastCommittedPositionCheckpoint cp = implementation.getSafeCheckPoint();
         try {
             LOGGER.info(String.format("Got checkpoint: %s", implementation.serialize(cp)));
-            //=======
-            // call orcehstrator with pgtid
-            //=======
-            MySQLOrchestratorProxy.getOrchestratorResponse(
-                configuration.getOrchestratorUrl(),
-                cp.getPseudoGTIDFullQuery(),
-                cp.getHostName(),
-                "3306"
-            );
         } catch (Exception e) {
             LOGGER.error("Could not get safe checkpoint marker", e);
             System.exit(1);
         }
-        System.exit(0);
         return cp;
     }
 

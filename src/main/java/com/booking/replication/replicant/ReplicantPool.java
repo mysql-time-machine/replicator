@@ -78,7 +78,7 @@ public class ReplicantPool {
         return null;
     }
 
-    private int obtainServerID(String host) throws SQLException {
+    public int obtainServerID(String host) throws SQLException {
 
         int serverID = -1;
 

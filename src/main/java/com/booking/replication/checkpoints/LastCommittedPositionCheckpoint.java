@@ -9,9 +9,9 @@ import java.io.IOException;
 /**
  * Created by bosko on 5/30/16.
  */
-public class LastCommitedPositionCheckpoint implements SafeCheckPoint {
+public class LastCommittedPositionCheckpoint implements SafeCheckPoint {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(LastCommitedPositionCheckpoint.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(LastCommittedPositionCheckpoint.class);
 
     private final int checkpointType = SafeCheckpointType.BINLOG_POSITION;
 
@@ -25,9 +25,9 @@ public class LastCommitedPositionCheckpoint implements SafeCheckPoint {
     private String pseudoGTID;
     private String pseudoGTIDFullQuery;
 
-    public LastCommitedPositionCheckpoint() {}
+    public LastCommittedPositionCheckpoint() {}
 
-    public LastCommitedPositionCheckpoint(int slaveId, String binlogFileName) {
+    public LastCommittedPositionCheckpoint(int slaveId, String binlogFileName) {
         this(slaveId, binlogFileName, 4L);
     }
 
@@ -38,7 +38,7 @@ public class LastCommitedPositionCheckpoint implements SafeCheckPoint {
      * @param binlogFileName    File name
      * @param binlogPosition    File position
      */
-    public LastCommitedPositionCheckpoint(int slaveId, String binlogFileName, long binlogPosition) {
+    public LastCommittedPositionCheckpoint(int slaveId, String binlogFileName, long binlogPosition) {
         this.slaveId = slaveId;
         lastVerifiedBinlogFileName = binlogFileName;
         lastVerifiedBinlogPosition = binlogPosition;
@@ -54,7 +54,7 @@ public class LastCommitedPositionCheckpoint implements SafeCheckPoint {
      * @param pseudoGTID          Pseudo GTID identifier extracted from full pGTID query
      * @param pseudoGTIDFullQuery Pseudo GTID Full Query
      */
-    public LastCommitedPositionCheckpoint(
+    public LastCommittedPositionCheckpoint(
         String hostName,
         int slaveId,
         String binlogFileName,

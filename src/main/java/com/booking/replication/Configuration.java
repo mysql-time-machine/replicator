@@ -46,21 +46,28 @@ public class Configuration {
         public int          port        = 3306;
     }
 
-    @JsonDeserialize
-    private PseudoGTIDConfig pgtid;
-
-    private static class PseudoGTIDConfig implements Serializable {
-        public String p_gtid_pattern;
-    }
-
 
     @JsonDeserialize
-    private Orchestrator orchestrator;
+    @JsonProperty("mysql_failover")
+    private MySQLFailover mySQLFailover;
 
-    private static class Orchestrator {
-        public String username;
-        public String password;
-        public String url;
+    private static class MySQLFailover {
+
+        @JsonDeserialize
+        public PseudoGTIDConfig pgtid;
+
+        private static class PseudoGTIDConfig implements Serializable {
+            public String p_gtid_pattern;
+        }
+
+        @JsonDeserialize
+        public Orchestrator orchestrator;
+
+        private static class Orchestrator {
+            public String username;
+            public String password;
+            public String url;
+        }
     }
 
     @JsonDeserialize
@@ -278,16 +285,20 @@ public class Configuration {
     // =========================================================================
     // Orchestrator config getters
     public String getOrchestratorUserName() {
-        return orchestrator.username;
+        return mySQLFailover.orchestrator.username;
     }
 
     @JsonIgnore
     public String getOrchestratorPassword() {
-        return orchestrator.password;
+        return mySQLFailover.orchestrator.password;
     }
 
     public String getOrchestratorUrl() {
-        return orchestrator.url;
+        return mySQLFailover.orchestrator.url;
+    }
+
+    public MySQLFailover getMySQLFailover() {
+        return  mySQLFailover;
     }
 
     // =========================================================================
@@ -335,7 +346,7 @@ public class Configuration {
     }
 
     public String getpGTIDPattern() {
-        return pgtid.p_gtid_pattern;
+        return mySQLFailover.pgtid.p_gtid_pattern;
     }
 
     /**

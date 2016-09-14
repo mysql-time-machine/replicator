@@ -79,8 +79,8 @@ public class BinlogEventProducer {
         openReplicator.setPort(configuration.getReplicantPort());
 
         // pool
-        openReplicator.setHost(replicantPool.getReplicantDBActiveHost());
-        openReplicator.setServerId(replicantPool.getReplicantDBActiveHostServerID());
+        openReplicator.setHost(pipelinePosition.getCurrentReplicantHostName());
+        openReplicator.setServerId(pipelinePosition.getCurrentReplicantServerID());
 
         // position
         openReplicator.setBinlogPosition(pipelinePosition.getCurrentPosition().getBinlogPosition());

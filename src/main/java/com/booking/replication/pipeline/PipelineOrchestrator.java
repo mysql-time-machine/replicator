@@ -11,7 +11,7 @@ import com.booking.replication.applier.ApplierException;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.augmenter.EventAugmenter;
-import com.booking.replication.checkpoints.LastCommitedPositionCheckpoint;
+import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
 import com.booking.replication.queues.ReplicatorQueues;
 import com.booking.replication.replicant.ReplicantPool;
 import com.booking.replication.schema.ActiveSchemaVersion;
@@ -330,7 +330,7 @@ public class PipelineOrchestrator extends Thread {
                         String pseudoGTIDFullQuery = pipelinePosition.getCurrentPseudoGTIDFullQuery();
                         int currentSlaveId         = pipelinePosition.getCurrentPosition().getServerID();
 
-                        LastCommitedPositionCheckpoint marker = new LastCommitedPositionCheckpoint(
+                        LastCommittedPositionCheckpoint marker = new LastCommittedPositionCheckpoint(
                                 pipelinePosition.getCurrentPosition().getHost(),
                                 currentSlaveId,
                                 currentBinlogFileName,
@@ -464,7 +464,7 @@ public class PipelineOrchestrator extends Thread {
                 String pseudoGTIDFullQuery = pipelinePosition.getCurrentPseudoGTIDFullQuery();
                 int currentSlaveId         = pipelinePosition.getCurrentPosition().getServerID();
 
-                LastCommitedPositionCheckpoint marker = new LastCommitedPositionCheckpoint(
+                LastCommittedPositionCheckpoint marker = new LastCommittedPositionCheckpoint(
                         pipelinePosition.getCurrentPosition().getHost(),
                         currentSlaveId,
                         nextBinlogFileName,
@@ -522,11 +522,16 @@ public class PipelineOrchestrator extends Thread {
         if (pipelinePosition.getLastSafeCheckPointPosition() != null) {
             if ((pipelinePosition.getLastSafeCheckPointPosition().greaterThan(pipelinePosition.getCurrentPosition()))
                     || (pipelinePosition.getLastSafeCheckPointPosition().equals(pipelinePosition.getCurrentPosition()))) {
-                LOGGER.info("Event position "
+                LOGGER.info("Event position { binlog-filename => "
+                        + pipelinePosition.getCurrentPosition().getBinlogFilename()
+                        + ", binlog-position => "
                         + pipelinePosition.getCurrentPosition().getBinlogPosition()
-                        + " is lower or equal then last safe checkpoint position "
+                        + " } is lower or equal then last safe checkpoint position { "
+                        + " binlog-filename => "
+                        + pipelinePosition.getLastSafeCheckPointPosition().getBinlogFilename()
+                        + ", binlog-position => "
                         + pipelinePosition.getLastSafeCheckPointPosition().getBinlogPosition()
-                        + ". Skipping event...");
+                        + " }. Skipping event...");
                 skipEvent = true;
                 return skipEvent;
             }

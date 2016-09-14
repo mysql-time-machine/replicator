@@ -26,7 +26,81 @@ public class PipelinePosition {
     private String currentPseudoGTID;
     private String currentPseudoGTIDFullQuery;
 
+    private String currentReplicantHostName;
+    private int    currentReplicantServerID;
+
     private static final Logger LOGGER = LoggerFactory.getLogger(PipelinePosition.class);
+
+    public PipelinePosition(
+        String mySQLHost,
+        int    serverID,
+        String startingBinlogFilename,
+        Long   startingBinlogPosition,
+        String lastVerifiedBinlogFilename,
+        Long   lastVerifiedBinlogPosition
+    ) {
+        initPipelinePosition(
+            mySQLHost,
+            serverID,
+            startingBinlogFilename,
+            startingBinlogPosition,
+            lastVerifiedBinlogFilename,
+            lastVerifiedBinlogPosition
+        );
+    }
+
+    public PipelinePosition(
+        String currentPseudoGTID,
+        String currentPseudoGTIDFullQuery,
+        String mySQLHost,
+        int    serverID,
+        String startingBinlogFilename,
+        Long   startingBinlogPosition,
+        String lastVerifiedBinlogFilename,
+        Long   lastVerifiedBinlogPosition
+    ) {
+        initPipelinePosition(
+            mySQLHost,
+            serverID,
+            startingBinlogFilename,
+            startingBinlogPosition,
+            lastVerifiedBinlogFilename,
+            lastVerifiedBinlogPosition
+        );
+        this.currentPseudoGTID          = currentPseudoGTID;
+        this.currentPseudoGTIDFullQuery = currentPseudoGTIDFullQuery;
+    }
+
+    private void initPipelinePosition(
+            String mySQLHost,
+            int    serverID,
+            String startingBinlogFilename,
+            Long   startingBinlogPosition,
+            String lastVerifiedBinlogFileName,
+            Long   lastVerifiedBinlogPosition
+    ) {
+        this.currentReplicantHostName   = mySQLHost;
+        this.currentReplicantServerID   = serverID;
+
+        BinlogPositionInfo startingBinlogPositionInfo;
+        startingBinlogPositionInfo = new BinlogPositionInfo(
+            mySQLHost,
+            serverID,
+            startingBinlogFilename,
+            startingBinlogPosition
+        );
+
+        BinlogPositionInfo lastVerifiedBinlogPositionInfo;
+        lastVerifiedBinlogPositionInfo = new BinlogPositionInfo(
+            mySQLHost,
+            serverID,
+            lastVerifiedBinlogFileName,
+            lastVerifiedBinlogPosition
+        );
+        this.setStartPosition(startingBinlogPositionInfo);
+        this.setCurrentPosition(startingBinlogPositionInfo); // <- on startup currentPosition := startingPosition
+        this.setLastSafeCheckPointPosition(lastVerifiedBinlogPositionInfo);
+    }
 
     public String getCurrentPseudoGTID() {
         return currentPseudoGTID;
@@ -74,6 +148,22 @@ public class PipelinePosition {
 
     public void setStartPosition(BinlogPositionInfo startPosition) {
         this.startPosition = startPosition;
+    }
+
+    public String getCurrentReplicantHostName() {
+        return currentReplicantHostName;
+    }
+
+    public void setCurrentReplicantHostName(String currentReplicantHostName) {
+        this.currentReplicantHostName = currentReplicantHostName;
+    }
+
+    public int getCurrentReplicantServerID() {
+        return currentReplicantServerID;
+    }
+
+    public void setCurrentReplicantServerID(int currentReplicantServerID) {
+        this.currentReplicantServerID = currentReplicantServerID;
     }
 
     public void updatePipelineLastMapEventPosition(

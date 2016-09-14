@@ -4,13 +4,14 @@ import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.HBaseApplier;
 import com.booking.replication.applier.KafkaApplier;
 import com.booking.replication.applier.StdoutJsonApplier;
-import com.booking.replication.checkpoints.LastCommitedPositionCheckpoint;
+import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
 import com.booking.replication.monitor.Overseer;
 import com.booking.replication.pipeline.BinlogEventProducer;
 import com.booking.replication.pipeline.BinlogPositionInfo;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.pipeline.PipelinePosition;
 import com.booking.replication.queues.ReplicatorQueues;
+import com.booking.replication.replicant.MySQLOrchestratorProxy;
 import com.booking.replication.replicant.ReplicantPool;
 
 import org.slf4j.Logger;
@@ -32,103 +33,192 @@ public class Replicator {
     private final PipelineOrchestrator pipelineOrchestrator;
     private final Overseer             overseer;
     private final ReplicantPool        replicantPool;
+    private final PipelinePosition     pipelinePosition;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Replicator.class);
 
     // Replicator()
     public Replicator(Configuration configuration) throws Exception {
 
+        boolean mysqlFailoverActive = false;
+        if (configuration.getMySQLFailover() != null) {
+            mysqlFailoverActive = true;
+        }
+
         // Replicant Pool
         replicantPool = new ReplicantPool(configuration.getReplicantDBHostPool(), configuration);
 
-        // Position Tracking
-        PipelinePosition   pipelinePosition = new PipelinePosition();
+        // 1. init pipelinePosition -> move to separate method
+        if (mysqlFailoverActive) {
 
-        BinlogPositionInfo startBinlogPosition;
-        BinlogPositionInfo currentBinlogPosition;
-        BinlogPositionInfo lastSafeCheckPointBinlogPosition;
+            // mysql high-availability mode
+            if (configuration.getStartingBinlogFileName() != null) {
 
-        if (configuration.getStartingBinlogFileName() != null) {
+                // TODO: make mandatory to specify host name when starting from specific binlog file
+                // At the moment the first host in the pool list is assumed when starting with
+                // specified binlog-file
 
-            LOGGER.info(String.format("Start filename: %s", configuration.getStartingBinlogFileName()));
+                String mysqlHost = configuration.getReplicantDBHostPool().get(0);
+                int serverID     = replicantPool.getReplicantDBActiveHostServerID();
 
-            startBinlogPosition = new BinlogPositionInfo(
-                    replicantPool.getReplicantDBActiveHost(),
-                    replicantPool.getReplicantDBActiveHostServerID(),
-                    configuration.getStartingBinlogFileName(),
-                    configuration.getStartingBinlogPosition()
-            );
-            pipelinePosition.setStartPosition(startBinlogPosition);
+                LOGGER.info(String.format("Starting replicator in high-availability mode with: "
+                        + "mysql-host %s, server-id %s, binlog-filename %s",
+                        mysqlHost, serverID, configuration.getStartingBinlogFileName()));
 
-            currentBinlogPosition = new BinlogPositionInfo(
-                    replicantPool.getReplicantDBActiveHost(),
-                    replicantPool.getReplicantDBActiveHostServerID(),
-                    configuration.getStartingBinlogFileName(),
-                    configuration.getStartingBinlogPosition()
-            );
-            pipelinePosition.setCurrentPosition(currentBinlogPosition);
+                pipelinePosition = new PipelinePosition(
+                        mysqlHost,
+                        serverID,
+                        configuration.getStartingBinlogFileName(),
+                        configuration.getStartingBinlogPosition(),
+                        configuration.getStartingBinlogFileName(),
+                        4L
+                );
+
+            } else {
+                // failover:
+                //  1. get Pseudo GTID from safe checkpoint
+                //  2. get active host from the pool
+                //  3. get binlog-filename and binlog-position that correspond to
+                //     Pseudo GTID on the active host (this is done by calling the
+                //     MySQL Orchestrator http API (https://github.com/outbrain/orchestrator).
+                LastCommittedPositionCheckpoint safeCheckPoint = Coordinator.getSafeCheckpoint();
+                if ( safeCheckPoint != null ) {
+                    if (safeCheckPoint.getPseudoGTID() != null) {
+
+                        String replicantActiveHost = replicantPool.getReplicantDBActiveHost();
+                        int    serverID            = replicantPool.getReplicantDBActiveHostServerID();
+
+                        boolean sameHost = replicantActiveHost.equals(safeCheckPoint.getHostName());
+
+                        String pseudoGTIDFullQuery = safeCheckPoint.getPseudoGTIDFullQuery();
+
+                        // call orchestrator API with pGTIDFullQuery as parameter in order to
+                        // obtain the corresponding binlog filename and position on active host
+                        String[] binlogCoordinates = MySQLOrchestratorProxy.findBinlogEntry(
+                                configuration.getOrchestratorUserName(),
+                                configuration.getOrchestratorPassword(),
+                                configuration.getOrchestratorUrl(),
+                                pseudoGTIDFullQuery,
+                                replicantActiveHost,
+                                "3306"
+                        );
+
+                        String startingBinlogFileName = binlogCoordinates[0];
+                        Long   startingBinlogPosition = Long.parseLong(binlogCoordinates[1]);
+
+                        pipelinePosition = new PipelinePosition(
+                            replicantActiveHost,
+                            serverID,
+                            startingBinlogFileName,
+                            startingBinlogPosition,
+                            // positions are not comparable between different hosts
+                            (sameHost ? safeCheckPoint.getLastVerifiedBinlogFileName() : "NA"),
+                            (sameHost ? safeCheckPoint.getLastVerifiedBinlogPosition() : 0)
+                        );
+
+                    } else {
+                        LOGGER.warn("PsuedoGTID not available in safe checkpoint. "
+                            + "Defaulting back to host-specific binlog coordinates.");
+
+                        // the binlog file name and position are host specific which means that
+                        // we can't get mysql host from the pool. We must use the host from the
+                        // safe checkpoint. If that host is not avaiable then, without pGTID,
+                        // failover can not be done and the replicator will exit with SQLException.
+                        String mysqlHost = safeCheckPoint.getHostName();
+                        int    serverID  = replicantPool.obtainServerID(mysqlHost);
+
+                        String startingBinlogFileName = safeCheckPoint.getLastVerifiedBinlogFileName();
+                        Long   startingBinlogPosition = safeCheckPoint.getLastVerifiedBinlogPosition();
+
+                        pipelinePosition = new PipelinePosition(
+                            mysqlHost,
+                            serverID,
+                            startingBinlogFileName,
+                            startingBinlogPosition,
+                            safeCheckPoint.getLastVerifiedBinlogFileName(),
+                            safeCheckPoint.getLastVerifiedBinlogPosition()
+                        );
+                    }
+                } else {
+                    throw new RuntimeException("Could not load safe check point.");
+                }
+            }
         } else {
-            // Safe Check Point
-            LastCommitedPositionCheckpoint safeCheckPoint = Coordinator.getCheckpointMarker(configuration);
+            // single replicant mode
+            if (configuration.getStartingBinlogFileName() != null) {
 
-            if ( safeCheckPoint != null ) {
+                // TODO: make mandatory to specify host name when starting from specific binlog file
+                // At the moment the first host in the pool list is assumed when starting with
+                // specified binlog-file
 
-                // TODO: if containsPGTID => get_active_host => get_position_and_binglog(pGTID, activeHost)
-                LOGGER.info("Start binlog not specified, reading metadata from coordinator");
+                String mysqlHost = configuration.getReplicantDBHostPool().get(0);
+                int serverID     = replicantPool.getReplicantDBActiveHostServerID();
 
-                startBinlogPosition = new BinlogPositionInfo(
-                        replicantPool.getReplicantDBActiveHost(),
-                        replicantPool.getReplicantDBActiveHostServerID(),
-                        safeCheckPoint.getLastVerifiedBinlogFileName(),
-                    safeCheckPoint.getLastVerifiedBinlogPosition()
-                );
-                pipelinePosition.setStartPosition(startBinlogPosition);
+                LOGGER.info(String.format("Starting replicator in single-replicant mode with: "
+                    + "mysql-host %s, server-id %s, binlog-filename %s",
+                    mysqlHost, serverID, configuration.getStartingBinlogFileName()));
 
-                currentBinlogPosition = new BinlogPositionInfo(
-                        replicantPool.getReplicantDBActiveHost(),
-                        replicantPool.getReplicantDBActiveHostServerID(),
-                        safeCheckPoint.getLastVerifiedBinlogFileName(),
-                        safeCheckPoint.getLastVerifiedBinlogPosition()
-                );
-                pipelinePosition.setCurrentPosition(currentBinlogPosition);
-
-                lastSafeCheckPointBinlogPosition = new BinlogPositionInfo(
-                        replicantPool.getReplicantDBActiveHost(),
-                        replicantPool.getReplicantDBActiveHostServerID(),
-                        safeCheckPoint.getLastVerifiedBinlogFileName(),
-                        safeCheckPoint.getLastVerifiedBinlogPosition()
-                );
-                pipelinePosition.setLastSafeCheckPointPosition(lastSafeCheckPointBinlogPosition);
-
-                LOGGER.info(
-                        "Got safe checkpoint from coordinator: { binlog-file => "
-                                + safeCheckPoint.getLastVerifiedBinlogFileName()
-                                + ", binlog-position => "
-                                + safeCheckPoint.getLastVerifiedBinlogPosition()
-                                + " }"
+                pipelinePosition = new PipelinePosition(
+                    mysqlHost,
+                    serverID,
+                    configuration.getStartingBinlogFileName(),
+                    configuration.getStartingBinlogPosition(),
+                    configuration.getStartingBinlogFileName(),
+                    4L
                 );
             } else {
-                throw new RuntimeException("Could not find start binlog in metadata or startup options");
+                LOGGER.info("Start binlog not specified, reading metadata from coordinator");
+                // Safe Check Point
+                LastCommittedPositionCheckpoint safeCheckPoint = Coordinator.getSafeCheckpoint();
+                if ( safeCheckPoint != null ) {
+
+                    String mysqlHost      = safeCheckPoint.getHostName();
+                    int    serverID       = safeCheckPoint.getSlaveId();
+                    String lastVerifiedBinlogFileName = safeCheckPoint.getLastVerifiedBinlogFileName();
+                    Long   lastVerifiedBinlogPosition = safeCheckPoint.getLastVerifiedBinlogPosition();
+
+                    // starting from checkpoint position, so startPosition := lastVerifiedPosition
+                    pipelinePosition = new PipelinePosition(
+                        mysqlHost,
+                        serverID,
+                        lastVerifiedBinlogFileName,
+                        lastVerifiedBinlogPosition,
+                        lastVerifiedBinlogFileName,
+                        lastVerifiedBinlogPosition
+                    );
+
+                    LOGGER.info(
+                        "Got safe checkpoint from coordinator: "
+                        + "{ mysqlHost       => " + mysqlHost
+                        + "{ serverID        => " + serverID
+                        + "{ binlog-file     => " + lastVerifiedBinlogFileName
+                        + ", binlog-position => " + lastVerifiedBinlogPosition
+                        + " }"
+                    );
+                } else {
+                    throw new RuntimeException("Could not find start binlog in metadata or startup options");
+                }
             }
         }
 
+        // 2. validate pipelinePosition
         if (configuration.getLastBinlogFileName() != null
-                && startBinlogPosition.greaterThan(new BinlogPositionInfo(
+                && pipelinePosition.getStartPosition().greaterThan(new BinlogPositionInfo(
                     replicantPool.getReplicantDBActiveHost(),
                     replicantPool.getReplicantDBActiveHostServerID(),
                     configuration.getLastBinlogFileName(), 4L))) {
             LOGGER.error(String.format(
                     "The current position is beyond the last position you configured.\nThe current position is: %s %s",
-                    startBinlogPosition.getBinlogFilename(),
-                    startBinlogPosition.getBinlogPosition())
+                    pipelinePosition.getStartPosition().getBinlogFilename(),
+                    pipelinePosition.getStartPosition().getBinlogPosition())
             );
             System.exit(1);
         }
 
         LOGGER.info(String.format(
                 "Starting replication from: %s %s",
-                startBinlogPosition.getBinlogFilename(),
-                startBinlogPosition.getBinlogPosition()));
+                pipelinePosition.getStartPosition().getBinlogFilename(),
+                pipelinePosition.getStartPosition().getBinlogPosition()));
 
         // Queues
         ReplicatorQueues replicatorQueues = new ReplicatorQueues();

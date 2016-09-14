@@ -68,6 +68,7 @@ public class StartupParameters {
         System.out.println("\tlast-binlog-filename:  " + lastBinlogFileName);
         System.out.println("\tinitial-snapshot:      " + initialSnapshot);
         System.out.println("\thbase-namespace:       " + hbaseNamespace);
+        System.out.println("\tdry-run:               " + dryrun);
         System.out.println("----------------------------------------------\n");
 
     }

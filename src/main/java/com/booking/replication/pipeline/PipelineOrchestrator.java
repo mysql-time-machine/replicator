@@ -7,7 +7,8 @@ import com.booking.replication.Constants;
 import com.booking.replication.Coordinator;
 import com.booking.replication.Metrics;
 import com.booking.replication.applier.Applier;
-import com.booking.replication.applier.ApplierException;
+import com.booking.replication.applier.HBaseApplier;
+import com.booking.replication.applier.hbase.TaskBufferInconsistencyException;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.augmenter.EventAugmenter;
@@ -51,13 +52,14 @@ import java.util.concurrent.TimeUnit;
  */
 public class PipelineOrchestrator extends Thread {
 
-    public  final  Configuration       configuration;
-    private final  ReplicantPool       replicantPool;
-    private final  Applier             applier;
-    private final  ReplicatorQueues    queues;
-    private final  QueryInspector      queryInspector;
-    private static EventAugmenter      eventAugmenter;
-    private static ActiveSchemaVersion activeSchemaVersion;
+    public  final  Configuration                   configuration;
+    private final  ReplicantPool                   replicantPool;
+    private final  Applier                         applier;
+    private final  ReplicatorQueues                queues;
+    private final  QueryInspector                  queryInspector;
+    private static EventAugmenter                  eventAugmenter;
+    private static ActiveSchemaVersion             activeSchemaVersion;
+    private static LastCommittedPositionCheckpoint lastVerifiedPseudoGTIDCheckPoint;
 
     public CurrentTransactionMetadata currentTransactionMetadata;
 
@@ -251,7 +253,7 @@ public class PipelineOrchestrator extends Thread {
      * </p>
      */
     public void calculateAndPropagateChanges(BinlogEventV4 event)
-            throws IOException, TableMapException, SchemaTransitionException, ApplierException {
+            throws Exception, TableMapException {
 
         AugmentedRowsEvent augmentedRowsEvent;
 
@@ -280,6 +282,26 @@ public class PipelineOrchestrator extends Thread {
             requestReplicatorShutdown();
         }
 
+        // check if the applier commit stream moved to a new check point. If so,
+        // store the the new safe check point; currently only supported for hbase applier
+        if (applier instanceof HBaseApplier) {
+            LastCommittedPositionCheckpoint lastCommittedPseudoGTIDReportedByApplier =
+                ((HBaseApplier) applier).getLastCommittedPseudGTIDCheckPoint();
+
+            if (lastVerifiedPseudoGTIDCheckPoint == null
+                    && lastCommittedPseudoGTIDReportedByApplier != null) {
+                lastVerifiedPseudoGTIDCheckPoint = lastCommittedPseudoGTIDReportedByApplier;
+            } else if (lastVerifiedPseudoGTIDCheckPoint != null
+                    && lastCommittedPseudoGTIDReportedByApplier != null) {
+                lastVerifiedPseudoGTIDCheckPoint = lastCommittedPseudoGTIDReportedByApplier;
+            }
+
+            if (lastVerifiedPseudoGTIDCheckPoint != null) {
+                LOGGER.info("Save new marker: " + lastVerifiedPseudoGTIDCheckPoint.toJson());
+                Coordinator.saveCheckpointMarker(lastVerifiedPseudoGTIDCheckPoint);
+            }
+        }
+
         // Process Event
         switch (event.getHeader().getEventType()) {
 
@@ -295,6 +317,20 @@ public class PipelineOrchestrator extends Thread {
                         String pseudoGTID = queryInspector.extractPseudoGTID(querySQL);
                         pipelinePosition.setCurrentPseudoGTID(pseudoGTID);
                         pipelinePosition.setCurrentPseudoGTIDFullQuery(querySQL);
+                        if (applier instanceof  HBaseApplier) {
+                            try {
+                                ((HBaseApplier) applier).applyPseudoGTIDEvent(new LastCommittedPositionCheckpoint(
+                                    pipelinePosition.getCurrentPosition().getHost(),
+                                    pipelinePosition.getCurrentPosition().getServerID(),
+                                    pipelinePosition.getCurrentPosition().getBinlogFilename(),
+                                    pipelinePosition.getCurrentPosition().getBinlogPosition(),
+                                    pseudoGTID,
+                                    querySQL
+                                ));
+                            } catch (TaskBufferInconsistencyException e) {
+                                e.printStackTrace();
+                            }
+                        }
                     } catch (QueryInspectorException e) {
                         LOGGER.error("Failed to update pipelinePosition with new pGTID!", e);
                         setRunning(false);

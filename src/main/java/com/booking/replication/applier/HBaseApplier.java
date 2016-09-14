@@ -6,6 +6,7 @@ import com.booking.replication.applier.hbase.HBaseApplierWriter;
 import com.booking.replication.applier.hbase.TaskBufferInconsistencyException;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
+import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.schema.HBaseSchemaManager;
 
@@ -37,9 +38,9 @@ import java.io.IOException;
 public class HBaseApplier implements Applier {
 
     // TODO: move configuration vars to Configuration
-    private static final int POOL_SIZE = 30;
+    private static final int POOL_SIZE = 10;
 
-    private static final int UUID_BUFFER_SIZE = 1000; // <- max number of rows in one uuid buffer
+    private static final int UUID_BUFFER_SIZE = 50; // <- max number of rows in one uuid buffer
 
     private static final int BUFFER_FLUSH_INTERVAL = 60000; // <- force buffer flush every 60 sec
 
@@ -97,6 +98,10 @@ public class HBaseApplier implements Applier {
         markAndSubmit(); // mark current as ready; flush all;
     }
 
+    public LastCommittedPositionCheckpoint getLastCommittedPseudGTIDCheckPoint() {
+        return hbaseApplierWriter.getLatestCommittedPseudoGTIDCheckPoint();
+    }
+
     @Override
     public void applyAugmentedSchemaChangeEvent(
             AugmentedSchemaChangeEvent event,
@@ -104,6 +109,10 @@ public class HBaseApplier implements Applier {
         hbaseSchemaManager.writeSchemaSnapshotToHBase(event, configuration);
     }
 
+    public void applyPseudoGTIDEvent(LastCommittedPositionCheckpoint pseudoGTIDCheckPoint)
+            throws TaskBufferInconsistencyException {
+        hbaseApplierWriter.markCurrentTaskWithPseudoGTID(pseudoGTIDCheckPoint);
+    }
     /**
      * Core logic of the applier. Processes data events and writes to HBase.
      *
@@ -119,9 +128,6 @@ public class HBaseApplier implements Applier {
         if (hbaseNamespace == null) {
             return;
         }
-
-        //HBasePreparedAugmentedRowsEvent hBasePreparedAugmentedRowsEvent =
-        //        new HBasePreparedAugmentedRowsEvent(hbaseNamespace, augmentedRowsEvent);
 
         // buffer
         try {

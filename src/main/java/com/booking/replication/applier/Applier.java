@@ -37,4 +37,5 @@ public interface Applier {
     void applyTableMapEvent(TableMapEvent event);
 
     void waitUntilAllRowsAreCommitted(BinlogEventV4 event) throws IOException, ApplierException;
+
 }

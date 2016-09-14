@@ -6,6 +6,7 @@ import com.booking.replication.Metrics;
 import com.booking.replication.applier.TaskStatus;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
+import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Gauge;
@@ -71,9 +72,17 @@ public class HBaseApplierWriter {
      * from the binlog and if there are multiple operations on the same row all versions are kept in HBase.</p>
      */
     private final
-            ConcurrentHashMap<String, ApplierTask>
-            taskTransactionBuffer = new ConcurrentHashMap<>();
+        ConcurrentHashMap<String, ApplierTask>
+        taskTransactionBuffer = new ConcurrentHashMap<>();
 
+   private final
+        HBaseApplierNotYetCommittedAccounting
+        notYetCommittedTasksAccountant = new HBaseApplierNotYetCommittedAccounting();
+
+    private static final
+        ConcurrentHashMap<String, String> taskUUIDToPseudoGTID = new ConcurrentHashMap<>();
+
+    private static LastCommittedPositionCheckpoint latestCommittedPseudoGTID;
     /**
      * Shared connection used by all tasks in applier.
      */
@@ -114,6 +123,9 @@ public class HBaseApplierWriter {
     private static final Counter
             applierTasksFailedCounter = Metrics.registry.counter(name("HBase", "applierTasksFailedCounter"));
 
+    public static LastCommittedPositionCheckpoint getLatestCommittedPseudoGTIDCheckPoint() {
+        return latestCommittedPseudoGTID;
+    }
 
     /**
      * Helper function to identify if any tasks are still pending, will return true only when
@@ -164,6 +176,7 @@ public class HBaseApplierWriter {
             }
         }
 
+
         taskTransactionBuffer
                 .put(currentTaskUuid, new ApplierTask(TaskStatus.READY_FOR_BUFFERING));
         taskTransactionBuffer.get(currentTaskUuid)
@@ -197,6 +210,17 @@ public class HBaseApplierWriter {
                 });
     }
 
+    public synchronized void markCurrentTaskWithPseudoGTID(LastCommittedPositionCheckpoint pseudoGTIDCheckPoint)
+        throws TaskBufferInconsistencyException {
+        // Verify that task uuid exists
+        if (taskTransactionBuffer.get(currentTaskUuid) == null) {
+            throw new TaskBufferInconsistencyException("ERROR: Missing task UUID ("
+                    + currentTaskUuid
+                    + ") from taskTransactionBuffer keySet should not happen. ");
+        }
+        taskTransactionBuffer.get(currentTaskUuid).setPseudoGTIDCheckPoint(pseudoGTIDCheckPoint);
+    }
+
     /**
      * Buffer current event for processing.
      *
@@ -204,14 +228,12 @@ public class HBaseApplierWriter {
      */
     public synchronized void pushToCurrentTaskBuffer(AugmentedRowsEvent augmentedRowsEvent)
         throws TaskBufferInconsistencyException {
-
         // Verify that task uuid exists
         if (taskTransactionBuffer.get(currentTaskUuid) == null) {
             throw new TaskBufferInconsistencyException("ERROR: Missing task UUID ("
                     + currentTaskUuid
                     + ") from taskTransactionBuffer keySet should not happen. ");
         }
-
         // Verify that transaction_uuid exists
         if (taskTransactionBuffer.get(currentTaskUuid).get(currentTransactionUUID) == null) {
 
@@ -358,7 +380,7 @@ public class HBaseApplierWriter {
     /**
      * Clean up task statuses, requeue tasks where necessary.
      */
-    public void updateTaskStatuses() {
+    public synchronized void updateTaskStatuses() {
         // Loop submitted tasks
         for (String submittedTaskUuid : taskTransactionBuffer.keySet()) {
             try {
@@ -381,13 +403,27 @@ public class HBaseApplierWriter {
                             throw new Exception("Inconsistent success reports for task " + submittedTaskUuid);
                         }
 
-                        applierTasksSucceededCounter.inc();
+                        // do the accounting
+                        try {
+                            // 1. update status in the taskTransactionBuffer
+                            taskTransactionBuffer.get(submittedTaskUuid).setTaskStatus(TaskStatus.WRITE_SUCCEEDED);
 
-                        // the following two are structured by task-transaction, so
-                        // if there is an open transaction UUID in this task, it has
-                        // already been copied to the new/next task
-                        LOGGER.debug("Removed task from task buffer: " + submittedTaskUuid);
-                        taskTransactionBuffer.remove(submittedTaskUuid);
+                            // 2. check if previous tasks are also committed so we can store a safe check point
+                            notYetCommittedTasksAccountant.doAccountingOnTaskSuccess(taskTransactionBuffer, submittedTaskUuid);
+
+                            // 3. taskTransactionBuffer remove the task that has been comitted
+                            //      => note: the buffer is structured by task-transaction, so
+                            //        if there is an open transaction UUID in this task, it has
+                            //        already been copied to the new/next task
+                            taskTransactionBuffer.remove(submittedTaskUuid);
+                            LOGGER.debug("Removed task from task buffer: " + submittedTaskUuid);
+
+                            // 4. metrics
+                            applierTasksSucceededCounter.inc();
+
+                        } catch (Exception e) {
+                            throw new TaskAccountingException("Failed to do proper accounting for task " + submittedTaskUuid);
+                        }
                     } else if (statusOfDoneTask == TaskStatus.WRITE_FAILED) {
                         if (taskSucceeded) {
                             throw new Exception("Inconsistent failure reports for task " + submittedTaskUuid);
@@ -423,9 +459,7 @@ public class HBaseApplierWriter {
                 requeueTask(submittedTaskUuid);
                 applierTasksFailedCounter.inc();
             } catch (Exception e) {
-                LOGGER.error(String.format("Inconsistent success reports for task %s. Will retry the task.",
-                        submittedTaskUuid));
-                e.printStackTrace();
+                LOGGER.error(String.format("Exception for task %s. Will retry the task.", submittedTaskUuid),e);
                 requeueTask(submittedTaskUuid);
                 applierTasksFailedCounter.inc();
             }
@@ -518,6 +552,14 @@ public class HBaseApplierWriter {
                     LOGGER.info("Submitting task " + taskUuid);
 
                     taskTransactionBuffer.get(taskUuid).setTaskStatus(TaskStatus.TASK_SUBMITTED);
+
+                    // add to notYetCommittedList, unless its already there (hapens when failed task
+                    // is requeued since task UUID is not changes on requeue - that way we know the
+                    // order of tasks that corresponds to the binlog irregardless of possible task
+                    // requeuing)
+                    if (notYetCommittedTasksAccountant.containsTaskUUID(taskUuid)) {
+                        notYetCommittedTasksAccountant.addTaskUUID(taskUuid);
+                    }
 
                     applierTasksSubmittedCounter.inc();
 

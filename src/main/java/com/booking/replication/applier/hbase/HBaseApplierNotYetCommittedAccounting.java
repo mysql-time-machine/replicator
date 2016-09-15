@@ -134,6 +134,7 @@ public class HBaseApplierNotYetCommittedAccounting {
                         + " will be removed from the notYetCommittedTaskUUIDs list");
             }
         }
+        LOGGER.info("taskIndex in notCommittedList: { " +  committedTaskUUID + " => " + taskIndexInNotYetCommittedList);
         return taskIndexInNotYetCommittedList;
     }
 

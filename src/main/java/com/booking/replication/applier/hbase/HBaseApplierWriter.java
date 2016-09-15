@@ -384,8 +384,30 @@ public class HBaseApplierWriter {
      */
     public synchronized void updateTaskStatuses() throws ApplierException {
         // Loop submitted tasks
+
         for (String submittedTaskUuid : taskTransactionBuffer.keySet()) {
+
+            LOGGER.info("main loop, task => " + submittedTaskUuid);
+
+            if (taskTransactionBuffer.get(submittedTaskUuid) != null) {
+                LOGGER.info("Still contains this key and value");
+            } else {
+                // TODO: this is ugly, find a better way to solve this problem
+                // skip non-existing key: after accounting for WRITE_SUCCEEDED, there
+                // is a chance that some tasks (basically previous tasks in the binlog
+                // order that have (all) also been committed) have been removed from
+                // taskTransactionBuffer.
+                // Since the binlog order is not the same as the order of this loop and
+                // since the loop loads the keys once at the beginning, there is a chance
+                // to hit a key(s) that has been removed and get a NPE. So, after accounting
+                // some keys in the loop may be missing so we need to check for them and skip
+                // the loop block for each of them.
+                LOGGER.info("This key is gone from the map. Skipping the key.");
+                continue;
+            }
+
             try {
+
                 Future<HBaseTaskResult>  taskFuture = taskTransactionBuffer.get(submittedTaskUuid).getTaskFuture();
                 if (taskFuture == null) {
                     continue;
@@ -439,10 +461,12 @@ public class HBaseApplierWriter {
                 }
             } catch (ExecutionException ex) {
                 LOGGER.error(String.format("Future failed for task %s, with exception: %s",
-                        submittedTaskUuid ,
+                        submittedTaskUuid,
                         ex.getCause().toString()));
                 requeueTask(submittedTaskUuid);
                 applierTasksFailedCounter.inc();
+            } catch (NullPointerException e) {
+                LOGGER.error("Null pointer", e);
             } catch (InterruptedException ei) {
                 LOGGER.info(String.format("Task %s was canceled by interrupt. "
                         + "The task that has been canceled "

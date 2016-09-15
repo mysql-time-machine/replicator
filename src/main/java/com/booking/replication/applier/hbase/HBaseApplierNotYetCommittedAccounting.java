@@ -3,6 +3,9 @@ package com.booking.replication.applier.hbase;
 import com.booking.replication.applier.TaskStatus;
 import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -11,6 +14,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * Created by bosko on 9/15/16.
  */
 public class HBaseApplierNotYetCommittedAccounting {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(HBaseApplierNotYetCommittedAccounting.class);
+
     /**
      * Non-Committed task UUUDs in the order as they are received from the binlog.
      * Since tasks run in parallel, and the binlog is ordered structure, we have
@@ -34,36 +40,41 @@ public class HBaseApplierNotYetCommittedAccounting {
         return false;
     }
 
-    public synchronized void doAccountingOnTaskSuccess(
+    public synchronized LastCommittedPositionCheckpoint doAccountingOnTaskSuccess(
             ConcurrentHashMap<String, ApplierTask> taskTransactionBuffer,
             String committedTaskID) throws Exception {
+        LOGGER.info("accounting on success of " + committedTaskID);
+        LastCommittedPositionCheckpoint committedHeadPseudoGTIDCheckPoint = null;
         if (allLowerPositionTasksHaveBeenCommitted(taskTransactionBuffer, committedTaskID)) {
             int taskIndex = findTaskIndexInNotYetCommittedList(taskTransactionBuffer, committedTaskID);
 
             List<String> committedHead = taskHead(taskIndex);
 
-            LastCommittedPositionCheckpoint committedHeadPseduoGTIDCheckPoint =
+            committedHeadPseudoGTIDCheckPoint =
                     scanCommittedTasksForPseudoGTIDCheckpoint(taskTransactionBuffer, committedHead);
-
-            if (committedHeadPseduoGTIDCheckPoint != null) {
-                // TODO: notify applier
-            }
 
             // remove taskHead
             List<String> committedTail = taskTail(taskIndex);
             notYetCommittedTaskUUIDs = committedTail;
+
+            if (committedHeadPseudoGTIDCheckPoint != null) {
+                System.out.println("New check point found in committed tasks" + committedHeadPseudoGTIDCheckPoint.toJson());
+            }
         }
+        return committedHeadPseudoGTIDCheckPoint;
     }
 
     private boolean allLowerPositionTasksHaveBeenCommitted(
             ConcurrentHashMap<String, ApplierTask> taskTransactionBuffer,
             String committedTaskUUID) {
         boolean result = false;
+        LOGGER.info("Checking taskHead. Total items in notYetCommittedTaskUUIDs " + notYetCommittedTaskUUIDs.size());
         for (String taskUUID : notYetCommittedTaskUUIDs) {
+            LOGGER.info(committedTaskUUID + " [is before or equal] " + taskUUID);
             if (taskUUID.equals(committedTaskUUID)) {
-                System.out.println("this task is the first in the list or all previous have been committed");
+                LOGGER.info("this task is the first in the list or all previous have been committed");
                 if (taskTransactionBuffer.get(taskUUID).getTaskStatus() != TaskStatus.WRITE_SUCCEEDED) {
-                    System.out.println("Incosystecy!!!");
+                    LOGGER.error("Incosystecy!!!");
                     break;
                 } else {
                     result = true;
@@ -71,10 +82,12 @@ public class HBaseApplierNotYetCommittedAccounting {
                 }
             } else {
                 if (taskTransactionBuffer.get(taskUUID).getTaskStatus() != TaskStatus.WRITE_SUCCEEDED) {
-                    System.out.println("task before " + taskUUID + " has non success status => " + taskTransactionBuffer.get(taskUUID).getTaskStatus());
+                    LOGGER.info("task before "
+                            + taskUUID
+                            + " has non success status => " + taskTransactionBuffer.get(taskUUID).getTaskStatus());
                     break;
                 } else {
-                    System.out.println("task before " + taskUUID + " has status => " + taskTransactionBuffer.get(taskUUID).getTaskStatus());
+                    LOGGER.info("task before " + taskUUID + " has status => " + taskTransactionBuffer.get(taskUUID).getTaskStatus());
                 }
             }
         }
@@ -145,7 +158,7 @@ public class HBaseApplierNotYetCommittedAccounting {
 
                         // the reason for throwing exception here is that this method should be called only if
                         // all previous tasks have been confirmed as committed
-                        System.out.println(taskUUID + " -----> " + taskTransactionBuffer.get(taskUUID).getTaskStatus());
+                        LOGGER.error(taskUUID + " -----> " + taskTransactionBuffer.get(taskUUID).getTaskStatus());
                         throw new TaskAccountingException("committedHead contains a task which is not WRITE_SUCCEEDED:"
                                 + taskUUID);
                     } else {
@@ -154,6 +167,9 @@ public class HBaseApplierNotYetCommittedAccounting {
                         }
                     }
                 } else {
+                    LOGGER.error("task "
+                            + taskUUID
+                            + " missing from taskTransactionBuffer, but it exists in notYetCommittedTaskUUIDs.");
                     throw new TaskAccountingException("task "
                         + taskUUID
                         + " missing from taskTransactionBuffer, but it exists in notYetCommittedTaskUUIDs.");

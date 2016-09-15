@@ -75,14 +75,14 @@ public class HBaseApplierWriter {
         ConcurrentHashMap<String, ApplierTask>
         taskTransactionBuffer = new ConcurrentHashMap<>();
 
-   private final
+    private final
         HBaseApplierNotYetCommittedAccounting
         notYetCommittedTasksAccountant = new HBaseApplierNotYetCommittedAccounting();
 
     private static final
         ConcurrentHashMap<String, String> taskUUIDToPseudoGTID = new ConcurrentHashMap<>();
 
-    private static LastCommittedPositionCheckpoint latestCommittedPseudoGTID;
+    private static LastCommittedPositionCheckpoint latestCommittedPseudoGTIDCheckPoint;
     /**
      * Shared connection used by all tasks in applier.
      */
@@ -124,7 +124,7 @@ public class HBaseApplierWriter {
             applierTasksFailedCounter = Metrics.registry.counter(name("HBase", "applierTasksFailedCounter"));
 
     public static LastCommittedPositionCheckpoint getLatestCommittedPseudoGTIDCheckPoint() {
-        return latestCommittedPseudoGTID;
+        return latestCommittedPseudoGTIDCheckPoint;
     }
 
     /**
@@ -408,15 +408,22 @@ public class HBaseApplierWriter {
                             // 1. update status in the taskTransactionBuffer
                             taskTransactionBuffer.get(submittedTaskUuid).setTaskStatus(TaskStatus.WRITE_SUCCEEDED);
 
-                            // 2. check if previous tasks are also committed so we can store a safe check point
-                            notYetCommittedTasksAccountant.doAccountingOnTaskSuccess(taskTransactionBuffer, submittedTaskUuid);
+                            // 2. check if previous tasks are also committed and, if they are, check if they contain
+                            //    a new check point
+                            LastCommittedPositionCheckpoint newCheckPoint =
+                                notYetCommittedTasksAccountant.doAccountingOnTaskSuccess(taskTransactionBuffer, submittedTaskUuid);
+                            if (newCheckPoint != null) {
+                                latestCommittedPseudoGTIDCheckPoint = newCheckPoint;
+                            } else {
+                                LOGGER.info("No new checkpoint found");
+                            }
 
                             // 3. taskTransactionBuffer remove the task that has been comitted
                             //      => note: the buffer is structured by task-transaction, so
                             //        if there is an open transaction UUID in this task, it has
                             //        already been copied to the new/next task
                             taskTransactionBuffer.remove(submittedTaskUuid);
-                            LOGGER.debug("Removed task from task buffer: " + submittedTaskUuid);
+                            LOGGER.info("Removed task from task buffer: " + submittedTaskUuid);
 
                             // 4. metrics
                             applierTasksSucceededCounter.inc();
@@ -557,7 +564,7 @@ public class HBaseApplierWriter {
                     // is requeued since task UUID is not changes on requeue - that way we know the
                     // order of tasks that corresponds to the binlog irregardless of possible task
                     // requeuing)
-                    if (notYetCommittedTasksAccountant.containsTaskUUID(taskUuid)) {
+                    if (!notYetCommittedTasksAccountant.containsTaskUUID(taskUuid)) {
                         notYetCommittedTasksAccountant.addTaskUUID(taskUuid);
                     }
 

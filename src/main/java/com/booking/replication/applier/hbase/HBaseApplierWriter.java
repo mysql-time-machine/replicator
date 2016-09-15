@@ -3,6 +3,7 @@ package com.booking.replication.applier.hbase;
 import static com.codahale.metrics.MetricRegistry.name;
 
 import com.booking.replication.Metrics;
+import com.booking.replication.applier.ApplierException;
 import com.booking.replication.applier.TaskStatus;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
@@ -280,7 +281,8 @@ public class HBaseApplierWriter {
     /**
      * Rotate tasks, mark current task as ready to be submitted and initialize new task buffer.
      */
-    public void markCurrentTaskAsReadyAndCreateNewUuidBuffer() throws TaskBufferInconsistencyException {
+    public void markCurrentTaskAsReadyAndCreateNewUuidBuffer()
+            throws TaskBufferInconsistencyException, ApplierException {
         // don't create new buffers if no slots available
         blockIfNoSlotsAvailableForBuffering();
 
@@ -334,7 +336,7 @@ public class HBaseApplierWriter {
 
     private long slotWaitTime = 0L;
 
-    private void blockIfNoSlotsAvailableForBuffering() {
+    private void blockIfNoSlotsAvailableForBuffering() throws ApplierException {
 
         boolean block = true;
         int blockingTime = 0;
@@ -380,7 +382,7 @@ public class HBaseApplierWriter {
     /**
      * Clean up task statuses, requeue tasks where necessary.
      */
-    public synchronized void updateTaskStatuses() {
+    public synchronized void updateTaskStatuses() throws ApplierException {
         // Loop submitted tasks
         for (String submittedTaskUuid : taskTransactionBuffer.keySet()) {
             try {
@@ -403,34 +405,22 @@ public class HBaseApplierWriter {
                             throw new Exception("Inconsistent success reports for task " + submittedTaskUuid);
                         }
 
-                        // do the accounting
-                        try {
-                            // 1. update status in the taskTransactionBuffer
-                            taskTransactionBuffer.get(submittedTaskUuid).setTaskStatus(TaskStatus.WRITE_SUCCEEDED);
+                        // Do the accounting needed when task is successfully committed
+                        LastCommittedPositionCheckpoint newCheckPoint =
+                            notYetCommittedTasksAccountant.doAccountingOnTaskSuccess(
+                                taskTransactionBuffer,
+                                submittedTaskUuid
+                            );
 
-                            // 2. check if previous tasks are also committed and, if they are, check if they contain
-                            //    a new check point
-                            LastCommittedPositionCheckpoint newCheckPoint =
-                                notYetCommittedTasksAccountant.doAccountingOnTaskSuccess(taskTransactionBuffer, submittedTaskUuid);
-                            if (newCheckPoint != null) {
-                                latestCommittedPseudoGTIDCheckPoint = newCheckPoint;
-                            } else {
-                                LOGGER.info("No new checkpoint found");
-                            }
-
-                            // 3. taskTransactionBuffer remove the task that has been comitted
-                            //      => note: the buffer is structured by task-transaction, so
-                            //        if there is an open transaction UUID in this task, it has
-                            //        already been copied to the new/next task
-                            taskTransactionBuffer.remove(submittedTaskUuid);
-                            LOGGER.info("Removed task from task buffer: " + submittedTaskUuid);
-
-                            // 4. metrics
-                            applierTasksSucceededCounter.inc();
-
-                        } catch (Exception e) {
-                            throw new TaskAccountingException("Failed to do proper accounting for task " + submittedTaskUuid);
+                        if (newCheckPoint != null) {
+                            latestCommittedPseudoGTIDCheckPoint = newCheckPoint;
+                        } else {
+                            LOGGER.info("No new checkpoint found.");
                         }
+
+                        // metrics
+                        applierTasksSucceededCounter.inc();
+
                     } else if (statusOfDoneTask == TaskStatus.WRITE_FAILED) {
                         if (taskSucceeded) {
                             throw new Exception("Inconsistent failure reports for task " + submittedTaskUuid);
@@ -465,6 +455,9 @@ public class HBaseApplierWriter {
                         ce.getCause().toString()));
                 requeueTask(submittedTaskUuid);
                 applierTasksFailedCounter.inc();
+            } catch (TaskAccountingException e) {
+                LOGGER.error("FATAL: Task accounting exception", e);
+                throw new ApplierException("Task accounting exception.");
             } catch (Exception e) {
                 LOGGER.error(String.format("Exception for task %s. Will retry the task.", submittedTaskUuid),e);
                 requeueTask(submittedTaskUuid);

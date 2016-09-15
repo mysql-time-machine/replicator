@@ -43,15 +43,32 @@ public class HBaseApplierNotYetCommittedAccounting {
     public synchronized LastCommittedPositionCheckpoint doAccountingOnTaskSuccess(
             ConcurrentHashMap<String, ApplierTask> taskTransactionBuffer,
             String committedTaskID) throws Exception {
-        LOGGER.info("accounting on success of " + committedTaskID);
+
+        LOGGER.info("Accounting on success of " + committedTaskID);
+
+        // update status in the taskTransactionBuffer
+        taskTransactionBuffer.get(committedTaskID).setTaskStatus(TaskStatus.WRITE_SUCCEEDED);
+
         LastCommittedPositionCheckpoint committedHeadPseudoGTIDCheckPoint = null;
+
         if (allLowerPositionTasksHaveBeenCommitted(taskTransactionBuffer, committedTaskID)) {
+
             int taskIndex = findTaskIndexInNotYetCommittedList(taskTransactionBuffer, committedTaskID);
 
             List<String> committedHead = taskHead(taskIndex);
 
             committedHeadPseudoGTIDCheckPoint =
                     scanCommittedTasksForPseudoGTIDCheckpoint(taskTransactionBuffer, committedHead);
+
+            // remove committed tasks from main buffer taskTransactionBuffer
+            //   note: the buffer is structured by task-transaction, so
+            //         if there is an open transaction UUID in this task, it has
+            //         already been copied to the new/next task
+            for (String taskToBeRemovedUUID : committedHead) {
+                LOGGER.info("Removing committedHead from taskTransactionBuffer");
+                taskTransactionBuffer.remove(taskToBeRemovedUUID);
+                LOGGER.info("Removed task " + taskToBeRemovedUUID + " from taskTransactionBuffer.");
+            }
 
             // remove taskHead
             List<String> committedTail = taskTail(taskIndex);

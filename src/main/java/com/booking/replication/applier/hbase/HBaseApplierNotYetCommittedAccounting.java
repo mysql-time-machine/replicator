@@ -44,7 +44,7 @@ public class HBaseApplierNotYetCommittedAccounting {
             ConcurrentHashMap<String, ApplierTask> taskTransactionBuffer,
             String committedTaskID) throws Exception {
 
-        LOGGER.info("Accounting on success of " + committedTaskID);
+        LOGGER.debug("Accounting on success of " + committedTaskID);
 
         // update status in the taskTransactionBuffer
         taskTransactionBuffer.get(committedTaskID).setTaskStatus(TaskStatus.WRITE_SUCCEEDED);
@@ -65,9 +65,9 @@ public class HBaseApplierNotYetCommittedAccounting {
             //         if there is an open transaction UUID in this task, it has
             //         already been copied to the new/next task
             for (String taskToBeRemovedUUID : committedHead) {
-                LOGGER.info("Removing committedHead from taskTransactionBuffer");
+                LOGGER.debug("Removing committedHead from taskTransactionBuffer");
                 taskTransactionBuffer.remove(taskToBeRemovedUUID);
-                LOGGER.info("Removed task " + taskToBeRemovedUUID + " from taskTransactionBuffer.");
+                LOGGER.debug("Removed task " + taskToBeRemovedUUID + " from taskTransactionBuffer.");
             }
 
             // remove taskHead
@@ -75,7 +75,7 @@ public class HBaseApplierNotYetCommittedAccounting {
             notYetCommittedTaskUUIDs = committedTail;
 
             if (committedHeadPseudoGTIDCheckPoint != null) {
-                System.out.println("New check point found in committed tasks" + committedHeadPseudoGTIDCheckPoint.toJson());
+                LOGGER.debug("New check point found in committed tasks" + committedHeadPseudoGTIDCheckPoint.toJson());
             }
         }
         return committedHeadPseudoGTIDCheckPoint;
@@ -85,13 +85,12 @@ public class HBaseApplierNotYetCommittedAccounting {
             ConcurrentHashMap<String, ApplierTask> taskTransactionBuffer,
             String committedTaskUUID) {
         boolean result = false;
-        LOGGER.info("Checking taskHead. Total items in notYetCommittedTaskUUIDs " + notYetCommittedTaskUUIDs.size());
+        LOGGER.debug("Checking taskHead. Total items in notYetCommittedTaskUUIDs " + notYetCommittedTaskUUIDs.size());
         for (String taskUUID : notYetCommittedTaskUUIDs) {
-            LOGGER.info(committedTaskUUID + " [is before or equal] " + taskUUID);
+            LOGGER.debug(committedTaskUUID + " [is before or equal] " + taskUUID);
             if (taskUUID.equals(committedTaskUUID)) {
-                LOGGER.info("this task is the first in the list or all previous have been committed");
                 if (taskTransactionBuffer.get(taskUUID).getTaskStatus() != TaskStatus.WRITE_SUCCEEDED) {
-                    LOGGER.error("Incosystecy!!!");
+                    LOGGER.error("Unexpected task status for task " + taskUUID);
                     break;
                 } else {
                     result = true;
@@ -99,12 +98,7 @@ public class HBaseApplierNotYetCommittedAccounting {
                 }
             } else {
                 if (taskTransactionBuffer.get(taskUUID).getTaskStatus() != TaskStatus.WRITE_SUCCEEDED) {
-                    LOGGER.info("task before "
-                            + taskUUID
-                            + " has non success status => " + taskTransactionBuffer.get(taskUUID).getTaskStatus());
                     break;
-                } else {
-                    LOGGER.info("task before " + taskUUID + " has status => " + taskTransactionBuffer.get(taskUUID).getTaskStatus());
                 }
             }
         }
@@ -114,33 +108,30 @@ public class HBaseApplierNotYetCommittedAccounting {
     private int findTaskIndexInNotYetCommittedList(
             ConcurrentHashMap<String, ApplierTask> taskTransactionBuffer,
             String committedTaskUUID) {
-
         int taskIndexInNotYetCommittedList = 0;
-
         for (String taskUUID : notYetCommittedTaskUUIDs) {
-
             if (taskUUID.equals(committedTaskUUID)) {
-
+                LOGGER.debug("Committed task "
+                        + taskUUID
+                        + "with index "
+                        + taskIndexInNotYetCommittedList
+                        + " will be removed from the notYetCommittedTaskUUIDs list");
                 break;
-
             } else {
-
                 taskIndexInNotYetCommittedList++;
-
-                System.out.println("Committed task "
+                LOGGER.debug("Committed task "
                         + taskUUID
                         + "with index "
                         + taskIndexInNotYetCommittedList
                         + " will be removed from the notYetCommittedTaskUUIDs list");
             }
         }
-        LOGGER.info("taskIndex in notCommittedList: { " +  committedTaskUUID + " => " + taskIndexInNotYetCommittedList);
+        LOGGER.debug("taskIndex in notCommittedList: { " +  committedTaskUUID + " => " + taskIndexInNotYetCommittedList);
         return taskIndexInNotYetCommittedList;
     }
 
 
     public List<String> taskHead(int taskIndex) {
-        System.out.println("Filtering from 0 to " + taskIndex);
         return  notYetCommittedTaskUUIDs.subList(0, taskIndex + 1);
     }
 
@@ -176,7 +167,6 @@ public class HBaseApplierNotYetCommittedAccounting {
 
                         // the reason for throwing exception here is that this method should be called only if
                         // all previous tasks have been confirmed as committed
-                        LOGGER.error(taskUUID + " -----> " + taskTransactionBuffer.get(taskUUID).getTaskStatus());
                         throw new TaskAccountingException("committedHead contains a task which is not WRITE_SUCCEEDED:"
                                 + taskUUID);
                     } else {
@@ -185,10 +175,7 @@ public class HBaseApplierNotYetCommittedAccounting {
                         }
                     }
                 } else {
-                    LOGGER.error("task "
-                            + taskUUID
-                            + " missing from taskTransactionBuffer, but it exists in notYetCommittedTaskUUIDs.");
-                    throw new TaskAccountingException("task "
+                    throw new TaskAccountingException("Task "
                         + taskUUID
                         + " missing from taskTransactionBuffer, but it exists in notYetCommittedTaskUUIDs.");
                 }

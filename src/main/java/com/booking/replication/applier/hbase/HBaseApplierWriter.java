@@ -387,11 +387,7 @@ public class HBaseApplierWriter {
 
         for (String submittedTaskUuid : taskTransactionBuffer.keySet()) {
 
-            LOGGER.info("main loop, task => " + submittedTaskUuid);
-
-            if (taskTransactionBuffer.get(submittedTaskUuid) != null) {
-                LOGGER.info("Still contains this key and value");
-            } else {
+            if (taskTransactionBuffer.get(submittedTaskUuid) == null) {
                 // TODO: this is ugly, find a better way to solve this problem
                 // skip non-existing key: after accounting for WRITE_SUCCEEDED, there
                 // is a chance that some tasks (basically previous tasks in the binlog
@@ -402,12 +398,11 @@ public class HBaseApplierWriter {
                 // to hit a key(s) that has been removed and get a NPE. So, after accounting
                 // some keys in the loop may be missing so we need to check for them and skip
                 // the loop block for each of them.
-                LOGGER.info("This key is gone from the map. Skipping the key.");
+                LOGGER.debug("Key " + submittedTaskUuid + " is gone from the map. Skipping the key.");
                 continue;
             }
 
             try {
-
                 Future<HBaseTaskResult>  taskFuture = taskTransactionBuffer.get(submittedTaskUuid).getTaskFuture();
                 if (taskFuture == null) {
                     continue;
@@ -437,7 +432,7 @@ public class HBaseApplierWriter {
                         if (newCheckPoint != null) {
                             latestCommittedPseudoGTIDCheckPoint = newCheckPoint;
                         } else {
-                            LOGGER.info("No new checkpoint found.");
+                            LOGGER.debug("No new checkpoint found.");
                         }
 
                         // metrics

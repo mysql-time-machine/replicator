@@ -44,9 +44,13 @@ hbase:
     zookeeper_quorum:  ['hbase-zk1-host', 'hbase-zkN-host']
     hive_imports:
         tables: ['sometable']
-pgtid:
-    p_gtid_pattern: $regex_pattern_to_extract_pgtid
-
+mysql_failover:
+    pgtid:
+        p_gtid_pattern: $regex_pattern_to_extract_pgtid
+    orchestrator:
+        username: orchestrator-user-name
+        password: orchestrator-password
+        url:      http://orchestrator-host/api
 metrics:
     frequency: 10 seconds
     reporters:

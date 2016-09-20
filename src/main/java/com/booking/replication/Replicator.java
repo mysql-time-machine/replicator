@@ -92,6 +92,8 @@ public class Replicator {
 
                         String pseudoGTIDFullQuery = safeCheckPoint.getPseudoGTIDFullQuery();
 
+                        LOGGER.info("found pseudoGTID query in safe checkpoint: " + pseudoGTIDFullQuery);
+
                         // call orchestrator API with pGTIDFullQuery as parameter in order to
                         // obtain the corresponding binlog filename and position on active host
                         String[] binlogCoordinates = MySQLOrchestratorProxy.findBinlogEntry(

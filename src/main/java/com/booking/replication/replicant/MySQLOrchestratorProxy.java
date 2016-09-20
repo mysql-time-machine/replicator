@@ -76,6 +76,9 @@ public class MySQLOrchestratorProxy {
         fullQueryPseudoGTID = URLEncoder.encode(fullQueryPseudoGTID, "UTF-8");
 
         url += fullQueryPseudoGTID;
+
+        LOGGER.info("Orchestrator api url: " + url);
+        
         URI uriGetPositionInfoFromPseudoGTID = URI.create(url);
 
         HttpClient client = HttpClientBuilder.create().build();

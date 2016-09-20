@@ -1,6 +1,6 @@
 package com.booking.replication.replicant;
 
-import com.booking.replication.Configuration;
+import com.google.common.net.UrlEscapers;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
-import org.apache.http.auth.AuthenticationException;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -19,7 +18,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -73,12 +71,12 @@ public class MySQLOrchestratorProxy {
                 + port
                 + "/";
 
-        fullQueryPseudoGTID = URLEncoder.encode(fullQueryPseudoGTID, "UTF-8");
+        fullQueryPseudoGTID = UrlEscapers.urlFragmentEscaper().escape(fullQueryPseudoGTID);
 
         url += fullQueryPseudoGTID;
 
         LOGGER.info("Orchestrator api url: " + url);
-        
+
         URI uriGetPositionInfoFromPseudoGTID = URI.create(url);
 
         HttpClient client = HttpClientBuilder.create().build();

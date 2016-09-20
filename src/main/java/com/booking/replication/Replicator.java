@@ -92,6 +92,7 @@ public class Replicator {
 
                         String pseudoGTIDFullQuery = safeCheckPoint.getPseudoGTIDFullQuery();
 
+                        pseudoGTIDFullQuery = configuration.getpGTIDPrefix() + pseudoGTIDFullQuery;
                         LOGGER.info("found pseudoGTID query in safe checkpoint: " + pseudoGTIDFullQuery);
 
                         // call orchestrator API with pGTIDFullQuery as parameter in order to

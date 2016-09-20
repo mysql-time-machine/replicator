@@ -58,6 +58,7 @@ public class Configuration {
 
         private static class PseudoGTIDConfig implements Serializable {
             public String p_gtid_pattern;
+            public String p_gtid_prefix;
         }
 
         @JsonDeserialize
@@ -349,6 +350,10 @@ public class Configuration {
         return mySQLFailover.pgtid.p_gtid_pattern;
     }
 
+
+    public String getpGTIDPrefix() {
+        return mySQLFailover.pgtid.p_gtid_prefix;
+    }
     /**
      * Get metadata store zookeeper quorum.
      */

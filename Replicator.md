@@ -47,6 +47,7 @@ hbase:
 mysql_failover:
     pgtid:
         p_gtid_pattern: $regex_pattern_to_extract_pgtid
+        p_gtid_prefix: $prefix_to_add_to_pgtid_query_used_in_orchestrator_url
     orchestrator:
         username: orchestrator-user-name
         password: orchestrator-password

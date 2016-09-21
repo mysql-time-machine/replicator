@@ -291,18 +291,17 @@ public class PipelineOrchestrator extends Thread {
             if (lastVerifiedPseudoGTIDCheckPoint == null
                     && lastCommittedPseudoGTIDReportedByApplier != null) {
                 lastVerifiedPseudoGTIDCheckPoint = lastCommittedPseudoGTIDReportedByApplier;
+                LOGGER.info("Save new marker: " + lastVerifiedPseudoGTIDCheckPoint.toJson());
+                Coordinator.saveCheckpointMarker(lastVerifiedPseudoGTIDCheckPoint);
             } else if (lastVerifiedPseudoGTIDCheckPoint != null
                     && lastCommittedPseudoGTIDReportedByApplier != null) {
                 if (!lastVerifiedPseudoGTIDCheckPoint.getPseudoGTID().equals(
                         lastCommittedPseudoGTIDReportedByApplier.getPseudoGTID())) {
                     LOGGER.info("Reached new safe checkpoint " + lastCommittedPseudoGTIDReportedByApplier.getPseudoGTID() );
                     lastVerifiedPseudoGTIDCheckPoint = lastCommittedPseudoGTIDReportedByApplier;
+                    LOGGER.info("Save new marker: " + lastVerifiedPseudoGTIDCheckPoint.toJson());
+                    Coordinator.saveCheckpointMarker(lastVerifiedPseudoGTIDCheckPoint);
                 }
-            }
-
-            if (lastVerifiedPseudoGTIDCheckPoint != null) {
-                LOGGER.info("Save new marker: " + lastVerifiedPseudoGTIDCheckPoint.toJson());
-                Coordinator.saveCheckpointMarker(lastVerifiedPseudoGTIDCheckPoint);
             }
         }
 

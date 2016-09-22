@@ -107,7 +107,7 @@ public class BinlogCoordinatesFinder {
 
     private ResultSet findEvent(Predicate<ResultSet> condition, String file, Connection connection) throws SQLException {
 
-        try ( PreparedStatement statement = connection.prepareStatement("SHOW BINLOG EVENTS IN \"?\" LIMIT ?,?")){
+        try ( PreparedStatement statement = connection.prepareStatement("SHOW BINLOG EVENTS IN ? LIMIT ?,?")){
 
             int start = 0;
             int limit = 500;

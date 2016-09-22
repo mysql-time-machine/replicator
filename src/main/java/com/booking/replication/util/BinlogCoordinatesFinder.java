@@ -114,9 +114,9 @@ public class BinlogCoordinatesFinder {
 
             for (;;){
 
-                statement.setString(0, file);
-                statement.setInt(1,start);
-                statement.setInt(2,limit);
+                statement.setString(1, file);
+                statement.setInt(2,start);
+                statement.setInt(3,limit);
 
                 try ( ResultSet results = statement.executeQuery() ) {
 

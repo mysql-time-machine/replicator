@@ -88,9 +88,7 @@ public class BinlogCoordinatesFinder {
 
     private long findPosition(final String gtid, String file, Connection connection) throws QueryInspectorException, SQLException {
 
-        ResultSet rs = findEvent(new Predicate<ResultSet>() {
-            @Override
-            public boolean test(ResultSet resultSet) {
+        ResultSet rs = findEvent(resultSet-> {
 
                 try {
                     String query = resultSet.getString( "Info" );
@@ -99,8 +97,7 @@ public class BinlogCoordinatesFinder {
                     throw new RuntimeException(e);
                 }
 
-            }
-        }, file, connection);
+            }, file, connection);
 
         if (rs == null) throw new RuntimeException("The binlog file does not contain given GTID");
 
@@ -191,9 +188,7 @@ public class BinlogCoordinatesFinder {
 
     private String getFirstGTID(String file, Connection connection) throws SQLException, QueryInspectorException {
 
-        ResultSet rs = findEvent(new Predicate<ResultSet>() {
-            @Override
-            public boolean test(ResultSet resultSet) {
+        ResultSet rs = findEvent( resultSet -> {
 
                 try {
                     return queryInspector.isPseudoGTID( resultSet.getString( "Info" ) );
@@ -201,8 +196,7 @@ public class BinlogCoordinatesFinder {
                     throw new RuntimeException(e);
                 }
 
-            }
-        }, file, connection);
+            } , file, connection);
 
         if (rs == null) throw new RuntimeException("The binlog file does not contain any GTID");
 

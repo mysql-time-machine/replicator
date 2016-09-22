@@ -11,7 +11,6 @@ import com.booking.replication.pipeline.BinlogPositionInfo;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.pipeline.PipelinePosition;
 import com.booking.replication.queues.ReplicatorQueues;
-import com.booking.replication.replicant.MySQLOrchestratorProxy;
 import com.booking.replication.replicant.ReplicantPool;
 
 import com.booking.replication.sql.QueryInspector;

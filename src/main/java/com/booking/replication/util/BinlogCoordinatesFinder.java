@@ -92,6 +92,8 @@ public class BinlogCoordinatesFinder {
 
                 try {
                     String query = resultSet.getString( "Info" );
+
+                    LOGGER.info("Looking at %s as possible source of GTID", query);
                     return queryInspector.isPseudoGTID(query) && gtid.equals( queryInspector.extractPseudoGTID(query) );
                 } catch (SQLException | QueryInspectorException e) {
                     throw new RuntimeException(e);

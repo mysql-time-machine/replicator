@@ -10,7 +10,6 @@ import java.sql.*;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 /**
@@ -120,7 +119,7 @@ public class BinlogCoordinatesFinder {
 
                 statement.setString(0, file);
                 statement.setInt(1,start);
-                statement.setInt(1,limit);
+                statement.setInt(2,limit);
 
                 try ( ResultSet results = statement.executeQuery() ) {
 
@@ -163,9 +162,9 @@ public class BinlogCoordinatesFinder {
             return files[l];
         }
 
-        // we maintain invariant f(l) < GTID < f(h) and we need files[i] such that f(i) <= GTID < f(i+1)
+        // we maintain invariant GTID(l) < gtid < GTID(h) and we need files[i] such that GTID(i) <= gtid < GTID(i+1)
         while ( h - l > 1){
-            int m = l + ( h - l) >> 1; // l < m < h
+            int m = l + ( h - l) / 2; // l < m < h
 
             cmp = gtid.compareToIgnoreCase( getFirstGTID( files[m], connection ) );
 
@@ -175,17 +174,17 @@ public class BinlogCoordinatesFinder {
 
             } else if (cmp > 0){
 
-                l = m; // maintain GTID > f(l)
+                l = m; // maintain gtid > GTID(l)
 
             } else {
 
-                h = m; // maintain GTID < f(h)
+                h = m; // maintain gtid < GTID(h)
 
             }
 
         }
 
-        // h = l + 1, f(l) < GTID < f(h)
+        // h = l + 1, GTID(l) < gtid < GTID(h)
 
         return files[l];
     }

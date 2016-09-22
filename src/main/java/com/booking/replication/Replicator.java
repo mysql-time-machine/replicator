@@ -14,6 +14,8 @@ import com.booking.replication.queues.ReplicatorQueues;
 import com.booking.replication.replicant.MySQLOrchestratorProxy;
 import com.booking.replication.replicant.ReplicantPool;
 
+import com.booking.replication.sql.QueryInspector;
+import com.booking.replication.util.BinlogCoordinatesFinder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,31 +85,25 @@ public class Replicator {
                 //     MySQL Orchestrator http API (https://github.com/outbrain/orchestrator).
                 LastCommittedPositionCheckpoint safeCheckPoint = Coordinator.getSafeCheckpoint();
                 if ( safeCheckPoint != null ) {
-                    if (safeCheckPoint.getPseudoGTID() != null) {
+
+                    String pseudoGTID = safeCheckPoint.getPseudoGTID();
+
+                    if (pseudoGTID != null) {
 
                         String replicantActiveHost = replicantPool.getReplicantDBActiveHost();
                         int    serverID            = replicantPool.getReplicantDBActiveHostServerID();
-
                         boolean sameHost = replicantActiveHost.equals(safeCheckPoint.getHostName());
 
-                        String pseudoGTIDFullQuery = safeCheckPoint.getPseudoGTIDFullQuery();
+                        LOGGER.info("found pseudoGTID in safe checkpoint: " + pseudoGTID);
 
-                        pseudoGTIDFullQuery = configuration.getpGTIDPrefix() + pseudoGTIDFullQuery;
-                        LOGGER.info("found pseudoGTID query in safe checkpoint: " + pseudoGTIDFullQuery);
+                        BinlogCoordinatesFinder coordinatesFinder = new BinlogCoordinatesFinder(replicantActiveHost,3306,configuration.getReplicantDBUserName(),configuration.getReplicantDBPassword(), new QueryInspector(configuration));
 
-                        // call orchestrator API with pGTIDFullQuery as parameter in order to
-                        // obtain the corresponding binlog filename and position on active host
-                        String[] binlogCoordinates = MySQLOrchestratorProxy.findBinlogEntry(
-                                configuration.getOrchestratorUserName(),
-                                configuration.getOrchestratorPassword(),
-                                configuration.getOrchestratorUrl(),
-                                pseudoGTIDFullQuery,
-                                replicantActiveHost,
-                                "3306"
-                        );
+                        BinlogCoordinatesFinder.BinlogCoordinates coordinates = coordinatesFinder.findCoordinates(pseudoGTID);
 
-                        String startingBinlogFileName = binlogCoordinates[0];
-                        Long   startingBinlogPosition = Long.parseLong(binlogCoordinates[1]);
+                        String startingBinlogFileName = coordinates.getFileName();
+                        Long   startingBinlogPosition = coordinates.getPosition();
+
+                        LOGGER.info("PseudoGTID resolved to: " + startingBinlogFileName + ":" + startingBinlogPosition);
 
                         pipelinePosition = new PipelinePosition(
                             replicantActiveHost,

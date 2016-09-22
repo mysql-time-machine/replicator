@@ -126,6 +126,8 @@ public class BinlogCoordinatesFinder {
 
                     while (results.next()) {
 
+                        LOGGER.info("|");
+
                         empty = false;
 
                         if (condition.test(results)) return results;

@@ -104,7 +104,7 @@ public class HBaseApplierWriter {
 
     private static boolean DRY_RUN;
 
-    private static final long MAX_BLOCKING_TIME = 300000; // 5 min
+    private static final long MAX_BLOCKING_TIME = 60000; // 1 min
 
     private static volatile String currentTaskUuid = UUID.randomUUID().toString();
     private static volatile String currentTransactionUUID = UUID.randomUUID().toString();
@@ -358,15 +358,17 @@ public class HBaseApplierWriter {
 
                 if (blockingTime >= MAX_BLOCKING_TIME) {
                     LOGGER.warn("Waiting for an applier slot more than 300s...");
-                    try {
-                        Thread.sleep(5000);
-                        LOGGER.warn("Too many tasks already open ( "
-                                + currentNumberOfTasks
-                                + " ), blocking time is "
-                                + blockingTime
-                                + "ms");
-                    } catch (InterruptedException ie) {
-                        LOGGER.error("Can't sleep", ie);
+                    for (String tr: taskTransactionBuffer.keySet()) {
+                        LOGGER.warn(String.format("Task %s, rows: %s, status: %s, future: %s",
+                                 tr,
+                                 taskRowsBuffered(tr),
+                                 taskTransactionBuffer.get(tr).getTaskStatus(),
+                                 taskTransactionBuffer.get(tr).getTaskFuture()
+                             )
+                         );
+                         if (taskTransactionBuffer.get(tr).getTaskFuture() != null) {
+                             taskTransactionBuffer.get(tr).getTaskFuture().cancel(true);
+                         } 
                     }
                 }
             } else {

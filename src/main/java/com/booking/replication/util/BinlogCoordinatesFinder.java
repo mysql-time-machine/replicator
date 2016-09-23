@@ -109,7 +109,6 @@ public class BinlogCoordinatesFinder {
                 try {
                     String query = resultSet.getString( "Info" );
 
-                    LOGGER.info("Looking at %s as possible source of GTID", query);
                     if ( queryInspector.isPseudoGTID(query) && gtid.equals( queryInspector.extractPseudoGTID(query) ) ){
                         position.setValue( resultSet.getLong("Pos"));
                         return true;

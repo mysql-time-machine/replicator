@@ -129,19 +129,15 @@ public class BinlogCoordinatesFinder {
                         empty = false;
 
                         if (condition.test(results)) return results;
-
-                        start += limit;
-
                     }
 
                     if (empty) return null;
 
                 }
 
+                start += limit;
             }
-
         }
-
     }
 
     private String findFile(String gtid, String[] files, Connection connection) throws QueryInspectorException, SQLException {
@@ -195,8 +191,6 @@ public class BinlogCoordinatesFinder {
         ResultSet rs = findEvent( resultSet -> {
 
                 try {
-                    LOGGER.info(resultSet.getString("Info"));
-
                     return queryInspector.isPseudoGTID( resultSet.getString( "Info" ) );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);

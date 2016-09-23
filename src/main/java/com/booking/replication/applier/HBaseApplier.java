@@ -38,7 +38,7 @@ import java.io.IOException;
 public class HBaseApplier implements Applier {
 
     // TODO: move configuration vars to Configuration
-    private static final int POOL_SIZE = 10;
+    private static final int POOL_SIZE = 30;
 
     private static final int UUID_BUFFER_SIZE = 1000; // <- max number of rows in one uuid buffer
 

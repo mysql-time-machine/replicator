@@ -126,8 +126,6 @@ public class BinlogCoordinatesFinder {
 
                     while (results.next()) {
 
-                        LOGGER.info("|");
-
                         empty = false;
 
                         if (condition.test(results)) return results;
@@ -197,6 +195,8 @@ public class BinlogCoordinatesFinder {
         ResultSet rs = findEvent( resultSet -> {
 
                 try {
+                    LOGGER.info(resultSet.getString("Info"));
+
                     return queryInspector.isPseudoGTID( resultSet.getString( "Info" ) );
                 } catch (SQLException e) {
                     throw new RuntimeException(e);

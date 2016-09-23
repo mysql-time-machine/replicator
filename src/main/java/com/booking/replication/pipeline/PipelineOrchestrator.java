@@ -159,7 +159,7 @@ public class PipelineOrchestrator extends Thread {
 
         this.pipelinePosition = pipelinePosition;
 
-        this.queryInspector = new QueryInspector(configuration);
+        this.queryInspector = new QueryInspector(configuration.getpGTIDPattern());
     }
 
     public boolean isRunning() {

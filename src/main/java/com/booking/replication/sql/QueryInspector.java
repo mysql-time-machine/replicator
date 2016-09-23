@@ -20,19 +20,15 @@ public class QueryInspector {
     private final Pattern isCommitPattern;
     private final Pattern isPseudoGTIDPattern;
 
-    private final Configuration configuration;
-
     private static final Logger LOGGER = LoggerFactory.getLogger(QueryInspector.class);
 
-    public QueryInspector(Configuration configuration) {
-
-        this.configuration = configuration;
+    public QueryInspector(String gtidPattern) {
 
         this.isDDLTablePattern = Pattern.compile(QueryPatterns.isDDLTable, Pattern.CASE_INSENSITIVE);
         this.isDDLViewPattern = Pattern.compile(QueryPatterns.isDDLView, Pattern.CASE_INSENSITIVE);
         this.isBeginPattern      = Pattern.compile(QueryPatterns.isBEGIN, Pattern.CASE_INSENSITIVE);
         this.isCommitPattern     = Pattern.compile(QueryPatterns.isCOMMIT, Pattern.CASE_INSENSITIVE);
-        this.isPseudoGTIDPattern = Pattern.compile(configuration.getpGTIDPattern(), Pattern.CASE_INSENSITIVE);
+        this.isPseudoGTIDPattern = Pattern.compile(gtidPattern, Pattern.CASE_INSENSITIVE);
 
     }
 

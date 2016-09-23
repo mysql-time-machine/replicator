@@ -37,6 +37,20 @@ public class BinlogCoordinatesFinder {
         }
     }
 
+    private static class Holder<T> {
+
+        private T value;
+
+        public T getValue() {
+            return value;
+        }
+
+        public void setValue(T value) {
+            this.value = value;
+        }
+
+    }
+
     private final String host;
     private final int port;
     private final String username;
@@ -88,26 +102,33 @@ public class BinlogCoordinatesFinder {
 
     private long findPosition(final String gtid, String file, Connection connection) throws QueryInspectorException, SQLException {
 
-        ResultSet rs = findEvent(resultSet-> {
+        final Holder<Long> position = new Holder<>();
+
+        findEvent(resultSet-> {
 
                 try {
                     String query = resultSet.getString( "Info" );
 
                     LOGGER.info("Looking at %s as possible source of GTID", query);
-                    return queryInspector.isPseudoGTID(query) && gtid.equals( queryInspector.extractPseudoGTID(query) );
+                    if ( queryInspector.isPseudoGTID(query) && gtid.equals( queryInspector.extractPseudoGTID(query) ) ){
+                        position.setValue( resultSet.getLong("Pos"));
+                        return true;
+                    }
+
+                    return false;
                 } catch (SQLException | QueryInspectorException e) {
                     throw new RuntimeException(e);
                 }
 
             }, file, connection);
 
-        if (rs == null) throw new RuntimeException(String.format("Binlog file %s does not contain given GTID", file));
+        if ( position.getValue() == null ) throw new RuntimeException(String.format("Binlog file %s does not contain given GTID", file));
 
-        return rs.getLong("Pos");
+        return position.getValue();
 
     }
 
-    private ResultSet findEvent(Predicate<ResultSet> condition, String file, Connection connection) throws SQLException {
+    private void findEvent(Predicate<ResultSet> condition, String file, Connection connection) throws SQLException {
 
         try ( PreparedStatement statement = connection.prepareStatement("SHOW BINLOG EVENTS IN ? LIMIT ?,?")){
 
@@ -128,10 +149,10 @@ public class BinlogCoordinatesFinder {
 
                         empty = false;
 
-                        if (condition.test(results)) return results;
+                        if (condition.test(results)) return;
                     }
 
-                    if (empty) return null;
+                    if (empty) return;
 
                 }
 
@@ -184,27 +205,42 @@ public class BinlogCoordinatesFinder {
         return files[l];
     }
 
-    private String getFirstGTID(String file, Connection connection) throws SQLException, QueryInspectorException {
+    private String getFirstGTID(String file, Connection connection) throws SQLException {
 
         LOGGER.info(String.format("Getting first GTID from %s...", file));
 
-        ResultSet rs = findEvent( resultSet -> {
+        final Holder<String> gtidHolder = new Holder<>();
+
+        findEvent( resultSet -> {
 
                 try {
-                    return queryInspector.isPseudoGTID( resultSet.getString( "Info" ) );
-                } catch (SQLException e) {
+                    String query =  resultSet.getString( "Info" );
+
+                    if ( queryInspector.isPseudoGTID( query ) ){
+
+                        gtidHolder.setValue( queryInspector.extractPseudoGTID( query ) );
+
+                        return true;
+
+                    }
+
+                    return false;
+
+                } catch (SQLException | QueryInspectorException e) {
+
                     throw new RuntimeException(e);
+
                 }
 
             } , file, connection);
 
-        if (rs == null) throw new RuntimeException(String.format("Binlog file %s does not contain any GTID", file));
+        String gtid = gtidHolder.getValue();
 
-        String firstGtid = queryInspector.extractPseudoGTID( rs.getString( "Info" ) );
+        if (gtid == null) throw new RuntimeException(String.format("Binlog file %s does not contain any GTID", file));
 
-        LOGGER.info(String.format("First GTID in %s is %s", file, firstGtid));
+        LOGGER.info(String.format("First GTID in %s is %s", file, gtid));
 
-        return firstGtid;
+        return gtid;
     }
 
     private String[] getBinaryLogs( Connection connection ) throws SQLException{

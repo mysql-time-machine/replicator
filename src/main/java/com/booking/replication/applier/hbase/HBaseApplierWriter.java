@@ -357,7 +357,7 @@ public class HBaseApplierWriter {
                 }
 
                 if (blockingTime >= MAX_BLOCKING_TIME) {
-                    LOGGER.warn("Waiting for an applier slot more than 300s...");
+                    LOGGER.warn("Waiting for an applier slot more than 60s...");
                     for (String tr: taskTransactionBuffer.keySet()) {
                         LOGGER.warn(String.format("Task %s, rows: %s, status: %s, future: %s",
                                  tr,

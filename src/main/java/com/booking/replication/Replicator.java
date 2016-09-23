@@ -110,8 +110,8 @@ public class Replicator {
                             startingBinlogFileName,
                             startingBinlogPosition,
                             // positions are not comparable between different hosts
-                            (sameHost ? safeCheckPoint.getLastVerifiedBinlogFileName() : "NA"),
-                            (sameHost ? safeCheckPoint.getLastVerifiedBinlogPosition() : 0)
+                            (sameHost ? safeCheckPoint.getLastVerifiedBinlogFileName() : startingBinlogFileName),
+                            (sameHost ? safeCheckPoint.getLastVerifiedBinlogPosition() : startingBinlogPosition)
                         );
 
                     } else {

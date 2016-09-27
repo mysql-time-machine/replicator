@@ -1,12 +1,11 @@
 package com.booking.replication.util;
 
-import com.booking.replication.sql.QueryInspector;
 import org.junit.Test;
 
 import java.util.HashMap;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 
 public class MonotonicPartialFunctionSearchTest {
 
@@ -71,5 +70,45 @@ public class MonotonicPartialFunctionSearchTest {
                 x -> null, namesOfFiles);
 
         assertEquals(null, f.reverseGLB("3000"));
+        assertEquals(null, f.reverseGLB("3"));
+    }
+
+    @Test
+    public void makeSureWeProduceResultIfDomainHasOnlyOneElement()
+    {
+        String[] namesOfFiles = {"1"};
+
+        MonotonicPartialFunctionSearch<String, String> f = new MonotonicPartialFunctionSearch<>(
+                x -> "0050", namesOfFiles);
+
+        assertEquals("1", f.reverseGLB("1000"));
+    }
+
+    @Test
+    public void makeSureWeCallAFunctionNoMoreThanOnceForGivenDomainValueWhileSearching()
+    {
+        Integer[] namesOfFiles = new Integer[100];
+
+        for (int i = 0; i < 100; i++) {
+            namesOfFiles[i] = i;
+        }
+
+        Boolean[] domainValuesHitMap = new Boolean[100];
+
+        for (int i = 0; i < 100; i++) {
+            domainValuesHitMap[i] = false;
+        }
+
+        MonotonicPartialFunctionSearch<Integer, Integer> f = new MonotonicPartialFunctionSearch<>(
+                    (Integer x) ->
+                    {
+                        assertFalse(domainValuesHitMap[x]);
+                        domainValuesHitMap[x] = true;
+
+                        return x;
+                    }, namesOfFiles
+                );
+
+        assertEquals(2, (long)f.reverseGLB(2));
     }
 }

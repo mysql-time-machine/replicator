@@ -162,80 +162,52 @@ public class BinlogCoordinatesFinder {
 
     private String findFile(String gtid, String[] files, Connection connection) throws QueryInspectorException, SQLException {
 
-        int l = 0;
-        int h = files.length - 1;
+        String file = MonotonicPartialFunctionSearch.reverseGLB( x -> getFirstGTID( x, connection ), files, gtid.toUpperCase() );
 
-        int cmp;
+        if (file == null) throw new RuntimeException("No binlog file contain the given GTID " + gtid);
 
-        if ( gtid.compareToIgnoreCase( getFirstGTID( files[h], connection ) ) >= 0 ) return files[h];
+        return file;
 
-        cmp = gtid.compareToIgnoreCase( getFirstGTID( files[l], connection ) );
-
-        if ( cmp < 0 ) {
-            throw new RuntimeException("No binlog file contain the given GTID ");
-        } else if ( cmp ==0 ){
-            return files[l];
-        }
-
-        // we maintain invariant GTID(l) < gtid < GTID(h) and we need files[i] such that GTID(i) <= gtid < GTID(i+1)
-        while ( h - l > 1){
-            int m = l + ( h - l) / 2; // l < m < h
-
-            cmp = gtid.compareToIgnoreCase( getFirstGTID( files[m], connection ) );
-
-            if (cmp == 0) {
-
-                return files[m];
-
-            } else if (cmp > 0){
-
-                l = m; // maintain gtid > GTID(l)
-
-            } else {
-
-                h = m; // maintain gtid < GTID(h)
-
-            }
-
-        }
-
-        // h = l + 1, GTID(l) < gtid < GTID(h)
-
-        return files[l];
     }
 
-    private String getFirstGTID(String file, Connection connection) throws SQLException {
+    private String getFirstGTID(String file, Connection connection) {
 
         LOGGER.info(String.format("Getting first GTID from %s...", file));
 
         final Holder<String> gtidHolder = new Holder<>();
 
-        findEvent( resultSet -> {
+        try {
+            findEvent( resultSet -> {
 
-                try {
-                    String query =  resultSet.getString( "Info" );
+                    try {
+                        String query =  resultSet.getString( "Info" );
 
-                    if ( queryInspector.isPseudoGTID( query ) ){
+                        if ( queryInspector.isPseudoGTID( query ) ){
 
-                        gtidHolder.setValue( queryInspector.extractPseudoGTID( query ) );
+                            gtidHolder.setValue( queryInspector.extractPseudoGTID( query ) );
 
-                        return true;
+                            return true;
+
+                        }
+
+                        return false;
+
+                    } catch (SQLException | QueryInspectorException e) {
+
+                        throw new RuntimeException(e);
 
                     }
 
-                    return false;
+                } , file, connection);
+        } catch (SQLException e) {
 
-                } catch (SQLException | QueryInspectorException e) {
+            throw new RuntimeException(e);
 
-                    throw new RuntimeException(e);
-
-                }
-
-            } , file, connection);
+        }
 
         String gtid = gtidHolder.getValue();
 
-        if (gtid == null) throw new RuntimeException(String.format("Binlog file %s does not contain any GTID", file));
+        if (gtid != null) gtid = gtid.toUpperCase();
 
         LOGGER.info(String.format("First GTID in %s is %s", file, gtid));
 

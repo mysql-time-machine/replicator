@@ -27,21 +27,28 @@ public class MonotonicPartialFunctionSearch<T,V extends Comparable<V>> {
     }
 
     /**
-     * A pair of int and value comparable to a value.
+     * Encapsulates a non-null value, a position this value was found at, and the interval that was checked to find this
+     * position. It is comparable to a value.
      *
      * @param <V> value type
      */
-    private static class ValueAtPosition<V extends Comparable<V>> implements Comparable<V>{
+    private static class ScanForValueResult<V extends Comparable<V>> implements Comparable<V>{
         private final int position;
         private final V value;
+        private final int[] range;
 
-        private ValueAtPosition(int position, V value) {
+        private ScanForValueResult(int position, V value, int[] range) {
             this.position = position;
             this.value = value;
+            this.range = range;
         }
 
         public int getPosition() {
             return position;
+        }
+
+        public int[] getRange() {
+            return range;
         }
 
         @Override
@@ -51,16 +58,11 @@ public class MonotonicPartialFunctionSearch<T,V extends Comparable<V>> {
     }
 
     private final Function<T,V> function;
-
     private final T[] domain;
-    private final Object[] values;
-    private final boolean[] map;
 
     public MonotonicPartialFunctionSearch(Function<T, V> function, T[] domain) {
         this.function = function;
         this.domain = domain;
-        values = new Object[domain.length];
-        map = new boolean[domain.length];
     }
 
     /**
@@ -72,19 +74,18 @@ public class MonotonicPartialFunctionSearch<T,V extends Comparable<V>> {
      */
     public T reverseGLB(V value){
 
-        int l = 0;
-        int h = domain.length - 1;
+        int[] i = new int[]{ 0, domain.length - 1 };
 
         int cmp;
 
-        ValueAtPosition hf = getClosestDefined(h,l-1,h+1);
+        ScanForValueResult hf = scanForValue(i[1], i[0]-1, i[1]+1);
 
         if (hf == null) return null;                                            // the function is not defined at all :(
-        if ( hf.compareTo( value ) < 0 ) return domain[h];               // the largest defined value is less then given
+        if ( hf.compareTo( value ) < 0 ) return domain[i[1]];               // the largest defined value is less then given
 
-        h = hf.getPosition();
+        i[1] = hf.getPosition();
 
-        ValueAtPosition lf = getClosestDefined(l,l-1,h+1);
+        ScanForValueResult lf = scanForValue(i[0],i[0]-1,i[1]+1);
         if (lf == null) return null;                                  // the only defined value is higher than the given
 
         cmp = lf.compareTo( value );
@@ -92,33 +93,61 @@ public class MonotonicPartialFunctionSearch<T,V extends Comparable<V>> {
         if ( cmp > 0 ) {
             return null;                                             // the smallest defined value is greater then given
         } else if ( cmp == 0 ){
-            return domain[l];                                           // the smallest defined value equal to the given
+            return domain[i[0]];                                           // the smallest defined value equal to the given
         }
 
-        l = lf.getPosition();
+        i[0] = lf.getPosition();
 
         // we maintain invariant f(l) < v < f(h) and we need i such that f(i) <= v < f(i+1)
-        while ( h - l > 1){
-            int m = l + ( h - l) / 2;                                                                       // l < m < h
+        while ( i[1] - i[0] > 1){
 
-            ValueAtPosition mf = getClosestDefined(m,l,h);
+            ScanForValueResult mf = scanForValue( i[0] + ( i[1] - i[0]) / 2, i[0], i[1]);     // search around a point m where l < m < h
 
-            if ( mf == null ) return domain[l];                               // function is not defined between l and h
+            if ( mf == null ) return domain[i[0]];                               // function is not defined between l and h
 
-            cmp = mf.compareTo( value );
-            m = mf.getPosition();
+            cmp = Integer.signum( mf.compareTo( value ) );
+            int m = mf.getPosition();
 
             if (cmp == 0) {
 
                 return domain[m];
 
-            } else if (cmp < 0){
-
-                l = m; // maintain v > f(l)
-
             } else {
 
-                h = m; // maintain v < f(h)
+                // l < scannedLow < scannedHigh < h where m is either scannedLow or scannedHigh
+
+                int direction = cmp < 0 ? 1 : 0;   // 1 means we going to search in the higher segment, 0 - in the lower
+
+                if (m == mf.getRange()[direction]){
+
+                    // either m == scannedLow and f(m) > v or m == scannedHigh and f(m) < v
+                    // in the both cases we can use m as a boundary of the next interval to consider
+
+                    i[1 - direction] = m;
+
+                } else {
+
+                    int[] ni = new int[]{i[0],i[1]};
+                    ni[1-direction] = mf.getRange()[direction];
+
+                    ScanForValueResult mof = scanForValue(mf.getRange()[direction]+cmp,ni[0],ni[1]);
+
+                    if (mof == null) return domain[m];
+
+                    cmp = mof.compareTo(value);
+                    if (cmp == 0){
+                        return domain[mof.getPosition()];
+                    } else if ( ( cmp < 0 && direction == 1) || (cmp > 0 && direction == 0) ){
+
+                        ni[1-direction] = mof.getPosition();
+
+                    } else {
+
+                        return direction == 1 ? domain[m] : domain[mof.getPosition()];
+
+                    }
+
+                }
 
             }
 
@@ -126,7 +155,7 @@ public class MonotonicPartialFunctionSearch<T,V extends Comparable<V>> {
 
         // h = l + 1, f(l) < v < f(h)
 
-        return domain[l];
+        return domain[i[0]];
 
 
     }
@@ -137,9 +166,7 @@ public class MonotonicPartialFunctionSearch<T,V extends Comparable<V>> {
      *
      * @return a defined value at some position of null
      */
-    private ValueAtPosition<V> getClosestDefined(int start, int low, int high){
-
-        V value = null;
+    private ScanForValueResult<V> scanForValue(int start, int low, int high){
 
         int selector = 0;
         int[] positions = new int[] { start , start + 1 };
@@ -162,21 +189,14 @@ public class MonotonicPartialFunctionSearch<T,V extends Comparable<V>> {
 
             int position = positions[selector];
 
-            value = getByIndexCached( position );
+            V value = function.apply( domain[position] );
 
-            if (value != null ) return new ValueAtPosition<>(position,value);
+            if (value != null ) return new ScanForValueResult<>(position, value, positions);
 
-            positions[selector] += selector == 0 ? -1 : +1; //
+            positions[selector] += selector == 0 ? -1 : +1;
 
         }
 
-    }
-
-    private V getByIndexCached(int i){
-
-        if ( !map[i] ) values[i] = function.apply( domain[i] );
-
-        return (V)values[i];
     }
 
 }

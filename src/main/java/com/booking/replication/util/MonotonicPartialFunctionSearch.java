@@ -53,13 +53,13 @@ public class MonotonicPartialFunctionSearch<T,V extends Comparable<V>> {
     private final Function<T,V> function;
 
     private final T[] domain;
-    private final V[] values;
+    private final Object[] values;
     private final boolean[] map;
 
     public MonotonicPartialFunctionSearch(Function<T, V> function, T[] domain) {
         this.function = function;
         this.domain = domain;
-        values = (V[]) new Object[domain.length];
+        values = new Object[domain.length];
         map = new boolean[domain.length];
     }
 
@@ -176,7 +176,7 @@ public class MonotonicPartialFunctionSearch<T,V extends Comparable<V>> {
 
         if ( !map[i] ) values[i] = function.apply( domain[i] );
 
-        return values[i];
+        return (V)values[i];
     }
 
 }

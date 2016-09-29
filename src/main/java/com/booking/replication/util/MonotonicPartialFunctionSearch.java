@@ -5,7 +5,8 @@ import java.util.function.Function;
 
 /**
  *
- * An utility class for working with a monotonically increasing partially defined on some domain function.
+ * A utility class for working with a monotonically increasing, partially defined function (that is, it's not defined
+ * for all elements in the domain).
  *
  */
 public class MonotonicPartialFunctionSearch<V extends Comparable<V>> {
@@ -75,7 +76,6 @@ public class MonotonicPartialFunctionSearch<V extends Comparable<V>> {
             if (i != null) i = i.shrinkLow(v);
 
             return i;
-
         }
 
         /**
@@ -134,7 +134,7 @@ public class MonotonicPartialFunctionSearch<V extends Comparable<V>> {
         }
 
         /**
-         * Splits this interval {@code [low,high]} around the middle onto {@code [low,a],[b,high] } such a way that the
+         * Splits this interval {@code [low,high]} around the middle onto {@code [low,a],[b,high] } in such a way that the
          * function is defined either at {@code a} or at {@code b} and is not defined anywhere between.
          *
          * Assumes the {@code high - low > 1} and the function is defined at the both {@code low,high}
@@ -159,9 +159,6 @@ public class MonotonicPartialFunctionSearch<V extends Comparable<V>> {
             ComparisonResult[] higherCmp = new ComparisonResult[]{ ComparisonResult.UNKNOWN, getHighCmp() };
 
             lowerCmp[1] = higherCmp[0] = ComparisonResult.valueOf( f.apply( middle ), v );
-
-            int[][] limits = new int[][]{ lower, higher};
-            ComparisonResult[][] cmps = new ComparisonResult[][] { lowerCmp, higherCmp };
 
             while ( shrinkStep( lower, lowerCmp, v, 1 ) && shrinkStep( higher, higherCmp, v, 0 ) );
 
@@ -193,7 +190,7 @@ public class MonotonicPartialFunctionSearch<V extends Comparable<V>> {
     }
 
     /**
-     * Returns the largest element of the given domain such that its image under the given function is less then or
+     * Returns the largest element of the given domain such that its image under the given function is less than or
      * equal to the given value.
      *
      * @param f a monotonically increasing function partially defined on the domain
@@ -222,10 +219,10 @@ public class MonotonicPartialFunctionSearch<V extends Comparable<V>> {
 
     /**
      * Returns the greatest lower bound of the pre-image of the given value. I.e. the largest element
-     * of the interval such that its image is less then or equal to the value
+     * of the interval such that its image is less than or equal to the value
      *
      * @param v the given value
-     * @return the largest element of the domain having the image less then or equal to the value
+     * @return the largest element of the domain having the image less than or equal to the value
      */
     public Integer preimageGLB(V v, int low, int high){
 
@@ -284,11 +281,8 @@ public class MonotonicPartialFunctionSearch<V extends Comparable<V>> {
 
                 return lower.getHigh();
             }
-
         }
 
         return current.getLow();
     }
-
-
 }

@@ -3,7 +3,6 @@ package com.booking.replication.util;
 
 import org.junit.Test;
 
-
 import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
@@ -110,7 +109,7 @@ public class MonotonicPartialFunctionSearchTest {
                 Integer a1 = MonotonicPartialFunctionSearch.preimageGLB(x-> {
                         callCount[x]++;
                         if (callCount[x]>1) {
-                            throw new AssertionError("To many calls to " +x);
+                            throw new AssertionError("Too many calls to " +x);
                         }
                         return values[x];
                     }, c, 0, values.length-1 );
@@ -124,12 +123,7 @@ public class MonotonicPartialFunctionSearchTest {
                 }
 
                 assertEquals(a2,a1);
-
             }
-
-
         }
-
     }
-
 }

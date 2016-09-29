@@ -72,20 +72,16 @@ public class BinlogCoordinatesFinder {
         BasicDataSource source = new BasicDataSource();
 
         source.setDriverClassName("com.mysql.jdbc.Driver");
-
         source.setUsername(username);
         source.setPassword(password);
-
         source.setUrl( String.format("jdbc:mysql://%s:%s", host, port) );
-
         source.addConnectionProperty("useUnicode", "true");
         source.addConnectionProperty("characterEncoding", "UTF-8");
 
         try ( Connection connection = source.getConnection() ){
 
-            String[] files = getBinaryLogs(connection);
+            String file = findFile(gtid, connection);
 
-            String file = findFile(gtid, files, connection);
             long position = findPosition(gtid, file, connection);
 
             return new BinlogCoordinates(file,position);
@@ -95,6 +91,33 @@ public class BinlogCoordinatesFinder {
             LOGGER.error("Failed to find binlog coordinates for gtid ", e);
 
             throw new RuntimeException(e);
+
+        }
+
+    }
+
+    private String findFile(String gtid, Connection connection) throws QueryInspectorException, SQLException {
+
+        String file = MonotonicPartialFunctionSearch.preimageGLB( x -> getFirstGTID( x, connection ), gtid.toUpperCase(), getBinaryLogs(connection) );
+
+        if (file == null) throw new RuntimeException("No binlog file contain the given GTID " + gtid);
+
+        return file;
+
+    }
+
+    private String[] getBinaryLogs( Connection connection ) throws SQLException{
+
+        try ( Statement statement = connection.createStatement();
+              ResultSet result = statement.executeQuery("SHOW BINARY LOGS;") ){
+
+            List<String> files = new ArrayList<>();
+
+            while ( result.next() ){
+                files.add( result.getString("Log_name") );
+            }
+
+            return files.toArray(new String[files.size()]);
 
         }
 
@@ -124,49 +147,6 @@ public class BinlogCoordinatesFinder {
         if ( position.getValue() == null ) throw new RuntimeException(String.format("Binlog file %s does not contain given GTID", file));
 
         return position.getValue();
-
-    }
-
-    private void findEvent(Predicate<ResultSet> condition, String file, Connection connection) throws SQLException {
-
-        try ( PreparedStatement statement = connection.prepareStatement("SHOW BINLOG EVENTS IN ? LIMIT ?,?")){
-
-            int start = 0;
-            int limit = 500;
-
-            for (;;){
-
-                statement.setString(1, file);
-                statement.setInt(2,start);
-                statement.setInt(3,limit);
-
-                try ( ResultSet results = statement.executeQuery() ) {
-
-                    boolean empty = true;
-
-                    while (results.next()) {
-
-                        empty = false;
-
-                        if (condition.test(results)) return;
-                    }
-
-                    if (empty) return;
-
-                }
-
-                start += limit;
-            }
-        }
-    }
-
-    private String findFile(String gtid, String[] files, Connection connection) throws QueryInspectorException, SQLException {
-
-        String file = MonotonicPartialFunctionSearch.reverseGLB( x -> getFirstGTID( x, connection ), files, gtid.toUpperCase() );
-
-        if (file == null) throw new RuntimeException("No binlog file contain the given GTID " + gtid);
-
-        return file;
 
     }
 
@@ -214,22 +194,45 @@ public class BinlogCoordinatesFinder {
         return gtid;
     }
 
-    private String[] getBinaryLogs( Connection connection ) throws SQLException{
+    /**
+     * Scans events of the binlog file until either the condition becomes true or the end of the file is reached.
+     *
+     * @param condition the stop scan condition. Should not navigate over the dataset.
+     * @param file the file to scan
+     * @param connection the connection to use
+     * @throws SQLException
+     */
+    private void findEvent(Predicate<ResultSet> condition, String file, Connection connection) throws SQLException {
 
-        try ( Statement statement = connection.createStatement();
-              ResultSet result = statement.executeQuery("SHOW BINARY LOGS;") ){
+        try ( PreparedStatement statement = connection.prepareStatement("SHOW BINLOG EVENTS IN ? LIMIT ?,?")){
 
-            List<String> files = new ArrayList<>();
+            int start = 0;
+            int limit = 500;
 
-            while ( result.next() ){
-                files.add( result.getString("Log_name") );
+            for (;;){
+
+                statement.setString(1, file);
+                statement.setInt(2,start);
+                statement.setInt(3,limit);
+
+                try ( ResultSet results = statement.executeQuery() ) {
+
+                    boolean empty = true;
+
+                    while (results.next()) {
+
+                        empty = false;
+
+                        if (condition.test(results)) return;
+                    }
+
+                    if (empty) return;
+
+                }
+
+                start += limit;
             }
-
-            return files.toArray(new String[files.size()]);
-
         }
-
     }
-
 
 }

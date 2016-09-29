@@ -1,87 +1,63 @@
 package com.booking.replication.util;
 
+
 import org.junit.Test;
 
-import java.util.HashMap;
+
+import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
+
 import static org.junit.Assert.assertFalse;
+
+import static org.junit.Assert.assertNull;
+
 
 public class MonotonicPartialFunctionSearchTest {
 
     @Test
     public void makeSureWeCanFindTheValueInTheObviousCase()
     {
-        String[] namesOfFiles = {"001", "002", "003"};
-        HashMap<String, String> fileNameToFirstGtidInThatFile = new HashMap<>();
+        String[] files = {"001:5000", "002:5700", "003:6700"};
 
-        fileNameToFirstGtidInThatFile.put("001", "5000");
-        fileNameToFirstGtidInThatFile.put("002", "5700");
-        fileNameToFirstGtidInThatFile.put("003", "6700");
-
-        MonotonicPartialFunctionSearch<String, String> f = new MonotonicPartialFunctionSearch<>(
-                x -> fileNameToFirstGtidInThatFile.get(x), namesOfFiles);
-
-        assertEquals("002", f.reverseGLB("6699"));
+        assertEquals("002:5700", MonotonicPartialFunctionSearch.preimageGLB( x -> x.split(":")[1], "6699", files ));
     }
 
     @Test
     public void makeSureWeDontFindAnythingIfThereIsNoEntryLessThanTheValueWeSeek()
     {
-        String[] namesOfFiles = {"001", "002"};
-        HashMap<String, String> fileNameToFirstGtidInThatFile = new HashMap<>();
+        String[] files = {"001:5000", "002:45000"};
 
-        fileNameToFirstGtidInThatFile.put("001", "5000");
-        fileNameToFirstGtidInThatFile.put("002", "45000");
-
-        MonotonicPartialFunctionSearch<String, String> f = new MonotonicPartialFunctionSearch<>(
-                x -> fileNameToFirstGtidInThatFile.get(x), namesOfFiles);
-
-        assertEquals(null, f.reverseGLB("2000"));
+        assertNull(MonotonicPartialFunctionSearch.preimageGLB( x -> x.split(":")[1], "2000", files ));
     }
 
     @Test
     public void makeSureWeCanPullThruUndefinedFunctions()
     {
-        String[] namesOfFiles = {"1", "2", "3", "4", "5", "6", "7", "8"};
-        HashMap<String, String> fileNameToFirstGtidInThatFile = new HashMap<>();
+        String[] values = {"1000", null, null, "2000", null, "4000", null, "6000"};
 
-        fileNameToFirstGtidInThatFile.put("1", "1000");
-        fileNameToFirstGtidInThatFile.put("2", null);
-        fileNameToFirstGtidInThatFile.put("3", null);
-        fileNameToFirstGtidInThatFile.put("4", "2000");
-        fileNameToFirstGtidInThatFile.put("5", null);
-        fileNameToFirstGtidInThatFile.put("6", "4000");
-        fileNameToFirstGtidInThatFile.put("7", null);
-        fileNameToFirstGtidInThatFile.put("8", "6000");
+        MonotonicPartialFunctionSearch f = new MonotonicPartialFunctionSearch<>(
+                x -> values[x]);
 
-        MonotonicPartialFunctionSearch<String, String> f = new MonotonicPartialFunctionSearch<>(
-                x -> fileNameToFirstGtidInThatFile.get(x), namesOfFiles);
-
-        assertEquals("4", f.reverseGLB("3000"));
+        assertEquals(Integer.valueOf(3), f.preimageGLB("3000",0,values.length-1));
     }
 
     @Test
     public void makeSureWeProduceNoResultsIfFunctionValueIsNotDefinedForAnything()
     {
-        String[] namesOfFiles = {"1", "2", "3", "4", "5", "6", "7", "8"};
+        String[] files = {"1", "2", "3", "4", "5", "6", "7", "8"};
 
-        MonotonicPartialFunctionSearch<String, String> f = new MonotonicPartialFunctionSearch<>(
-                x -> null, namesOfFiles);
 
-        assertEquals(null, f.reverseGLB("3000"));
-        assertEquals(null, f.reverseGLB("3"));
+        assertNull(MonotonicPartialFunctionSearch.preimageGLB( x ->null, "3000", files ));
+        assertNull(MonotonicPartialFunctionSearch.preimageGLB( x ->null, "3", files ));
     }
 
     @Test
     public void makeSureWeProduceResultIfDomainHasOnlyOneElement()
     {
-        String[] namesOfFiles = {"1"};
+        String[] files = {"001:050"};
 
-        MonotonicPartialFunctionSearch<String, String> f = new MonotonicPartialFunctionSearch<>(
-                x -> "0050", namesOfFiles);
-
-        assertEquals("1", f.reverseGLB("1000"));
+        assertEquals("001:050", MonotonicPartialFunctionSearch.preimageGLB( x -> x.split(":")[1], "1000", files ));
     }
 
     @Test
@@ -99,16 +75,61 @@ public class MonotonicPartialFunctionSearchTest {
             domainValuesHitMap[i] = false;
         }
 
-        MonotonicPartialFunctionSearch<Integer, Integer> f = new MonotonicPartialFunctionSearch<>(
-                    (Integer x) ->
+        MonotonicPartialFunctionSearch f = new MonotonicPartialFunctionSearch<>(
+                    x ->
                     {
                         assertFalse(domainValuesHitMap[x]);
                         domainValuesHitMap[x] = true;
 
                         return x;
-                    }, namesOfFiles
+                    }
                 );
 
-        assertEquals(2, (long)f.reverseGLB(2));
+        assertEquals(Integer.valueOf(2), f.preimageGLB(2,0,99));
     }
+
+    @Test
+    public void randomizedTest(){
+
+        for (int i = 0; i < 100; i++){
+
+            Random r = new Random();
+
+            int size = r.nextInt(50);
+
+            final Integer[] values = new Integer[size];
+
+            for (int j = 0; j < size; j++){
+                if (r.nextBoolean()) values[j] = j;
+            }
+
+            for (int c = -1; c<size; c++){
+
+                final int[] callCount = new int[size];
+
+                Integer a1 = MonotonicPartialFunctionSearch.preimageGLB(x-> {
+                        callCount[x]++;
+                        if (callCount[x]>1) {
+                            throw new AssertionError("To many calls to " +x);
+                        }
+                        return values[x];
+                    }, c, 0, values.length-1 );
+
+                Integer a2 = null;
+                for (int v = c; v >=0;v--){
+                    if (values[v] != null) {
+                        a2 = values[v];
+                        break;
+                    }
+                }
+
+                assertEquals(a2,a1);
+
+            }
+
+
+        }
+
+    }
+
 }

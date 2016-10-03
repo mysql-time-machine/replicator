@@ -316,6 +316,12 @@ public class PipelineOrchestrator extends Thread {
                 boolean isPseudoGTID = queryInspector.isPseudoGTID(querySQL);
                 if (isPseudoGTID) {
                     pgtidCounter.mark();
+                    // Events in the same second after pGTID can be written to HBase twice
+                    // with different timestamp-microsecond-part during failover, resulting
+                    // in duplicate entries in HBase for that second. By reseting the 
+                    // microsecond part on pGTID event this posibility is removed, and we have
+                    // exactly-once-delivery even during failover.
+                    fakeMicrosecondCounter = 0;
                     try {
                         String pseudoGTID = queryInspector.extractPseudoGTID(querySQL);
                         pipelinePosition.setCurrentPseudoGTID(pseudoGTID);

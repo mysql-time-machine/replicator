@@ -17,6 +17,9 @@ import com.booking.replication.sql.QueryInspector;
 import com.booking.replication.util.BinlogCoordinatesFinder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import spark.Spark;
+
+import static spark.Spark.*;
 
 import java.util.concurrent.TimeUnit;
 
@@ -313,6 +316,16 @@ public class Replicator {
                     LOGGER.error("Interrupted.", e);
                 } catch (Exception e) {
                     LOGGER.error("Failed to stop Pipeline Orchestrator", e);
+                }
+
+                // Spark Web Server
+                try {
+                    LOGGER.info("Stopping the Spark web server...");
+                    Spark.stop(); // TODO: static stuff? Do we want to test this class?
+                    LOGGER.info("Stopped the Spark web server...");
+                }
+                catch (Exception e) {
+                    LOGGER.error("Failed to stop the Spark web server", e);
                 }
             }
         });

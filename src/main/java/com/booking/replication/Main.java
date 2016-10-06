@@ -13,6 +13,7 @@ import joptsimple.OptionSet;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import static spark.Spark.*;
 
 public class Main {
 
@@ -76,8 +77,22 @@ public class Main {
                 }
             );
 
+            startServerForHealthInquiries();
+
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private static void startServerForHealthInquiries() {
+        port(8080);
+
+        get("/areYouGood",
+                (req, response) ->
+                {
+                    response.status(200);
+                    // don't really need the response body
+                    return "";
+                });
     }
 }

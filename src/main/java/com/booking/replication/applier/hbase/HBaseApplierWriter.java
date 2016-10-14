@@ -119,8 +119,7 @@ public class HBaseApplierWriter {
 
     private static final Counter
             applierTasksSubmittedCounter = Metrics.registry.counter(name("HBase", "applierTasksSubmittedCounter"));
-    private static final Counter
-            applierTasksSucceededCounter = Metrics.registry.counter(name("HBase", "applierTasksSucceededCounter"));
+    private final Counter applierTasksSucceededCounter;
     private static final Counter
             applierTasksFailedCounter = Metrics.registry.counter(name("HBase", "applierTasksFailedCounter"));
 
@@ -157,7 +156,8 @@ public class HBaseApplierWriter {
      */
     public HBaseApplierWriter(
             int poolSize,
-            com.booking.replication.Configuration configuration
+            com.booking.replication.Configuration configuration,
+            Counter tasksSucceededCounter
     ) {
         DRY_RUN = configuration.isDryRunMode();
 
@@ -177,6 +177,7 @@ public class HBaseApplierWriter {
             }
         }
 
+        applierTasksSucceededCounter = tasksSucceededCounter;
 
         taskTransactionBuffer
                 .put(currentTaskUuid, new ApplierTask(TaskStatus.READY_FOR_BUFFERING));

@@ -5,7 +5,7 @@ import com.booking.replication.applier.HBaseApplier;
 import com.booking.replication.applier.KafkaApplier;
 import com.booking.replication.applier.StdoutJsonApplier;
 import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
-import com.booking.replication.monitor.Overseer;
+import com.booking.replication.monitor.*;
 import com.booking.replication.pipeline.BinlogEventProducer;
 import com.booking.replication.pipeline.BinlogPositionInfo;
 import com.booking.replication.pipeline.PipelineOrchestrator;
@@ -15,11 +15,15 @@ import com.booking.replication.replicant.ReplicantPool;
 
 import com.booking.replication.sql.QueryInspector;
 import com.booking.replication.util.BinlogCoordinatesFinder;
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.Counting;
+import com.codahale.metrics.Meter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import spark.Spark;
 
-import static spark.Spark.*;
+import static com.codahale.metrics.MetricRegistry.name;
+import static spark.Spark.get;
 
 import java.util.concurrent.TimeUnit;
 
@@ -38,11 +42,14 @@ public class Replicator {
     private final Overseer             overseer;
     private final ReplicantPool        replicantPool;
     private final PipelinePosition     pipelinePosition;
+    private final ReplicatorHealthTrackerProxy healthTracker;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Replicator.class);
 
     // Replicator()
-    public Replicator(Configuration configuration) throws Exception {
+    public Replicator(Configuration configuration, ReplicatorHealthTrackerProxy healthTracker) throws Exception {
+
+        this.healthTracker = healthTracker;
 
         boolean mysqlFailoverActive = false;
         if (configuration.getMySQLFailover() != null) {
@@ -234,21 +241,39 @@ public class Replicator {
 
         // Applier
         Applier applier;
+        Counting mainProgressCounter = null;
+        String mainProgressCounterDescription = null;
 
         if (configuration.getApplierType().equals("STDOUT")) {
             applier = new StdoutJsonApplier(
                     configuration
             );
         } else if (configuration.getApplierType().toLowerCase().equals("hbase")) {
+            mainProgressCounter = Metrics.registry.counter(name("HBase", "applierTasksSucceededCounter"));
+            mainProgressCounterDescription = "# of HBase tasks that have succeeded";
             applier = new HBaseApplier(
-                    configuration
-            );
+                    configuration,
+                    (Counter)mainProgressCounter);
         } else if (configuration.getApplierType().toLowerCase().equals("kafka")) {
+            mainProgressCounter = Metrics.registry.meter(name("Kafka", "producerToBroker"));
+            mainProgressCounterDescription = "# of messages pushed to the Kafka broker";
             applier = new KafkaApplier(
-                    configuration
-            );
+                    configuration,
+                    (Meter)mainProgressCounter);
         } else {
             throw new RuntimeException(String.format("Unknown applier: %s", configuration.getApplierType()));
+        }
+
+        if (mainProgressCounter != null)
+        {
+            ReplicatorHealthTracker tracker = new ReplicatorHealthTracker(
+                    new ReplicatorDoctor(mainProgressCounter, mainProgressCounterDescription, LoggerFactory.getLogger(ReplicatorDoctor.class.getName())), 300);
+
+            this.healthTracker.setTrackerImplementation(tracker);
+        }
+        else
+        {
+            this.healthTracker.setTrackerImplementation(new ReplicatorHealthTrackerDummy());
         }
 
         // Orchestrator
@@ -281,6 +306,7 @@ public class Replicator {
                     LOGGER.info("Stopping Overseer...");
                     overseer.stopMonitoring();
                     overseer.join();
+                    healthTracker.stop();
                     LOGGER.info("Overseer thread successfully stopped");
                 } catch (InterruptedException e) {
                     LOGGER.error("Interrupted.", e);
@@ -335,6 +361,8 @@ public class Replicator {
         pipelineOrchestrator.start();
         overseer.start();
 
+        healthTracker.start();
+
         while (!pipelineOrchestrator.isReplicatorShutdownRequested()) {
             try {
                 Thread.sleep(1000);
@@ -346,4 +374,6 @@ public class Replicator {
 
         System.exit(0);
     }
+
+
 }

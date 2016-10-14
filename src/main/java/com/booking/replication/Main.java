@@ -3,16 +3,21 @@ package com.booking.replication;
 import com.booking.replication.coordinator.CoordinatorInterface;
 import com.booking.replication.coordinator.FileCoordinator;
 import com.booking.replication.coordinator.ZookeeperCoordinator;
+import com.booking.replication.monitor.IReplicatorHealthTracker;
+import com.booking.replication.monitor.ReplicatorHealthAssessment;
+import com.booking.replication.monitor.ReplicatorHealthTrackerProxy;
 import com.booking.replication.util.Cmd;
 import com.booking.replication.util.StartupParameters;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import joptsimple.OptionSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+
 import static spark.Spark.*;
 
 public class Main {
@@ -21,7 +26,6 @@ public class Main {
      * Main.
      */
     public static void main(String[] args) throws Exception {
-
         OptionSet optionSet = Cmd.parseArgs(args);
 
         StartupParameters startupParameters = new StartupParameters(optionSet);
@@ -63,13 +67,16 @@ public class Main {
 
             Coordinator.setImplementation(coordinator);
 
+            ReplicatorHealthTrackerProxy healthTracker = new ReplicatorHealthTrackerProxy();
+            startServerForHealthInquiries(healthTracker);
+
             Coordinator.onLeaderElection(
                 new Runnable() {
                     @Override
                     public void run() {
                         try {
                             Metrics.startReporters(configuration);
-                            new Replicator(configuration).start();
+                            new Replicator(configuration, healthTracker).start();
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
@@ -77,22 +84,45 @@ public class Main {
                 }
             );
 
-            startServerForHealthInquiries();
-
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private static void startServerForHealthInquiries() {
+    private static void startServerForHealthInquiries(IReplicatorHealthTracker healthTracker) {
         port(8080);
 
         get("/areYouGood",
                 (req, response) ->
                 {
-                    response.status(200);
-                    // don't really need the response body
-                    return "";
+                    try
+                    {
+                        ReplicatorHealthAssessment healthAssessment = healthTracker.getLastHealthAssessment();
+
+                        if (healthAssessment.isOk())
+                        {
+                            //For Marathon any HTTP code between 200 and 399 indicates we're healthy
+
+                            response.status(200);
+                            // don't really need the response body
+                            return "";
+                        }
+                        else
+                        {
+                            response.status(503);
+                            return healthAssessment.getDiagnosis();
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        response.status(503);
+
+                        String errorMessage = "Failed to assess the health status of the Replicator";
+
+                        LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME).warn(errorMessage, e);
+
+                        return errorMessage;
+                    }
                 });
     }
 }

@@ -65,14 +65,14 @@ public class KafkaApplier implements Applier {
     private static final HashMap<String,Boolean> wantedTables = new HashMap<String,Boolean>();
 
     // We need to make sure that all rows from one table end up on the same
-    // partition. That is why we have a separate buffer for each parition, so
-    // during buffering the right buffer is choosen.
+    // partition. That is why we have a separate buffer for each partition, so
+    // during buffering the right buffer is chosen.
     private HashMap<Integer,RowListMessage> partitionCurrentMessageBuffer = new HashMap<>();
 
     private String topicName;
     private AtomicBoolean exceptionFlag = new AtomicBoolean(false);
 
-    private static final Meter kafka_messages = Metrics.registry.meter(name("Kafka", "producerToBroker"));
+    private final Meter meterForMessagesPushedToKafka;
     private static final Counter exception_counter = Metrics.registry.counter(name("Kafka", "exceptionCounter"));
     private static final Counter outlier_counter = Metrics.registry.counter(name("Kafka", "outliersCounter"));
     private static final Timer closingTimer = Metrics.registry.timer(name("Kafka", "producerCloseTimer"));
@@ -116,14 +116,14 @@ public class KafkaApplier implements Applier {
         return prop;
     }
 
-    public KafkaApplier(Configuration configuration) throws IOException {
-
+    public KafkaApplier(Configuration configuration, Meter meterForMessagesPushedToKafka) throws IOException {
         DRY_RUN = configuration.isDryRunMode();
 
         fixedListOfIncludedTables = configuration.getKafkaTableList();
         excludeTablePatterns = configuration.getKafkaExcludeTableList();
         topicName = configuration.getKafkaTopicName();
         brokerAddress = configuration.getKafkaBrokerAddress();
+        this.meterForMessagesPushedToKafka = meterForMessagesPushedToKafka;
 
         if (!DRY_RUN) {
             producer = new KafkaProducer<>(getProducerProperties(brokerAddress));
@@ -321,7 +321,7 @@ public class KafkaApplier implements Applier {
                             }
                         }
                     }
-                    kafka_messages.mark();
+                    meterForMessagesPushedToKafka.mark();
                 }
             } else {
                 totalOutliersCounter ++;

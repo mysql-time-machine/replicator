@@ -92,7 +92,7 @@ public class Main {
     private static void startServerForHealthInquiries(IReplicatorHealthTracker healthTracker) {
         port(8080);
 
-        get("/areYouGood",
+        get("/is_healthy",
                 (req, response) ->
                 {
                     try

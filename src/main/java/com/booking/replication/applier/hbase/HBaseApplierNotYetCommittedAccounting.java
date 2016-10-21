@@ -18,7 +18,7 @@ public class HBaseApplierNotYetCommittedAccounting {
     private static final Logger LOGGER = LoggerFactory.getLogger(HBaseApplierNotYetCommittedAccounting.class);
 
     /**
-     * Non-Committed task UUUDs in the order as they are received from the binlog.
+     * Non-Committed task UUIDs in the order as they are received from the binlog.
      * Since tasks run in parallel, and the binlog is ordered structure, we have
      * a problem of knowing when a specific position in the binlog has been succesfully
      * committed into hbase since we need to know that all tasks that correspond to
@@ -131,12 +131,12 @@ public class HBaseApplierNotYetCommittedAccounting {
     }
 
 
-    public List<String> taskHead(int taskIndex) {
-        return  notYetCommittedTaskUUIDs.subList(0, taskIndex + 1);
+    private List<String> taskHead(int taskIndex) {
+        return new ArrayList<>(notYetCommittedTaskUUIDs.subList(0, taskIndex + 1));
     }
 
-    public List taskTail(int taskIndex) {
-        return notYetCommittedTaskUUIDs.subList(taskIndex + 1, notYetCommittedTaskUUIDs.size());
+    private List taskTail(int taskIndex) {
+        return new ArrayList<>(notYetCommittedTaskUUIDs.subList(taskIndex + 1, notYetCommittedTaskUUIDs.size()));
     }
 
     private LastCommittedPositionCheckpoint scanCommittedTasksForPseudoGTIDCheckpoint(

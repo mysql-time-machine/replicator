@@ -18,6 +18,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
+import static com.codahale.metrics.MetricRegistry.name;
 import static spark.Spark.*;
 
 public class Main {
@@ -76,7 +77,7 @@ public class Main {
                     public void run() {
                         try {
                             Metrics.startReporters(configuration);
-                            new Replicator(configuration, healthTracker).start();
+                            new Replicator(configuration, healthTracker, Metrics.registry.counter(name("events", "applierEventsObserved"))).start();
                         } catch (Exception e) {
                             e.printStackTrace();
                         }

@@ -1,9 +1,6 @@
 package com.booking.replication;
 
-import com.booking.replication.applier.Applier;
-import com.booking.replication.applier.HBaseApplier;
-import com.booking.replication.applier.KafkaApplier;
-import com.booking.replication.applier.StdoutJsonApplier;
+import com.booking.replication.applier.*;
 import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
 import com.booking.replication.monitor.*;
 import com.booking.replication.pipeline.BinlogEventProducer;
@@ -47,7 +44,7 @@ public class Replicator {
     private static final Logger LOGGER = LoggerFactory.getLogger(Replicator.class);
 
     // Replicator()
-    public Replicator(Configuration configuration, ReplicatorHealthTrackerProxy healthTracker) throws Exception {
+    public Replicator(Configuration configuration, ReplicatorHealthTrackerProxy healthTracker, Counter interestingEventsObservedCounter) throws Exception {
 
         this.healthTracker = healthTracker;
 
@@ -245,21 +242,15 @@ public class Replicator {
         String mainProgressCounterDescription = null;
 
         if (configuration.getApplierType().equals("STDOUT")) {
-            applier = new StdoutJsonApplier(
-                    configuration
-            );
+            applier = new EventCountingApplier(new StdoutJsonApplier(configuration), interestingEventsObservedCounter);
         } else if (configuration.getApplierType().toLowerCase().equals("hbase")) {
             mainProgressCounter = Metrics.registry.counter(name("HBase", "applierTasksSucceededCounter"));
             mainProgressCounterDescription = "# of HBase tasks that have succeeded";
-            applier = new HBaseApplier(
-                    configuration,
-                    (Counter)mainProgressCounter);
+            applier = new EventCountingApplier(new HBaseApplier(configuration, (Counter)mainProgressCounter), interestingEventsObservedCounter);
         } else if (configuration.getApplierType().toLowerCase().equals("kafka")) {
             mainProgressCounter = Metrics.registry.meter(name("Kafka", "producerToBroker"));
             mainProgressCounterDescription = "# of messages pushed to the Kafka broker";
-            applier = new KafkaApplier(
-                    configuration,
-                    (Meter)mainProgressCounter);
+            applier = new EventCountingApplier(new KafkaApplier(configuration, (Meter)mainProgressCounter), interestingEventsObservedCounter);
         } else {
             throw new RuntimeException(String.format("Unknown applier: %s", configuration.getApplierType()));
         }
@@ -267,7 +258,7 @@ public class Replicator {
         if (mainProgressCounter != null)
         {
             ReplicatorHealthTracker tracker = new ReplicatorHealthTracker(
-                    new ReplicatorDoctor(mainProgressCounter, mainProgressCounterDescription, LoggerFactory.getLogger(ReplicatorDoctor.class.getName())), 300);
+                    new ReplicatorDoctor(mainProgressCounter, mainProgressCounterDescription, LoggerFactory.getLogger(ReplicatorDoctor.class.getName()), interestingEventsObservedCounter), 600);
 
             this.healthTracker.setTrackerImplementation(tracker);
         }
@@ -374,6 +365,4 @@ public class Replicator {
 
         System.exit(0);
     }
-
-
 }

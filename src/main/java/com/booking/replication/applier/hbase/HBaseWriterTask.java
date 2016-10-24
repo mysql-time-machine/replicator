@@ -125,6 +125,7 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
                                 TableName tableName = TableName.valueOf(hbaseTableName);
                                 Table hbaseTable = hbaseConnection.getTable(tableName);
                                 hbaseTable.put(puts);
+                                hbaseTable.close();
                             } else {
                                 System.out.println("Running in dry-run mode, prepared " + puts.size() + " mutations.");
                                 Thread.sleep(1000);

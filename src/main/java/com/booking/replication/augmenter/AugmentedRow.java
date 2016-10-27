@@ -90,7 +90,7 @@ public class AugmentedRow {
 
         Long eventPosition = eventV4Header.getPosition();
 
-        rowBinlogPositionID = String.format("%s:%020d:%03d", this.binlogFileName, eventPosition, this.rowBinlogEventOrdinal);
+        rowBinlogPositionID = String.format("%s:%020d:%020d", this.binlogFileName, eventPosition, this.rowBinlogEventOrdinal);
         rowUUID = UUID.randomUUID().toString();;
     }
 

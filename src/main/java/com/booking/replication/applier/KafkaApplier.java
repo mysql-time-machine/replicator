@@ -272,7 +272,8 @@ public class KafkaApplier implements Applier {
                 // Row binlog position id
                 rowBinlogPositionID = row.getRowBinlogPositionID();
                 if (rowBinlogPositionID.compareTo(rowLastPositionID) <= 0) {
-                    throw new RuntimeException("Something wrong with the row position. This should never happen.");
+                    throw new RuntimeException(
+                            String.format("Something wrong with the row position. This should never happen. Current position: %s. Previous: %s", rowBinlogPositionID, rowLastPositionID));
                 }
                 rowLastPositionID = rowBinlogPositionID;
 

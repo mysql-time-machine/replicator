@@ -33,6 +33,17 @@ public class ValidationService {
             this.targetUri = targetUri;
         }
 
+        public String getTag() {
+            return tag;
+        }
+
+        public String getSourceUri() {
+            return sourceUri;
+        }
+
+        public String getTargetUri() {
+            return targetUri;
+        }
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ValidationService.class);
@@ -130,7 +141,7 @@ public class ValidationService {
 
         } catch (JsonProcessingException e) {
 
-            LOGGER.error("Failure serializing validation task {} {} {} {}", id, tag, sourceUri, targetUri);
+            LOGGER.error("Failure serializing validation task {} {} {} {}", id, tag, sourceUri, targetUri, e);
 
         }
 

@@ -12,6 +12,7 @@ import com.booking.replication.replicant.ReplicantPool;
 
 import com.booking.replication.sql.QueryInspector;
 import com.booking.replication.util.BinlogCoordinatesFinder;
+import com.booking.replication.validation.ValidationService;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Counting;
 import com.codahale.metrics.Meter;
@@ -236,6 +237,9 @@ public class Replicator {
             replicantPool
         );
 
+        // Validation service
+        ValidationService validationService = ValidationService.getInstance(configuration);
+
         // Applier
         Applier applier;
         Counting mainProgressCounter = null;
@@ -246,7 +250,7 @@ public class Replicator {
         } else if (configuration.getApplierType().toLowerCase().equals("hbase")) {
             mainProgressCounter = Metrics.registry.counter(name("HBase", "applierTasksSucceededCounter"));
             mainProgressCounterDescription = "# of HBase tasks that have succeeded";
-            applier = new EventCountingApplier(new HBaseApplier(configuration, (Counter)mainProgressCounter), interestingEventsObservedCounter);
+            applier = new EventCountingApplier(new HBaseApplier(configuration, (Counter)mainProgressCounter, validationService), interestingEventsObservedCounter);
         } else if (configuration.getApplierType().toLowerCase().equals("kafka")) {
             mainProgressCounter = Metrics.registry.meter(name("Kafka", "producerToBroker"));
             mainProgressCounterDescription = "# of messages pushed to the Kafka broker";

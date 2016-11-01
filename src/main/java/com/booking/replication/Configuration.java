@@ -15,6 +15,7 @@ import java.io.Serializable;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Configuration instance.
@@ -140,6 +141,49 @@ public class Configuration {
         public List<String> tables;
         public List<String> excludetables;
         public String topic;
+    }
+
+    public static class ValidationConfiguration {
+        private String broker;
+        private String topic;
+        private String tag = "general";
+        @JsonProperty("source_domain")
+        private String sourceDomain;
+        @JsonProperty("target_domain")
+        private String targetDomain;
+        private long throttling = TimeUnit.MILLISECONDS.toMillis(5000);
+
+        public String getBroker() {
+            return broker;
+        }
+
+        public String getTopic() {
+            return topic;
+        }
+
+        public String getTag() {
+            return tag;
+        }
+
+        public String getSourceDomain() {
+            return sourceDomain;
+        }
+
+        public String getTargetDomain() {
+            return targetDomain;
+        }
+
+        public long getThrottling() {
+            return throttling;
+        }
+    }
+
+    @JsonDeserialize
+    @JsonProperty("validation")
+    public ValidationConfiguration validationConfig;
+
+    public ValidationConfiguration getValidationConfiguration(){
+        return validationConfig;
     }
 
     @JsonDeserialize

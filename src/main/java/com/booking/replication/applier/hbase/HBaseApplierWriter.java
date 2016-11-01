@@ -9,6 +9,7 @@ import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
 
+import com.booking.replication.validation.ValidationService;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Gauge;
 import org.apache.hadoop.conf.Configuration;
@@ -117,6 +118,8 @@ public class HBaseApplierWriter {
 
     private final Configuration hbaseConf = HBaseConfiguration.create();
 
+    private final ValidationService validationService;
+
     private static final Counter
             applierTasksSubmittedCounter = Metrics.registry.counter(name("HBase", "applierTasksSubmittedCounter"));
     private final Counter applierTasksSucceededCounter;
@@ -157,9 +160,12 @@ public class HBaseApplierWriter {
     public HBaseApplierWriter(
             int poolSize,
             com.booking.replication.Configuration configuration,
-            Counter tasksSucceededCounter
+            Counter tasksSucceededCounter,
+            ValidationService validationService
     ) {
         DRY_RUN = configuration.isDryRunMode();
+
+        this.validationService = validationService;
 
         this.poolSize = poolSize;
         taskPool          = Executors.newFixedThreadPool(this.poolSize);
@@ -591,6 +597,7 @@ public class HBaseApplierWriter {
                                 mutationGenerator,
                                 taskUuid,
                                 taskTransactionBuffer.get(taskUuid),
+                                validationService,
                                 DRY_RUN
                         )
                     ));

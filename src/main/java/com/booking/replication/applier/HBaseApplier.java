@@ -11,6 +11,7 @@ import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.schema.HBaseSchemaManager;
 
 import com.booking.replication.schema.TableNameMapper;
+import com.booking.replication.validation.ValidationService;
 import com.codahale.metrics.Counter;
 import com.google.code.or.binlog.BinlogEventV4;
 
@@ -62,7 +63,8 @@ public class HBaseApplier implements Applier {
      */
     public HBaseApplier(
         com.booking.replication.Configuration config,
-        Counter mainProgressIndicator
+        Counter mainProgressIndicator,
+        ValidationService validationService
     ) {
         configuration = config;
 
@@ -70,7 +72,8 @@ public class HBaseApplier implements Applier {
             new HBaseApplierWriter(
                     POOL_SIZE,
                     configuration,
-                    mainProgressIndicator
+                    mainProgressIndicator,
+                    validationService
             );
 
         hbaseSchemaManager = new HBaseSchemaManager(

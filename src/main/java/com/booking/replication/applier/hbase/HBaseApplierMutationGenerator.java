@@ -15,15 +15,49 @@ import org.slf4j.LoggerFactory;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Created by bosko on 4/18/16.
  */
 public class HBaseApplierMutationGenerator {
+
+    public class PutMutation {
+
+        private final Put put;
+        private final String table;
+        private final String sourceRowUri;
+        private final boolean isTableMirrored;
+
+        public PutMutation(Put put, String table, String sourceRowUri, boolean isTableMirrored) {
+            this.put = put;
+            this.sourceRowUri = sourceRowUri;
+            this.table = table;
+            this.isTableMirrored = isTableMirrored;
+        }
+
+        public Put getPut() {
+            return put;
+        }
+
+        public String getSourceRowUri() {
+            return sourceRowUri;
+        }
+
+        public String getTable(){
+            return table;
+        }
+
+        public String getTargetRowUri() {
+            return String.format("hbase://%s/%s?row=%s&cf=%s", configuration.getValidationConfiguration().getSourceDomain(),table, Bytes.toString(put.getRow()),Bytes.toString(CF));
+        }
+
+        public boolean isTableMirrored() {
+            return isTableMirrored;
+        }
+    }
 
     private static final byte[] CF                           = Bytes.toBytes("d");
     private static final String DIGEST_ALGORITHM             = "MD5";
@@ -38,66 +72,27 @@ public class HBaseApplierMutationGenerator {
     }
 
     /**
-     * Generate Mutations.
+     * Transforms a list of {@link AugmentedRow} to a list of hbase mutations
      *
-     * <p>
-     *  The return data structure looks like: { mirrored: #mutations, delta: #mutations }
-     *  Where: #mutations = { #tableName: [(#hbaseTableName, #hbaseRowId, #mutation)] }
-     * </p>
-     *
-     * @param augmentedRows List of augmented rows
-     * @return Hash Map of mutations, divided by type (mirrored/delta)
+     * @param augmentedRows a list of augmented rows
+     * @return a list of HBase mutations
      */
-    public HashMap<String,HashMap<String,List<Triple<String,String,Put>>>>
-        generateMutationsFromAugmentedRows(List<AugmentedRow> augmentedRows) {
+    public List<PutMutation> generateMutations(List<AugmentedRow> augmentedRows) {
 
-        // { $type => $tableName => @AugmentedMutations }
-        HashMap<String,HashMap<String,List<Triple<String,String,Put>>>> preparedMutations = new HashMap<>();
+        Set<String> tablesForDelta = configuration.getTablesForWhichToTrackDailyChanges().stream().collect(Collectors.toSet());
 
-        preparedMutations.put("mirrored", new HashMap<String, List<Triple<String, String, Put>>>());
-        preparedMutations.put("delta", new HashMap<String, List<Triple<String, String, Put>>>());
+        boolean writeDelta = configuration.isWriteRecentChangesToDeltaTables();
 
-        for (AugmentedRow row : augmentedRows) {
+        return augmentedRows.stream()
+                .flatMap(
+                        row -> writeDelta && tablesForDelta.contains(row.getTableName())
+                                ? Stream.of(getPutForMirroredTable(row), getPutForDeltaTable(row) )
+                                : Stream.of(getPutForMirroredTable(row)) )
+                .collect(Collectors.toList());
 
-            // ==============================================================================
-            // I. Mirrored table
-            Triple<String,String,Put> mirroredTableKeyPut = getPutForMirroredTable(row);
-
-            String mirroredTableName = mirroredTableKeyPut.getFirst();
-
-            if (preparedMutations.get("mirrored").get(mirroredTableName) == null) {
-                preparedMutations.get("mirrored").put(mirroredTableName, new ArrayList<Triple<String, String, Put>>());
-            }
-            preparedMutations.get("mirrored").get(mirroredTableName).add(mirroredTableKeyPut);
-
-            // ==============================================================================
-            // II. Optional Delta table used for incremental imports to Hive
-            //
-            // Delta tables have 2 important differences from mirrored tables:
-            //
-            // 1. Columns have only 1 version
-            //
-            // 2. we are storing the entire row (instead only the changes columns - since 1.)
-            //
-            List<String> tablesForDelta = configuration.getTablesForWhichToTrackDailyChanges();
-            String mySQLTableName = row.getTableName();
-
-            if (configuration.isWriteRecentChangesToDeltaTables() && tablesForDelta.contains(mySQLTableName)) {
-
-                Triple<String,String,Put> deltaTableKeyPut = getPutForDeltaTable(row);
-
-                String deltaTableName = deltaTableKeyPut.getFirst();
-                if (preparedMutations.get("delta").get(deltaTableName) == null) {
-                    preparedMutations.get("delta").put(deltaTableName, new ArrayList<Triple<String, String, Put>>());
-                }
-                preparedMutations.get("delta").get(deltaTableName).add(deltaTableKeyPut);
-            }
-        } // next row
-
-        return preparedMutations;
     }
 
-    private Triple<String,String,Put> getPutForMirroredTable(AugmentedRow row) {
+    private PutMutation getPutForMirroredTable(AugmentedRow row) {
 
         // RowID
         String hbaseRowID = getHBaseRowKey(row);
@@ -198,10 +193,11 @@ public class HBaseApplierMutationGenerator {
                 System.exit(1);
         }
 
-        return new Triple<>(hbaseTableName,hbaseRowID,put);
+        return new PutMutation(put,hbaseTableName,getRowUri(row), true);
+
     }
 
-    private Triple<String,String,Put> getPutForDeltaTable(AugmentedRow row) {
+    private PutMutation getPutForDeltaTable(AugmentedRow row) {
 
         String hbaseRowID = getHBaseRowKey(row);
 
@@ -291,7 +287,21 @@ public class HBaseApplierMutationGenerator {
                 System.exit(1);
         }
 
-        return new Triple<>(deltaTableName,hbaseRowID,put);
+        return new PutMutation(put,deltaTableName,getRowUri(row),false);
+
+    }
+
+    private String getRowUri(AugmentedRow row){
+
+        String eventType = row.getEventType();
+
+        String table = row.getTableName();
+
+        String keys  = row.getPrimaryKeyColumns().stream()
+                .map( columnName -> columnName + "=" + row.getEventColumns().get(columnName).get( "UPDATE".equals(eventType) ? "value_after" : "value" ) )
+                .collect(Collectors.joining("&"));
+
+        return String.format("mysql://%s/%s?%s", configuration.validationConfig.getSourceDomain(), table, keys  );
     }
 
     private static String getHBaseRowKey(AugmentedRow row) {

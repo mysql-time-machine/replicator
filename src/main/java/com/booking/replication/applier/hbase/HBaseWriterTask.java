@@ -7,6 +7,7 @@ import com.booking.replication.applier.ChaosMonkey;
 import com.booking.replication.applier.TaskStatus;
 import com.booking.replication.augmenter.AugmentedRow;
 
+import com.booking.replication.validation.ValidationService;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
@@ -20,6 +21,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 
 public class HBaseWriterTask implements Callable<HBaseTaskResult> {
 
@@ -31,6 +33,8 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
     private static final Meter rowOpsCommittedToHbase = Metrics.registry.meter(name("HBase", "rowOpsCommittedToHbase"));
     private static final Timer putLatencyTimer = Metrics.registry.timer(name("HBase", "writerPutLatency"));
     private static final Timer taskLatencyTimer = Metrics.registry.timer(name("HBase", "writerTaskLatency"));
+
+    private final ValidationService validationService;
 
     private final Connection hbaseConnection;
     private final HBaseApplierMutationGenerator mutationGenerator;
@@ -50,6 +54,7 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
             HBaseApplierMutationGenerator generator,
             String id,
             Map<String, TransactionProxy> taskBuffer,
+            ValidationService validationService,
             boolean dryRun
     ) {
         super();
@@ -60,6 +65,7 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
         taskUuid = id;
         mutationGenerator = generator;
         taskTransactionBuffer = taskBuffer;
+        this.validationService = validationService;
     }
 
     @Override
@@ -102,44 +108,41 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
                 } else {
                     List<AugmentedRow> rowOps = taskTransactionBuffer.get(transactionUuid).get(bufferedMySQLTableName);
 
-                    HashMap<String, HashMap<String, List<Triple<String, String, Put>>>> preparedMutations =
-                            mutationGenerator.generateMutationsFromAugmentedRows(rowOps);
+                    Map<String, List<HBaseApplierMutationGenerator.PutMutation>> mutationsByTable = mutationGenerator.generateMutations(rowOps).stream()
+                            .collect(
+                                        Collectors.groupingBy( mutation->mutation.getTable()
+                                    )
+                            );
 
-                    if (!preparedMutations.containsKey("mirrored")) {
-                        LOGGER.error("Missing mirrored key from preparedMutations!");
-                        System.exit(-1);
-                    }
+                    for (Map.Entry<String, List<HBaseApplierMutationGenerator.PutMutation>> entry : mutationsByTable.entrySet()){
 
-                    for (String type: "mirrored delta".split(" ")) {
+                        String tableName = entry.getKey();
+                        List<HBaseApplierMutationGenerator.PutMutation> mutations = entry.getValue();
 
-                        for (String hbaseTableName : preparedMutations.get(type).keySet()) {
+                        if (!DRY_RUN) {
+                            Table table = hbaseConnection.getTable(TableName.valueOf(tableName));
+                            table.put( mutations.stream().map( mutation -> mutation.getPut() ).collect(Collectors.toList()) );
+                            table.close();
 
-                            List<Put> puts = new ArrayList<>();
-
-                            for (Triple<String, String, Put> augmentedMutation :
-                                    preparedMutations.get(type).get(hbaseTableName)) {
-                                puts.add(augmentedMutation.getThird());
+                            for (HBaseApplierMutationGenerator.PutMutation mutation : mutations){
+                                validationService.registerValidationTask(transactionUuid, mutation.getSourceRowUri(), mutation.getTargetRowUri());
                             }
 
-                            if (!DRY_RUN) {
-                                TableName tableName = TableName.valueOf(hbaseTableName);
-                                Table hbaseTable = hbaseConnection.getTable(tableName);
-                                hbaseTable.put(puts);
-                                hbaseTable.close();
-                            } else {
-                                System.out.println("Running in dry-run mode, prepared " + puts.size() + " mutations.");
-                                Thread.sleep(1000);
-                            }
-
-                            if (type.equals("mirrored")) {
-                                numberOfFlushedTablesInCurrentTransaction++;
-                            }
-
-                            PerTableMetrics.get(hbaseTableName).committed.inc(puts.size());
-
-                            rowOpsCommittedToHbase.mark(puts.size());
+                        } else {
+                            System.out.println("Running in dry-run mode, prepared " + mutations.size() + " mutations.");
+                            Thread.sleep(1000);
                         }
+
+                        if (entry.getValue().get(0).isTableMirrored()) {
+                            numberOfFlushedTablesInCurrentTransaction++;
+                        }
+
+                        PerTableMetrics.get(tableName).committed.inc(mutations.size());
+
+                        rowOpsCommittedToHbase.mark(mutations.size());
+
                     }
+
                 }
             } // next table
             timerContext.stop();

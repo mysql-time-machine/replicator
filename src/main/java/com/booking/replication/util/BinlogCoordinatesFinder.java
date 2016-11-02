@@ -82,6 +82,8 @@ public class BinlogCoordinatesFinder {
 
             String file = findFile(gtid, connection);
 
+            LOGGER.info("Getting GTID position in the file {}", file);
+
             long position = findPosition(gtid, file, connection);
 
             return new BinlogCoordinates(file,position);

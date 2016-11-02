@@ -151,7 +151,7 @@ public class Configuration {
         private String sourceDomain;
         @JsonProperty("target_domain")
         private String targetDomain;
-        private long throttling = TimeUnit.MILLISECONDS.toMillis(5000);
+        private long throttling = TimeUnit.SECONDS.toMillis(5);
 
         public String getBroker() {
             return broker;

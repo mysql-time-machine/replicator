@@ -12,6 +12,8 @@ import org.apache.hadoop.hbase.util.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -51,7 +53,27 @@ public class HBaseApplierMutationGenerator {
         }
 
         public String getTargetRowUri() {
-            return String.format("hbase://%s/%s?row=%s&cf=%s", configuration.getValidationConfiguration().getSourceDomain(),table, Bytes.toString(put.getRow()),Bytes.toString(CF));
+
+            // TODO: make URI generation in a right way
+
+            try {
+
+                String source = configuration.getValidationConfiguration().getSourceDomain();
+
+                String row = URLEncoder.encode(Bytes.toStringBinary(put.getRow()),"UTF-8");
+
+                String cf = URLEncoder.encode(Bytes.toString(CF),"UTF-8");
+
+                return String.format("hbase://%s/%s?row=%s&cf=%s", source, table, row , cf);
+
+            } catch (UnsupportedEncodingException e) {
+
+                LOGGER.error("UTF-8 not supported?",e);
+
+                return null;
+
+            }
+
         }
 
         public boolean isTableMirrored() {
@@ -293,12 +315,28 @@ public class HBaseApplierMutationGenerator {
 
     private String getRowUri(AugmentedRow row){
 
+        // TODO: generate URI in a better way
+
         String eventType = row.getEventType();
 
         String table = row.getTableName();
 
         String keys  = row.getPrimaryKeyColumns().stream()
-                .map( columnName -> columnName + "=" + row.getEventColumns().get(columnName).get( "UPDATE".equals(eventType) ? "value_after" : "value" ) )
+                .map( column -> {
+                    try {
+
+                        String value = row.getEventColumns().get(column).get( "UPDATE".equals(eventType) ? "value_after" : "value" );
+
+                        return URLEncoder.encode(column,"UTF-8") + "=" + URLEncoder.encode(value,"UTF-8");
+
+                    } catch (UnsupportedEncodingException e) {
+
+                        LOGGER.error("Unexpected encoding exception", e);
+
+                        return null;
+
+                    }
+                } )
                 .collect(Collectors.joining("&"));
 
         return String.format("mysql://%s/%s?%s", configuration.validationConfig.getSourceDomain(), table, keys  );

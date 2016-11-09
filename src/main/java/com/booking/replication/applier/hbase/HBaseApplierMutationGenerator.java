@@ -58,13 +58,13 @@ public class HBaseApplierMutationGenerator {
 
             try {
 
-                String source = configuration.getValidationConfiguration().getSourceDomain();
+                String dataSource = configuration.getValidationConfiguration().getTargetDomain();
 
                 String row = URLEncoder.encode(Bytes.toStringBinary(put.getRow()),"UTF-8");
 
                 String cf = URLEncoder.encode(Bytes.toString(CF),"UTF-8");
 
-                return String.format("hbase://%s/%s?row=%s&cf=%s", source, table, row , cf);
+                return String.format("hbase://%s/%s?row=%s&cf=%s", dataSource, table, row , cf);
 
             } catch (UnsupportedEncodingException e) {
 

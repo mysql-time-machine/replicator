@@ -1,6 +1,7 @@
 package com.booking.replication.validation;
 
 import com.booking.replication.Configuration;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -10,6 +11,9 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -20,29 +24,42 @@ public class ValidationService {
 
     private static final class ValidationTask{
 
+        private static final Map<String,Object> TARGET_TRANSFORMATION;
+        static {
+            Map<String,Object> map = new HashMap<>();
+            map.put("row_status_column","row_status");
+            TARGET_TRANSFORMATION = Collections.unmodifiableMap(map);
+        }
+
+        private static final Map<String,Object> SOURCE_TRANSFORMATION;
+        static {
+            Map<String,Object> map = new HashMap<>();
+            map.put("map_null","NULL");
+            map.put("convert_timestamps_to_epoch",true);
+            SOURCE_TRANSFORMATION = Collections.unmodifiableMap(map);
+        }
+
+        @JsonProperty("tag")
         private final String tag;
 
-        private final String sourceUri;
+        @JsonProperty("source")
+        private final String source;
 
-        private final String targetUri;
+        @JsonProperty("target")
+        private final String target;
+
+        @JsonProperty("target_transformation")
+        private final Map<String,Object> targetTransformation = TARGET_TRANSFORMATION;
+
+        @JsonProperty("source_transformation")
+        private final  Map<String,Object> sourceTransformation = SOURCE_TRANSFORMATION;
 
         private ValidationTask(String tag, String sourceUri, String targetUri) {
             this.tag = tag;
-            this.sourceUri = sourceUri;
-            this.targetUri = targetUri;
+            this.source = sourceUri;
+            this.target = targetUri;
         }
 
-        public String getTag() {
-            return tag;
-        }
-
-        public String getSourceUri() {
-            return sourceUri;
-        }
-
-        public String getTargetUri() {
-            return targetUri;
-        }
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ValidationService.class);

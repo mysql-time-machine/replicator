@@ -5,12 +5,14 @@ import com.booking.replication.schema.exception.TableMapException;
 import com.google.code.or.common.glossary.Column;
 import com.google.code.or.common.glossary.column.*;
 
+import com.google.code.or.common.util.MySQLUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.sql.Date;
 import java.util.regex.Pattern;
 
 /**
@@ -25,6 +27,8 @@ public class Converter {
     private static Pattern isUnsignedPattern = Pattern.compile(unsignedPattern, Pattern.CASE_INSENSITIVE);
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Converter.class);
+
+    private static final Date ZERO_DATE = MySQLUtils.toDate(0);
 
     // --------------------------------------------------------------------
     // This function was taken from linked-in databus and adapted to output
@@ -260,7 +264,11 @@ public class Converter {
             return yc.toString();
         } else if (column instanceof DateColumn) {
             DateColumn dc =  (DateColumn) column;
-            return dc.toString();
+
+            /** A workaround for the bug in the open replicator's "0000-00-00" date parsing logic: according to MySQL
+             * spec, this date is invalid and has a special treatment in jdbc
+             */
+            return dc.getValue().equals(ZERO_DATE) ? "NULL" : dc.toString();
         } else if (column instanceof DatetimeColumn) {
             DatetimeColumn dc = (DatetimeColumn) column;
             return dc.toString();

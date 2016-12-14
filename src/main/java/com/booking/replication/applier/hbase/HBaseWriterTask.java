@@ -125,7 +125,7 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
                             table.close();
 
                             for (HBaseApplierMutationGenerator.PutMutation mutation : mutations){
-                                validationService.registerValidationTask(transactionUuid, mutation.getSourceRowUri(), mutation.getTargetRowUri());
+                                if (validationService != null) validationService.registerValidationTask(transactionUuid, mutation.getSourceRowUri(), mutation.getTargetRowUri());
                             }
 
                         } else {

@@ -228,15 +228,42 @@ public class MonotonicPartialFunctionSearch<V extends Comparable<V>> {
 
         if ( high < low ) return null;
 
-        Interval current = new Interval( low, high);
-
-        current = current.shrinkHigh(v);
+        Interval current = new Interval( low, high).shrinkHigh(v); // linear search from the high end till we find the highest point where the function is defined
 
         if ( current == null ) return null; // the function is not defined on [low,high]
 
         if ( current.getHighCmp() == ComparisonResult.LESS || current.getHighCmp() == ComparisonResult.EQUAL ) return current.getHigh();
 
-        current = current.shrinkLow(v);
+        int step = 1;
+
+        Interval next;
+
+        int next_low;
+
+        // we decrease c.l to low unless f(c.l) <= v maintaining f(c.h) > v
+        do {
+
+            if ( current.getHigh() == low ) return null; // f(c.h) > v hence f(l) > v
+
+            next_low = current.getHigh() - step < low ? low : current.getHigh() - step;
+
+            next = new Interval( next_low, current.getHigh(), ComparisonResult.UNKNOWN, ComparisonResult.GREATER ).shrinkLow(v);
+
+            if (next.getLowCmp() != ComparisonResult.GREATER ){
+
+                current = next;
+
+                break;
+
+            } else {
+
+                current = new Interval(next_low,next_low,ComparisonResult.GREATER,ComparisonResult.GREATER );
+
+            }
+
+            step *= 2;
+
+        } while (next_low != low);
 
         if ( current.getLowCmp() == ComparisonResult.EQUAL ) return current.getLow();
 

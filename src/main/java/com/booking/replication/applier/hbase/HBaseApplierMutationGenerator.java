@@ -54,6 +54,8 @@ public class HBaseApplierMutationGenerator {
 
         public String getTargetRowUri() {
 
+            if (configuration.validationConfig == null) return null;
+
             // TODO: make URI generation in a right way
 
             try {
@@ -314,6 +316,8 @@ public class HBaseApplierMutationGenerator {
     }
 
     private String getRowUri(AugmentedRow row){
+
+        if (configuration.validationConfig == null) return null;
 
         // TODO: generate URI in a better way
 

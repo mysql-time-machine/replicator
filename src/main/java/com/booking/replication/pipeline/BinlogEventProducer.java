@@ -15,6 +15,7 @@ import com.codahale.metrics.Meter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Random;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -73,6 +74,10 @@ public class BinlogEventProducer {
      */
     public void start() throws Exception {
 
+        Random random = new Random();
+
+        int serverId = (random.nextInt() >>> 1) | (1 << 30); // a large positive random integer
+
         // config
         openReplicator.setUser(configuration.getReplicantDBUserName());
         openReplicator.setPassword(configuration.getReplicantDBPassword());
@@ -80,7 +85,7 @@ public class BinlogEventProducer {
 
         // pool
         openReplicator.setHost(pipelinePosition.getCurrentReplicantHostName());
-        openReplicator.setServerId(pipelinePosition.getCurrentReplicantServerID());
+        openReplicator.setServerId(serverId);
 
         // position
         openReplicator.setBinlogPosition(pipelinePosition.getCurrentPosition().getBinlogPosition());

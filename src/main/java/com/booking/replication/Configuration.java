@@ -37,6 +37,21 @@ public class Configuration {
     private String  applierType;
 
     @JsonDeserialize
+    private SecondaryIndexes secondary_indexes;
+
+    private static class SecondaryIndexes implements  Serializable {
+
+        @JsonDeserialize
+        public TableIndexSpec table_index_spec;
+
+        private static class TableIndexSpec implements Serializable {
+            public String table_name;
+            public List<String> mysql_indexes;
+            public HashMap<String, List<String>> additional_indexes;
+        }
+    }
+
+    @JsonDeserialize
     private ReplicationSchema replication_schema;
 
     private static class ReplicationSchema implements Serializable {

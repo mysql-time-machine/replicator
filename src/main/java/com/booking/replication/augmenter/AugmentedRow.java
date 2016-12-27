@@ -239,4 +239,15 @@ public class AugmentedRow {
     public long getRowBinlogEventOrdinal() {
         return rowBinlogEventOrdinal;
     }
+
+    public String getValueBeforeFromColumnName (String columnName) {
+        return eventColumns.get(columnName).get("value_before");
+    }
+    public String getValueAfterFromColumnName (String columnName) {
+
+        return eventColumns.get(columnName).get("value_after");
+    }
+    public String getValueInsertedFromColumnName (String columnName) {
+        return eventColumns.get(columnName).get("value");
+    }
 }

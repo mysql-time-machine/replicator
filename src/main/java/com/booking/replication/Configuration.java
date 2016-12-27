@@ -10,12 +10,15 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import org.apache.hadoop.hbase.util.Hash;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.Map;
 
 /**
  * Configuration instance.
@@ -40,15 +43,8 @@ public class Configuration {
     private SecondaryIndexes secondary_indexes;
 
     private static class SecondaryIndexes implements  Serializable {
+        public HashMap<String, HashMap<String,List<String>>> tableIndexSpec;
 
-        @JsonDeserialize
-        public TableIndexSpec table_index_spec;
-
-        private static class TableIndexSpec implements Serializable {
-            public String table_name;
-            public List<String> mysql_indexes;
-            public HashMap<String, List<String>> additional_indexes;
-        }
     }
 
     @JsonDeserialize
@@ -409,6 +405,37 @@ public class Configuration {
         return mySQLFailover.pgtid.p_gtid_pattern;
     }
 
+
+    /**
+     *  private static class SecondaryIndexes implements  Serializable {
+
+    @JsonDeserialize
+    public TableIndexSpec table_index_spec;
+
+    private static class TableIndexSpec implements Serializable {
+    public String table_name;
+    public List<String> mysql_indexes;
+    public HashMap<String, List<String>> additional_indexes;
+     * @return
+     */
+    public List<String> getTablesWithSecondaryIndexes() {
+       List<String> tables = new ArrayList<>();
+        for (String table: secondary_indexes.tableIndexSpec.keySet()) {
+            tables.add(table);
+        }
+        return tables;
+    }
+
+    public Map<String, List<String>> getSecondaryIndexesForTable(String tableName) {
+        // TODO: this should really be a deep copy,
+        // rather than return an object which can be manipulated
+        if (secondary_indexes.tableIndexSpec.containsKey(tableName)) {
+            return secondary_indexes.tableIndexSpec.get(tableName);
+        }
+        else {
+            return new HashMap();
+        }
+    }
 
     public String getpGTIDPrefix() {
         return mySQLFailover.pgtid.p_gtid_prefix;

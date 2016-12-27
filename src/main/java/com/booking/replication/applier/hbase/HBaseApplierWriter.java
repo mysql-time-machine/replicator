@@ -84,6 +84,8 @@ public class HBaseApplierWriter {
     private static final
         ConcurrentHashMap<String, String> taskUUIDToPseudoGTID = new ConcurrentHashMap<>();
 
+    private final com.booking.replication.Configuration configuration;
+
     private static LastCommittedPositionCheckpoint latestCommittedPseudoGTIDCheckPoint;
     /**
      * Shared connection used by all tasks in applier.
@@ -164,6 +166,8 @@ public class HBaseApplierWriter {
             ValidationService validationService
     ) {
         DRY_RUN = configuration.isDryRunMode();
+
+        this.configuration = configuration;
 
         this.validationService = validationService;
 
@@ -602,7 +606,8 @@ public class HBaseApplierWriter {
                             taskUuid,
                             taskTransactionBuffer.get(taskUuid),
                             validationService,
-                            DRY_RUN
+                            DRY_RUN,
+                            configuration
                     )
                 ));
             }

@@ -8,16 +8,14 @@ import com.booking.replication.applier.ChaosMonkey;
 import com.booking.replication.applier.TaskStatus;
 import com.booking.replication.augmenter.AugmentedRow;
 
+import com.booking.replication.augmenter.AugmentedRowFactory;
 import com.booking.replication.validation.ValidationService;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
-import org.apache.avro.io.parsing.Symbol;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Connection;
-import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Table;
-import org.apache.hadoop.hbase.util.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -135,53 +133,20 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
                             }
 
                         } else {
+
+                            // Primary rowOps info
                             System.out.println("Running in dry-run mode, prepared "
                                     + mutations.size() +
-                                    " mutations.");
-                            // TODO: more information for secondary indexes
-                            Map<String,List<String>> indexes = configuration.getSecondaryIndexesForTable(tableName);
+                                    " mutations for primaryRowOps.");
 
-                            // for one rowOp we create additional ones (for each secondary index) that will
-                            // be applied on the hbase side
-                            List<AugmentedRow> additionalRowOpsForSecondaryIndexes = new ArrayList<>();
-                            for(AugmentedRow rowOp : rowOps) {
-                                System.out.println(rowOp.toJson());
-                                for (String index_name : indexes.keySet()) {
-                                    List<String> secondaryIndexValues = new ArrayList<>();
-                                    for (String column : indexes.get(index_name)) {
-                                        String columnValue = null;
-                                        if (rowOp.getEventType().equals("UPDATE")) {
-                                            columnValue = rowOp.getValueAfterFromColumnName(column);
-                                        }
-                                        else if (rowOp.getEventType().equals("INSERT")) {
-                                            columnValue = rowOp.getValueInsertedFromColumnName(column);
-                                        }
-                                        else if (rowOp.getEventType().equals("DELETE")) {
-                                            columnValue = rowOp.getValueInsertedFromColumnName(column);
-                                        }
-                                        else {
-                                            LOGGER.warn("Unknown event type " + rowOp.getEventType());
-                                        }
-                                        if (columnValue != null) {
-                                            secondaryIndexValues.add(columnValue);
-                                        }
-                                        else {
-                                            LOGGER.warn("Null secondary index");
-                                        }
-                                    } // next column
+                            // Secondary indexes rowOps
+                            List<AugmentedRow> secondaryIndexesAugmentedRows =
+                                    generateSecondaryIndexAugmentedRows(rowOps, tableName);
+                            System.out.println("Running in dry-run mode, prepared "
+                                    + secondaryIndexesAugmentedRows.size() +
+                                    " secondaryIndexesAugmentedRows.");
 
-                                    // TODO: add AugmentedRowFactory
-                                    additionalRowOpsForSecondaryIndexes.add(
-                                            AugmentedRowFactory.createSecondaryIndexRow(
-                                                    tableName,
-                                                    index_name,
-                                                    secondaryIndexValues,
-                                                    originalRowOp
-                                            )
-                                    );
-                                    secondaryIndexValues.clear();
-                                } // next index
-                            } // next primary rowOp
+                            // TODO: generate mutations from secondaryIndexAugmentedRows
 
                             Thread.sleep(1000);
                         }
@@ -226,6 +191,53 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
                 TaskStatus.WRITE_SUCCEEDED,
                 true
         );
+    }
+
+    private List<AugmentedRow> generateSecondaryIndexAugmentedRows(List<AugmentedRow> rowOps, String tableName) {
+        Map<String,List<String>> indexes = configuration.getSecondaryIndexesForTable(tableName);
+
+        // for one rowOp we create additional ones (for each secondary index) that will
+        // be applied on the hbase side
+        List<AugmentedRow> additionalRowOpsForSecondaryIndexes = new ArrayList<>();
+        for(AugmentedRow primaryRowOp : rowOps) {
+            System.out.println(primaryRowOp.toJson());
+            for (String index_name : indexes.keySet()) {
+                List<String> secondaryIndexValues = new ArrayList<>();
+                for (String column : indexes.get(index_name)) {
+                    String columnValue = null;
+                    if (primaryRowOp.getEventType().equals("UPDATE")) {
+                        columnValue = primaryRowOp.getValueAfterFromColumnName(column);
+                    }
+                    else if (primaryRowOp.getEventType().equals("INSERT")) {
+                        columnValue = primaryRowOp.getValueInsertedFromColumnName(column);
+                    }
+                    else if (primaryRowOp.getEventType().equals("DELETE")) {
+                        columnValue = primaryRowOp.getValueInsertedFromColumnName(column);
+                    }
+                    else {
+                        LOGGER.warn("Unknown event type " + primaryRowOp.getEventType());
+                    }
+                    if (columnValue != null) {
+                        secondaryIndexValues.add(columnValue);
+                    }
+                    else {
+                        LOGGER.warn("Null secondary index");
+                    }
+                } // next column
+
+                // TODO: add AugmentedRowFactory
+                additionalRowOpsForSecondaryIndexes.add(
+                        AugmentedRowFactory.createSecondaryIndexAugmentedRow(
+                            tableName,
+                            index_name,
+                            secondaryIndexValues,
+                            primaryRowOp
+                        )
+                );
+                secondaryIndexValues.clear();
+            } // next index
+        } // next primary rowOp
+        return additionalRowOpsForSecondaryIndexes;
     }
 
     private static class PerTableMetrics {

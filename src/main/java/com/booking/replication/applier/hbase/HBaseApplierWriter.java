@@ -576,35 +576,35 @@ public class HBaseApplierWriter {
 
             // submit task
             if ((taskTransactionBuffer.get(taskUuid).getTaskStatus() == TaskStatus.READY_FOR_PICK_UP)) {
-                if (taskHasRows) {
-                    LOGGER.info("Submitting task " + taskUuid);
-
-                    taskTransactionBuffer.get(taskUuid).setTaskStatus(TaskStatus.TASK_SUBMITTED);
-
-                    // add to notYetCommittedList, unless its already there (hapens when failed task
-                    // is requeued since task UUID is not changes on requeue - that way we know the
-                    // order of tasks that corresponds to the binlog irregardless of possible task
-                    // requeuing)
-                    if (!notYetCommittedTasksAccountant.containsTaskUUID(taskUuid)) {
-                        notYetCommittedTasksAccountant.addTaskUUID(taskUuid);
-                    }
-
-                    applierTasksSubmittedCounter.inc();
-
-                    taskTransactionBuffer.get(taskUuid).setTaskFuture(
-                        taskPool.submit(new HBaseWriterTask(
-                                hbaseConnection,
-                                mutationGenerator,
-                                taskUuid,
-                                taskTransactionBuffer.get(taskUuid),
-                                validationService,
-                                DRY_RUN
-                        )
-                    ));
-                } else {
+                if (!taskHasRows) {
                     LOGGER.error("Task is marked as READY_FOR_PICK_UP, but has no rows");
                     throw new TaskBufferInconsistencyException("Task is marked as READY_FOR_PICK_UP, but has no rows.");
                 }
+
+                LOGGER.info("Submitting task " + taskUuid);
+
+                taskTransactionBuffer.get(taskUuid).setTaskStatus(TaskStatus.TASK_SUBMITTED);
+
+                // add to notYetCommittedList, unless its already there (hapens when failed task
+                // is requeued since task UUID is not changes on requeue - that way we know the
+                // order of tasks that corresponds to the binlog irregardless of possible task
+                // requeuing)
+                if (!notYetCommittedTasksAccountant.containsTaskUUID(taskUuid)) {
+                    notYetCommittedTasksAccountant.addTaskUUID(taskUuid);
+                }
+
+                applierTasksSubmittedCounter.inc();
+
+                taskTransactionBuffer.get(taskUuid).setTaskFuture(
+                    taskPool.submit(new HBaseWriterTask(
+                            hbaseConnection,
+                            mutationGenerator,
+                            taskUuid,
+                            taskTransactionBuffer.get(taskUuid),
+                            validationService,
+                            DRY_RUN
+                    )
+                ));
             }
         }
     }

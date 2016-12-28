@@ -8,7 +8,6 @@ import com.google.common.base.Joiner;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 
-import org.apache.hadoop.hbase.util.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -121,12 +120,141 @@ public class HBaseApplierMutationGenerator {
         boolean writeDelta = configuration.isWriteRecentChangesToDeltaTables();
 
         return augmentedRows.stream()
-                .flatMap(
-                        row -> writeDelta && tablesForDelta.contains(row.getTableName())
-                                ? Stream.of(getPutForMirroredTable(row), getPutForDeltaTable(row) )
-                                : Stream.of(getPutForMirroredTable(row)) )
+                .flatMap( row -> getExpandedMutationStream(tablesForDelta, writeDelta, row) )
                 .collect(Collectors.toList());
 
+    }
+
+    private Stream<PutMutation> getExpandedMutationStream(Set<String> tablesForDelta, boolean writeDelta, AugmentedRow row) {
+
+        boolean addDeltaToStream = false;
+        boolean addSecondaryIndexesToStream = false;
+
+        if (writeDelta && tablesForDelta.contains(row.getTableName())) {
+            addDeltaToStream = true;
+        }
+        if (configuration.getSecondaryIndexesForTable(row.getTableName()).size() > 0) {
+            addSecondaryIndexesToStream = true;
+        }
+
+        // construct mutation stream
+        List<PutMutation> mutationsToSend = new ArrayList<>();
+
+        mutationsToSend.add(getPutForMirroredTable(row));
+
+        if (addDeltaToStream) {
+            mutationsToSend.add( getPutForDeltaTable(row));
+        }
+
+        if (addSecondaryIndexesToStream) {
+            for (PutMutation secondaryMutation : getPutsForSecondaryIndexes(row)) {
+                mutationsToSend.add(secondaryMutation);
+            }
+        }
+
+        return mutationsToSend.stream();
+    }
+
+    private List<PutMutation> getPutsForSecondaryIndexes(AugmentedRow row) {
+
+        List<PutMutation> secondaryIndexMutations = new ArrayList<>();
+
+        // ===================================================
+        String hbaseRowID = getHBaseRowKey(row);
+
+        // String  replicantSchema   = configuration.getReplicantSchemaName().toLowerCase();
+        String  mySQLTableName    = row.getTableName();
+        Long    timestampMicroSec = row.getEventV4Header().getTimestamp();
+        boolean isInitialSnapshot = configuration.isInitialSnapshotMode();
+
+        String deltaTableName = TableNameMapper.getCurrentDeltaTableName(
+                timestampMicroSec,
+                configuration.getHbaseNamespace(),
+                mySQLTableName,
+                isInitialSnapshot
+        );
+
+        Put put = new Put(Bytes.toBytes(hbaseRowID));
+
+        switch (row.getEventType()) {
+            case "DELETE": {
+
+                // For delta tables in case of DELETE, just write a delete marker
+
+                Long columnTimestamp = row.getEventV4Header().getTimestamp();
+                String columnName = "row_status";
+                String columnValue = "D";
+                put.addColumn(
+                        CF,
+                        Bytes.toBytes(columnName),
+                        columnTimestamp,
+                        Bytes.toBytes(columnValue)
+                );
+                break;
+            }
+            case "UPDATE": {
+
+                // for delta tables write the latest version of the entire row
+
+                Long columnTimestamp = row.getEventV4Header().getTimestamp();
+
+                for (String columnName : row.getEventColumns().keySet()) {
+                    put.addColumn(
+                            CF,
+                            Bytes.toBytes(columnName),
+                            columnTimestamp,
+                            Bytes.toBytes(row.getEventColumns().get(columnName).get("value_after"))
+                    );
+                }
+
+                put.addColumn(
+                        CF,
+                        Bytes.toBytes("row_status"),
+                        columnTimestamp,
+                        Bytes.toBytes("U")
+                );
+                break;
+            }
+            case "INSERT": {
+
+                Long columnTimestamp = row.getEventV4Header().getTimestamp();
+                String columnValue;
+
+                for (String columnName : row.getEventColumns().keySet()) {
+
+                    columnValue = row.getEventColumns().get(columnName).get("value");
+                    if (columnValue == null) {
+                        columnValue = "NULL";
+                    }
+
+                    put.addColumn(
+                            CF,
+                            Bytes.toBytes(columnName),
+                            columnTimestamp,
+                            Bytes.toBytes(columnValue)
+                    );
+                }
+
+                put.addColumn(
+                        CF,
+                        Bytes.toBytes("row_status"),
+                        columnTimestamp,
+                        Bytes.toBytes("I")
+                );
+                break;
+            }
+            default:
+                LOGGER.error("ERROR: Wrong event type. Expected RowType event. Shutting down...");
+                System.exit(1);
+        }
+
+        PutMutation mutation =  new PutMutation(put,deltaTableName,getRowUri(row),false, false);
+
+        secondaryIndexMutations.add(mutation);
+
+        // ============
+
+        return secondaryIndexMutations;
     }
 
     private PutMutation getPutForMirroredTable(AugmentedRow row) {

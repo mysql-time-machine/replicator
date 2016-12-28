@@ -40,12 +40,11 @@ public class Configuration {
     private String  applierType;
 
     @JsonDeserialize
-    private SecondaryIndexes secondary_indexes;
+    private Map<String, Map<String,List<String>>> secondary_indexes;
 
-    private static class SecondaryIndexes implements  Serializable {
-        public HashMap<String, HashMap<String,List<String>>> tableIndexSpec;
-
-    }
+    //private static class SecondaryIndexes implements  Serializable {
+       // public HashMap<String,List<String>> tableIndexSpec;
+    //}
 
     @JsonDeserialize
     private ReplicationSchema replication_schema;
@@ -405,32 +404,15 @@ public class Configuration {
         return mySQLFailover.pgtid.p_gtid_pattern;
     }
 
-
-    /**
-     *  private static class SecondaryIndexes implements  Serializable {
-
-    @JsonDeserialize
-    public TableIndexSpec table_index_spec;
-
-    private static class TableIndexSpec implements Serializable {
-    public String table_name;
-    public List<String> mysql_indexes;
-    public HashMap<String, List<String>> additional_indexes;
-     * @return
-     */
-    public List<String> getTablesWithSecondaryIndexes() {
-       List<String> tables = new ArrayList<>();
-        for (String table: secondary_indexes.tableIndexSpec.keySet()) {
-            tables.add(table);
-        }
-        return tables;
-    }
-
     public Map<String, List<String>> getSecondaryIndexesForTable(String tableName) {
         // TODO: this should really be a deep copy,
         // rather than return an object which can be manipulated
-        if (secondary_indexes.tableIndexSpec.containsKey(tableName)) {
-            return secondary_indexes.tableIndexSpec.get(tableName);
+        System.out.println("checking table => " + tableName);
+        if (secondary_indexes.containsKey(tableName)) {
+            System.out.println("found table key in secondary indexes list");
+
+            // check if there are columns defined - and get MySQL table name
+            return secondary_indexes.get(tableName);
         }
         else {
             return new HashMap();

@@ -33,11 +33,24 @@ public class HBaseApplierMutationGenerator {
         private final String sourceRowUri;
         private final boolean isTableMirrored;
 
-        public PutMutation(Put put, String table, String sourceRowUri, boolean isTableMirrored) {
+        public boolean isSecondaryIndexTable() {
+            return isSecondaryIndexTable;
+        }
+
+        private final boolean isSecondaryIndexTable;
+
+        public PutMutation(
+                Put put,
+                String table,
+                String sourceRowUri,
+                boolean isTableMirrored,
+                boolean isSecondaryIndexTable
+        ) {
             this.put = put;
             this.sourceRowUri = sourceRowUri;
             this.table = table;
             this.isTableMirrored = isTableMirrored;
+            this.isSecondaryIndexTable = isSecondaryIndexTable;
         }
 
         public Put getPut() {
@@ -217,7 +230,7 @@ public class HBaseApplierMutationGenerator {
                 System.exit(1);
         }
 
-        return new PutMutation(put,hbaseTableName,getRowUri(row), true);
+        return new PutMutation(put,hbaseTableName,getRowUri(row), true, false);
 
     }
 
@@ -311,7 +324,7 @@ public class HBaseApplierMutationGenerator {
                 System.exit(1);
         }
 
-        return new PutMutation(put,deltaTableName,getRowUri(row),false);
+        return new PutMutation(put,deltaTableName,getRowUri(row),false, false);
 
     }
 

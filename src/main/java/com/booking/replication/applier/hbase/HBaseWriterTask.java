@@ -8,7 +8,6 @@ import com.booking.replication.applier.ChaosMonkey;
 import com.booking.replication.applier.TaskStatus;
 import com.booking.replication.augmenter.AugmentedRow;
 
-import com.booking.replication.augmenter.AugmentedRowFactory;
 import com.booking.replication.validation.ValidationService;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
@@ -109,22 +108,20 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
                 } else if (chaosMonkey.feelsLikeFailingDataFlushWithoutException()) {
                     return new HBaseTaskResult(taskUuid, TaskStatus.WRITE_FAILED, false);
                 } else {
-                    List<AugmentedRow> rowOps = taskTransactionBuffer.get(transactionUuid).get(bufferedMySQLTableName);
+                    List<AugmentedRow> bufferedMySQLTableRowOps = taskTransactionBuffer.get(transactionUuid).get(bufferedMySQLTableName);
 
                     Map<String, List<HBaseApplierMutationGenerator.PutMutation>> mutationsByTable =
-                            mutationGenerator.generateMutations(rowOps).stream()
-                            .collect(
-                                        Collectors.groupingBy( mutation->mutation.getTable()
-                                    )
+                            mutationGenerator.generateMutations(bufferedMySQLTableRowOps).stream().collect(
+                                Collectors.groupingBy( mutation->mutation.getTable() )
                             );
 
                     for (Map.Entry<String, List<HBaseApplierMutationGenerator.PutMutation>> entry : mutationsByTable.entrySet()){
 
-                        String tableName = entry.getKey();
+                        String hbaseTableName = entry.getKey();
                         List<HBaseApplierMutationGenerator.PutMutation> mutations = entry.getValue();
 
                         if (!DRY_RUN) {
-                            Table table = hbaseConnection.getTable(TableName.valueOf(tableName));
+                            Table table = hbaseConnection.getTable(TableName.valueOf(hbaseTableName));
                             table.put( mutations.stream().map( mutation -> mutation.getPut() ).collect(Collectors.toList()) );
                             table.close();
 
@@ -134,19 +131,25 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
 
                         } else {
 
-                            // Primary rowOps info
-                            System.out.println("Running in dry-run mode, prepared "
-                                    + mutations.size() +
-                                    " mutations for primaryRowOps.");
-
-                            // Secondary indexes rowOps
-                            List<AugmentedRow> secondaryIndexesAugmentedRows =
-                                    generateSecondaryIndexAugmentedRows(rowOps, tableName);
-                            System.out.println("Running in dry-run mode, prepared "
-                                    + secondaryIndexesAugmentedRows.size() +
-                                    " secondaryIndexesAugmentedRows.");
-
-                            // TODO: generate mutations from secondaryIndexAugmentedRows
+                            int primaryMutations = 0;
+                            int secondaryMutations = 0;
+                            int deltaMutations = 0;
+                            for (HBaseApplierMutationGenerator.PutMutation m : mutations) {
+                                if (m.isTableMirrored() && ! m.isSecondaryIndexTable()) {
+                                    primaryMutations++;
+                                } else if (!m.isTableMirrored() && !m.isSecondaryIndexTable()) {
+                                    deltaMutations++;
+                                } else if (!m.isTableMirrored() && m.isSecondaryIndexTable()) {
+                                    secondaryMutations++;
+                                } else {
+                                    LOGGER.error("Unknown mutation case");
+                                }
+                            }
+                            System.out.println("Running in dry-run mode, prepared:\n" +
+                                primaryMutations + " primary mutations,\n" +
+                                secondaryMutations + " secondary mutations, \n" +
+                                deltaMutations + " delta mutations\n"
+                            );
 
                             Thread.sleep(1000);
                         }
@@ -155,7 +158,7 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
                             numberOfFlushedTablesInCurrentTransaction++;
                         }
 
-                        PerTableMetrics.get(tableName).committed.inc(mutations.size());
+                        PerTableMetrics.get(hbaseTableName).committed.inc(mutations.size());
 
                         rowOpsCommittedToHbase.mark(mutations.size());
 
@@ -191,53 +194,6 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
                 TaskStatus.WRITE_SUCCEEDED,
                 true
         );
-    }
-
-    private List<AugmentedRow> generateSecondaryIndexAugmentedRows(List<AugmentedRow> rowOps, String tableName) {
-        Map<String,List<String>> indexes = configuration.getSecondaryIndexesForTable(tableName);
-
-        // for one rowOp we create additional ones (for each secondary index) that will
-        // be applied on the hbase side
-        List<AugmentedRow> additionalRowOpsForSecondaryIndexes = new ArrayList<>();
-        for(AugmentedRow primaryRowOp : rowOps) {
-            System.out.println(primaryRowOp.toJson());
-            for (String index_name : indexes.keySet()) {
-                List<String> secondaryIndexValues = new ArrayList<>();
-                for (String column : indexes.get(index_name)) {
-                    String columnValue = null;
-                    if (primaryRowOp.getEventType().equals("UPDATE")) {
-                        columnValue = primaryRowOp.getValueAfterFromColumnName(column);
-                    }
-                    else if (primaryRowOp.getEventType().equals("INSERT")) {
-                        columnValue = primaryRowOp.getValueInsertedFromColumnName(column);
-                    }
-                    else if (primaryRowOp.getEventType().equals("DELETE")) {
-                        columnValue = primaryRowOp.getValueInsertedFromColumnName(column);
-                    }
-                    else {
-                        LOGGER.warn("Unknown event type " + primaryRowOp.getEventType());
-                    }
-                    if (columnValue != null) {
-                        secondaryIndexValues.add(columnValue);
-                    }
-                    else {
-                        LOGGER.warn("Null secondary index");
-                    }
-                } // next column
-
-                // TODO: add AugmentedRowFactory
-                additionalRowOpsForSecondaryIndexes.add(
-                        AugmentedRowFactory.createSecondaryIndexAugmentedRow(
-                            tableName,
-                            index_name,
-                            secondaryIndexValues,
-                            primaryRowOp
-                        )
-                );
-                secondaryIndexValues.clear();
-            } // next index
-        } // next primary rowOp
-        return additionalRowOpsForSecondaryIndexes;
     }
 
     private static class PerTableMetrics {

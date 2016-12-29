@@ -1,5 +1,7 @@
 package com.booking.replication.applier.hbase;
 
+import com.booking.replication.applier.hbase.indexes.SecondaryIndexMutationGenerator;
+import com.booking.replication.applier.hbase.indexes.SecondaryIndexMutationGeneratorFactory;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.schema.TableNameMapper;
 
@@ -25,75 +27,9 @@ import java.util.stream.Stream;
  */
 public class HBaseApplierMutationGenerator {
 
-    public class PutMutation {
+    private static final String SECONDARY_INDEX_TYPE = "SIMPLE";
 
-        private final Put put;
-        private final String table;
-        private final String sourceRowUri;
-        private final boolean isTableMirrored;
-
-        public boolean isSecondaryIndexTable() {
-            return isSecondaryIndexTable;
-        }
-
-        private final boolean isSecondaryIndexTable;
-
-        public PutMutation(
-                Put put,
-                String table,
-                String sourceRowUri,
-                boolean isTableMirrored,
-                boolean isSecondaryIndexTable
-        ) {
-            this.put = put;
-            this.sourceRowUri = sourceRowUri;
-            this.table = table;
-            this.isTableMirrored = isTableMirrored;
-            this.isSecondaryIndexTable = isSecondaryIndexTable;
-        }
-
-        public Put getPut() {
-            return put;
-        }
-
-        public String getSourceRowUri() {
-            return sourceRowUri;
-        }
-
-        public String getTable(){
-            return table;
-        }
-
-        public String getTargetRowUri() {
-
-            if (configuration.validationConfig == null) return null;
-
-            // TODO: make URI generation in a right way
-
-            try {
-
-                String dataSource = configuration.getValidationConfiguration().getTargetDomain();
-
-                String row = URLEncoder.encode(Bytes.toStringBinary(put.getRow()),"UTF-8");
-
-                String cf = URLEncoder.encode(Bytes.toString(CF),"UTF-8");
-
-                return String.format("hbase://%s/%s?row=%s&cf=%s", dataSource, table, row , cf);
-
-            } catch (UnsupportedEncodingException e) {
-
-                LOGGER.error("UTF-8 not supported?",e);
-
-                return null;
-
-            }
-
-        }
-
-        public boolean isTableMirrored() {
-            return isTableMirrored;
-        }
-    }
+    private final SecondaryIndexMutationGenerator secondaryIndexMutationGenerator;
 
     private static final byte[] CF                           = Bytes.toBytes("d");
     private static final String DIGEST_ALGORITHM             = "MD5";
@@ -105,6 +41,8 @@ public class HBaseApplierMutationGenerator {
     // Constructor
     public HBaseApplierMutationGenerator(com.booking.replication.Configuration configuration) {
         this.configuration = configuration;
+        secondaryIndexMutationGenerator =
+                SecondaryIndexMutationGeneratorFactory.getSecondaryIndexMutationGenerator(SECONDARY_INDEX_TYPE);
     }
 
     /**
@@ -157,103 +95,10 @@ public class HBaseApplierMutationGenerator {
 
     private List<PutMutation> getPutsForSecondaryIndexes(AugmentedRow row) {
 
-        List<PutMutation> secondaryIndexMutations = new ArrayList<>();
-
-        // ===================================================
-        String hbaseRowID = getHBaseRowKey(row);
-
-        // String  replicantSchema   = configuration.getReplicantSchemaName().toLowerCase();
-        String  mySQLTableName    = row.getTableName();
-        Long    timestampMicroSec = row.getEventV4Header().getTimestamp();
-        boolean isInitialSnapshot = configuration.isInitialSnapshotMode();
-
-        String deltaTableName = TableNameMapper.getCurrentDeltaTableName(
-                timestampMicroSec,
-                configuration.getHbaseNamespace(),
-                mySQLTableName,
-                isInitialSnapshot
+        List<PutMutation> secondaryIndexMutations = secondaryIndexMutationGenerator.getPutsForSecondaryIndexes(
+            configuration,
+            row
         );
-
-        Put put = new Put(Bytes.toBytes(hbaseRowID));
-
-        switch (row.getEventType()) {
-            case "DELETE": {
-
-                // For delta tables in case of DELETE, just write a delete marker
-
-                Long columnTimestamp = row.getEventV4Header().getTimestamp();
-                String columnName = "row_status";
-                String columnValue = "D";
-                put.addColumn(
-                        CF,
-                        Bytes.toBytes(columnName),
-                        columnTimestamp,
-                        Bytes.toBytes(columnValue)
-                );
-                break;
-            }
-            case "UPDATE": {
-
-                // for delta tables write the latest version of the entire row
-
-                Long columnTimestamp = row.getEventV4Header().getTimestamp();
-
-                for (String columnName : row.getEventColumns().keySet()) {
-                    put.addColumn(
-                            CF,
-                            Bytes.toBytes(columnName),
-                            columnTimestamp,
-                            Bytes.toBytes(row.getEventColumns().get(columnName).get("value_after"))
-                    );
-                }
-
-                put.addColumn(
-                        CF,
-                        Bytes.toBytes("row_status"),
-                        columnTimestamp,
-                        Bytes.toBytes("U")
-                );
-                break;
-            }
-            case "INSERT": {
-
-                Long columnTimestamp = row.getEventV4Header().getTimestamp();
-                String columnValue;
-
-                for (String columnName : row.getEventColumns().keySet()) {
-
-                    columnValue = row.getEventColumns().get(columnName).get("value");
-                    if (columnValue == null) {
-                        columnValue = "NULL";
-                    }
-
-                    put.addColumn(
-                            CF,
-                            Bytes.toBytes(columnName),
-                            columnTimestamp,
-                            Bytes.toBytes(columnValue)
-                    );
-                }
-
-                put.addColumn(
-                        CF,
-                        Bytes.toBytes("row_status"),
-                        columnTimestamp,
-                        Bytes.toBytes("I")
-                );
-                break;
-            }
-            default:
-                LOGGER.error("ERROR: Wrong event type. Expected RowType event. Shutting down...");
-                System.exit(1);
-        }
-
-        PutMutation mutation =  new PutMutation(put,deltaTableName,getRowUri(row),false, false);
-
-        secondaryIndexMutations.add(mutation);
-
-        // ============
-
         return secondaryIndexMutations;
     }
 
@@ -358,7 +203,7 @@ public class HBaseApplierMutationGenerator {
                 System.exit(1);
         }
 
-        return new PutMutation(put,hbaseTableName,getRowUri(row), true, false);
+        return new PutMutation(put,hbaseTableName,getRowUri(row), true, false,configuration);
 
     }
 
@@ -452,7 +297,7 @@ public class HBaseApplierMutationGenerator {
                 System.exit(1);
         }
 
-        return new PutMutation(put,deltaTableName,getRowUri(row),false, false);
+        return new PutMutation(put,deltaTableName,getRowUri(row),false, false,configuration);
 
     }
 

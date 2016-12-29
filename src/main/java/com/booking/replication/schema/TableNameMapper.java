@@ -45,4 +45,11 @@ public class TableNameMapper {
         return "schema_history:" + configuration.getHbaseNamespace();
     }
 
+    public static String getSecondaryIndexTableName(
+            String primaryHbaseNamespace,
+            String mySQLTableName,
+            String secondaryIndexName) {
+
+        return "indexes_" + primaryHbaseNamespace + ":" + mySQLTableName.toLowerCase() + "_idx_" + secondaryIndexName.toLowerCase();
+    }
 }

@@ -110,22 +110,22 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
                 } else {
                     List<AugmentedRow> bufferedMySQLTableRowOps = taskTransactionBuffer.get(transactionUuid).get(bufferedMySQLTableName);
 
-                    Map<String, List<HBaseApplierMutationGenerator.PutMutation>> mutationsByTable =
+                    Map<String, List<PutMutation>> mutationsByTable =
                             mutationGenerator.generateMutations(bufferedMySQLTableRowOps).stream().collect(
                                 Collectors.groupingBy( mutation->mutation.getTable() )
                             );
 
-                    for (Map.Entry<String, List<HBaseApplierMutationGenerator.PutMutation>> entry : mutationsByTable.entrySet()){
+                    for (Map.Entry<String, List<PutMutation>> entry : mutationsByTable.entrySet()){
 
                         String hbaseTableName = entry.getKey();
-                        List<HBaseApplierMutationGenerator.PutMutation> mutations = entry.getValue();
+                        List<PutMutation> mutations = entry.getValue();
 
                         if (!DRY_RUN) {
                             Table table = hbaseConnection.getTable(TableName.valueOf(hbaseTableName));
                             table.put( mutations.stream().map( mutation -> mutation.getPut() ).collect(Collectors.toList()) );
                             table.close();
 
-                            for (HBaseApplierMutationGenerator.PutMutation mutation : mutations){
+                            for (PutMutation mutation : mutations){
                                 if (validationService != null) validationService.registerValidationTask(transactionUuid, mutation.getSourceRowUri(), mutation.getTargetRowUri());
                             }
 
@@ -134,7 +134,7 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
                             int primaryMutations = 0;
                             int secondaryMutations = 0;
                             int deltaMutations = 0;
-                            for (HBaseApplierMutationGenerator.PutMutation m : mutations) {
+                            for (PutMutation m : mutations) {
                                 if (m.isTableMirrored() && ! m.isSecondaryIndexTable()) {
                                     primaryMutations++;
                                 } else if (!m.isTableMirrored() && !m.isSecondaryIndexTable()) {

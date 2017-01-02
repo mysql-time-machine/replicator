@@ -413,9 +413,6 @@ public class Configuration {
         // rather than return an object which can be manipulated
         System.out.println("checking table => " + tableName);
         if (indexesByTable.containsKey(tableName)) {
-            System.out.println("found table key in secondary indexes list");
-
-            // check if there are columns defined - and get MySQL table name
             return (Map<String, SecondaryIndexDefintion>) indexesByTable.get(tableName);
         }
         else {

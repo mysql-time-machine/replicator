@@ -43,7 +43,7 @@ public class DefaultSecondaryIndexMutationGenerator implements SecondaryIndexMut
             );
 
             List<String> orderedSecondaryIndexColumnNames =
-                    configuration.getSecondaryIndexesForTable(mySQLTableName).get(secondaryIndexName);
+                    configuration.getSecondaryIndexesForTable(mySQLTableName).get(secondaryIndexName).indexColumns;
 
             Set<String> secondaryIndexColumnNames = new HashSet<>(orderedSecondaryIndexColumnNames);
 

@@ -39,12 +39,16 @@ public class Configuration {
     private String  endingBinlogFileName;
     private String  applierType;
 
-    @JsonDeserialize
-    private Map<String, Map<String,List<String>>> secondary_indexes;
 
-    //private static class SecondaryIndexes implements  Serializable {
-       // public HashMap<String,List<String>> tableIndexSpec;
-    //}
+
+    @JsonDeserialize
+    public HashMap<String, HashMap<String, SecondaryIndexDefintion>> indexesByTable;
+
+    public static class SecondaryIndexDefintion implements Serializable {
+        public String indexType;
+        public List<String> indexColumns = Collections.emptyList();;
+    }
+
 
     @JsonDeserialize
     private ReplicationSchema replication_schema;
@@ -404,15 +408,15 @@ public class Configuration {
         return mySQLFailover.pgtid.p_gtid_pattern;
     }
 
-    public Map<String, List<String>> getSecondaryIndexesForTable(String tableName) {
+    public Map<String, SecondaryIndexDefintion> getSecondaryIndexesForTable(String tableName) {
         // TODO: this should really be a deep copy,
         // rather than return an object which can be manipulated
         System.out.println("checking table => " + tableName);
-        if (secondary_indexes.containsKey(tableName)) {
+        if (indexesByTable.containsKey(tableName)) {
             System.out.println("found table key in secondary indexes list");
 
             // check if there are columns defined - and get MySQL table name
-            return secondary_indexes.get(tableName);
+            return (Map<String, SecondaryIndexDefintion>) indexesByTable.get(tableName);
         }
         else {
             return new HashMap();

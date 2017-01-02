@@ -115,6 +115,8 @@ public class ValidationService {
 
         long currentTime = System.currentTimeMillis();
 
+        boolean result = false;
+
         // Double-checked locking WITHOUT volatile:
         // Write to lastRegistrationTime happens-before its second read cause AtomicBoolean write-read sequence is in between.
         // First read may not be consistent (is racy) cause java does not guarantee atomicity for writing longs. But taking,
@@ -127,16 +129,16 @@ public class ValidationService {
 
                     lastRegistrationTime = currentTime;
 
-                    registrationWeakLock.set(false);
-
-                    return true;
+                    result = true;
 
                 }
+
+                registrationWeakLock.set(false);
             }
 
         }
 
-        return false;
+        return result;
     }
 
     private boolean isTimeWindowEmpty(long currentTime){

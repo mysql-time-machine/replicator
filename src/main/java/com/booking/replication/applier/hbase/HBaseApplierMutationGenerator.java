@@ -2,6 +2,7 @@ package com.booking.replication.applier.hbase;
 
 import com.booking.replication.applier.hbase.indexes.SecondaryIndexMutationGenerator;
 import com.booking.replication.applier.hbase.indexes.SecondaryIndexMutationGeneratorFactory;
+import com.booking.replication.applier.hbase.util.Salter;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.schema.TableNameMapper;
 
@@ -15,9 +16,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -32,7 +30,6 @@ public class HBaseApplierMutationGenerator {
     private final SecondaryIndexMutationGenerator secondaryIndexMutationGenerator;
 
     private static final byte[] CF                           = Bytes.toBytes("d");
-    private static final String DIGEST_ALGORITHM             = "MD5";
 
     private final com.booking.replication.Configuration configuration;
 
@@ -361,41 +358,7 @@ public class HBaseApplierMutationGenerator {
         String saltingPartOfKey = pkColumnValues.get(0);
 
         // avoid region hot-spotting
-        hbaseRowID = saltRowKey(hbaseRowID, saltingPartOfKey);
+        hbaseRowID = Salter.saltRowKey(hbaseRowID, saltingPartOfKey);
         return hbaseRowID;
-    }
-
-    /**
-     * Salting the row keys with hex representation of first two bytes of md5.
-     *
-     * <p>hbaseRowID = md5(hbaseRowID)[0] + md5(hbaseRowID)[1] + "-" + hbaseRowID;</p>
-     */
-    private static String saltRowKey(String hbaseRowID, String firstPartOfRowKey) {
-
-        byte[] bytesOfSaltingPartOfRowKey = firstPartOfRowKey.getBytes(StandardCharsets.US_ASCII);
-
-        MessageDigest md = null;
-        try {
-            md = MessageDigest.getInstance(DIGEST_ALGORITHM);
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-            LOGGER.error("md5 algorithm not available. Shutting down...");
-            System.exit(1);
-        }
-        byte[] bytesMD5 = md.digest(bytesOfSaltingPartOfRowKey);
-
-        String byte1hex = Integer.toHexString(bytesMD5[0] & 0xFF);
-        String byte2hex = Integer.toHexString(bytesMD5[1] & 0xFF);
-        String byte3hex = Integer.toHexString(bytesMD5[2] & 0xFF);
-        String byte4hex = Integer.toHexString(bytesMD5[3] & 0xFF);
-
-        // add 0-padding
-        String salt = ("00" + byte1hex).substring(byte1hex.length())
-                + ("00" + byte2hex).substring(byte2hex.length())
-                + ("00" + byte3hex).substring(byte3hex.length())
-                + ("00" + byte4hex).substring(byte4hex.length())
-                ;
-
-        return salt + ";" + hbaseRowID;
     }
 }

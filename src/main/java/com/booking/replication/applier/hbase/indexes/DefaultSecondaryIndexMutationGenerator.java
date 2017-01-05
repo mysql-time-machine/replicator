@@ -34,13 +34,14 @@ public class DefaultSecondaryIndexMutationGenerator implements SecondaryIndexMut
 
         String  mySQLTableName    = row.getTableName();
 
+        LOGGER.debug("\nprocessing secondary_index => " + secondaryIndexName + "\n");
 
-        LOGGER.info("\nprocessing secondary_index => " + secondaryIndexName + "\n");
         String secondaryIndexTableName = TableNameMapper.getSecondaryIndexTableName(
             configuration.getHbaseNamespace(),
             mySQLTableName, secondaryIndexName
         );
-        LOGGER.info("\n\t table name will be => " + secondaryIndexTableName + "\n");
+
+        LOGGER.debug("\n\t secondary index table name will be => " + secondaryIndexTableName + "\n");
 
         List<String> orderedSecondaryIndexColumnNames =
                 configuration.getSecondaryIndexesForTable(mySQLTableName).get(secondaryIndexName).indexColumns;
@@ -48,12 +49,15 @@ public class DefaultSecondaryIndexMutationGenerator implements SecondaryIndexMut
         Long columnTimestamp = row.getEventV4Header().getTimestamp();
 
         SecondaryIndexOperationSpec secondaryIndexHBaseRowIDs = getSecondaryIndexOperation(
-                orderedSecondaryIndexColumnNames,
+            orderedSecondaryIndexColumnNames,
             row
         );
 
+        String rowUri = null; // no validator for secondary indexes
+        boolean isSecondaryIndexTable = true;
+
         switch (row.getEventType()) {
-            case "DELETE": {
+            case "DELETE":
                 // In case of DELETE primary row remains in HBase history. The question
                 // is weather we want to have secondary index pointing to that row
                 // or not. That depends on the use case. If we want to get all the
@@ -77,14 +81,13 @@ public class DefaultSecondaryIndexMutationGenerator implements SecondaryIndexMut
                         columnTimestamp,
                         Bytes.toBytes("D") // primary row was deleted, so this index points to deleted row
                 );
-                String rowUri = null; // no validator for secondary indexes
                 PutMutation mutation =
-                        new PutMutation(put, secondaryIndexTableName, rowUri, false, false, configuration);
+                        new PutMutation(put, secondaryIndexTableName, rowUri, false, isSecondaryIndexTable, configuration);
                 secondaryIndexMutations.add(mutation);
 
                 break;
-            }
-            case "UPDATE": {
+
+            case "UPDATE":
                 // since before update there was an insert in some point in
                 // time, this means that this id is allready indexed in
                 // secondary index. However, when secondary index column is updated
@@ -116,7 +119,13 @@ public class DefaultSecondaryIndexMutationGenerator implements SecondaryIndexMut
                 String skRowKeyBefore = secondaryIndexHBaseRowIDs.getSecondaryIndexHBaseRowKeyBefore();
                 String skRowKeyAfter  = secondaryIndexHBaseRowIDs.getSecondaryIndexHBaseRowKeyAfter();
 
+                LOGGER.debug("indexName" + secondaryIndexName);
+
+                LOGGER.debug("skRowKeyBefore => " + skRowKeyBefore);
+                LOGGER.debug("skRowKeyAfter => " + skRowKeyAfter);
+
                 if (!skRowKeyAfter.equals(skRowKeyBefore)) {
+                    LOGGER.debug("skRowKey changed = true");
                     changed = true;
                 }
 
@@ -129,14 +138,13 @@ public class DefaultSecondaryIndexMutationGenerator implements SecondaryIndexMut
                             columnTimestamp,
                             Bytes.toBytes("DU")
                     );
-                    String rowUri = null; // no validator for secondary indexes
                     PutMutation mutationOnRowKeyBeforeOp =
                         new PutMutation(
                                 putOnRowKeyBeforeOp,
                             secondaryIndexTableName,
                             rowUri,
                             false,
-                            false,
+                            isSecondaryIndexTable,
                             configuration
                         );
                     secondaryIndexMutations.add(mutationOnRowKeyBeforeOp);
@@ -156,7 +164,7 @@ public class DefaultSecondaryIndexMutationGenerator implements SecondaryIndexMut
                             secondaryIndexTableName,
                             rowUriAfter,
                             false,
-                            false,
+                            isSecondaryIndexTable,
                             configuration
                         );
                     secondaryIndexMutations.add(mutationOnRowKeyAfterOp);
@@ -166,13 +174,13 @@ public class DefaultSecondaryIndexMutationGenerator implements SecondaryIndexMut
                 }
 
                 break;
-            }
-            case "INSERT": {
+
+            case "INSERT":
 
                 // For 'SIMPLE_HISTORICAL' secondary index type, in case of insert, the rowKey
                 // allready contains all information so the only column used is
                 // the row status where the 'I' marker is added
-                Put put = new Put(
+                Put insertPut = new Put(
                     Bytes.toBytes(
                         secondaryIndexHBaseRowIDs.getSecondaryIndexHBaseRowKeyAfter()
                     )
@@ -180,21 +188,20 @@ public class DefaultSecondaryIndexMutationGenerator implements SecondaryIndexMut
 
                 // for simple secondary index we only update row status column since all other
                 // information is in the rowKey itself
-                put.addColumn(
+                insertPut.addColumn(
                         CF,
                         Bytes.toBytes("row_status"),
                         columnTimestamp,
                         Bytes.toBytes("I")
                 );
 
-                String rowUri = null; // no validator for secondary indexes
-                PutMutation mutation =
-                        new PutMutation(put, secondaryIndexTableName, rowUri,false, false, configuration);
+                PutMutation insertMutation =
+                        new PutMutation(insertPut, secondaryIndexTableName, rowUri,false, isSecondaryIndexTable, configuration);
 
-                secondaryIndexMutations.add(mutation);
+                secondaryIndexMutations.add(insertMutation);
 
                 break;
-            }
+
             default:
                 LOGGER.error("ERROR: Wrong event type. Expected RowType event. Shutting down...");
                 System.exit(1);

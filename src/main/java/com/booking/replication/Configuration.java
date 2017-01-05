@@ -411,7 +411,6 @@ public class Configuration {
     public Map<String, SecondaryIndexDefintion> getSecondaryIndexesForTable(String tableName) {
         // TODO: this should really be a deep copy,
         // rather than return an object which can be manipulated
-        System.out.println("checking table => " + tableName);
         if (indexesByTable.containsKey(tableName)) {
             return (Map<String, SecondaryIndexDefintion>) indexesByTable.get(tableName);
         }

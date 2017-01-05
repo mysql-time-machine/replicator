@@ -148,7 +148,7 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
                             System.out.println("Running in dry-run mode, prepared:\n" +
                                 primaryMutations + " primary mutations,\n" +
                                 secondaryMutations + " secondary mutations, \n" +
-                                deltaMutations + " delta mutations\n"
+                                deltaMutations + " delta mutations\n" + "for table " + hbaseTableName + "\n"
                             );
 
                             Thread.sleep(1000);

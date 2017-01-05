@@ -12,10 +12,10 @@ import java.util.List;
  */
 public interface SecondaryIndexMutationGenerator {
 
-    List<PutMutation> getPutsForSecondaryIndexes(
-            Configuration confinguratio,
-            AugmentedRow row
-        );
-
+    List<PutMutation> getPutsForSecondaryIndex(
+            Configuration configuration,
+            AugmentedRow row,
+            String indexName
+    );
 }
 

@@ -1,12 +1,10 @@
 package com.booking.replication.applier.hbase;
 
 import com.booking.replication.applier.hbase.indexes.SecondaryIndexMutationGenerator;
-import com.booking.replication.applier.hbase.indexes.SecondaryIndexMutationGeneratorFactory;
-import com.booking.replication.applier.hbase.util.Salter;
+import com.booking.replication.applier.hbase.indexes.SecondaryIndexMutationGenerators;
+import com.booking.replication.applier.hbase.util.RowKeyGenerator;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.schema.TableNameMapper;
-
-import com.google.common.base.Joiner;
 
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -25,9 +23,8 @@ import java.util.stream.Stream;
  */
 public class HBaseApplierMutationGenerator {
 
-    private static final String SECONDARY_INDEX_TYPE = "SIMPLE";
-
-    private final SecondaryIndexMutationGenerator secondaryIndexMutationGenerator;
+    // TODO: add other index types
+    private final String SECONDARY_INDEX_TYPE = "SIMPLE_HISTORICAL";
 
     private static final byte[] CF                           = Bytes.toBytes("d");
 
@@ -35,12 +32,13 @@ public class HBaseApplierMutationGenerator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HBaseApplierMutationGenerator.class);
 
+    private final SecondaryIndexMutationGenerators secondaryIndexMutationGenerators;
     // Constructor
     public HBaseApplierMutationGenerator(com.booking.replication.Configuration configuration) {
         this.configuration = configuration;
-        secondaryIndexMutationGenerator =
-                SecondaryIndexMutationGeneratorFactory.getSecondaryIndexMutationGenerator(SECONDARY_INDEX_TYPE);
-    }
+
+        secondaryIndexMutationGenerators = new SecondaryIndexMutationGenerators(configuration);
+     }
 
     /**
      * Transforms a list of {@link AugmentedRow} to a list of hbase mutations
@@ -82,27 +80,63 @@ public class HBaseApplierMutationGenerator {
         }
 
         if (addSecondaryIndexesToStream) {
-            for (PutMutation secondaryMutation : getPutsForSecondaryIndexes(row)) {
-                mutationsToSend.add(secondaryMutation);
+            try {
+                List<PutMutation> rowSecondaryIndexesPutMutations = getPutsForSecondaryIndexes(row);
+                if (rowSecondaryIndexesPutMutations != null && rowSecondaryIndexesPutMutations.size() > 0) {
+                    for (PutMutation secondaryMutation : rowSecondaryIndexesPutMutations) {
+                        mutationsToSend.add(secondaryMutation);
+                    }
+                }
+                else {
+                    LOGGER.error("Missing secondary index mutations");
+                }
+            }
+            catch (Exception e) {
+                LOGGER.error("Error while generating mutations for secondary indexes.", e);
             }
         }
 
         return mutationsToSend.stream();
     }
 
-    private List<PutMutation> getPutsForSecondaryIndexes(AugmentedRow row) {
+    private List<PutMutation> getPutsForSecondaryIndexes(AugmentedRow row)  {
 
-        List<PutMutation> secondaryIndexMutations = secondaryIndexMutationGenerator.getPutsForSecondaryIndexes(
-            configuration,
-            row
-        );
+        String tableName = row.getTableName();
+
+        List<PutMutation> secondaryIndexMutations  = new ArrayList<>();
+
+        if (configuration.getSecondaryIndexesForTable(tableName) != null) {
+
+            for (String secondaryIndexName: configuration.getSecondaryIndexesForTable(tableName).keySet()) {
+
+                String indexType =  configuration.getSecondaryIndexesForTable(tableName).get(secondaryIndexName).indexType;
+
+                LOGGER.info("indexType => " + indexType);
+                try {
+                    SecondaryIndexMutationGenerator secondaryIndexMutationGenerator =
+                            secondaryIndexMutationGenerators.getSecondaryInexMutationGenerator(indexType);
+
+                    List<PutMutation> secondaryIndexPutMutations = secondaryIndexMutationGenerator.getPutsForSecondaryIndex(
+                            configuration,
+                            row,
+                            secondaryIndexName
+                    );
+
+                    secondaryIndexMutations.addAll(secondaryIndexPutMutations);
+                }
+                catch (Exception e) {
+                    LOGGER.error("Error while trying to acquire mutation generator for inex type " + indexType);
+                }
+            }
+        }
+
         return secondaryIndexMutations;
     }
 
     private PutMutation getPutForMirroredTable(AugmentedRow row) {
 
         // RowID
-        String hbaseRowID = getHBaseRowKey(row);
+        String hbaseRowID = RowKeyGenerator.getSaltedHBaseRowKey(row);
 
         String hbaseTableName =
                 configuration.getHbaseNamespace() + ":" + row.getTableName().toLowerCase();
@@ -113,7 +147,6 @@ public class HBaseApplierMutationGenerator {
             case "DELETE": {
 
                 // No need to process columns on DELETE. Only write delete marker.
-
                 Long columnTimestamp = row.getEventV4Header().getTimestamp();
                 String columnName = "row_status";
                 String columnValue = "D";
@@ -128,7 +161,6 @@ public class HBaseApplierMutationGenerator {
             case "UPDATE": {
 
                 // Only write values that have changed
-
                 Long columnTimestamp = row.getEventV4Header().getTimestamp();
                 String columnValue;
 
@@ -206,7 +238,7 @@ public class HBaseApplierMutationGenerator {
 
     private PutMutation getPutForDeltaTable(AugmentedRow row) {
 
-        String hbaseRowID = getHBaseRowKey(row);
+        String hbaseRowID = RowKeyGenerator.getSaltedHBaseRowKey(row);
 
         // String  replicantSchema   = configuration.getReplicantSchemaName().toLowerCase();
         String  mySQLTableName    = row.getTableName();
@@ -327,38 +359,5 @@ public class HBaseApplierMutationGenerator {
                 .collect(Collectors.joining("&"));
 
         return String.format("mysql://%s/%s?%s", configuration.validationConfig.getSourceDomain(), table, keys  );
-    }
-
-    private static String getHBaseRowKey(AugmentedRow row) {
-        // RowID
-        // This is sorted by column OP (from information schema)
-        List<String> pkColumnNames  = row.getPrimaryKeyColumns();
-        List<String> pkColumnValues = new ArrayList<>();
-
-        for (String pkColumnName : pkColumnNames) {
-
-            Map<String, String> pkCell = row.getEventColumns().get(pkColumnName);
-
-            switch (row.getEventType()) {
-                case "INSERT":
-                case "DELETE":
-                    pkColumnValues.add(pkCell.get("value"));
-                    break;
-                case "UPDATE":
-                    pkColumnValues.add(pkCell.get("value_after"));
-                    break;
-                default:
-                    LOGGER.error("Wrong event type. Expected RowType event.");
-                    // TODO: throw WrongEventTypeException
-                    break;
-            }
-        }
-
-        String hbaseRowID = Joiner.on(";").join(pkColumnValues);
-        String saltingPartOfKey = pkColumnValues.get(0);
-
-        // avoid region hot-spotting
-        hbaseRowID = Salter.saltRowKey(hbaseRowID, saltingPartOfKey);
-        return hbaseRowID;
     }
 }

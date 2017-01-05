@@ -13,7 +13,7 @@ public class SecondaryIndexMutationGeneratorFactory {
 
     public static SecondaryIndexMutationGenerator getSecondaryIndexMutationGenerator(String indexType) {
 
-        if (indexType.equals("SIMPLE")) {
+        if (indexType.equals("SIMPLE_HISTORICAL")) {
             return new DefaultSecondaryIndexMutationGenerator();
         }
         else {

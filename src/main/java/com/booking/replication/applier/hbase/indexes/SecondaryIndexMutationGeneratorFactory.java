@@ -11,14 +11,13 @@ public class SecondaryIndexMutationGeneratorFactory {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SecondaryIndexMutationGeneratorFactory.class);
 
-    public static SecondaryIndexMutationGenerator getSecondaryIndexMutationGenerator(String indexType) {
+    public static SecondaryIndexMutationGenerator getSecondaryIndexMutationGenerator(String indexType) throws Exception {
 
         if (indexType.equals("SIMPLE_HISTORICAL")) {
             return new DefaultSecondaryIndexMutationGenerator();
         }
         else {
-            LOGGER.error("Unsupported secondary index type: " + indexType);
-            return null;
+            throw new Exception("Unsupported secondary index type: " + indexType);
         }
     }
 }

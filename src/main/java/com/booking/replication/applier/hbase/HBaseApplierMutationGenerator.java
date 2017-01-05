@@ -111,7 +111,6 @@ public class HBaseApplierMutationGenerator {
 
                 String indexType =  configuration.getSecondaryIndexesForTable(tableName).get(secondaryIndexName).indexType;
 
-                LOGGER.info("indexType => " + indexType);
                 try {
                     SecondaryIndexMutationGenerator secondaryIndexMutationGenerator =
                             secondaryIndexMutationGenerators.getSecondaryInexMutationGenerator(indexType);

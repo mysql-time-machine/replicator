@@ -269,7 +269,7 @@ public class DefaultSecondaryIndexMutationGenerator implements SecondaryIndexMut
                 saltingPartOfSecondaryIndexRowKey = skColumnValues.get("INSERT").get(0);
                 skHbaseRowID_After = RowKeyGenerator.saltRowKey(skHbaseRowID_After, saltingPartOfSecondaryIndexRowKey);
                 skHbaseRowID_After = skHbaseRowID_After + "!" + primaryHBaseRowNonSaltedKeyPart;
-                LOGGER.info("skHbaseRowID_After => " + skHbaseRowID_After);
+                LOGGER.debug("skHbaseRowID_After => " + skHbaseRowID_After);
 
                 break;
             case "DELETE":
@@ -278,7 +278,7 @@ public class DefaultSecondaryIndexMutationGenerator implements SecondaryIndexMut
                 skHbaseRowID_Before = RowKeyGenerator.saltRowKey(skHbaseRowID_Before, saltingPartOfSecondaryIndexRowKey);
                 skHbaseRowID_Before = skHbaseRowID_Before + "!" + primaryHBaseRowNonSaltedKeyPart;
 
-                LOGGER.info("skHbaseRowID_Before => " + skHbaseRowID_Before);
+                LOGGER.debug("skHbaseRowID_Before => " + skHbaseRowID_Before);
 
                 break;
             case "UPDATE":
@@ -291,8 +291,8 @@ public class DefaultSecondaryIndexMutationGenerator implements SecondaryIndexMut
                 skHbaseRowID_After = skHbaseRowID_After + "!" + primaryHBaseRowNonSaltedKeyPart;
                 skHbaseRowID_Before = skHbaseRowID_Before + "!" + primaryHBaseRowNonSaltedKeyPart;
 
-                LOGGER.info("skHbaseRowID_Before => " + skHbaseRowID_Before);
-                LOGGER.info("skHbaseRowID_After => " + skHbaseRowID_After);
+                LOGGER.debug("skHbaseRowID_Before => " + skHbaseRowID_Before);
+                LOGGER.debug("skHbaseRowID_After => " + skHbaseRowID_After);
 
                 break;
             default:

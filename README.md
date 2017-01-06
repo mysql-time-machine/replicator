@@ -83,6 +83,15 @@ metrics:
 #      console:
 #        timeZone: UTC
 #        output: stdout
+indexesByTable:
+    sometable:
+        randomVarchar:
+            indexType: 'SIMPLE_HISTORICAL'
+            indexColumns: ['randomVarchar']
+        randomVarchar_randomInt:
+            indexType: 'SIMPLE_HISTORICAL'
+            indexColumns: ['randomVarchar', 'randomInt']
+
 ````
 
 ### LICENSE

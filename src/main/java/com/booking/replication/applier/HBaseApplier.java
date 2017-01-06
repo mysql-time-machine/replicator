@@ -1,5 +1,6 @@
 package com.booking.replication.applier;
 
+import com.booking.replication.Configuration;
 import com.booking.replication.Constants;
 
 import com.booking.replication.applier.hbase.HBaseApplierWriter;
@@ -21,10 +22,13 @@ import com.google.code.or.binlog.impl.event.RotateEvent;
 import com.google.code.or.binlog.impl.event.TableMapEvent;
 import com.google.code.or.binlog.impl.event.XidEvent;
 
+import com.google.code.or.common.glossary.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
 /**
  * This class abstracts the HBase store.
@@ -223,11 +227,24 @@ public class HBaseApplier implements Applier {
                 + ":"
                 + tableName.toLowerCase();
 
-        if (! hbaseSchemaManager.isTableKnownToHBase(hbaseTableName)) {
-            // This should not happen in tableMapEvent, unless we are
-            // replaying the binlog.
-            // TODO: load hbase tables on start-up so this never happens
-            hbaseSchemaManager.createMirroredTableIfNotExists(hbaseTableName, DEFAULT_VERSIONS_FOR_MIRRORED_TABLES);
+
+        // This should not happen in tableMapEvent, unless we are
+        // replaying the binlog.
+        // TODO: load hbase tables on start-up so this never happens
+        hbaseSchemaManager.createMirroredTableIfNotExists(hbaseTableName, DEFAULT_VERSIONS_FOR_MIRRORED_TABLES);
+
+        Map<String,Configuration.SecondaryIndexDefintion> indexes = configuration.getSecondaryIndexesForTable(tableName);
+
+        if (!indexes.isEmpty()){
+
+            for (Map.Entry<String,Configuration.SecondaryIndexDefintion> index : indexes.entrySet()){
+
+                String table = TableNameMapper.getSecondaryIndexTableName(configuration.getHbaseNamespace(),tableName, index.getKey());
+
+                hbaseSchemaManager.createSecondaryIndexTableIfNotExists( table );
+
+            }
+
         }
 
         if (configuration.isWriteRecentChangesToDeltaTables()) {
@@ -244,10 +261,10 @@ public class HBaseApplier implements Applier {
                         configuration.getHbaseNamespace(),
                         mysqlTableName,
                         configuration.isInitialSnapshotMode());
-                if (! hbaseSchemaManager.isTableKnownToHBase(deltaTableName)) {
-                    boolean isInitialSnapshotMode = configuration.isInitialSnapshotMode();
-                    hbaseSchemaManager.createDeltaTableIfNotExists(deltaTableName, isInitialSnapshotMode);
-                }
+
+                boolean isInitialSnapshotMode = configuration.isInitialSnapshotMode();
+                hbaseSchemaManager.createDeltaTableIfNotExists(deltaTableName, isInitialSnapshotMode);
+
             }
         }
     }

@@ -15,6 +15,7 @@ import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Table;
 
+import org.apache.hadoop.hbase.io.compress.Compression;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.RegionSplitter;
 import org.slf4j.Logger;
@@ -22,7 +23,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Created by bdevetak on 27/11/15.
@@ -31,7 +34,7 @@ public class HBaseSchemaManager {
 
     private static final Configuration hbaseConf = HBaseConfiguration.create();
 
-    private static Map<String, Integer> knownHBaseTables = new HashMap<>();
+    private static Set<String> knownHBaseTables = new HashSet<>();
 
     private static Connection connection;
 
@@ -70,36 +73,25 @@ public class HBaseSchemaManager {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HBaseSchemaManager.class);
 
+    public void createSecondaryIndexTableIfNotExists(String tableName) {
+        try {
+
+            createHbaseTableHexPresplit(tableName,1);
+
+        } catch (IOException e) {
+            LOGGER.info("Failed to create secondary index table in HBase.");
+            // TODO: wait and retry if failed. After a while set status of applier
+            // to 'blocked' & handle by overseer by stopping the replicator
+            e.printStackTrace();
+        }
+    }
+
     public void createMirroredTableIfNotExists(String hbaseTableName, Integer versions)  {
 
         try {
 
-            if (!DRY_RUN) {
-                if (connection == null) {
-                    connection = ConnectionFactory.createConnection(hbaseConf);
-                }
+            createHbaseTableHexPresplit(hbaseTableName,versions);
 
-                Admin admin = connection.getAdmin();
-                TableName tableName = TableName.valueOf(hbaseTableName);
-
-                if (!admin.tableExists(tableName)) {
-
-                    LOGGER.info("table " + hbaseTableName + " does not exist in HBase. Creating...");
-
-                    HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);
-                    HColumnDescriptor cd = new HColumnDescriptor("d");
-                    cd.setMaxVersions(versions);
-                    tableDescriptor.addFamily(cd);
-
-                    // presplit into 16 regions
-                    RegionSplitter.HexStringSplit splitter = new RegionSplitter.HexStringSplit();
-                    byte[][] splitKeys = splitter.split(MIRRORED_TABLE_DEFAULT_REGIONS);
-
-                    admin.createTable(tableDescriptor, splitKeys);
-                } 
-
-                knownHBaseTables.put(hbaseTableName, 1);
-            }
         } catch (IOException e) {
             LOGGER.info("Failed to create table in HBase.");
             // TODO: wait and retry if failed. After a while set status of applier
@@ -108,10 +100,43 @@ public class HBaseSchemaManager {
         }
     }
 
+    private void createHbaseTableHexPresplit(String table, int versions) throws IOException{
+
+        if (!DRY_RUN && !knownHBaseTables.contains(table)) {
+
+            if (connection == null) {
+                connection = ConnectionFactory.createConnection(hbaseConf);
+            }
+
+            Admin admin = connection.getAdmin();
+            TableName tableName = TableName.valueOf(table);
+
+            if (!admin.tableExists(tableName)) {
+
+                LOGGER.info("table " + table + " does not exist in HBase. Creating...");
+
+                HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);
+                HColumnDescriptor cd = new HColumnDescriptor("d");
+                cd.setMaxVersions(versions);
+                cd.setCompressionType(Compression.Algorithm.SNAPPY);
+                tableDescriptor.addFamily(cd);
+
+                // presplit into 16 regions
+                RegionSplitter.HexStringSplit splitter = new RegionSplitter.HexStringSplit();
+                byte[][] splitKeys = splitter.split(MIRRORED_TABLE_DEFAULT_REGIONS);
+
+                admin.createTable(tableDescriptor, splitKeys);
+            }
+
+            knownHBaseTables.add(table);
+        }
+
+    }
+
     public void createDeltaTableIfNotExists(String hbaseTableName, boolean isInitialSnapshotMode)  {
 
         try {
-            if (! DRY_RUN) {
+            if (! DRY_RUN && !knownHBaseTables.contains(hbaseTableName)) {
 
                 if (connection == null) {
                     connection = ConnectionFactory.createConnection(hbaseConf);
@@ -144,17 +169,13 @@ public class HBaseSchemaManager {
                     LOGGER.info("Table " + hbaseTableName + " allready exists in HBase. Probably a case of replaying the binlog.");
                 }
             }
-            knownHBaseTables.put(hbaseTableName,1);
+            knownHBaseTables.add(hbaseTableName);
         } catch (IOException e) {
             LOGGER.info("Failed to create table in HBase.");
             // TODO: wait and retry if failed. After a while set status of applier
             // to 'blocked' & handle by overseer by stopping the replicator
             e.printStackTrace();
         }
-    }
-
-    public boolean isTableKnownToHBase(String tableName) {
-        return knownHBaseTables.get(tableName) != null;
     }
 
     public void writeSchemaSnapshotToHBase(

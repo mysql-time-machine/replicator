@@ -5,11 +5,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.booking</groupId>
-    <artifactId>hbrepl</artifactId>
+    <artifactId>mysql-replicator</artifactId>
     <version>0.13.7</version>
     <packaging>jar</packaging>
 
-    <name>hbrepl</name>
+    <name>mysql-replicator</name>
     <description>MySQL to HBase replicator.</description>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

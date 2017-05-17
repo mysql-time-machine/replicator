@@ -15,6 +15,7 @@ public class Cmd {
 
         parser.accepts("hbase-namespace").withRequiredArg().ofType(String.class);
         parser.accepts("schema").withRequiredArg().ofType(String.class);
+        parser.accepts("parser").withRequiredArg().ofType(String.class);
         parser.accepts("applier").withRequiredArg().ofType(String.class).defaultsTo("STDOUT");
 
         parser.accepts("binlog-filename").withRequiredArg().ofType(String.class);

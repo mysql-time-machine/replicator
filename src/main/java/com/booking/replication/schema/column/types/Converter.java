@@ -1,10 +1,11 @@
 package com.booking.replication.schema.column.types;
-
+import com.booking.replication.binlog.common.Cell;
+import com.booking.replication.binlog.common.cell.*;
 import com.booking.replication.schema.column.ColumnSchema;
 import com.booking.replication.schema.exception.TableMapException;
-import com.google.code.or.common.glossary.Column;
-import com.google.code.or.common.glossary.column.*;
-import com.google.code.or.common.util.MySQLUtils;
+
+import com.booking.replication.util.MySQLUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,23 +34,51 @@ public class Converter {
     // This function was taken from linked-in databus and adapted to output
     // strings instead of avro types.
     //
-    // Extracts string representation from or typed column. For now just
+    // Extracts string representation from typed column. For now just
     // calls toString. Later if needed some type specific processing
     // can be added
-    public static String  orTypeToString(Column column, ColumnSchema columnSchema)
+    public static String cellValueToString(Cell cell, ColumnSchema columnSchema)
         throws TableMapException {
 
         // ================================================================
+        // Workaround for type resolution loss in mysql-binlog-connector:
+        //
+        // Basically, mysql-binlog-connector does not have separate classes
+        // for different mysql int types, so mysql tiny_int, small_int,
+        // medium_int and int are all mapped to java int type. This is
+        // different from open replicator which gets the type from
+        // table_map event and wraps the value into the corresponding class.
+        //
+        // There are two ways to solve this:
+        //
+        //      1. Write a custom deserializer which will return typed
+        //         values instead of Serializable
+        //
+        //      2. Use type information from active_schema
+        //
+        // Here we go with 2nd approach.
+        if (cell instanceof LongCell) {
+            if (columnSchema.getDataType().equals("tinyint")) {
+                cell = TinyCell.valueOf(((LongCell) cell).getValue());
+            }
+            if (columnSchema.getDataType().equals("smallint")) {
+                cell = ShortCell.valueOf(((LongCell) cell).getValue());
+            }
+            if (columnSchema.getDataType().equals("mediumint")) {
+                cell = Int24Cell.valueOf(((LongCell) cell).getValue());
+            }
+        }
+        // ================================================================
         // Bit
         // ================================================================
-        if (column instanceof BitColumn) {
-            BitColumn bc = (BitColumn) column;
+        if (cell instanceof BitCell) {
+            BitCell bc = (BitCell) cell;
             return bc.toString();
-        } else if (column instanceof BlobColumn) {
+        } else if (cell instanceof BlobCell) {
             // ================================================================
             // Blob and Text column types
             // ================================================================
-            BlobColumn bc = (BlobColumn) column;
+            BlobCell bc = (BlobCell) cell;
             byte[] bytes = bc.getValue();
 
             // TINYTEXT, TEXT, MEDIUMTEXT, and LONGTEXT
@@ -84,11 +113,11 @@ public class Converter {
                 // Ordinary Binary BLOB - convert to HEX string
                 return blobToHexString(bytes);
             }
-        } else if (column instanceof StringColumn) {
+        } else if (cell instanceof StringCell) {
             // ================================================================
             // Varchar column type
             // ================================================================
-            StringColumn sc = (StringColumn) column;
+            StringCell sc = (StringCell) cell;
 
             String charSetName = columnSchema.getCharacterSetName();
 
@@ -123,13 +152,13 @@ public class Converter {
                 byte[] bytes = sc.getValue();
                 return blobToHexString(bytes);
             }
-        } else if (column instanceof NullColumn) {
+        } else if (cell instanceof NullCell) {
             return "NULL";
-        } else if (column instanceof SetColumn) {
+        } else if (cell instanceof SetCell) {
             // ================================================================
             // Set and Enum types
             // ================================================================
-            SetColumn sc = (SetColumn) column;
+            SetCell sc = (SetCell) cell;
             long setValue = sc.getValue();
             if (columnSchema instanceof SetColumnSchema) {
                 try {
@@ -141,8 +170,8 @@ public class Converter {
             } else {
                 throw new TableMapException("Got set colum, but the ColumnSchema instance is of wrong type");
             }
-        } else if (column instanceof EnumColumn) {
-            EnumColumn ec = (EnumColumn) column;
+        } else if (cell instanceof EnumCell) {
+            EnumCell ec = (EnumCell) cell;
             int enumIntValue = ec.getValue();
             if (columnSchema instanceof EnumColumnSchema) {
 
@@ -155,19 +184,19 @@ public class Converter {
             } else {
                 throw new TableMapException("Got enum colum, but the ColumnSchema instance is of wrong type");
             }
-        } else if (column instanceof DecimalColumn) {
+        } else if (cell instanceof DecimalCell) {
             // ================================================================
             // Floating point types
             // ================================================================
-            DecimalColumn dc = (DecimalColumn) column;
+            DecimalCell dc = (DecimalCell) cell;
             return dc.toString();
-        } else if (column instanceof DoubleColumn) {
-            DoubleColumn dc = (DoubleColumn) column;
+        } else if (cell instanceof DoubleCell) {
+            DoubleCell dc = (DoubleCell) cell;
             return dc.toString();
-        } else if (column instanceof FloatColumn) {
-            FloatColumn fc = (FloatColumn) column;
+        } else if (cell instanceof FloatCell) {
+            FloatCell fc = (FloatCell) cell;
             return Float.toString(fc.getValue());
-        } else if (column instanceof TinyColumn) {
+        } else if (cell instanceof TinyCell) {
             // ================================================================
             // Whole numbers (with unsigned option) types
             // ================================================================
@@ -176,7 +205,7 @@ public class Converter {
                 boolean isUnsigned = isUnsignedPattern.matcher(columnSchema.getColumnType()).find();
                 if (isUnsigned) {
 
-                    TinyColumn tc = (TinyColumn) column;
+                    TinyCell tc = (TinyCell) cell;
 
                     int signedValue = tc.getValue();
                     long unsignedValue = (byte) (signedValue) & 0xff;
@@ -184,15 +213,15 @@ public class Converter {
 
                 } else {
                     // Default OpenReplicator/Java behaviour (signed numbers)
-                    TinyColumn tc = (TinyColumn) column;
+                    TinyCell tc = (TinyCell) cell;
                     return tc.toString();
                 }
             } else {
-                throw new TableMapException("Unknown MySQL type in the event" + column.getClass() + " Object = " + column);
+                throw new TableMapException("Unknown MySQL type in the event" + cell.getClass() + " Object = " + cell);
             }
-        } else if (column instanceof ShortColumn) {
+        } else if (cell instanceof ShortCell) {
             // 2 bytes
-            ShortColumn sc = (ShortColumn) column;
+            ShortCell sc = (ShortCell) cell;
             if (columnSchema.getDataType().equals("smallint")) {
                 boolean isUnsigned = isUnsignedPattern.matcher(columnSchema.getColumnType()).find();
                 if (isUnsigned) {
@@ -202,11 +231,11 @@ public class Converter {
                     return sc.toString();
                 }
             } else {
-                throw new TableMapException("Unknown MySQL type in the event" + column.getClass() + " Object = " + column);
+                throw new TableMapException("Unknown MySQL type in the event" + cell.getClass() + " Object = " + cell);
             }
-        } else if (column instanceof Int24Column) {
+        } else if (cell instanceof Int24Cell) {
             // medium-int (3 bytes) in MySQL
-            Int24Column ic = (Int24Column) column;
+            Int24Cell ic = (Int24Cell) cell;
             if (columnSchema.getDataType().equals("mediumint")) {
                 boolean isUnsigned = isUnsignedPattern.matcher(columnSchema.getColumnType()).find();
                 if (isUnsigned) {
@@ -216,11 +245,11 @@ public class Converter {
                     return ic.toString();
                 }
             } else {
-                throw new TableMapException("Unknown MySQL type in the event" + column.getClass() + " Object = " + column);
+                throw new TableMapException("Type mismatch for: { cell: " + cell.getClass() + ", column: " + columnSchema.getDataType());
             }
-        } else if (column instanceof LongColumn) {
+        } else if (cell instanceof LongCell) {
             // MySQL int (4 bytes)
-            LongColumn lc = (LongColumn) column;
+            LongCell lc = (LongCell) cell;
             if (columnSchema.getDataType().equals("int")) {
                 boolean isUnsigned = isUnsignedPattern.matcher(columnSchema.getColumnType()).find();
                 if (isUnsigned) {
@@ -233,11 +262,11 @@ public class Converter {
                     return lc.toString();
                 }
             } else {
-                throw new TableMapException("Unknown MySQL type in the event" + column.getClass() + " Object = " + column);
+                throw new TableMapException("Unknown MySQL type in the event" + cell.getClass() + " Object = " + cell);
             }
-        } else if (column instanceof LongLongColumn) {
+        } else if (cell instanceof LongLongCell) {
             // MySQL BigInt (8 bytes)
-            LongLongColumn llc = (LongLongColumn) column;
+            LongLongCell llc = (LongLongCell) cell;
             if (columnSchema.getDataType().equals("bigint")) {
                 boolean isUnsigned = isUnsignedPattern.matcher(columnSchema.getColumnType()).find();
                 if (isUnsigned) {
@@ -251,54 +280,59 @@ public class Converter {
             } else {
                 throw new TableMapException("Unknown"
                         + " MySQL type " + columnSchema.getDataType()
-                        + " in the event " + column.getClass()
-                        + " Object = " + column
+                        + " in the event " + cell.getClass()
+                        + " Object = " + cell
                 );
             }
-        } else if (column instanceof YearColumn) {
+        } else if (cell instanceof YearCell) {
             // ================================================================
             // Date&Time types
             // ================================================================
-            YearColumn yc = (YearColumn) column;
+            YearCell yc = (YearCell) cell;
             return yc.toString();
-        } else if (column instanceof DateColumn) {
-            DateColumn dc =  (DateColumn) column;
+        } else if (cell instanceof DateCell) {
+            DateCell dc =  (DateCell) cell;
 
-            /** A workaround for the bug in the open replicator's "0000-00-00" date parsing logic: according to MySQL
-             * spec, this date is invalid and has a special treatment in jdbc
+            /** A workaround for the bug in the open replicator's "0000-00-00" date parsing logic:
+             *  according to MySQL spec, this date is invalid and has a special treatment in jdbc
              */
             return dc.getValue().equals(ZERO_DATE) ? "NULL" : dc.toString();
-        } else if (column instanceof DatetimeColumn) {
-            DatetimeColumn dc = (DatetimeColumn) column;
+        } else if (cell instanceof DatetimeCell) {
+            DatetimeCell dc = (DatetimeCell) cell;
             return dc.toString();
-            // TODO: check if this bug is fixed in zendesk fork
             // Bug in OR for DateTIme and Time data-types.
             // MilliSeconds is not available for these columns but is set with currentMillis() wrongly.
-        } else if (column instanceof Datetime2Column) {
-            Datetime2Column d2c = (Datetime2Column) column;
+            // TODO: check if this bug exists in binlog connector
+        } else if (cell instanceof Datetime2Cell) {
+            Datetime2Cell d2c = (Datetime2Cell) cell;
             return d2c.toString();
-        } else if (column instanceof TimeColumn) {
-            TimeColumn tc = (TimeColumn) column;
+        } else if (cell instanceof TimeCell) {
+            TimeCell tc = (TimeCell) cell;
             return tc.toString();
-            // TODO: check if this bug is fixed in zendesk fork
             /**
              * There is a bug in OR where instead of using the default year as 1970, it is using 0070.
              * This is a temporary measure to resolve it by working around at this layer.
              * The value obtained from OR is subtracted from "0070-00-01 00:00:00"
              */
-        } else if (column instanceof  Time2Column) {
-            Time2Column t2c = (Time2Column) column;
+            // TODO: check if this bug is exists in binlog connector
+        } else if (cell instanceof  Time2Cell) {
+            Time2Cell t2c = (Time2Cell) cell;
             return t2c.toString();
-        } else if (column instanceof TimestampColumn) {
-            TimestampColumn tsc = (TimestampColumn) column;
+        } else if (cell instanceof TimestampCell) {
+            TimestampCell tsc = (TimestampCell) cell;
             Long timestampValue = tsc.getValue().getTime();
+
             return String.valueOf(timestampValue);
-        } else if (column instanceof Timestamp2Column) {
-            Timestamp2Column ts2c = (Timestamp2Column) column;
+        } else if (cell instanceof Timestamp2Cell   ) {
+            Timestamp2Cell ts2c = (Timestamp2Cell) cell;
             Long timestamp2Value = ts2c.getValue().getTime();
             return String.valueOf(timestamp2Value);
         } else {
-            throw new TableMapException("Unknown MySQL type in the event" + column.getClass() + " Object = " + column);
+            if (cell != null) {
+                throw new TableMapException("Unknown MySQL type in the event" + cell.getClass() + " Object = " + cell);
+            } else {
+                throw new TableMapException("cell object is null");
+            }
         }
     }
 

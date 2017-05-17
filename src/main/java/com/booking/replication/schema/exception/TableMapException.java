@@ -1,6 +1,6 @@
 package com.booking.replication.schema.exception;
 
-import com.google.code.or.binlog.BinlogEventV4;
+import com.booking.replication.binlog.event.RawBinlogEvent;
 
 /**
  * Created by bosko on 11/10/15.
@@ -10,11 +10,11 @@ public class TableMapException extends Exception {
         super(message);
     }
 
-    public TableMapException(String message, BinlogEventV4 event) {
+    public TableMapException(String message, RawBinlogEvent event) {
         this(String.format(
                 "%s\nBinlog Position: %s",
                 message,
-                event.getHeader().getPosition()
+                event.getPosition()
                 ));
     }
 

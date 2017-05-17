@@ -158,7 +158,7 @@ class BlackholeCopyMethod(object):
             if table_name[0:6] == '_BKTB_':
                 self.post()
                 logger.error("Broken database")
-                raise Exception("Did you forget to recover the database? Try to run db-recovery.py first!")
+                raise Exception("Did you forget to recover the database? Try to run db-recovery.py before!")
             self.hashCount += 1
             with open (hashmapFileName, 'a') as f:
                 f.write("_BKTB_%d,%s\n" % (self.hashCount, table_name))
@@ -236,6 +236,7 @@ class BlackholeCopyMethod(object):
         if len(table) == 3:
             if table_size[0][0] > table_size_to_chunk and len(primary_key) >= 1 and primary_key[0][1] in primaries_to_chunk:
                 self.chunked_partition_copy(config, table, primary_key[0][0])
+
                 return
             sql = 'INSERT INTO `{}`.`{}` SELECT * FROM `{}`.`{}` PARTITION ({})'.format(table[0], table[1], table[0], self.get_hash(table[1]), table[2])
         else:
@@ -386,6 +387,7 @@ class BlackholeCopyMethod(object):
                     logger.error("Can't recover table {}.{}({}). Engine not blackhole or unexists: {}".format(table[0], table[1], self.get_hash(table[1]), engine))
                 self.remove_key(table[1])
         self.execute_sql(cursor, 'set sql_log_bin=1')
+
         self.conDis.terminate()
 
 

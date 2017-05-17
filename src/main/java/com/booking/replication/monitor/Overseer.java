@@ -65,8 +65,9 @@ public class Overseer extends Thread {
     }
 
     private void makeSureProducerIsRunning() {
+
         // TODO: merge into health-checker class
-        if (producer.getOpenReplicator().isRunning()) {
+        if (producer.isRunning()) {
             failCounter = 0;
             return;
         }
@@ -81,5 +82,6 @@ public class Overseer extends Thread {
             pipelineOrchestrator.requestReplicatorShutdown();
         }
         failCounter++;
+        
     }
 }

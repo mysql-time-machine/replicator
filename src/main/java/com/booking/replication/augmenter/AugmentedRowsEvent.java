@@ -1,6 +1,6 @@
 package com.booking.replication.augmenter;
 
-import com.google.code.or.binlog.impl.event.AbstractRowEvent;
+import com.booking.replication.binlog.event.RawBinlogEventRows;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,15 +10,13 @@ import java.util.List;
  */
 public class AugmentedRowsEvent {
 
-    AugmentedRowsEvent(AbstractRowEvent ev) {
-        binlogFileName = ev.getBinlogFilename();
-    }
-
     private String mysqlTableName;
-
+    private String binlogFileName;
     private List<AugmentedRow> singleRowEvents = new ArrayList<>();
 
-    private String binlogFileName;
+    AugmentedRowsEvent(RawBinlogEventRows ev) {
+        binlogFileName = ev.getBinlogFilename();
+    }
 
     public void addSingleRowEvent(AugmentedRow au) {
         singleRowEvents.add(au);
@@ -40,7 +38,4 @@ public class AugmentedRowsEvent {
         return binlogFileName;
     }
 
-    public void setBinlogFileName(String binlogFileName) {
-        this.binlogFileName = binlogFileName;
-    }
 }

@@ -5,6 +5,7 @@ import com.booking.replication.applier.hbase.HBaseApplierWriter;
 import com.booking.replication.applier.hbase.TaskBufferInconsistencyException;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
+import com.booking.replication.binlog.event.*;
 import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
@@ -12,8 +13,7 @@ import com.booking.replication.schema.HBaseSchemaManager;
 import com.booking.replication.schema.TableNameMapper;
 import com.booking.replication.validation.ValidationService;
 import com.codahale.metrics.Counter;
-import com.google.code.or.binlog.BinlogEventV4;
-import com.google.code.or.binlog.impl.event.*;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,23 +77,25 @@ public class HBaseApplier implements Applier {
     }
 
     @Override
-    public void applyBeginQueryEvent(QueryEvent event, CurrentTransaction currentTransaction) {
+    public void applyBeginQueryEvent(RawBinlogEventQuery event, CurrentTransaction currentTransaction) {
     }
 
     @Override
-    public void applyCommitQueryEvent(QueryEvent event, CurrentTransaction currentTransaction) {
+    public void applyCommitQueryEvent(RawBinlogEventQuery event, CurrentTransaction currentTransaction) {
+        // TODO: remove unnecessary params
         markCurrentTransactionForCommit();
     }
 
     @Override
-    public void applyXidEvent(XidEvent event, CurrentTransaction currentTransaction) {
+    public void applyXidEvent(RawBinlogEventXid event, CurrentTransaction currentTransaction) {
         // TODO: add transactionID to storage
         // long transactionID = event.getXid();
+        // TODO: add transaction UUID to storage
         markCurrentTransactionForCommit();
     }
 
     @Override
-    public void applyRotateEvent(RotateEvent event) throws ApplierException, IOException {
+    public void applyRotateEvent(RawBinlogEventRotate event) throws ApplierException, IOException {
         LOGGER.info("binlog rotate ["
                 + event.getBinlogFilename()
                 + "], flushing buffer of "
@@ -208,12 +210,12 @@ public class HBaseApplier implements Applier {
     }
 
     @Override
-    public void applyFormatDescriptionEvent(FormatDescriptionEvent event) {
+    public void applyFormatDescriptionEvent(RawBinlogEventFormatDescription event) {
         LOGGER.info("Processing file " + event.getBinlogFilename());
     }
 
     @Override
-    public void applyTableMapEvent(TableMapEvent event) {
+    public void applyTableMapEvent(RawBinlogEventTableMap event) {
 
         String tableName = event.getTableName().toString();
 
@@ -231,11 +233,11 @@ public class HBaseApplier implements Applier {
         if (configuration.isWriteRecentChangesToDeltaTables()) {
 
             //String replicantSchema = ((TableMapEvent) event).getDatabaseName().toString();
-            String mysqlTableName = ((TableMapEvent) event).getTableName().toString();
+            String mysqlTableName = event.getTableName();
 
             if (configuration.getTablesForWhichToTrackDailyChanges().contains(mysqlTableName)) {
 
-                long eventTimestampMicroSec = event.getHeader().getTimestamp();
+                long eventTimestampMicroSec = event.getTimestamp();
 
                 String deltaTableName = TableNameMapper.getCurrentDeltaTableName(
                         eventTimestampMicroSec,
@@ -251,7 +253,7 @@ public class HBaseApplier implements Applier {
     }
 
     @Override
-    public void waitUntilAllRowsAreCommitted(BinlogEventV4 event) throws IOException, ApplierException {
+    public void waitUntilAllRowsAreCommitted() throws IOException, ApplierException {
         boolean wait = true;
 
         while (wait) {

@@ -2,6 +2,7 @@ package com.booking.replication.applier;
 
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
+import com.booking.replication.binlog.event.*;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.google.code.or.binlog.BinlogEventV4;
@@ -19,22 +20,22 @@ public class DummyApplier implements Applier {
     }
 
     @Override
-    public void applyBeginQueryEvent(QueryEvent event, CurrentTransaction currentTransaction) {
+    public void applyBeginQueryEvent(RawBinlogEventQuery event, CurrentTransaction currentTransaction) {
 
     }
 
     @Override
-    public void applyCommitQueryEvent(QueryEvent event, CurrentTransaction currentTransaction) {
+    public void applyCommitQueryEvent(RawBinlogEventQuery event, CurrentTransaction currentTransaction) {
 
     }
 
     @Override
-    public void applyXidEvent(XidEvent event, CurrentTransaction currentTransaction) {
+    public void applyXidEvent(RawBinlogEventXid event, CurrentTransaction currentTransaction) {
 
     }
 
     @Override
-    public void applyRotateEvent(RotateEvent event) throws ApplierException, IOException {
+    public void applyRotateEvent(RawBinlogEventRotate event) throws ApplierException, IOException {
 
     }
 
@@ -49,17 +50,17 @@ public class DummyApplier implements Applier {
     }
 
     @Override
-    public void applyFormatDescriptionEvent(FormatDescriptionEvent event) {
+    public void applyFormatDescriptionEvent(RawBinlogEventFormatDescription event) {
 
     }
 
     @Override
-    public void applyTableMapEvent(TableMapEvent event) {
+    public void applyTableMapEvent(RawBinlogEventTableMap event) {
 
     }
 
     @Override
-    public void waitUntilAllRowsAreCommitted(BinlogEventV4 event) throws IOException, ApplierException {
+    public void waitUntilAllRowsAreCommitted() throws IOException, ApplierException {
 
     }
 }

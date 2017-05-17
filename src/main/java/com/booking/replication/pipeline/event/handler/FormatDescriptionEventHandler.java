@@ -1,16 +1,16 @@
 package com.booking.replication.pipeline.event.handler;
 
+import com.booking.replication.binlog.event.RawBinlogEvent;
+import com.booking.replication.binlog.event.RawBinlogEventFormatDescription;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
-import com.google.code.or.binlog.BinlogEventV4;
-import com.google.code.or.binlog.impl.event.FormatDescriptionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Created by edmitriev on 7/12/17.
  */
-public class FormatDescriptionEventHandler implements BinlogEventV4Handler {
+public class FormatDescriptionEventHandler implements RawBinlogEventHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(FormatDescriptionEventHandler.class);
 
     private final EventHandlerConfiguration eventHandlerConfiguration;
@@ -23,20 +23,20 @@ public class FormatDescriptionEventHandler implements BinlogEventV4Handler {
 
 
     @Override
-    public void apply(BinlogEventV4 binlogEventV4, CurrentTransaction currentTransaction) {
-        final FormatDescriptionEvent event = (FormatDescriptionEvent) binlogEventV4;
+    public void apply(RawBinlogEvent rawBinlogEvent, CurrentTransaction currentTransaction) {
+        final RawBinlogEventFormatDescription event = (RawBinlogEventFormatDescription) rawBinlogEvent;
         eventHandlerConfiguration.getApplier().applyFormatDescriptionEvent(event);
     }
 
     @Override
-    public void handle(BinlogEventV4 binlogEventV4) throws TransactionException, TransactionSizeLimitException {
-        final FormatDescriptionEvent event = (FormatDescriptionEvent) binlogEventV4;
+    public void handle(RawBinlogEvent rawBinlogEvent) throws TransactionException, TransactionSizeLimitException {
+        final RawBinlogEventFormatDescription event = (RawBinlogEventFormatDescription) rawBinlogEvent;
         if (pipelineOrchestrator.isInTransaction()) {
             pipelineOrchestrator.addEventIntoTransaction(event);
         } else {
             pipelineOrchestrator.beginTransaction();
             pipelineOrchestrator.addEventIntoTransaction(event);
-            pipelineOrchestrator.commitTransaction(event.getHeader().getTimestamp(), CurrentTransaction.FAKEXID);
+            pipelineOrchestrator.commitTransaction(event.getTimestamp(), CurrentTransaction.FAKEXID);
         }
     }
 }

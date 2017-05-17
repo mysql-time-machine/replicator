@@ -1,28 +1,25 @@
 package com.booking.replication.binlog;
 
-import com.google.code.or.binlog.BinlogEventV4;
-import com.google.code.or.binlog.impl.event.AbstractBinlogEventV4;
+import com.booking.replication.binlog.event.RawBinlogEvent;
 
 /**
  * Created by edmitriev on 7/24/17.
  */
 public class EventPosition {
 
-    public static String getEventBinlogFileName(BinlogEventV4 event) {
-        if (event instanceof AbstractBinlogEventV4) return ((AbstractBinlogEventV4) event).getBinlogFilename();
-
-        throw new RuntimeException("Can't get binlog filename for unknown event type: " + event);
+    public static String getEventBinlogFileName(RawBinlogEvent event) {
+        return event.getBinlogFilename();
     }
 
-    public static long getEventBinlogPosition(BinlogEventV4 event) {
-        return event.getHeader().getPosition();
+    public static long getEventBinlogPosition(RawBinlogEvent event) {
+        return event.getPosition();
     }
 
-    public static long getEventBinlogNextPosition(BinlogEventV4 event) {
-        return event.getHeader().getNextPosition();
+    public static long getEventBinlogNextPosition(RawBinlogEvent event) {
+        return event.getNextPosition();
     }
 
-    public static String getEventBinlogFileNameAndPosition(BinlogEventV4 event) {
-        return getEventBinlogFileName(event) + ":" + getEventBinlogPosition(event);
+    public static String getEventBinlogFileNameAndPosition(RawBinlogEvent event) {
+        return event.getBinlogFilename() + ":" + event.getPosition();
     }
 }

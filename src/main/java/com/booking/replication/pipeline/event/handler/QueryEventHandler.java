@@ -8,6 +8,8 @@ import com.booking.replication.applier.hbase.TaskBufferInconsistencyException;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.binlog.EventPosition;
 import com.booking.replication.binlog.event.QueryEventType;
+import com.booking.replication.binlog.event.RawBinlogEvent;
+import com.booking.replication.binlog.event.RawBinlogEventQuery;
 import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
 import com.booking.replication.pipeline.BinlogEventProducerException;
 import com.booking.replication.pipeline.CurrentTransaction;
@@ -18,7 +20,6 @@ import com.booking.replication.schema.exception.SchemaTransitionException;
 import com.booking.replication.sql.QueryInspector;
 import com.booking.replication.sql.exception.QueryInspectorException;
 import com.codahale.metrics.Meter;
-import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.impl.event.QueryEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +31,7 @@ import static com.codahale.metrics.MetricRegistry.name;
 /**
  * Created by edmitriev on 7/12/17.
  */
-public class QueryEventHandler implements BinlogEventV4Handler {
+public class QueryEventHandler implements RawBinlogEventHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(QueryEventHandler.class);
 
     private final ActiveSchemaVersion activeSchemaVersion;
@@ -50,8 +51,8 @@ public class QueryEventHandler implements BinlogEventV4Handler {
     }
 
     @Override
-    public void apply(BinlogEventV4 binlogEventV4, CurrentTransaction currentTransaction) throws EventHandlerApplyException, ApplierException, IOException {
-        final QueryEvent event = (QueryEvent) binlogEventV4;
+    public void apply(RawBinlogEvent rawBinlogEvent, CurrentTransaction currentTransaction) throws EventHandlerApplyException, ApplierException, IOException {
+        final RawBinlogEventQuery event = (RawBinlogEventQuery) rawBinlogEvent;
         String querySQL = event.getSql().toString();
         QueryEventType queryEventType = QueryInspector.getQueryEventType(event);
         LOGGER.debug("Applying event: " + event + ", type: " + queryEventType);
@@ -67,12 +68,12 @@ public class QueryEventHandler implements BinlogEventV4Handler {
             case DDLTABLE:
                 // Sync all the things here.
                 eventHandlerConfiguration.getApplier().forceFlush();
-                eventHandlerConfiguration.getApplier().waitUntilAllRowsAreCommitted(event);
+                eventHandlerConfiguration.getApplier().waitUntilAllRowsAreCommitted(); // meaning all previous rows
 
                 try {
                     AugmentedSchemaChangeEvent augmentedSchemaChangeEvent = activeSchemaVersion.transitionSchemaToNextVersion(
                             eventHandlerConfiguration.getEventAugmenter().getSchemaTransitionSequence(event),
-                            event.getHeader().getTimestamp()
+                            event.getTimestamp()
                     );
 
                     String pseudoGTID = pipelinePosition.getCurrentPseudoGTID();
@@ -141,8 +142,8 @@ public class QueryEventHandler implements BinlogEventV4Handler {
     }
 
     @Override
-    public void handle(BinlogEventV4 binlogEventV4) throws TransactionException, BinlogEventProducerException, TransactionSizeLimitException {
-        final QueryEvent event = (QueryEvent) binlogEventV4;
+    public void handle(RawBinlogEvent rawBinlogEvent) throws TransactionException, BinlogEventProducerException, TransactionSizeLimitException {
+        final RawBinlogEventQuery event = (RawBinlogEventQuery) rawBinlogEvent;
         QueryEventType queryEventType = QueryInspector.getQueryEventType(event);
         switch (queryEventType) {
             case COMMIT:
@@ -161,7 +162,7 @@ public class QueryEventHandler implements BinlogEventV4Handler {
                 } else {
                     pipelineOrchestrator.beginTransaction();
                     pipelineOrchestrator.addEventIntoTransaction(event);
-                    pipelineOrchestrator.commitTransaction(event.getHeader().getTimestamp(), CurrentTransaction.FAKEXID);
+                    pipelineOrchestrator.commitTransaction(event.getTimestamp(), CurrentTransaction.FAKEXID);
                 }
                 break;
             case PSEUDOGTID:
@@ -170,7 +171,7 @@ public class QueryEventHandler implements BinlogEventV4Handler {
                     throw new TransactionException("Failed to begin new transaction. Already have one: " + pipelineOrchestrator.getCurrentTransaction());
                 }
                 pipelineOrchestrator.addEventIntoTransaction(event);
-                pipelineOrchestrator.commitTransaction(event.getHeader().getTimestamp(), CurrentTransaction.FAKEXID);
+                pipelineOrchestrator.commitTransaction(event.getTimestamp(), CurrentTransaction.FAKEXID);
                 break;
             case ANALYZE:
             case DDLDEFINER:
@@ -183,7 +184,7 @@ public class QueryEventHandler implements BinlogEventV4Handler {
                 } else {
                     pipelineOrchestrator.beginTransaction();
                     pipelineOrchestrator.addEventIntoTransaction(event);
-                    pipelineOrchestrator.commitTransaction(event.getHeader().getTimestamp(), CurrentTransaction.FAKEXID);
+                    pipelineOrchestrator.commitTransaction(event.getTimestamp(), CurrentTransaction.FAKEXID);
                 }
         }
     }

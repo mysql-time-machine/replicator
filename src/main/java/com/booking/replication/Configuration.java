@@ -344,7 +344,6 @@ public class Configuration {
      * @return String Serialized configuration
      */
     public String toString() {
-
         Joiner joiner = Joiner.on(", ");
 
         StringBuilder config = new StringBuilder();
@@ -410,7 +409,6 @@ public class Configuration {
                     .append(metrics.reporters.toString())
                     .append("\n");
         }
-
 
         return config.toString();
     }

@@ -6,9 +6,7 @@ import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.schema.ActiveSchemaVersion;
 import com.booking.replication.schema.table.TableSchemaVersion;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.code.or.binlog.BinlogEventV4;
-import com.google.code.or.binlog.impl.event.TableMapEvent;
-import com.google.code.or.common.util.MySQLConstants;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,27 +23,6 @@ public class JsonBuilder {
     private static final ObjectMapper om = new ObjectMapper();
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JsonBuilder.class);
-
-    public String binlogEventV4ToJson(BinlogEventV4 event) {
-
-        String json = null;
-        try {
-            switch (event.getHeader().getEventType()) {
-
-                // todo: make this nicer - currently it is just a quick fix since jackson cant parse tableMapEvent
-                case MySQLConstants.TABLE_MAP_EVENT:
-                    json =  om.writeValueAsString(((TableMapEvent) event).toString());
-                    break;
-
-                default:
-                    json = om.writeValueAsString(event);
-                    break;
-            }
-        } catch (IOException e) {
-            System.out.println("ERROR: could not serialize event type " + event.getHeader().getEventType());
-        }
-        return json;
-    }
 
     public static String augmentedRowToJson(AugmentedRow augmentedRow) {
         String json = null;
@@ -136,5 +113,4 @@ public class JsonBuilder {
         }
         return json;
     }
-
 }

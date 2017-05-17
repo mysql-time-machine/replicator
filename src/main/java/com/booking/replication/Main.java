@@ -1,5 +1,6 @@
 package com.booking.replication;
 
+import com.booking.replication.binlog.event.BinlogEventParserProviderCode;
 import com.booking.replication.coordinator.CoordinatorInterface;
 import com.booking.replication.coordinator.FileCoordinator;
 import com.booking.replication.coordinator.ZookeeperCoordinator;
@@ -25,6 +26,8 @@ import static spark.Spark.port;
 
 public class Main {
 
+    private static int BINLOG_PARSER_PROVIDER_CODE;
+
     /**
      * Main.
      */
@@ -32,6 +35,8 @@ public class Main {
         OptionSet optionSet = Cmd.parseArgs(args);
 
         StartupParameters startupParameters = new StartupParameters(optionSet);
+
+        BINLOG_PARSER_PROVIDER_CODE = startupParameters.getParser();
 
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
         String  configPath = startupParameters.getConfigPath();
@@ -82,7 +87,12 @@ public class Main {
                     public void run() {
                         try {
                             Metrics.startReporters(configuration);
-                            new Replicator(configuration, healthTracker, Metrics.registry.counter(name("events", "applierEventsObserved"))).start();
+                            new Replicator(
+                                    configuration,
+                                    healthTracker,
+                                    Metrics.registry.counter(name("events", "applierEventsObserved")),
+                                    BINLOG_PARSER_PROVIDER_CODE
+                            ).start();
                         } catch (Exception e) {
                             e.printStackTrace();
                             System.exit(1);

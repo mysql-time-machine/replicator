@@ -2,6 +2,14 @@ package com.booking.replication.pipeline;
 
 import com.booking.replication.binlog.EventPosition;
 import com.google.code.or.binlog.impl.event.TableMapEvent;
+import com.google.code.or.binlog.impl.event.XidEvent;
+import com.google.code.or.common.util.MySQLConstants;
+
+import com.booking.replication.binlog.event.RawBinlogEvent;
+import com.booking.replication.binlog.event.RawBinlogEventTableMap;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Created by bosko on 7/25/16.
@@ -37,6 +45,7 @@ public class PipelinePosition {
         );
     }
 
+    // TODO: use this!
     public PipelinePosition(
         String currentPseudoGTID,
         String currentPseudoGTIDFullQuery,
@@ -155,17 +164,17 @@ public class PipelinePosition {
     }
 
     public void updatePipelineLastMapEventPosition(
-        String host,
-        int serverID,
-        TableMapEvent event,
-        long fakeMicrosecondCounter
+            String host,
+            int serverID,
+            RawBinlogEventTableMap event,
+            long fakeMicrosecondCounter
     ) {
         if (this.getLastMapEventPosition() == null) {
             this.setLastMapEventPosition(new BinlogPositionInfo(
                     host,
                     serverID,
                     event.getBinlogFilename(),
-                    event.getHeader().getPosition(),
+                    event.getPosition(),
                     fakeMicrosecondCounter
             ));
         } else {
@@ -177,11 +186,36 @@ public class PipelinePosition {
         }
     }
 
-    public void updateCurrentPipelinePosition(String host, int serverID, String binlogFilename, long binlogPosition, long fakeMicrosecondCounter) {
+
+    public void updateCurrentPipelinePosition(
+            String host,
+            int serverID,
+            String binlogFilename,
+            long binlogPosition,
+            long fakeMicrosecondCounter) {
+
         this.getCurrentPosition().setHost(host);
         this.getCurrentPosition().setServerID(serverID);
         this.getCurrentPosition().setBinlogFilename(binlogFilename);
         this.getCurrentPosition().setBinlogPosition(binlogPosition);
+        this.getCurrentPosition().setFakeMicrosecondsCounter(fakeMicrosecondCounter);
+    }
+
+
+    public void updatCurrentPipelinePosition(
+        String host,
+        int serverID,
+        RawBinlogEvent event,
+        long fakeMicrosecondCounter
+    ) {
+        this.getCurrentPosition().setHost(host);
+        this.getCurrentPosition().setServerID(serverID);
+
+        // binlog file name is updated on all events and not just on rotate event due to support for
+        // mysql failover, so before the rotate event is reached the binlog file name can change in
+        // case of mysql failover
+        this.getCurrentPosition().setBinlogFilename(event.getBinlogFilename());
+        this.getCurrentPosition().setBinlogPosition(event.getPosition());
         this.getCurrentPosition().setFakeMicrosecondsCounter(fakeMicrosecondCounter);
     }
 

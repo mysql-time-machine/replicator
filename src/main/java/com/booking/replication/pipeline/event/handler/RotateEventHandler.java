@@ -2,11 +2,12 @@ package com.booking.replication.pipeline.event.handler;
 
 import com.booking.replication.Coordinator;
 import com.booking.replication.applier.ApplierException;
+import com.booking.replication.binlog.event.RawBinlogEvent;
+import com.booking.replication.binlog.event.RawBinlogEventRotate;
 import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.pipeline.PipelinePosition;
-import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.impl.event.RotateEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +17,7 @@ import java.io.IOException;
 /**
  * Created by edmitriev on 7/12/17.
  */
-public class RotateEventHandler implements BinlogEventV4Handler {
+public class RotateEventHandler implements RawBinlogEventHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(RotateEventHandler.class);
 
     private final EventHandlerConfiguration eventHandlerConfiguration;
@@ -33,8 +34,8 @@ public class RotateEventHandler implements BinlogEventV4Handler {
     }
 
     @Override
-    public void apply(BinlogEventV4 binlogEventV4, CurrentTransaction currentTransaction) throws EventHandlerApplyException, ApplierException, IOException {
-        final RotateEvent event = (RotateEvent) binlogEventV4;
+    public void apply(RawBinlogEvent rawBinlogEvent, CurrentTransaction currentTransaction) throws EventHandlerApplyException, ApplierException, IOException {
+        final RawBinlogEventRotate event = (RawBinlogEventRotate) rawBinlogEvent;
         try {
             eventHandlerConfiguration.getApplier().applyRotateEvent(event);
         } catch (IOException e) {
@@ -42,13 +43,11 @@ public class RotateEventHandler implements BinlogEventV4Handler {
         }
         LOGGER.info("End of binlog file. Waiting for all tasks to finish before moving forward...");
 
-        //TODO: Investigate if this is the right thing to do.
-
-        eventHandlerConfiguration.getApplier().waitUntilAllRowsAreCommitted(event);
-
+        eventHandlerConfiguration.getApplier().waitUntilAllRowsAreCommitted();
 
         String currentBinlogFileName = pipelinePosition.getCurrentPosition().getBinlogFilename();
         long currentBinlogPosition = pipelinePosition.getCurrentPosition().getBinlogPosition();
+
         // binlog begins on position 4
         if (currentBinlogPosition <= 0L) currentBinlogPosition = 4;
 
@@ -84,14 +83,14 @@ public class RotateEventHandler implements BinlogEventV4Handler {
     }
 
     @Override
-    public void handle(BinlogEventV4 binlogEventV4) throws TransactionException, TransactionSizeLimitException {
-        final RotateEvent event = (RotateEvent) binlogEventV4;
+    public void handle(RawBinlogEvent rawBinlogEvent) throws TransactionException, TransactionSizeLimitException {
+        final RawBinlogEventRotate event = (RawBinlogEventRotate) rawBinlogEvent;
         if (pipelineOrchestrator.isInTransaction()) {
             pipelineOrchestrator.addEventIntoTransaction(event);
         } else {
             pipelineOrchestrator.beginTransaction();
             pipelineOrchestrator.addEventIntoTransaction(event);
-            pipelineOrchestrator.commitTransaction(event.getHeader().getTimestamp(), CurrentTransaction.FAKEXID);
+            pipelineOrchestrator.commitTransaction(event.getTimestamp(), CurrentTransaction.FAKEXID);
         }
     }
 }

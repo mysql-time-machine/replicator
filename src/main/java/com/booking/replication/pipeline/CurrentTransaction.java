@@ -1,7 +1,7 @@
 package com.booking.replication.pipeline;
 
 import com.booking.replication.binlog.EventPosition;
-import com.booking.replication.binlog.event.QueryEventType;
+import com.booking.replication.binlog.event.*;
 import com.booking.replication.pipeline.event.handler.TransactionException;
 import com.booking.replication.schema.exception.TableMapException;
 import com.booking.replication.sql.QueryInspector;
@@ -29,19 +29,19 @@ public class CurrentTransaction {
     private long xid;
     private final Map<Long,String> tableID2Name = new HashMap<>();
     private final Map<Long, String> tableID2DBName = new HashMap<>();
-    private QueryEvent beginEvent = null;
-    private BinlogEventV4 finishEvent = null;
+    private RawBinlogEventQuery beginEvent = null;
+    private RawBinlogEvent finishEvent = null;
     private boolean isRewinded = false;
 
-    private TableMapEvent firstMapEventInTransaction = null;
-    private Queue<BinlogEventV4> events = new LinkedList<>();
+    private RawBinlogEventTableMap firstMapEventInTransaction = null;
+    private Queue<RawBinlogEvent> events = new LinkedList<>();
 
-    private final Map<String, TableMapEvent> currentTransactionTableMapEvents = new HashMap<>();
+    private final Map<String, RawBinlogEventTableMap> currentTransactionTableMapEvents = new HashMap<>();
 
     public CurrentTransaction() {
     }
 
-    public CurrentTransaction(QueryEvent event) {
+    public CurrentTransaction(RawBinlogEventQuery event) {
         if (!QueryEventType.BEGIN.equals(QueryInspector.getQueryEventType(event))) {
             throw new RuntimeException("Can't set beginEvent for transaction to a wrong event type: " + event);
         }
@@ -76,12 +76,12 @@ public class CurrentTransaction {
         this.xid = xid;
     }
 
-    QueryEvent getBeginEvent() {
+    RawBinlogEventQuery getBeginEvent() {
         return beginEvent;
     }
 
 
-    void setFinishEvent(XidEvent finishEvent) throws TransactionException {
+    void setFinishEvent(RawBinlogEventXid finishEvent) throws TransactionException {
         // xa-capable engines block (InnoDB)
         if (this.finishEvent == null) {
             setXid(finishEvent.getXid());
@@ -89,15 +89,20 @@ public class CurrentTransaction {
             return;
         }
         if (isRewinded) {
-            if (((XidEvent) this.finishEvent).getXid() != finishEvent.getXid()) {
-                throw new TransactionException("XidEvents must match if in rewinded transaction. Old: " + this.finishEvent + ", new: " + finishEvent);
+            if (((RawBinlogEventXid) this.finishEvent).getXid() != finishEvent.getXid()) {
+                throw new TransactionException(
+                        "XidEvents must match if in rewinded transaction. Old: " +
+                        this.finishEvent +
+                        ", new: " +
+                        finishEvent
+                );
             }
         } else {
             throw new TransactionException("Trying to set a finish event twice. Old: " + this.finishEvent + ", new: " + finishEvent);
         }
     }
 
-    void setFinishEvent(QueryEvent finishEvent) throws TransactionException {
+    void setFinishEvent(RawBinlogEventQuery finishEvent) throws TransactionException {
         // MyIsam block
         if (!QueryEventType.COMMIT.equals(QueryInspector.getQueryEventType(finishEvent))) {
             throw new TransactionException("Can't set finishEvent for transaction to a wrong event type: " + finishEvent);
@@ -108,8 +113,13 @@ public class CurrentTransaction {
             return;
         }
         if (isRewinded) {
-            BinlogPositionInfo oldFinishEventPosition = new BinlogPositionInfo(((QueryEvent) this.finishEvent).getBinlogFilename(), this.finishEvent.getHeader().getPosition());
-            BinlogPositionInfo newFinishEventPosition = new BinlogPositionInfo(finishEvent.getBinlogFilename(), finishEvent.getHeader().getPosition());
+            BinlogPositionInfo oldFinishEventPosition = new BinlogPositionInfo(
+                    this.finishEvent.getBinlogFilename(), this.finishEvent.getPosition()
+            );
+            BinlogPositionInfo newFinishEventPosition = new BinlogPositionInfo(
+                    finishEvent.getBinlogFilename(),
+                    finishEvent.getPosition()
+            );
             try {
                 if (BinlogPositionInfo.compare(oldFinishEventPosition, newFinishEventPosition) != 0) {
                     throw new TransactionException("XidEvents must match if in rewinded transaction. Old: " + this.finishEvent + ", new: " + finishEvent);
@@ -122,18 +132,19 @@ public class CurrentTransaction {
         }
     }
 
-    BinlogEventV4 getFinishEvent() {
+    RawBinlogEvent getFinishEvent() {
         return finishEvent;
     }
 
     boolean hasBeginEvent() {
-        return (beginEvent != null);
+        return ((beginEvent != null) && (beginEvent.getSql().equals("BEGIN")));
     }
+
     boolean hasFinishEvent() {
         return (finishEvent != null);
     }
 
-    void addEvent(BinlogEventV4 event) {
+    void addEvent(RawBinlogEvent event) {
         events.add(event);
     }
 
@@ -141,7 +152,7 @@ public class CurrentTransaction {
         return (events.peek() != null);
     }
 
-    public Queue<BinlogEventV4> getEvents() {
+    public Queue<RawBinlogEvent> getEvents() {
         return events;
     }
 
@@ -154,19 +165,19 @@ public class CurrentTransaction {
     }
 
     void setBeginEventTimestamp(long timestamp) throws TransactionException {
-        ((BinlogEventV4HeaderImpl) beginEvent.getHeader()).setTimestamp(timestamp);
+        beginEvent.setTimestamp(timestamp);
     }
 
     void setBeginEventTimestampToFinishEvent() throws TransactionException {
         if (!hasFinishEvent()) {
             throw new TransactionException("Can't set timestamp to timestamp of finish event while no finishEvent exists");
         }
-        setBeginEventTimestamp(finishEvent.getHeader().getTimestamp());
+        setBeginEventTimestamp(finishEvent.getTimestamp());
     }
 
     void setEventsTimestamp(long timestamp) throws TransactionException {
-        for (BinlogEventV4 event : events) {
-            ((BinlogEventV4HeaderImpl) event.getHeader()).setTimestamp(timestamp);
+        for (RawBinlogEvent event : events) {
+           event.overrideTimestamp(timestamp);
         }
     }
 
@@ -174,14 +185,14 @@ public class CurrentTransaction {
         if (!hasFinishEvent()) {
             throw new TransactionException("Can't set timestamp to timestamp of finish event while no finishEvent exists");
         }
-        setEventsTimestamp(finishEvent.getHeader().getTimestamp());
+        setEventsTimestamp(finishEvent.getTimestamp());
     }
 
     /**
      * Update table map cache.
      * @param event event
      */
-    public void updateCache(TableMapEvent event) {
+    public void updateCache(RawBinlogEventTableMap event) {
         LOGGER.debug("Updating cache. firstMapEventInTransaction: " + firstMapEventInTransaction + ", event: " + event);
         if (firstMapEventInTransaction == null) {
             firstMapEventInTransaction = event;
@@ -246,20 +257,21 @@ public class CurrentTransaction {
         isRewinded = rewinded;
     }
 
-    public TableMapEvent getTableMapEvent(String tableName) {
+    public RawBinlogEventTableMap getTableMapEvent(String tableName) {
         return currentTransactionTableMapEvents.get(tableName);
     }
 
-    public TableMapEvent getFirstMapEventInTransaction() {
+    public RawBinlogEventTableMap getFirstMapEventInTransaction() {
         return firstMapEventInTransaction;
     }
 
     boolean hasMappingInTransaction() {
-        return firstMapEventInTransaction != null;
+        return (firstMapEventInTransaction != null)
+                && (firstMapEventInTransaction.getDatabaseName() != null)
+                && (firstMapEventInTransaction.getTableName() != null);
     }
 
-
-    Map<String, TableMapEvent> getCurrentTransactionTableMapEvents() {
+    Map<String, RawBinlogEventTableMap> getCurrentTransactionTableMapEvents() {
         return currentTransactionTableMapEvents;
     }
 

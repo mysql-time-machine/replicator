@@ -2,13 +2,14 @@ package com.booking.replication.pipeline.event.handler;
 
 import com.booking.replication.Constants;
 import com.booking.replication.Metrics;
+import com.booking.replication.binlog.event.RawBinlogEvent;
+import com.booking.replication.binlog.event.RawBinlogEventTableMap;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.pipeline.PipelinePosition;
 import com.booking.replication.replicant.ReplicantPool;
 import com.booking.replication.schema.exception.TableMapException;
 import com.codahale.metrics.Meter;
-import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.impl.event.TableMapEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +19,7 @@ import static com.codahale.metrics.MetricRegistry.name;
 /**
  * Created by edmitriev on 7/13/17.
  */
-public class TableMapEventHandler implements BinlogEventV4Handler {
+public class TableMapEventHandler implements RawBinlogEventHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(TableMapEventHandler.class);
 
     private final EventHandlerConfiguration eventHandlerConfiguration;
@@ -37,8 +38,8 @@ public class TableMapEventHandler implements BinlogEventV4Handler {
     }
 
     @Override
-    public void apply(BinlogEventV4 binlogEventV4, CurrentTransaction currentTransaction) throws EventHandlerApplyException, TableMapException {
-        final TableMapEvent event = (TableMapEvent) binlogEventV4;
+    public void apply(RawBinlogEvent rawBinlogEvent, CurrentTransaction currentTransaction) throws EventHandlerApplyException, TableMapException {
+        final RawBinlogEventTableMap event = (RawBinlogEventTableMap) rawBinlogEvent;
         String tableName = event.getTableName().toString();
 
         if (tableName.equals(Constants.HEART_BEAT_TABLE)) {
@@ -55,8 +56,8 @@ public class TableMapEventHandler implements BinlogEventV4Handler {
     }
 
     @Override
-    public void handle(BinlogEventV4 binlogEventV4) throws TransactionException, TransactionSizeLimitException {
-        final TableMapEvent event = (TableMapEvent) binlogEventV4;
+    public void handle(RawBinlogEvent rawBinlogEvent) throws TransactionException, TransactionSizeLimitException {
+        final RawBinlogEventTableMap event = (RawBinlogEventTableMap) rawBinlogEvent;
         pipelineOrchestrator.currentTransaction.updateCache(event);
         pipelineOrchestrator.addEventIntoTransaction(event);
     }

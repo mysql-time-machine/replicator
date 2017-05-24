@@ -103,7 +103,8 @@ public class PipelineOrchestrator extends Thread {
      * second. We want to know what was their order. That is the
      * main purpose of this counter.</p>
      */
-    private static long fakeMicrosecondCounter = 0;
+    private static long fakeMicrosecondCounter = 0L;
+    private static long previousTimestamp = 0L;
 
     public void requestReplicatorShutdown() {
         replicatorShutdownRequested = true;
@@ -127,12 +128,14 @@ public class PipelineOrchestrator extends Thread {
             PipelinePosition pipelinePosition,
             Configuration repcfg,
             Applier applier,
-            ReplicantPool replicantPool) throws SQLException, URISyntaxException {
+            ReplicantPool replicantPool,
+            long fakeMicrosecondCounter) throws SQLException, URISyntaxException {
 
         queues = repQueues;
         configuration = repcfg;
 
         this.replicantPool = replicantPool;
+        this.fakeMicrosecondCounter = fakeMicrosecondCounter;
 
         activeSchemaVersion =  new ActiveSchemaVersion(configuration);
         eventAugmenter = new EventAugmenter(activeSchemaVersion);
@@ -257,8 +260,9 @@ public class PipelineOrchestrator extends Thread {
 
         AugmentedRowsEvent augmentedRowsEvent;
 
-        if (fakeMicrosecondCounter > 999998) {
-            fakeMicrosecondCounter = 0;
+        if (fakeMicrosecondCounter > 999998L) {
+            fakeMicrosecondCounter = 0L;
+            LOGGER.warn("Fake microsecond counter's overflowed, resetting to 0. It might lead to incorrect events order.");
         }
 
         // Calculate replication delay before the event timestamp is extended with fake miscrosecond part
@@ -305,23 +309,24 @@ public class PipelineOrchestrator extends Thread {
             }
         }
 
+        long originalTimestamp = event.getHeader().getTimestamp();
+        if (originalTimestamp > previousTimestamp) {
+            fakeMicrosecondCounter = 0L;
+            previousTimestamp = originalTimestamp;
+        }
+
+        doTimestampOverride(event);
+
         // Process Event
         switch (event.getHeader().getEventType()) {
 
             // Check for DDL and pGTID:
             case MySQLConstants.QUERY_EVENT:
-                doTimestampOverride(event);
                 String querySQL = ((QueryEvent) event).getSql().toString();
-
                 boolean isPseudoGTID = queryInspector.isPseudoGTID(querySQL);
                 if (isPseudoGTID) {
                     pgtidCounter.mark();
-                    // Events in the same second after pGTID can be written to HBase twice
-                    // with different timestamp-microsecond-part during failover, resulting
-                    // in duplicate entries in HBase for that second. By reseting the 
-                    // microsecond part on pGTID event this posibility is removed, and we have
-                    // exactly-once-delivery even during failover.
-                    fakeMicrosecondCounter = 0;
+
                     try {
                         String pseudoGTID = queryInspector.extractPseudoGTID(querySQL);
                         pipelinePosition.setCurrentPseudoGTID(pseudoGTID);
@@ -334,7 +339,8 @@ public class PipelineOrchestrator extends Thread {
                                     pipelinePosition.getCurrentPosition().getBinlogFilename(),
                                     pipelinePosition.getCurrentPosition().getBinlogPosition(),
                                     pseudoGTID,
-                                    querySQL
+                                    querySQL,
+                                    fakeMicrosecondCounter
                                 ));
                             } catch (TaskBufferInconsistencyException e) {
                                 e.printStackTrace();
@@ -381,7 +387,8 @@ public class PipelineOrchestrator extends Thread {
                                 currentBinlogFileName,
                                 currentBinlogPosition,
                                 pseudoGTID,
-                                pseudoGTIDFullQuery
+                                pseudoGTIDFullQuery,
+                                fakeMicrosecondCounter
                         );
 
                         LOGGER.info("Save new marker: " + marker.toJson());
@@ -409,17 +416,7 @@ public class PipelineOrchestrator extends Thread {
                 String tableName = ((TableMapEvent) event).getTableName().toString();
 
                 if (tableName.equals(Constants.HEART_BEAT_TABLE)) {
-                    // reset the fake microsecond counter on hearth beat event. In our case
-                    // hearth-beat is a regular update and it is treated as such in the rest
-                    // of the code (therefore replicated in HBase table so we have the
-                    // hearth-beat in HBase and can use it to check replication delay). The only
-                    // exception is that when we see this event we reset the fake-microseconds counter.
-                    LOGGER.debug("fakeMicrosecondCounter before reset => " + fakeMicrosecondCounter);
-                    fakeMicrosecondCounter = 0;
-                    doTimestampOverride(event);
                     heartBeatCounter.mark();
-                } else {
-                    doTimestampOverride(event);
                 }
 
                 try {
@@ -450,7 +447,6 @@ public class PipelineOrchestrator extends Thread {
             // Data event:
             case MySQLConstants.UPDATE_ROWS_EVENT:
             case MySQLConstants.UPDATE_ROWS_EVENT_V2:
-                doTimestampOverride(event);
                 augmentedRowsEvent = eventAugmenter.mapDataEventToSchema((AbstractRowEvent) event, this);
                 applier.applyAugmentedRowsEvent(augmentedRowsEvent,this);
                 updateEventCounter.mark();
@@ -458,7 +454,6 @@ public class PipelineOrchestrator extends Thread {
 
             case MySQLConstants.WRITE_ROWS_EVENT:
             case MySQLConstants.WRITE_ROWS_EVENT_V2:
-                doTimestampOverride(event);
                 augmentedRowsEvent = eventAugmenter.mapDataEventToSchema((AbstractRowEvent) event, this);
                 applier.applyAugmentedRowsEvent(augmentedRowsEvent,this);
                 insertEventCounter.mark();
@@ -466,7 +461,6 @@ public class PipelineOrchestrator extends Thread {
 
             case MySQLConstants.DELETE_ROWS_EVENT:
             case MySQLConstants.DELETE_ROWS_EVENT_V2:
-                doTimestampOverride(event);
                 augmentedRowsEvent = eventAugmenter.mapDataEventToSchema((AbstractRowEvent) event, this);
                 applier.applyAugmentedRowsEvent(augmentedRowsEvent,this);
                 deleteEventCounter.mark();
@@ -475,15 +469,12 @@ public class PipelineOrchestrator extends Thread {
             case MySQLConstants.XID_EVENT:
                 // Later we may want to tag previous data events with xid_id
                 // (so we can know if events were in the same transaction).
-                doTimestampOverride(event);
                 applier.applyXidEvent((XidEvent) event);
                 XIDCounter.mark();
                 currentTransactionMetadata = new CurrentTransactionMetadata();
                 break;
 
-            // reset the fakeMicrosecondCounter at the beginning of the new binlog file
             case MySQLConstants.FORMAT_DESCRIPTION_EVENT:
-                fakeMicrosecondCounter = 0;
                 applier.applyFormatDescriptionEvent((FormatDescriptionEvent) event);
                 break;
 
@@ -515,7 +506,8 @@ public class PipelineOrchestrator extends Thread {
                         nextBinlogFileName,
                         currentBinlogPosition,
                         pseudoGTID,
-                        pseudoGTIDFullQuery
+                        pseudoGTIDFullQuery,
+                        fakeMicrosecondCounter
                 );
 
                 try {
@@ -705,9 +697,7 @@ public class PipelineOrchestrator extends Thread {
 
         if (overriddenTimestamp != 0) {
             // timestamp is in millisecond form, but the millisecond part is actually 000 (for example 1447755881000)
-            String timestampString = Long.toString(overriddenTimestamp).substring(0,10);
-            overriddenTimestamp = Long.parseLong(timestampString) * 1000000;
-            overriddenTimestamp += fakeMicrosecondCounter;
+            overriddenTimestamp = (overriddenTimestamp * 1000) + fakeMicrosecondCounter;
             ((BinlogEventV4HeaderImpl)(event.getHeader())).setTimestamp(overriddenTimestamp);
         }
     }

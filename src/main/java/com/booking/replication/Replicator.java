@@ -48,6 +48,7 @@ public class Replicator {
     public Replicator(Configuration configuration, ReplicatorHealthTrackerProxy healthTracker, Counter interestingEventsObservedCounter) throws Exception {
 
         this.healthTracker = healthTracker;
+        long fakeMicrosecondCounter = 0;
 
         boolean mysqlFailoverActive = false;
         if (configuration.getMySQLFailover() != null) {
@@ -94,6 +95,7 @@ public class Replicator {
                 if ( safeCheckPoint != null ) {
 
                     String pseudoGTID = safeCheckPoint.getPseudoGTID();
+                    fakeMicrosecondCounter = safeCheckPoint.getFakeMicrosecondCounter();
 
                     if (pseudoGTID != null) {
 
@@ -277,7 +279,8 @@ public class Replicator {
             pipelinePosition,
             configuration,
             applier,
-            replicantPool
+            replicantPool,
+            fakeMicrosecondCounter
     );
 
         // Overseer

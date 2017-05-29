@@ -209,7 +209,7 @@ public class BinlogCoordinatesFinder {
         try ( PreparedStatement statement = connection.prepareStatement("SHOW BINLOG EVENTS IN ? LIMIT ?,?")){
 
             int start = 0;
-            int limit = 500;
+            int limit = 5000;
 
             for (;;){
 

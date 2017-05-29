@@ -22,9 +22,10 @@ public class LastCommittedPositionCheckpoint implements SafeCheckPoint {
 
     private String pseudoGTID;
     private String pseudoGTIDFullQuery;
+    private long fakeMicrosecondCounter = 0L;
 
-    public LastCommittedPositionCheckpoint(int slaveId, String binlogFileName) {
-        this(slaveId, binlogFileName, 4L);
+    public LastCommittedPositionCheckpoint(int slaveId, String binlogFileName, long fakeMicrosecondCounter) {
+        this(slaveId, binlogFileName, 4L, fakeMicrosecondCounter);
     }
 
     public LastCommittedPositionCheckpoint() {
@@ -41,12 +42,14 @@ public class LastCommittedPositionCheckpoint implements SafeCheckPoint {
     public LastCommittedPositionCheckpoint(
         int slaveId,
         String binlogFileName,
-        long binlogPosition
+        long binlogPosition,
+        long fakeMicrosecondCounter
     ) {
         this.slaveId = slaveId;
         lastVerifiedBinlogFileName = binlogFileName;
         lastVerifiedBinlogPosition = binlogPosition;
         checkpointType = SafeCheckpointType.BINLOG_POSITION;
+        this.fakeMicrosecondCounter = fakeMicrosecondCounter;
     }
 
     /**
@@ -65,7 +68,8 @@ public class LastCommittedPositionCheckpoint implements SafeCheckPoint {
         String binlogFileName,
         long binlogPosition,
         String pseudoGTID,
-        String pseudoGTIDFullQuery
+        String pseudoGTIDFullQuery,
+        long fakeMicrosecondCounter
     ) {
         this.hostName                   = hostName;
         this.slaveId                    = slaveId;
@@ -74,6 +78,7 @@ public class LastCommittedPositionCheckpoint implements SafeCheckPoint {
         this.pseudoGTID                 = pseudoGTID;
         this.pseudoGTIDFullQuery        = pseudoGTIDFullQuery;
         this.checkpointType             = SafeCheckpointType.GLOBAL_PSEUDO_GTID;
+        this.fakeMicrosecondCounter     = fakeMicrosecondCounter;
     }
 
     @Override
@@ -95,6 +100,10 @@ public class LastCommittedPositionCheckpoint implements SafeCheckPoint {
 
     public String getPseudoGTID() {
         return pseudoGTID;
+    }
+
+    public long getFakeMicrosecondCounter() {
+        return fakeMicrosecondCounter;
     }
 
     public String getHostName() {

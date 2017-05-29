@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 import click
 from datetime import datetime
@@ -53,14 +53,20 @@ class RecoveryMethod(object):
                 logger.info(sql)
                 try:
                     cursor.execute(sql)
-                except Exception, MySQLdb.OperationError:
-                    logger.error("Operation error for {} to {}".format(table[1], self.get_hash(table[1])))
-                    sql = "drop table if exists `{}`.`{}`".format(table[0], self.get_hash(table[1]))
-                    logger.info(sql)
+                except MySQLdb.OperationalError as e:
+                    logger.error("Operation error for {} to {}. Error: {}".format(table[1], self.get_hash(table[1]), e))
+                    sql = "SELECT ENGINE from information_schema.tables where TABLE_SCHEMA='{}' and TABLE_NAME='{}';".format(table[0], self.get_hash(table[1]))
                     cursor.execute(sql)
-                    sql = 'rename table `{}`.`{}` to `{}`.`{}`;'.format(table[0], table[1], table[0], self.get_hash(table[1]))
-                    logger.info(sql)
-                    cursor.execute(sql)
+                    engine = cursor.fetchall()
+                    if engine and engine[0][0] == "BLACKHOLE":
+                        sql = "drop table if exists `{}`.`{}`".format(table[0], self.get_hash(table[1]))
+                        logger.info(sql)
+                        cursor.execute(sql)
+                        sql = 'rename table `{}`.`{}` to `{}`.`{}`;'.format(table[0], table[1], table[0], self.get_hash(table[1]))
+                        logger.info(sql)
+                        cursor.execute(sql)
+                    else:
+                        logger.error("Can't recover table {}.{}. Engine not blackhole or unexists: {}".format(table[0], self.get_hash(table[1]), engine))
         sql = 'set sql_log_bin=1'
         logger.info(sql)
         cursor.execute(sql)
@@ -72,23 +78,13 @@ def get_tables(config):
     cursor.execute('SELECT table_schema, table_name from information_schema.tables')
     tables = cursor.fetchall()
     cursor.close()
-    cursor = source.cursor()
-    cursor.execute('SELECT table_schema, table_name, partition_name from information_schema.partitions where partition_name is not null')
-    partitions = cursor.fetchall()
-    cursor.close()
     result = []
     for table in tables:
         if 'db' in config and table[0] not in config['db']:
             continue
         if table[0] in config['skip']:
             continue
-        partitioned = False
-        for partition in partitions:
-            if partition[1] == table[1]:
-                result.append(partition)
-                partitioned = True
-        if not partitioned:
-            result.append(table)
+        result.append(table)
     return result
 
 @click.command()

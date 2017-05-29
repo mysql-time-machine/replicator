@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 import click
 from datetime import datetime
@@ -13,7 +13,6 @@ import signal
 from time import sleep
 from operator import itemgetter
 
-
 class Cursor(MySQLdb.cursors.CursorStoreResultMixIn, MySQLdb.cursors.CursorTupleRowsMixIn, MySQLdb.cursors.BaseCursor):
     pass
 
@@ -27,11 +26,14 @@ class CopyProcess(Thread):
 
     def run(self):
         while not self.queue.empty():
-            table = self.queue.get()
-            if 'table' in self.config and table[1] not in self.config['table']:
-                continue
-            self.main.do_copy(self.config, table)
-            self.queue.task_done()
+            try:
+                table = self.queue.get(False)
+                if 'table' in self.config and table[1] not in self.config['table']:
+                    continue
+                self.main.do_copy(self.config, table)
+                self.queue.task_done()
+            except Queue.Empty as e:
+                pass
 
 
 class ConnectionDispatch(Thread):
@@ -138,49 +140,46 @@ class BlackholeCopyMethod(object):
     def set_hash(self, table_name, hash_table_name):
         self.hashRep[table_name] = hash_table_name
 
+    def execute_sql(self, cursor, sql):
+        logger.info(sql)
+        return cursor.execute(sql)
+
     def pre(self, config, tables):
         source = self.conDis.get_source()
         cursor = source.cursor()
         done = []
-        sql = 'reset master'
-        logger.info(sql)
-        cursor.execute(sql)
+        self.execute_sql(cursor, 'reset master')
         for table in tables:
             if (table[0], table[1]) in done:
                 continue
-            sql = 'show create table `{}`.`{}`;'.format(table[0], table[1])
-            logger.info(sql)
-            cursor.execute(sql)
+            self.execute_sql(cursor, 'show create table `{}`.`{}`;'.format(table[0], table[1]))
             create_table_sql =  cursor.fetchall()[0][1]
-            sql = 'use {}'.format(table[0])
-            logger.info(sql)
-            cursor.execute(sql)
-            sql = 'set sql_log_bin=0'
-            logger.info(sql)
-            cursor.execute(sql)
+            self.execute_sql(cursor, 'use {}'.format(table[0]))
+            self.execute_sql(cursor, 'set sql_log_bin=0')
+
             hash_table_name = self.get_hash(table[1])
-            sql = 'rename table `{}`.`{}` to `{}`.`{}`;'.format(table[0], table[1], table[0], hash_table_name)
-            logger.info(sql)
-            cursor.execute(sql)
+            self.execute_sql(cursor, 'rename table `{}`.`{}` to `{}`.`{}`;'.format(table[0], table[1], table[0], hash_table_name))
             self.set_hash(table[1], hash_table_name)
+
             cursor = source.cursor()
-            sql = 'set sql_log_bin=1'
-            logger.info(sql)
-            cursor.execute(sql)
-            sql = 'create table `{}`.`{}` like `{}`.`{}`;'.format(table[0], table[1], table[0], self.get_hash(table[1]))
-            sql = create_table_sql
-            logger.info(sql)
-            cursor.execute(sql)
+            self.execute_sql(cursor, 'set sql_log_bin=1')
+            self.execute_sql(cursor, create_table_sql)
+
             cursor = source.cursor()
-            sql = 'set sql_log_bin=0'
-            logger.info(sql)
-            cursor.execute(sql)
-            sql = 'alter table `{}`.`{}` engine=blackhole;'.format(table[0], table[1])
-            logger.info(sql)
-            cursor.execute(sql)
-            sql = 'set sql_log_bin=1'
-            logger.info(sql)
-            cursor.execute(sql)
+            self.execute_sql(cursor, 'set sql_log_bin=0')
+
+            self.execute_sql(cursor, 'show index from `{}`.`{}` where `Key_name` != "PRIMARY";'.format(table[0], table[1]))
+            indexes = set(reduce(lambda arr, x: arr + [x[2]], cursor.fetchall(), []))
+            for index in indexes:
+                sql = 'alter table `{}`.`{}` drop index `{}`;'.format(table[0], table[1], index)
+                try:
+                    self.execute_sql(cursor, sql)
+                except MySQLdb.OperationalError as e:
+                    logger.warn("Failed to run query: {}. Error: {}".format(sql, e))
+
+            self.execute_sql(cursor, 'alter table `{}`.`{}` engine=blackhole;'.format(table[0], table[1]))
+            self.execute_sql(cursor, 'set sql_log_bin=1')
+
             done.append((table[0], table[1]))
 
     def do_copy(self, config, table):
@@ -220,9 +219,7 @@ class BlackholeCopyMethod(object):
     def chunked_copy(self, config, table, primary_key):
         source = self.conDis.get_source()
         cursor = source.cursor()
-        sql = 'SELECT `{}` FROM `{}`.`{}` PARTITION ({})'.format(primary_key, table[0], self.get_hash(table[1]), table[2])
-        logger.info(sql)
-        cursor.execute(sql)
+        self.execute_sql(cursor, 'SELECT `{}` FROM `{}`.`{}` PARTITION ({})'.format(primary_key, table[0], self.get_hash(table[1]), table[2]))
         ids = cursor.fetchall()
         cursor.close()
         ids = map(itemgetter(0), ids)
@@ -257,21 +254,13 @@ class BlackholeCopyMethod(object):
         print "Please wait while the DB is cleaning up..."
         source = self.conDis.get_source()
         cursor = source.cursor()
-        sql = 'set sql_log_bin=0'
-        logger.info(sql)
-        cursor.execute(sql)
+        self.execute_sql(cursor, 'set sql_log_bin=0')
         for table in self.tables:
             if self.has_key(table[1]):
-                sql = 'drop table if exists `{}`.`{}`;'.format(table[0], table[1])
-                logger.info(sql)
-                cursor.execute(sql)
-                sql = 'rename table `{}`.`{}` to `{}`.`{}`;'.format(table[0], self.get_hash(table[1]), table[0], table[1])
-                logger.info(sql)
-                cursor.execute(sql)
+                self.execute_sql(cursor, 'drop table if exists `{}`.`{}`;'.format(table[0], table[1]))
+                self.execute_sql(cursor, 'rename table `{}`.`{}` to `{}`.`{}`;'.format(table[0], self.get_hash(table[1]), table[0], table[1]))
                 self.remove_key(table[1])
-        sql = 'set sql_log_bin=1'
-        logger.info(sql)
-        cursor.execute(sql)
+        self.execute_sql(cursor, 'set sql_log_bin=1')
         self.conDis.terminate()
 
 

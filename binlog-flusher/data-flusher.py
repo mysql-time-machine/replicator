@@ -187,7 +187,7 @@ class BlackholeCopyMethod(object):
         cursor = source.cursor()
         if len(table) == 3:
             sql = """SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = %s and table_name = %s and column_key='PRI'"""
-            logger.info(sql) % (table[0], table[1])
+            logger.info(sql % (table[0], table[1]))
             cursor.execute(sql, (table[0], table[1]))
             primary_key = cursor.fetchall()
             if len(primary_key) == 1 and primary_key[0][1] in ['tinyint', 'smallint', 'int', 'bigint']:

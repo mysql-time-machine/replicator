@@ -466,7 +466,7 @@ public class HBaseApplierWriter {
             } catch (ExecutionException ex) {
                 LOGGER.error(String.format("Future failed for task %s, with exception: %s",
                         submittedTaskUuid,
-                        ex.getCause().toString()));
+                        ex.getCause()));
                 requeueTask(submittedTaskUuid);
                 applierTasksFailedCounter.inc();
             } catch (NullPointerException e) {
@@ -480,7 +480,7 @@ public class HBaseApplierWriter {
             } catch (CancellationException ce) {
                 LOGGER.error(String.format("Future failed for task %s, with exception: %s",
                         submittedTaskUuid ,
-                        ce.getCause().toString()));
+                        ce));
                 requeueTask(submittedTaskUuid);
                 applierTasksFailedCounter.inc();
             } catch (TaskAccountingException e) {

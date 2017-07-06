@@ -80,6 +80,7 @@ public class Main {
                             new Replicator(configuration, healthTracker, Metrics.registry.counter(name("events", "applierEventsObserved"))).start();
                         } catch (Exception e) {
                             e.printStackTrace();
+                            System.exit(1);
                         }
                     }
                 }
@@ -87,6 +88,7 @@ public class Main {
 
         } catch (Exception e) {
             e.printStackTrace();
+            System.exit(1);
         }
     }
 

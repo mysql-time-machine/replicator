@@ -192,7 +192,7 @@ public class HBaseApplier implements Applier {
     }
 
     // mark current uuid buffer as READY_FOR_PICK_UP and create new uuid buffer
-    private void markCurrentTaskAsReadyToGo() throws ApplierException {
+    private void markCurrentTaskAsReadyToGo() throws ApplierException, IOException {
         try {
             hbaseApplierWriter.markCurrentTaskAsReadyAndCreateNewUuidBuffer();
         } catch (TaskBufferInconsistencyException te) {

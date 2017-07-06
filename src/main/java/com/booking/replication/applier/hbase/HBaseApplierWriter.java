@@ -106,6 +106,7 @@ public class HBaseApplierWriter {
     private static boolean DRY_RUN;
 
     private static final long MAX_BLOCKING_TIME = 60000; // 1 min
+    private static final long MAX_BLOCKING_RETRIES = 3;
 
     private static volatile String currentTaskUuid = UUID.randomUUID().toString();
     private static volatile String currentTransactionUUID = UUID.randomUUID().toString();
@@ -177,9 +178,9 @@ public class HBaseApplierWriter {
 
         if (! DRY_RUN) {
             try {
-                hbaseConnection = ConnectionFactory.createConnection(hbaseConf);
+                hbaseConnection = createHBaseConnection();
             } catch (IOException e) {
-                LOGGER.error("Failed to create hbase connection", e);
+                LOGGER.error("Failed to create hbase connection. Continuing without it. Exception:", e);
             }
         }
 
@@ -216,6 +217,30 @@ public class HBaseApplierWriter {
                         return taskTransactionBuffer.size();
                     }
                 });
+    }
+
+    public Connection createHBaseConnection() throws IOException {
+        return createHBaseConnection(3);
+    }
+
+    public Connection createHBaseConnection(int retry) throws IOException {
+        IOException lastException = null;
+        while (retry > 0) {
+            try {
+                return ConnectionFactory.createConnection(hbaseConf);
+            } catch (IOException e) {
+                lastException = e;
+                LOGGER.warn("Failed to create hbase connection from HBaseApplier, attempt " + retry + "/10");
+            }
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                LOGGER.error("Thread wont sleep. Not a good day for you.", e);
+            }
+            retry--;
+        }
+        LOGGER.error("Failed to create hbase connection from HBaseApplier, attempt " + retry + "/10. Giving up. Last expcetion was:" + lastException);
+        throw new IOException("Could not create HBase connection, all retry attempts failed. Last exception was:", lastException);
     }
 
     public synchronized void markCurrentTaskWithPseudoGTID(LastCommittedPositionCheckpoint pseudoGTIDCheckPoint)
@@ -289,7 +314,7 @@ public class HBaseApplierWriter {
      * Rotate tasks, mark current task as ready to be submitted and initialize new task buffer.
      */
     public void markCurrentTaskAsReadyAndCreateNewUuidBuffer()
-            throws TaskBufferInconsistencyException, ApplierException {
+            throws TaskBufferInconsistencyException, ApplierException, IOException {
         // don't create new buffers if no slots available
         blockIfNoSlotsAvailableForBuffering();
 
@@ -343,14 +368,19 @@ public class HBaseApplierWriter {
 
     private long slotWaitTime = 0L;
 
-    private void blockIfNoSlotsAvailableForBuffering() throws ApplierException {
+    private void blockIfNoSlotsAvailableForBuffering() throws ApplierException, IOException {
 
         boolean block = true;
         int blockingTime = 0;
+        int retry = 0;
 
         slotWaitTime = System.currentTimeMillis();
-        while (block) {
-
+        while (block && retry < MAX_BLOCKING_RETRIES) {
+            try {
+                submitTasksThatAreReadyForPickUp();
+            } catch (TaskBufferInconsistencyException te) {
+                throw new ApplierException(te);
+            }
             updateTaskStatuses();
 
             int currentNumberOfTasks = taskTransactionBuffer.keySet().size();
@@ -364,7 +394,7 @@ public class HBaseApplierWriter {
                 }
 
                 if (blockingTime >= MAX_BLOCKING_TIME) {
-                    LOGGER.warn("Waiting for an applier slot more than 60s...");
+                    LOGGER.warn(String.format("Waiting for an applier slot for %dms which is more than max %dms. Canceling futures", blockingTime, MAX_BLOCKING_TIME));
                     for (String tr: taskTransactionBuffer.keySet()) {
                         LOGGER.warn(String.format("Task %s, rows: %s, status: %s, future: %s",
                                  tr,
@@ -377,6 +407,8 @@ public class HBaseApplierWriter {
                              taskTransactionBuffer.get(tr).getTaskFuture().cancel(true);
                          } 
                     }
+                    blockingTime = 0;
+                    retry++;
                 }
             } else {
                 if (blockingTime > 10000) {
@@ -385,6 +417,20 @@ public class HBaseApplierWriter {
                 slotWaitTime = 0;
                 block = false;
             }
+        }
+        if (block) {
+            String message = String.format("Can't apply tasks after %d retries %dms each", MAX_BLOCKING_RETRIES, MAX_BLOCKING_TIME);
+            LOGGER.error(message);
+            for (String tr: taskTransactionBuffer.keySet()) {
+                LOGGER.error(String.format("Task %s, rows: %s, status: %s, future: %s",
+                        tr,
+                        taskRowsBuffered(tr),
+                        taskTransactionBuffer.get(tr).getTaskStatus(),
+                        taskTransactionBuffer.get(tr).getTaskFuture()
+                        )
+                );
+            }
+            throw new IOException(message);
         }
     }
 
@@ -419,7 +465,7 @@ public class HBaseApplierWriter {
 
                 // Process done tasks
                 if (taskFuture.isDone()) {
-                    LOGGER.info("Task " + submittedTaskUuid + " is done");
+                    LOGGER.debug("Task " + submittedTaskUuid + " is done");
 
                     HBaseTaskResult taskResult = taskFuture.get(); // raise exceptions if any
                     boolean taskSucceeded = taskResult.isTaskSucceeded();
@@ -530,26 +576,7 @@ public class HBaseApplierWriter {
 
         if ((! DRY_RUN) && (hbaseConnection == null)) {
             LOGGER.info("HBase connection is gone. Will try to recreate new connection...");
-            int retry = 10;
-            while (retry > 0) {
-                try {
-                    hbaseConnection = ConnectionFactory.createConnection(hbaseConf);
-                    retry = 0;
-                } catch (IOException e) {
-                    LOGGER.warn("Failed to create hbase connection from HBaseApplier, attempt " + retry + "/10");
-                }
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    LOGGER.error("Thread wont sleep. Not a good day for you.",e);
-                }
-                retry--;
-            }
-        }
-
-        if ((! DRY_RUN) && (hbaseConnection == null)) {
-            LOGGER.error("Could not create HBase connection, all retry attempts failed.");
-            throw new IOException("Could not create HBase connection, all retry attempts failed.");
+            hbaseConnection = createHBaseConnection(10);
         }
 
         // one future per task

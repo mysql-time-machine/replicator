@@ -1,0 +1,2 @@
+./run | perl -e 'use JSON qw(decode_json); while(<>) { eval { decode_json($_) & print($_ . "\n"); 1; } or do { }; }' | jq '.'
+

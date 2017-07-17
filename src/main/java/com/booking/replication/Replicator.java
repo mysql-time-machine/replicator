@@ -8,9 +8,11 @@ import com.booking.replication.pipeline.BinlogPositionInfo;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.pipeline.PipelinePosition;
 import com.booking.replication.queues.ReplicatorQueues;
+import com.booking.replication.replicant.MysqlReplicantPool;
 import com.booking.replication.replicant.ReplicantPool;
 
-import com.booking.replication.sql.QueryInspector;
+import com.booking.replication.schema.ActiveSchemaVersion;
+import com.booking.replication.schema.MysqlActiveSchemaVersion;
 import com.booking.replication.util.BinlogCoordinatesFinder;
 import com.booking.replication.validation.ValidationService;
 import com.codahale.metrics.Counter;
@@ -38,7 +40,7 @@ public class Replicator {
     private final BinlogEventProducer  binlogEventProducer;
     private final PipelineOrchestrator pipelineOrchestrator;
     private final Overseer             overseer;
-    private final ReplicantPool        replicantPool;
+    private final ReplicantPool replicantPool;
     private final PipelinePosition     pipelinePosition;
     private final ReplicatorHealthTrackerProxy healthTracker;
 
@@ -56,7 +58,7 @@ public class Replicator {
         }
 
         // Replicant Pool
-        replicantPool = new ReplicantPool(configuration.getReplicantDBHostPool(), configuration);
+        replicantPool = new MysqlReplicantPool(configuration.getReplicantDBHostPool(), configuration);
 
         // 1. init pipelinePosition -> move to separate method
         if (mysqlFailoverActive) {
@@ -105,7 +107,7 @@ public class Replicator {
 
                         LOGGER.info("found pseudoGTID in safe checkpoint: " + pseudoGTID);
 
-                        BinlogCoordinatesFinder coordinatesFinder = new BinlogCoordinatesFinder(replicantActiveHost,3306,configuration.getReplicantDBUserName(),configuration.getReplicantDBPassword(), new QueryInspector(configuration.getpGTIDPattern()));
+                        BinlogCoordinatesFinder coordinatesFinder = new BinlogCoordinatesFinder(replicantActiveHost,3306,configuration.getReplicantDBUserName(),configuration.getReplicantDBPassword());
 
                         BinlogCoordinatesFinder.BinlogCoordinates coordinates = coordinatesFinder.findCoordinates(pseudoGTID);
 
@@ -236,7 +238,7 @@ public class Replicator {
             replicatorQueues.rawQueue,
             pipelinePosition,
             configuration,
-            replicantPool
+                replicantPool
         );
 
         // Validation service
@@ -273,15 +275,17 @@ public class Replicator {
             this.healthTracker.setTrackerImplementation(new ReplicatorHealthTrackerDummy());
         }
 
+        PipelineOrchestrator.setActiveSchemaVersion(new MysqlActiveSchemaVersion(configuration));
         // Orchestrator
         pipelineOrchestrator = new PipelineOrchestrator(
-            replicatorQueues,
-            pipelinePosition,
-            configuration,
-            applier,
-            replicantPool,
-            fakeMicrosecondCounter
-    );
+                replicatorQueues,
+                pipelinePosition,
+                configuration,
+                applier,
+                replicantPool,
+                binlogEventProducer,
+                fakeMicrosecondCounter
+        );
 
         // Overseer
         overseer = new Overseer(

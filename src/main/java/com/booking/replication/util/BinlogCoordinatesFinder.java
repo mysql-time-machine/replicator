@@ -56,15 +56,12 @@ public class BinlogCoordinatesFinder {
     private final String username;
     private final String password;
 
-    private final QueryInspector queryInspector;
 
-
-    public BinlogCoordinatesFinder(String host, int port, String username, String password, QueryInspector queryInspector) {
+    public BinlogCoordinatesFinder(String host, int port, String username, String password) {
         this.host = host;
         this.port = port;
         this.username = username;
         this.password = password;
-        this.queryInspector = queryInspector;
     }
 
     public BinlogCoordinates findCoordinates(String gtid) {
@@ -134,7 +131,7 @@ public class BinlogCoordinatesFinder {
                 try {
                     String query = resultSet.getString( "Info" );
 
-                    if ( queryInspector.isPseudoGTID(query) && gtid.equals( queryInspector.extractPseudoGTID(query) ) ){
+                    if ( QueryInspector.isPseudoGTID(query) && gtid.equals( QueryInspector.extractPseudoGTID(query) ) ){
                         position.setValue( resultSet.getLong("Pos"));
                         return true;
                     }
@@ -164,9 +161,9 @@ public class BinlogCoordinatesFinder {
                     try {
                         String query =  resultSet.getString( "Info" );
 
-                        if ( queryInspector.isPseudoGTID( query ) ){
+                        if ( QueryInspector.isPseudoGTID( query ) ){
 
-                            gtidHolder.setValue( queryInspector.extractPseudoGTID( query ) );
+                            gtidHolder.setValue( QueryInspector.extractPseudoGTID( query ) );
 
                             return true;
 

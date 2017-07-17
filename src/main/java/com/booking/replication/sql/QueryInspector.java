@@ -1,8 +1,10 @@
 package com.booking.replication.sql;
 
 import com.booking.replication.Configuration;
+import com.booking.replication.binlog.event.QueryEventType;
 import com.booking.replication.sql.exception.QueryInspectorException;
 
+import com.google.code.or.binlog.impl.event.QueryEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,25 +16,47 @@ import java.util.regex.Pattern;
  */
 public class QueryInspector {
 
-    private final Pattern isDDLTablePattern;
-    private final Pattern isDDLViewPattern;
-    private final Pattern isBeginPattern;
-    private final Pattern isCommitPattern;
-    private final Pattern isPseudoGTIDPattern;
+    private static final Pattern isDDLTemporaryTablePattern = Pattern.compile(QueryPatterns.isDDLTemporaryTable, Pattern.CASE_INSENSITIVE);
+    private static final Pattern isDDLDefinerPattern = Pattern.compile(QueryPatterns.isDDLDefiner, Pattern.CASE_INSENSITIVE);
+    private static final Pattern isDDLTablePattern = Pattern.compile(QueryPatterns.isDDLTable, Pattern.CASE_INSENSITIVE);
+    private static final Pattern isDDLViewPattern = Pattern.compile(QueryPatterns.isDDLView, Pattern.CASE_INSENSITIVE);
+    private static final Pattern isBeginPattern = Pattern.compile(QueryPatterns.isBEGIN, Pattern.CASE_INSENSITIVE);
+    private static final Pattern isCommitPattern = Pattern.compile(QueryPatterns.isCOMMIT, Pattern.CASE_INSENSITIVE);
+    private static final Pattern isAnalyzePattern = Pattern.compile(QueryPatterns.isANALYZE, Pattern.CASE_INSENSITIVE);
+    private static Pattern isPseudoGTIDPattern = null;
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(QueryInspector.class);
-
-    public QueryInspector(String gtidPattern) {
-
-        this.isDDLTablePattern = Pattern.compile(QueryPatterns.isDDLTable, Pattern.CASE_INSENSITIVE);
-        this.isDDLViewPattern = Pattern.compile(QueryPatterns.isDDLView, Pattern.CASE_INSENSITIVE);
-        this.isBeginPattern      = Pattern.compile(QueryPatterns.isBEGIN, Pattern.CASE_INSENSITIVE);
-        this.isCommitPattern     = Pattern.compile(QueryPatterns.isCOMMIT, Pattern.CASE_INSENSITIVE);
-        this.isPseudoGTIDPattern = Pattern.compile(gtidPattern, Pattern.CASE_INSENSITIVE);
-
+    public static void setIsPseudoGTIDPattern(String isPseudoGTIDPattern) throws IllegalStateException {
+        if (QueryInspector.isPseudoGTIDPattern != null) {
+            throw new IllegalStateException("Failed to reassign isPseudoGTIDPattern. Not null");
+        }
+        QueryInspector.isPseudoGTIDPattern = Pattern.compile(isPseudoGTIDPattern, Pattern.CASE_INSENSITIVE);;
     }
 
-    public boolean isDDLTable(String querySQL) {
+    public static boolean isDDLTemporaryTable(String querySQL) {
+
+        // optimization
+        if (querySQL.equals("BEGIN")) {
+            return false;
+        }
+
+        Matcher matcher = isDDLTemporaryTablePattern.matcher(querySQL);
+
+        return matcher.find();
+    }
+
+    public static boolean isDDLDefiner(String querySQL) {
+
+        // optimization
+        if (querySQL.equals("BEGIN")) {
+            return false;
+        }
+
+        Matcher matcher = isDDLDefinerPattern.matcher(querySQL);
+
+        return matcher.find();
+    }
+
+    public static boolean isDDLTable(String querySQL) {
 
         // optimization
         if (querySQL.equals("BEGIN")) {
@@ -44,7 +68,7 @@ public class QueryInspector {
         return matcher.find();
     }
 
-    public boolean isDDLView(String querySQL) {
+    public static boolean isDDLView(String querySQL) {
 
         // optimization
         if (querySQL.equals("BEGIN")) {
@@ -56,7 +80,7 @@ public class QueryInspector {
         return matcher.find();
     }
 
-    public boolean isBegin(String querySQL, boolean isDDL) {
+    public static boolean isBegin(String querySQL, boolean isDDL) {
 
         boolean hasBegin;
 
@@ -71,7 +95,7 @@ public class QueryInspector {
         return (hasBegin && !isDDL);
     }
 
-    public boolean isCommit(String querySQL, boolean isDDL) {
+    public static boolean isCommit(String querySQL, boolean isDDL) {
 
         boolean hasCommit;
 
@@ -85,7 +109,7 @@ public class QueryInspector {
         return (hasCommit && !isDDL);
     }
 
-    public boolean isPseudoGTID(String querySQL) {
+    public static boolean isPseudoGTID(String querySQL) {
 
         // optimization
         if (querySQL.equals("BEGIN") || querySQL.equals("COMMIT")) {
@@ -99,7 +123,21 @@ public class QueryInspector {
         return found;
     }
 
-    public String extractPseudoGTID(String querySQL) throws QueryInspectorException {
+    public static boolean isAnalyze(String querySQL) {
+
+        // optimization
+        if (querySQL.equals("BEGIN") || querySQL.equals("COMMIT")) {
+            return false;
+        }
+
+        Matcher matcher = isAnalyzePattern.matcher(querySQL);
+
+        boolean found = matcher.find();
+
+        return found;
+    }
+
+    public static String extractPseudoGTID(String querySQL) throws QueryInspectorException {
 
         Matcher matcher = isPseudoGTIDPattern.matcher(querySQL);
 
@@ -114,5 +152,30 @@ public class QueryInspector {
         } else {
             throw new QueryInspectorException("Invalid PseudoGTID query. Could not extract PseudoGTID from: " + querySQL);
         }
+    }
+
+    public static QueryEventType getQueryEventType(QueryEvent event) {
+        String querySQL = event.getSql().toString();
+        boolean isDDLTable = isDDLTable(querySQL);
+        boolean isDDLView = isDDLView(querySQL);
+
+        if (isCommit(querySQL, isDDLTable)) {
+            return QueryEventType.COMMIT;
+        } else if (isDDLDefiner(querySQL)) {
+            return QueryEventType.DDLDEFINER;
+        } else if (isBegin(querySQL, isDDLTable)) {
+            return QueryEventType.BEGIN;
+        } else if (isPseudoGTID(querySQL)) {
+            return QueryEventType.PSEUDOGTID;
+        } else if (isDDLTable) {
+            return QueryEventType.DDLTABLE;
+        } else if (isDDLTemporaryTable(querySQL)) {
+            return QueryEventType.DDLTEMPORARYTABLE;
+        } else if (isDDLView) {
+            return QueryEventType.DDLVIEW;
+        } else if (isAnalyze(querySQL)) {
+            return QueryEventType.ANALYZE;
+        }
+        return QueryEventType.UNKNOWN;
     }
 }

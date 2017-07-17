@@ -7,7 +7,6 @@ import com.booking.replication.Constants;
 import com.booking.replication.Metrics;
 import com.booking.replication.replicant.ReplicantPool;
 import com.google.code.or.OpenReplicator;
-import com.google.code.or.binlog.BinlogEventListener;
 import com.google.code.or.binlog.BinlogEventV4;
 
 import com.codahale.metrics.Gauge;
@@ -32,9 +31,12 @@ public class BinlogEventProducer {
 
     private final OpenReplicator   openReplicator;
     private final Configuration    configuration;
-    private final ReplicantPool    replicantPool;
+    private final ReplicantPool replicantPool;
+
+    private final int serverId = (new Random().nextInt() >>> 1) | (1 << 30); // a large positive random integer;
 
     private long opCounter = 0;
+    private long backPressureSleep = 0;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BinlogEventProducer.class);
 
@@ -57,27 +59,17 @@ public class BinlogEventProducer {
         this.pipelinePosition = pipelinePosition;
         this.replicantPool = replicantPool;
 
-        openReplicator = new OpenReplicator();
-
         Metrics.registry.register(name("events", "producerBackPressureSleep"),
-                new Gauge<Long>() {
-                    @Override
-                    public Long getValue() {
-                        return backPressureSleep;
-                    }
-                });
+                (Gauge<Long>) () -> backPressureSleep);
+
+        openReplicator = initOpenReplicator();
+        setBinlogPosition(pipelinePosition.getCurrentPosition().getBinlogPosition());
+        setBinlogFileName(pipelinePosition.getCurrentPosition().getBinlogFilename());
 
     }
 
-    /**
-     * Start.
-     */
-    public void start() throws Exception {
-
-        Random random = new Random();
-
-        int serverId = (random.nextInt() >>> 1) | (1 << 30); // a large positive random integer
-
+    private OpenReplicator initOpenReplicator() {
+        OpenReplicator openReplicator = new OpenReplicator();
         // config
         openReplicator.setUser(configuration.getReplicantDBUserName());
         openReplicator.setPassword(configuration.getReplicantDBPassword());
@@ -87,57 +79,81 @@ public class BinlogEventProducer {
         openReplicator.setHost(pipelinePosition.getCurrentReplicantHostName());
         openReplicator.setServerId(serverId);
 
-        // position
-        openReplicator.setBinlogPosition(pipelinePosition.getCurrentPosition().getBinlogPosition());
-        openReplicator.setBinlogFileName(pipelinePosition.getCurrentPosition().getBinlogFilename());
-
         // disable lv2 buffer
         openReplicator.setLevel2BufferSize(-1);
 
-        openReplicator.setBinlogEventListener(new BinlogEventListener() {
+        openReplicator.setBinlogEventListener(event -> {
+            producedEvents.mark();
 
-            public void onEvents(BinlogEventV4 event) {
-                producedEvents.mark();
+            // This call is blocking the writes from server side. If time goes above
+            // net_write_timeout (which defaults to 60s) server will drop connection.
+            //      => Use back pressure to regulate the write rate to the queue.
 
-                // This call is blocking the writes from server side. If time goes above
-                // net_write_timeout (which defaults to 60s) server will drop connection.
-                //      => Use back pressure to regulate the write rate to the queue.
+            if (isRunning()) {
+                boolean eventQueued = false;
+                while (!eventQueued) { // blocking block
+                    try {
+                        backPressureSleep();
+                        boolean added = queue.offer(event, 100, TimeUnit.MILLISECONDS);
 
-                if (isRunning()) {
-                    boolean eventQueued = false;
-                    while (!eventQueued) { // blocking block
-                        try {
-                            backPressureSleep();
-                            boolean added = queue.offer(event, 100, TimeUnit.MILLISECONDS);
-
-                            if (added) {
-                                opCounter++;
-                                eventQueued = true;
-                                if (opCounter % 100000 == 0) {
-                                    LOGGER.info("Producer reporting queue size => " + queue.size());
-                                }
-                            } else {
-                                LOGGER.error("queue.offer timed out. Will sleep for 100ms and try again");
-                                Thread.sleep(100);
+                        if (added) {
+                            opCounter++;
+                            eventQueued = true;
+                            if (opCounter % 100000 == 0) {
+                                LOGGER.info("Producer reporting queue size => " + queue.size());
                             }
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
+                        } else {
+                            LOGGER.error("queue.offer timed out. Will sleep for 100ms and try again");
+                            Thread.sleep(100);
                         }
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
                     }
                 }
             }
         });
+        return openReplicator;
+    }
 
-        LOGGER.info("starting Open Replicator from: { binlog-file => "
-                + openReplicator.getBinlogFileName()
-                + ", position => "
-                + openReplicator.getBinlogPosition()
-                + " }"
-        );
+
+    public void setBinlogFileName(String binlogFileName) {
+        LOGGER.info("Changing binlog filename from: " + openReplicator.getBinlogFileName() + " to: " + binlogFileName);
+        openReplicator.setBinlogFileName(binlogFileName);
+    }
+
+    public void setBinlogPosition(long binlogPosition) {
+        LOGGER.info("Changing binlog position from: " + openReplicator.getBinlogPosition() + " to: " + binlogPosition);
+        openReplicator.setBinlogPosition(binlogPosition);
+    }
+
+    /**
+     * Start.
+     */
+    public void start() throws Exception {
+        LOGGER.info("Starting producer from: { binlog-file => " + openReplicator.getBinlogFileName()
+                + ", position => " + openReplicator.getBinlogPosition() + " }");
         openReplicator.start();
     }
 
-    private long backPressureSleep = 0;
+    public void stop(long timeout, TimeUnit unit) throws Exception {
+        LOGGER.info("Stopping producer. Start point was: { binlog-file => " + openReplicator.getBinlogFileName()
+                + ", position => " + openReplicator.getBinlogPosition() + " }");
+        openReplicator.stop(timeout, unit);
+    }
+
+    public void clearQueue() {
+        LOGGER.debug("Clearing queue");
+        queue.clear();
+    }
+
+    public void stopAndClearQueue(long timeout, TimeUnit unit) throws Exception {
+        stop(timeout, unit);
+        clearQueue();
+    }
+
+    public boolean isRunning() {
+        return this.openReplicator.isRunning();
+    }
 
     private void backPressureSleep() {
         int queueSize = queue.size();
@@ -164,14 +180,6 @@ public class BinlogEventProducer {
             LOGGER.error("Thread wont sleep");
             e.printStackTrace();
         }
-    }
-
-    public void stop(long timeout, TimeUnit unit) throws Exception {
-        openReplicator.stop(timeout, unit);
-    }
-
-    public boolean isRunning() {
-        return this.openReplicator.isRunning();
     }
 
     public OpenReplicator getOpenReplicator() {

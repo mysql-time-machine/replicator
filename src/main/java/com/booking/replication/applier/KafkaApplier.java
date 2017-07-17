@@ -9,8 +9,10 @@ import com.booking.replication.applier.kafka.RowListMessage;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
+import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 
+import com.booking.replication.schema.exception.TableMapException;
 import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.impl.event.FormatDescriptionEvent;
 import com.google.code.or.binlog.impl.event.QueryEvent;
@@ -25,10 +27,8 @@ import com.codahale.metrics.Timer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
@@ -70,6 +70,10 @@ public class KafkaApplier implements Applier {
     private HashMap<Integer,RowListMessage> partitionCurrentMessageBuffer = new HashMap<>();
 
     private String topicName;
+    private final boolean apply_begin_event;
+    private final boolean apply_commit_event;
+    private final boolean apply_uuid;
+    private final boolean apply_xid;
     private AtomicBoolean exceptionFlag = new AtomicBoolean(false);
 
     private final Meter meterForMessagesPushedToKafka;
@@ -123,6 +127,10 @@ public class KafkaApplier implements Applier {
         excludeTablePatterns = configuration.getKafkaExcludeTableList();
         topicName = configuration.getKafkaTopicName();
         brokerAddress = configuration.getKafkaBrokerAddress();
+        apply_begin_event = configuration.isKafkaApplyBeginEvent();
+        apply_commit_event = configuration.isKafkaApplyCommitEvent();
+        apply_uuid = configuration.getAugmenterApplyUuid();
+        apply_xid = configuration.getAugmenterApplyXid();
         this.meterForMessagesPushedToKafka = meterForMessagesPushedToKafka;
 
         if (!DRY_RUN) {
@@ -140,6 +148,104 @@ public class KafkaApplier implements Applier {
                         + " }");
             }
         }
+    }
+
+    @Override
+    public void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedDataEvent, CurrentTransaction currentTransaction) {
+        for (AugmentedRow augmentedRow : augmentedDataEvent.getSingleRowEvents()) {
+            if (exceptionFlag.get()) throw new RuntimeException("Producer has problem with sending messages, could be a connection issue");
+            if (augmentedRow.getTableName() == null) throw new RuntimeException("tableName does not exist");
+
+            if (!tableIsWanted(augmentedRow.getTableName())) {
+                totalOutliersCounter++;
+                outlier_counter.inc();
+                return;
+            }
+
+            totalRowsCounter++;
+            updateRowLastPositionID(augmentedRow.getRowBinlogPositionID());
+            pushToBuffer(getPartitionNum(augmentedRow.getTableName().hashCode()), augmentedRow);
+        }
+    }
+
+    @Override
+    public void applyBeginQueryEvent(QueryEvent event, CurrentTransaction currentTransaction) {
+        if (!apply_begin_event) {
+            LOGGER.debug("Dropping BEGIN event because applyBeginEvent is off");
+            return;
+        }
+        LOGGER.debug("Applying BEGIN event");
+        if (exceptionFlag.get()) throw new RuntimeException("Producer has problem with sending messages, could be a connection issue");
+
+        AugmentedRow augmentedRow;
+        try {
+            augmentedRow = new AugmentedRow(event.getBinlogFilename(), 0, null, null, "BEGIN", event.getHeader(), currentTransaction.getUuid(), currentTransaction.getXid(), apply_uuid, apply_xid);
+        } catch (TableMapException e) {
+            throw new RuntimeException("Failed to create AugmentedRow for BEGIN event: ", e);
+        }
+
+        updateRowLastPositionID(augmentedRow.getRowBinlogPositionID());
+        pushToBuffer(getPartitionNum(augmentedRow.hashCode()), augmentedRow);
+    }
+
+    @Override
+    public void applyCommitQueryEvent(QueryEvent event, CurrentTransaction currentTransaction) {
+        if (!apply_commit_event) {
+            LOGGER.debug("Dropping COMMIT event because applyCommitEvent is off");
+            return;
+        }
+        LOGGER.debug("Applying COMMIT event");
+        if (exceptionFlag.get()) throw new RuntimeException("Producer has problem with sending messages, could be a connection issue");
+
+        AugmentedRow augmentedRow;
+        try {
+            augmentedRow = new AugmentedRow(event.getBinlogFilename(), 0, null, null, "COMMIT", event.getHeader(), currentTransaction.getUuid(), currentTransaction.getXid(), apply_uuid, apply_xid);
+        } catch (TableMapException e) {
+            throw new RuntimeException("Failed to create AugmentedRow for COMMIT event: ", e);
+        }
+
+        updateRowLastPositionID(augmentedRow.getRowBinlogPositionID());
+        pushToBuffer(getPartitionNum(augmentedRow.hashCode()), augmentedRow);
+    }
+
+    @Override
+    public void applyXidEvent(XidEvent event, CurrentTransaction currentTransaction) {
+        if (!apply_commit_event) {
+            LOGGER.debug("Dropping XID event because applyBeginEvent is off");
+            return;
+        }
+        LOGGER.debug("Applying XID event");
+        if (exceptionFlag.get()) throw new RuntimeException("Producer has problem with sending messages, could be a connection issue");
+
+        AugmentedRow augmentedRow;
+        try {
+            augmentedRow = new AugmentedRow(event.getBinlogFilename(), 0, null, null, "XID", event.getHeader(), currentTransaction.getUuid(), currentTransaction.getXid(), apply_uuid, apply_xid);
+        } catch (TableMapException e) {
+            throw new RuntimeException("Failed to create AugmentedRow for XID event: ", e);
+        }
+
+        updateRowLastPositionID(augmentedRow.getRowBinlogPositionID());
+        pushToBuffer(getPartitionNum(augmentedRow.hashCode()), augmentedRow);
+    }
+
+    @Override
+    public void applyRotateEvent(RotateEvent event) {
+
+    }
+
+    @Override
+    public void applyAugmentedSchemaChangeEvent(AugmentedSchemaChangeEvent augmentedSchemaChangeEvent, PipelineOrchestrator caller) {
+
+    }
+
+    @Override
+    public void applyFormatDescriptionEvent(FormatDescriptionEvent event) {
+
+    }
+
+    @Override
+    public void applyTableMapEvent(TableMapEvent event) {
+
     }
 
     private void loadLastMessagePositionForEachPartition() throws IOException {
@@ -209,7 +315,6 @@ public class KafkaApplier implements Applier {
     }
 
     private boolean tableIsWanted(String tableName) {
-
         if (wantedTables.containsKey(tableName)) {
             return wantedTables.get(tableName);
         } else {
@@ -247,138 +352,92 @@ public class KafkaApplier implements Applier {
         }
     }
 
-    @Override
-    public void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedRowsEvent, PipelineOrchestrator caller) {
-
-        int partitionNum;
-        String rowBinlogPositionID;
-
-        for (AugmentedRow row : augmentedRowsEvent.getSingleRowEvents()) {
-
-            if (exceptionFlag.get()) {
-                throw new RuntimeException("Producer has problem with sending messages, could be a connection issue");
-            }
-            if (row.getTableName() == null) {
-                LOGGER.error("tableName not exists");
-                throw new RuntimeException("tableName does not exist");
-            }
-
-            String table = row.getTableName();
-
-            if (tableIsWanted(table)) {
-
-                totalRowsCounter++;
-
-                // Row binlog position id
-                rowBinlogPositionID = row.getRowBinlogPositionID();
-                if (rowBinlogPositionID.compareTo(rowLastPositionID) <= 0) {
-                    throw new RuntimeException(
-                            String.format("Something wrong with the row position. This should never happen. Current position: %s. Previous: %s", rowBinlogPositionID, rowLastPositionID));
-                }
-                rowLastPositionID = rowBinlogPositionID;
-
-                if (!DRY_RUN) {
-                    partitionNum = (row.getTableName().hashCode() % numberOfPartition + numberOfPartition) % numberOfPartition;
-                } else {
-                    partitionNum = 0;
-                }
-                // Push to Kafka broker one of the following is true:
-                //     1. there are no rows on current partition
-                //     2. If current message unique ID is greater than the last committed message unique ID
-                // TODO: move to isAfterLastRow() method
-                if (!partitionLastBufferedRow.containsKey(partitionNum)
-                        || rowBinlogPositionID.compareTo(partitionLastBufferedRow.get(partitionNum)) > 0) {
-
-                    // if buffer is not initialized for partition, do init
-                    if (partitionCurrentMessageBuffer.get(partitionNum) == null) {
-                        List<AugmentedRow> rowsBucket = new ArrayList();
-                        rowsBucket.add(row);
-                        partitionCurrentMessageBuffer.put(partitionNum, new RowListMessage(MESSAGE_BATCH_SIZE, rowsBucket));
-                    } else {
-                        // if buffer is full do:
-                        //      (close) -> (send message) -> (create new buffer - sets current row as the first in the buffer)
-                        // else:
-                        //      (add current row to the buffer)
-                        if (partitionCurrentMessageBuffer.get(partitionNum).isFull()) {
-
-                            // 1. close buffer
-                            partitionCurrentMessageBuffer.get(partitionNum).closeMessageBuffer();
-
-                            // 2. send message
-                            sendMessage(partitionNum);
-
-                            // 3. open new buffer with current row as buffer-start-row
-                            List<AugmentedRow> rowsBucket = new ArrayList();
-                            rowsBucket.add(row);
-                            partitionCurrentMessageBuffer.put(partitionNum, new RowListMessage(MESSAGE_BATCH_SIZE, rowsBucket));
-
-                        } else {
-                            // buffer row to current buffer
-                            try {
-                                partitionCurrentMessageBuffer.get(partitionNum).addRowToMessage(row);
-                            } catch (KafkaMessageBufferException ke) {
-                                LOGGER.error("Trying to write to a closed buffer. This should never happen. Exiting...");
-                                System.exit(-1);
-                            }
-                        }
-                    }
-                    meterForMessagesPushedToKafka.mark();
-                }
-            } else {
-                totalOutliersCounter ++;
-                outlier_counter.inc();
-            }
-        } // next row
+    private int getPartitionNum(int hashCode) {
+        return (DRY_RUN) ? 0 : (hashCode % numberOfPartition + numberOfPartition) % numberOfPartition;
     }
 
-    private void sendMessage(int partitionNum) {
+    private void pushToBuffer(int partitionNum, AugmentedRow augmentedRow) {
+        // Push to Kafka broker one of the following is true:
+        //     1. there are no rows on current partition
+        //     2. If current message unique ID is greater than the last committed message unique ID
+        String rowBinlogPositionID = augmentedRow.getRowBinlogPositionID();
+        if (isAfterLastRow(partitionNum, rowBinlogPositionID)) {
+            // if buffer is not initialized for partition, do init
+            if (partitionCurrentMessageBuffer.get(partitionNum) == null) {
+                List<AugmentedRow> rowsBucket = new ArrayList<>();
+                rowsBucket.add(augmentedRow);
+                partitionCurrentMessageBuffer.put(partitionNum, new RowListMessage(MESSAGE_BATCH_SIZE, rowsBucket));
+            } else {
+                // if buffer is full do:
+                //      (close) -> (send message) -> (create new buffer - sets current row as the first in the buffer)
+                // else:
+                //      (add current row to the buffer)
+                if (partitionCurrentMessageBuffer.get(partitionNum).isFull()) {
 
-        RowListMessage rowListMessage = partitionCurrentMessageBuffer.get(partitionNum);
+                    // 1. close buffer
+                    partitionCurrentMessageBuffer.get(partitionNum).closeMessageBuffer();
 
-        String jsonMessage = rowListMessage.toJSON();
+                    // 2. send message
+                    sendMessage(partitionNum);
 
-        if (!DRY_RUN) {
-            ProducerRecord<String, String> message;
+                    // 3. open new buffer with current row as buffer-start-row
+                    List<AugmentedRow> rowsBucket = new ArrayList<>();
+                    rowsBucket.add(augmentedRow);
+                    partitionCurrentMessageBuffer.put(partitionNum, new RowListMessage(MESSAGE_BATCH_SIZE, rowsBucket));
 
-            message = new ProducerRecord<>(
-                    topicName,
-                    partitionNum,
-                    rowListMessage.getMessageBinlogPositionID(),
-                    jsonMessage);
-
-            producer.send(message, new Callback() {
-                @Override
-                public void onCompletion(RecordMetadata recordMetadata, Exception sendException) {
-                    if (sendException != null) {
-                        LOGGER.error("Error producing to Kafka broker", sendException);
-                        exceptionFlag.set(true);
-                        exception_counter.inc();
+                } else {
+                    // buffer row to current buffer
+                    try {
+                        partitionCurrentMessageBuffer.get(partitionNum).addRowToMessage(augmentedRow);
+                    } catch (KafkaMessageBufferException ke) {
+                        LOGGER.error("Trying to write to a closed buffer. This should never happen. Exiting...");
+                        System.exit(-1);
                     }
                 }
-            });
+            }
+            meterForMessagesPushedToKafka.mark();
         } else {
-            System.out.println(jsonMessage);
+            LOGGER.debug("Row for partitionNum " + partitionNum + " skipped: " + augmentedRow);
         }
     }
 
-    @Override
-    public void applyCommitQueryEvent(QueryEvent event) {
-
+    public boolean isAfterLastRow(int partitionNum, String rowBinlogPositionID) {
+        if (!partitionLastBufferedRow.containsKey(partitionNum)) return true;
+        if (rowBinlogPositionID.compareTo(partitionLastBufferedRow.get(partitionNum)) > 0) return true;
+        return false;
     }
 
-    @Override
-    public void applyXidEvent(XidEvent event) {
-
+    public void updateRowLastPositionID(String rowBinlogPositionID) {
+        // Row binlog position id. Position inside a begin event always 0 because there's only one "row"
+        if (rowBinlogPositionID.compareTo(rowLastPositionID) <= 0) {
+            throw new RuntimeException(
+                    String.format("Something wrong with the row position. This should never happen. Current position: %s. Previous: %s", rowBinlogPositionID, rowLastPositionID));
+        }
+        rowLastPositionID = rowBinlogPositionID;
     }
 
-    @Override
-    public void applyRotateEvent(RotateEvent event) {
+    private void sendMessage(int partitionNum) {
+        RowListMessage rowListMessage = partitionCurrentMessageBuffer.get(partitionNum);
+        String jsonMessage = rowListMessage.toJSON();
 
-    }
+        if (DRY_RUN) {
+            System.out.println(jsonMessage);
+            return;
+        }
 
-    @Override
-    public void applyAugmentedSchemaChangeEvent(AugmentedSchemaChangeEvent augmentedSchemaChangeEvent, PipelineOrchestrator caller) {
+        ProducerRecord<String, String> message = new ProducerRecord<>(
+                topicName,
+                partitionNum,
+                rowListMessage.getMessageBinlogPositionID(),
+                jsonMessage);
 
+        producer.send(message, (recordMetadata, sendException) -> {
+            if (sendException != null) {
+                LOGGER.error("Error producing to Kafka broker", sendException);
+                exceptionFlag.set(true);
+                exception_counter.inc();
+            }
+        });
     }
 
     @Override
@@ -389,16 +448,6 @@ public class KafkaApplier implements Applier {
         context.stop();
         producer = new KafkaProducer<>(getProducerProperties(brokerAddress));
         LOGGER.info("A new producer has been created");
-    }
-
-    @Override
-    public void applyFormatDescriptionEvent(FormatDescriptionEvent event) {
-
-    }
-
-    @Override
-    public void applyTableMapEvent(TableMapEvent event) {
-
     }
 
     @Override

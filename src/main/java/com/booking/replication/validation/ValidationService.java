@@ -1,6 +1,7 @@
 package com.booking.replication.validation;
 
 import com.booking.replication.Configuration;
+import com.booking.replication.augmenter.EventAugmenter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -11,10 +12,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -28,6 +26,10 @@ public class ValidationService {
         static {
             Map<String,Object> map = new HashMap<>();
             map.put("row_status_column","row_status");
+            List<String> ignore_columns = new ArrayList<>();
+            ignore_columns.add(EventAugmenter.UUID_FIELD_NAME);
+            ignore_columns.add(EventAugmenter.XID_FIELD_NAME);
+            map.put("ignore_columns", ignore_columns);
             TARGET_TRANSFORMATION = Collections.unmodifiableMap(map);
         }
 

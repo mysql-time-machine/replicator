@@ -5,7 +5,7 @@ import com.google.code.or.binlog.BinlogEventV4;
 /**
  * Created by bosko on 11/10/15.
  */
-public class TableMapException extends Throwable {
+public class TableMapException extends Exception {
     public TableMapException(String message) {
         super(message);
     }

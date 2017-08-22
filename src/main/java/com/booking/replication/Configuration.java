@@ -73,6 +73,15 @@ public class Configuration {
     }
 
     @JsonDeserialize
+    @JsonProperty("augmenter")
+    private AugmenterConfiguration augmenterConfiguration = new AugmenterConfiguration();
+
+    private static class AugmenterConfiguration {
+        public boolean apply_uuid = false;
+        public boolean apply_xid = false;
+    }
+
+    @JsonDeserialize
     @JsonProperty("hbase")
     private HBaseConfiguration hbaseConfiguration;
 
@@ -141,6 +150,10 @@ public class Configuration {
         public List<String> tables;
         public List<String> excludetables;
         public String topic;
+        @JsonProperty("apply_begin_event")
+        public Boolean applyBeginEvent = false;
+        @JsonProperty("apply_commit_event")
+        public Boolean applyCommitEvent = false;
     }
 
     public static class ValidationConfiguration {
@@ -208,6 +221,30 @@ public class Configuration {
 
     public HashMap<String, MetricsConfig.ReporterConfig> getMetricReporters() {
         return metrics.reporters;
+    }
+
+
+    public static class OrchestratorConfiguration {
+        @JsonProperty("rewinding_threshold")
+        private long rewindingThreshold = 500;
+        @JsonProperty("rewinding_enabled")
+        private boolean rewindingEnabled = true;
+
+        public long getRewindingThreshold() {
+            return rewindingThreshold;
+        }
+
+        public boolean isRewindingEnabled() {
+            return rewindingEnabled;
+        }
+    }
+
+    @JsonDeserialize
+    @JsonProperty("orchestrator")
+    public OrchestratorConfiguration orchestratorConfiguration = new OrchestratorConfiguration();
+
+    public OrchestratorConfiguration getOrchestratorConfiguration(){
+        return orchestratorConfiguration;
     }
 
     /**
@@ -469,6 +506,15 @@ public class Configuration {
             return null;
         }
     }
+    /**
+     * Augmenter configuation getters.
+     */
+    public boolean getAugmenterApplyUuid(){
+        return augmenterConfiguration.apply_uuid;
+    }
+    public boolean getAugmenterApplyXid(){
+        return augmenterConfiguration.apply_xid;
+    }
 
     /**
      * Kafka configuation getters.
@@ -488,6 +534,10 @@ public class Configuration {
     public String getKafkaTopicName() {
         return kafka.topic;
     }
+
+    public boolean isKafkaApplyBeginEvent() { return kafka.applyBeginEvent; }
+
+    public boolean isKafkaApplyCommitEvent() { return kafka.applyCommitEvent; }
 
     public boolean isDryRunMode() {
         return dryRunMode;

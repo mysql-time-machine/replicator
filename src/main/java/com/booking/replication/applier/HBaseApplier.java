@@ -7,6 +7,7 @@ import com.booking.replication.applier.hbase.TaskBufferInconsistencyException;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
+import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.schema.HBaseSchemaManager;
 
@@ -80,14 +81,17 @@ public class HBaseApplier implements Applier {
                 configuration.getHBaseQuorum(), configuration.isDryRunMode());
     }
 
+    @Override
+    public void applyBeginQueryEvent(QueryEvent event, CurrentTransaction currentTransaction) {
+    }
 
     @Override
-    public void applyCommitQueryEvent(QueryEvent event) {
+    public void applyCommitQueryEvent(QueryEvent event, CurrentTransaction currentTransaction) {
         markCurrentTransactionForCommit();
     }
 
     @Override
-    public void applyXidEvent(XidEvent event) {
+    public void applyXidEvent(XidEvent event, CurrentTransaction currentTransaction) {
         // TODO: add transactionID to storage
         // long transactionID = event.getXid();
         markCurrentTransactionForCommit();
@@ -121,16 +125,15 @@ public class HBaseApplier implements Applier {
     }
     /**
      * Core logic of the applier. Processes data events and writes to HBase.
-     *
-     * @param augmentedRowsEvent Rows event
-     * @param pipeline Pipeline instance
+     *  @param augmentedRowsEvent Rows event
+     * @param currentTransaction Current transaction metadata instance
      */
     @Override
     public void applyAugmentedRowsEvent(
             final AugmentedRowsEvent augmentedRowsEvent,
-            final PipelineOrchestrator pipeline) throws ApplierException, IOException {
+            final CurrentTransaction currentTransaction) throws ApplierException, IOException {
 
-        String hbaseNamespace = getHBaseNamespace(pipeline);
+        String hbaseNamespace = getHBaseNamespace(currentTransaction);
         if (hbaseNamespace == null) {
             return;
         }
@@ -152,11 +155,11 @@ public class HBaseApplier implements Applier {
         }
     }
 
-    private String getHBaseNamespace(PipelineOrchestrator pipeline) {
+    private String getHBaseNamespace(CurrentTransaction currentTransaction) {
 
         // get database name from event
         String mySqlDbName = configuration.getReplicantSchemaName();
-        String currentTransactionDB = pipeline.currentTransactionMetadata
+        String currentTransactionDB = currentTransaction
                 .getFirstMapEventInTransaction()
                 .getDatabaseName()
                 .toString();

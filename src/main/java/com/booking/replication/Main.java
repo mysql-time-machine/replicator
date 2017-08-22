@@ -6,6 +6,7 @@ import com.booking.replication.coordinator.ZookeeperCoordinator;
 import com.booking.replication.monitor.IReplicatorHealthTracker;
 import com.booking.replication.monitor.ReplicatorHealthAssessment;
 import com.booking.replication.monitor.ReplicatorHealthTrackerProxy;
+import com.booking.replication.sql.QueryInspector;
 import com.booking.replication.util.Cmd;
 import com.booking.replication.util.StartupParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -52,6 +53,9 @@ public class Main {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+
+            QueryInspector.setIsPseudoGTIDPattern(configuration.getpGTIDPattern());
+
             CoordinatorInterface coordinator;
             switch (configuration.getMetadataStoreType()) {
                 case Configuration.METADATASTORE_ZOOKEEPER:

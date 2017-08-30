@@ -171,7 +171,7 @@ public class AugmentedRow {
      * <p>Pre-create objects for speed (this improves overall runtime speed ~10%)</p>
      */
     public void initColumnDataSlots() {
-        for (String columnName: tableSchemaVersion.getColumnIndexToNameMap().values()) {
+        for (String columnName: tableSchemaVersion.getColumnNames()) {
             eventColumns.put(columnName, new HashMap<String, String>());
         }
         if (applyUuid) {
@@ -197,10 +197,10 @@ public class AugmentedRow {
         } else {
             Map<Integer, String> pkColumns = new HashMap<>();
 
-            Set<String> columnNames = tableSchemaVersion.getColumnsSchema().keySet();
+            Set<String> columnNames = tableSchemaVersion.getColumnNames();
             for (String columnName: columnNames) {
 
-                ColumnSchema cs = tableSchemaVersion.getColumnsSchema().get(columnName);
+                ColumnSchema cs = tableSchemaVersion.getColumnSchemaByColumnName(columnName);
 
                 String  ck = cs.getColumnKey();
                 Integer op = cs.getOrdinalPosition();

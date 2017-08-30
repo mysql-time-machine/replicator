@@ -1,16 +1,20 @@
 package com.booking.replication.schema.table;
 
 import com.booking.replication.schema.column.ColumnSchema;
+import com.booking.replication.util.CaseInsensitiveMap;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 
 public class TableSchemaVersion {
 
-    private HashMap<String,ColumnSchema> columns;
+    private final Map<String,ColumnSchema> columns = new CaseInsensitiveMap<>();
 
-    private HashMap<Integer,String> columnIndexToColumnNameMap = new HashMap<>();
+    private final Map<Integer,String> columnIndexToColumnNameMap = new HashMap<>();
 
     private final String tableSchemaVersionUUID;
 
@@ -18,18 +22,16 @@ public class TableSchemaVersion {
     // private String CHARACTER_SET_NAME;
 
     public TableSchemaVersion() {
-        columns = new HashMap<>();
-
         tableSchemaVersionUUID = UUID.randomUUID().toString();;
     }
 
     public void addColumn(ColumnSchema columnSchema) {
-        this.columns.put(columnSchema.getColumnName(), columnSchema);
+        String columnName = columnSchema.getColumnName();
+        this.columns.put(columnName, columnSchema);
 
         // update the indexToNameMap
         Integer index = columnSchema.getOrdinalPosition();
-        String  name  = columnSchema.getColumnName();
-        columnIndexToColumnNameMap.put(index,name);
+        columnIndexToColumnNameMap.put(index, columnName);
     }
 
     public ColumnSchema getColumnSchemaByColumnName(String columnName) {
@@ -37,15 +39,11 @@ public class TableSchemaVersion {
     }
 
     public ColumnSchema getColumnSchemaByColumnIndex(Integer columnIndex) {
-        String columnName = getColumnIndexToNameMap().get(columnIndex);
+        String columnName = columnIndexToColumnNameMap.get(columnIndex);
         return columns.get(columnName);
     }
 
-    public HashMap<String, ColumnSchema> getColumnsSchema() {
-        return columns;
-    }
-
-    public HashMap<Integer,String> getColumnIndexToNameMap() {
-        return columnIndexToColumnNameMap;
+    public Set<String> getColumnNames() {
+        return Collections.unmodifiableSet(columns.keySet());
     }
 }

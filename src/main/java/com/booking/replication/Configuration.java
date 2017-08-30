@@ -301,6 +301,9 @@ public class Configuration {
      */
     public void validate() {
 
+        if (replication_schema == null) {
+            throw new RuntimeException("Replication schema cannot be null.");
+        }
         if (replication_schema.name == null) {
             throw new RuntimeException("Replication schema name cannot be null.");
         }
@@ -311,7 +314,7 @@ public class Configuration {
             throw new RuntimeException("Replication schema user name cannot be null.");
         }
 
-        if (metadata_store.zookeeper == null && metadata_store.file == null) {
+        if (metadata_store == null || (metadata_store.zookeeper == null && metadata_store.file == null)) {
             throw new RuntimeException("No metadata store specified, please provide "
                     + "either zookeeper or file-based metadata storage.");
         } else if (metadata_store.zookeeper != null && metadata_store.zookeeper.quorum == null) {
@@ -324,6 +327,10 @@ public class Configuration {
             if (hbaseConfiguration.namespace == null) {
                 throw new RuntimeException("HBase namespace cannot be null.");
             }
+        }
+
+        if (mySQLFailover == null) {
+            throw new RuntimeException("MySql failover cannot be null.");
         }
     }
 

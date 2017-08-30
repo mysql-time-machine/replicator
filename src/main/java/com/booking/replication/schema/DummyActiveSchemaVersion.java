@@ -32,12 +32,7 @@ public class DummyActiveSchemaVersion implements ActiveSchemaVersion {
     }
 
     @Override
-    public HashMap<String, TableSchemaVersion> getActiveSchemaTables() {
-        return null;
-    }
-
-    @Override
-    public HashMap<String, String> getActiveSchemaCreateStatements() {
+    public TableSchemaVersion getTableSchemaVersion(String tableName) {
         return null;
     }
 

@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Json Builder.
@@ -117,7 +118,7 @@ public class JsonBuilder {
         return json;
     }
 
-    public static String schemaVersionTablesToJson(HashMap<String, TableSchemaVersion> schemaVersionTables) {
+    public static String schemaVersionTablesToJson(Map<String, TableSchemaVersion> schemaVersionTables) {
         String json = null;
         try {
             json = om.writeValueAsString(schemaVersionTables);

@@ -19,9 +19,7 @@ public interface ActiveSchemaVersion {
 
     String toJson();
 
-    HashMap<String, TableSchemaVersion> getActiveSchemaTables();
-
-    HashMap<String, String> getActiveSchemaCreateStatements();
+    TableSchemaVersion getTableSchemaVersion(String tableName);
 
     AugmentedSchemaChangeEvent transitionSchemaToNextVersion(HashMap<String, String> schemaTransitionSequence, Long timestamp)
             throws SchemaTransitionException;

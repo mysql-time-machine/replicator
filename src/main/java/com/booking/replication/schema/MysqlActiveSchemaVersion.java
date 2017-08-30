@@ -7,6 +7,7 @@ import com.booking.replication.schema.column.types.EnumColumnSchema;
 import com.booking.replication.schema.column.types.SetColumnSchema;
 import com.booking.replication.schema.exception.SchemaTransitionException;
 import com.booking.replication.schema.table.TableSchemaVersion;
+import com.booking.replication.util.CaseInsensitiveMap;
 import com.booking.replication.util.JsonBuilder;
 
 import org.apache.commons.dbcp2.BasicDataSource;
@@ -25,6 +26,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -43,7 +45,7 @@ public class MysqlActiveSchemaVersion implements ActiveSchemaVersion {
             "SELECT * FROM `information_schema`.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?";
 
     private final HashMap<String,String> activeSchemaCreateStatements = new HashMap<>();
-    private final HashMap<String,TableSchemaVersion> activeSchemaTables      = new HashMap<>();
+    private final Map<String,TableSchemaVersion> activeSchemaTables = new CaseInsensitiveMap<>();
 
     private String lastReceivedDDL = null;
 
@@ -181,12 +183,12 @@ public class MysqlActiveSchemaVersion implements ActiveSchemaVersion {
 
     @Override
     public String schemaTablesToJson() {
-        return  JsonBuilder.schemaVersionTablesToJson(activeSchemaTables);
+        return JsonBuilder.schemaVersionTablesToJson(activeSchemaTables);
     }
 
     @Override
     public String schemaCreateStatementsToJson() {
-        return  JsonBuilder.schemaCreateStatementsToJson(activeSchemaCreateStatements);
+        return JsonBuilder.schemaCreateStatementsToJson(activeSchemaCreateStatements);
     }
 
     @Override
@@ -195,13 +197,8 @@ public class MysqlActiveSchemaVersion implements ActiveSchemaVersion {
     }
 
     @Override
-    public HashMap<String, TableSchemaVersion> getActiveSchemaTables() {
-        return activeSchemaTables;
-    }
-
-    @Override
-    public HashMap<String, String> getActiveSchemaCreateStatements() {
-        return activeSchemaCreateStatements;
+    public TableSchemaVersion getTableSchemaVersion(String tableName) {
+        return activeSchemaTables.get(tableName);
     }
 
     /**

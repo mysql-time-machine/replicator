@@ -178,7 +178,7 @@ public class EventAugmenter {
         PerTableMetrics tableMetrics = PerTableMetrics.get(tableName);
 
         // getValue schema for that table from activeSchemaVersion
-        TableSchemaVersion tableSchemaVersion = activeSchemaVersion.getActiveSchemaTables().get(tableName);
+        TableSchemaVersion tableSchemaVersion = activeSchemaVersion.getTableSchemaVersion(tableName);
 
         if (tableSchemaVersion == null) {
             throw new TableMapException("Table schema not initialized for table " + tableName + ". Cant proceed.", writeRowsEvent);
@@ -224,17 +224,15 @@ public class EventAugmenter {
             //column index counting starts with 1
             for (int columnIndex = 1; columnIndex <= numberOfColumns ; columnIndex++ ) {
 
-                String columnName = tableSchemaVersion.getColumnIndexToNameMap().get(columnIndex);
+                // We need schema for proper type casting
+                ColumnSchema columnSchema = tableSchemaVersion.getColumnSchemaByColumnIndex(columnIndex);
 
                 // but here index goes from 0..
                 Column columnValue = row.getColumns().get(columnIndex - 1);
 
-                // We need schema for proper type casting
-                ColumnSchema columnSchema = tableSchemaVersion.getColumnSchemaByColumnName(columnName);
-
                 String value = Converter.orTypeToString(columnValue, columnSchema);
 
-                augEvent.addColumnDataForInsert(columnName, value, columnSchema.getColumnType());
+                augEvent.addColumnDataForInsert(columnSchema.getColumnName(), value, columnSchema.getColumnType());
             }
             augEventGroup.addSingleRowEvent(augEvent);
         }
@@ -254,7 +252,7 @@ public class EventAugmenter {
         PerTableMetrics tableMetrics = PerTableMetrics.get(tableName);
 
         // getValue schema for that table from activeSchemaVersion
-        TableSchemaVersion tableSchemaVersion = activeSchemaVersion.getActiveSchemaTables().get(tableName);
+        TableSchemaVersion tableSchemaVersion = activeSchemaVersion.getTableSchemaVersion(tableName);
 
         // TODO: refactor
         if (tableSchemaVersion == null) {
@@ -296,19 +294,16 @@ public class EventAugmenter {
             //column index counting starts with 1
             for (int columnIndex = 1; columnIndex <= numberOfColumns ; columnIndex++ ) {
 
-                // getValue column name from indexToNameMap
-                String columnName = tableSchemaVersion.getColumnIndexToNameMap().get(columnIndex);
+                // We need schema for proper type casting
+                ColumnSchema columnSchema = tableSchemaVersion.getColumnSchemaByColumnIndex(columnIndex);
 
                 // but here index goes from 0..
                 Column columnValue = row.getColumns().get(columnIndex - 1);
 
-                // We need schema for proper type casting
-                ColumnSchema columnSchema = tableSchemaVersion.getColumnSchemaByColumnName(columnName);
-
                 // type cast
                 String value = Converter.orTypeToString(columnValue, columnSchema);
 
-                augEvent.addColumnDataForInsert(columnName, value, columnSchema.getColumnType());
+                augEvent.addColumnDataForInsert(columnSchema.getColumnName(), value, columnSchema.getColumnType());
             }
             augEventGroup.addSingleRowEvent(augEvent);
 
@@ -328,7 +323,7 @@ public class EventAugmenter {
         PerTableMetrics tableMetrics = PerTableMetrics.get(tableName);
 
         // getValue schema for that table from activeSchemaVersion
-        TableSchemaVersion tableSchemaVersion = activeSchemaVersion.getActiveSchemaTables().get(tableName);
+        TableSchemaVersion tableSchemaVersion = activeSchemaVersion.getTableSchemaVersion(tableName);
 
         // TODO: refactor
         if (tableSchemaVersion == null) {
@@ -368,17 +363,15 @@ public class EventAugmenter {
             //column index counting starts with 1
             for (int columnIndex = 1; columnIndex <= numberOfColumns ; columnIndex++ ) {
 
-                String columnName = tableSchemaVersion.getColumnIndexToNameMap().get(columnIndex);
+                // We need schema for proper type casting
+                ColumnSchema columnSchema = tableSchemaVersion.getColumnSchemaByColumnIndex(columnIndex);
 
                 // but here index goes from 0..
                 Column columnValue = row.getColumns().get(columnIndex - 1);
 
-                // We need schema for proper type casting
-                ColumnSchema columnSchema = tableSchemaVersion.getColumnSchemaByColumnName(columnName);
-
                 String value = Converter.orTypeToString(columnValue, columnSchema);
 
-                augEvent.addColumnDataForInsert(columnName, value, columnSchema.getColumnType());
+                augEvent.addColumnDataForInsert(columnSchema.getColumnName(), value, columnSchema.getColumnType());
             }
             augEventGroup.addSingleRowEvent(augEvent);
 
@@ -399,7 +392,7 @@ public class EventAugmenter {
         PerTableMetrics tableMetrics = PerTableMetrics.get(tableName);
 
         // getValue schema for that table from activeSchemaVersion
-        TableSchemaVersion tableSchemaVersion = activeSchemaVersion.getActiveSchemaTables().get(tableName);
+        TableSchemaVersion tableSchemaVersion = activeSchemaVersion.getTableSchemaVersion(tableName);
 
         // TODO: refactor
         if (tableSchemaVersion == null) {
@@ -441,18 +434,16 @@ public class EventAugmenter {
             //column index counting starts with 1
             for (int columnIndex = 1; columnIndex <= numberOfColumns ; columnIndex++ ) {
 
-                String columnName = tableSchemaVersion.getColumnIndexToNameMap().get(columnIndex);
+                // We need schema for proper type casting
+                ColumnSchema columnSchema = tableSchemaVersion.getColumnSchemaByColumnIndex(columnIndex);
 
                 // but here index goes from 0..
                 Column columnValue = row.getColumns().get(columnIndex - 1);
 
-                // We need schema for proper type casting
-                ColumnSchema columnSchema = tableSchemaVersion.getColumnSchemaByColumnName(columnName);
-
                 String value = Converter.orTypeToString(columnValue, columnSchema);
 
                 // TODO: delete has same content as insert, but add a differently named method for clarity
-                augEvent.addColumnDataForInsert(columnName, value, columnSchema.getColumnType());
+                augEvent.addColumnDataForInsert(columnSchema.getColumnName(), value, columnSchema.getColumnType());
             }
             augEventGroup.addSingleRowEvent(augEvent);
 
@@ -471,7 +462,7 @@ public class EventAugmenter {
         PerTableMetrics tableMetrics = PerTableMetrics.get(tableName);
 
         // getValue schema for that table from activeSchemaVersion
-        TableSchemaVersion tableSchemaVersion = activeSchemaVersion.getActiveSchemaTables().get(tableName);
+        TableSchemaVersion tableSchemaVersion = activeSchemaVersion.getTableSchemaVersion(tableName);
 
         // TODO: refactor
         if (tableSchemaVersion == null) {
@@ -515,22 +506,20 @@ public class EventAugmenter {
             //column index counting starts with 1
             for (int columnIndex = 1; columnIndex <= numberOfColumns ; columnIndex++ ) {
 
-                String columnName = tableSchemaVersion.getColumnIndexToNameMap().get(columnIndex);
+                // We need schema for proper type casting; Since this is RowChange event, schema
+                // is the same for both before and after states
+                ColumnSchema columnSchema = tableSchemaVersion.getColumnSchemaByColumnIndex(columnIndex);
 
                 // but here index goes from 0..
                 Column columnValueBefore = rowPair.getBefore().getColumns().get(columnIndex - 1);
                 Column columnValueAfter = rowPair.getAfter().getColumns().get(columnIndex - 1);
-
-                // We need schema for proper type casting; Since this is RowChange event, schema
-                // is the same for both before and after states
-                ColumnSchema columnSchema = tableSchemaVersion.getColumnSchemaByColumnName(columnName);
 
                 String valueBefore = Converter.orTypeToString(columnValueBefore, columnSchema);
                 String valueAfter  = Converter.orTypeToString(columnValueAfter, columnSchema);
 
                 String columnType  = columnSchema.getColumnType();
 
-                augEvent.addColumnDataForUpdate(columnName, valueBefore, valueAfter, columnType);
+                augEvent.addColumnDataForUpdate(columnSchema.getColumnName(), valueBefore, valueAfter, columnType);
             }
             augEventGroup.addSingleRowEvent(augEvent);
 
@@ -550,7 +539,7 @@ public class EventAugmenter {
         PerTableMetrics tableMetrics = PerTableMetrics.get(tableName);
 
         // getValue schema for that table from activeSchemaVersion
-        TableSchemaVersion tableSchemaVersion = activeSchemaVersion.getActiveSchemaTables().get(tableName);
+        TableSchemaVersion tableSchemaVersion = activeSchemaVersion.getTableSchemaVersion(tableName);
 
         // TODO: refactor
         if (tableSchemaVersion == null) {
@@ -594,10 +583,11 @@ public class EventAugmenter {
             //column index counting starts with 1
             for (int columnIndex = 1; columnIndex <= numberOfColumns ; columnIndex++ ) {
 
-                String columnName = tableSchemaVersion.getColumnIndexToNameMap().get(columnIndex);
+                // We need schema for proper type casting
+                ColumnSchema columnSchema = tableSchemaVersion.getColumnSchemaByColumnIndex(columnIndex);
 
-                if (columnName == null) {
-                    LOGGER.error("null columnName for { columnIndex => " + columnIndex + ", tableName => " + tableName + " }" );
+                if (columnSchema == null) {
+                    LOGGER.error("null columnScheme for { columnIndex => " + columnIndex + ", tableName => " + tableName + " }" );
                     throw new TableMapException("columnName cant be null", upEvent);
                 }
 
@@ -605,15 +595,12 @@ public class EventAugmenter {
                 Column columnValueBefore = rowPair.getBefore().getColumns().get(columnIndex - 1);
                 Column columnValueAfter = rowPair.getAfter().getColumns().get(columnIndex - 1);
 
-                // We need schema for proper type casting
-                ColumnSchema columnSchema = tableSchemaVersion.getColumnSchemaByColumnName(columnName);
-
                 try {
                     String valueBefore = Converter.orTypeToString(columnValueBefore, columnSchema);
                     String valueAfter  = Converter.orTypeToString(columnValueAfter, columnSchema);
                     String columnType  = columnSchema.getColumnType();
 
-                    augEvent.addColumnDataForUpdate(columnName, valueBefore, valueAfter, columnType);
+                    augEvent.addColumnDataForUpdate(columnSchema.getColumnName(), valueBefore, valueAfter, columnType);
                 } catch (TableMapException e) {
                     TableMapException rethrow = new TableMapException(e.getMessage(), upEvent);
                     rethrow.setStackTrace(e.getStackTrace());

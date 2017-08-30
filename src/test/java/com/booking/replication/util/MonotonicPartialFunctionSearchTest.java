@@ -35,7 +35,7 @@ public class MonotonicPartialFunctionSearchTest {
     {
         String[] values = {"1000", null, null, "2000", null, "4000", null, "6000"};
 
-        MonotonicPartialFunctionSearch f = new MonotonicPartialFunctionSearch<>(
+        MonotonicPartialFunctionSearch<String> f = new MonotonicPartialFunctionSearch<>(
                 x -> values[x]);
 
         assertEquals(Integer.valueOf(3), f.preimageGLB("3000",0,values.length-1));
@@ -74,7 +74,7 @@ public class MonotonicPartialFunctionSearchTest {
             domainValuesHitMap[i] = false;
         }
 
-        MonotonicPartialFunctionSearch f = new MonotonicPartialFunctionSearch<>(
+        MonotonicPartialFunctionSearch<Integer> f = new MonotonicPartialFunctionSearch<>(
                     x ->
                     {
                         assertFalse(domainValuesHitMap[x]);

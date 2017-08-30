@@ -6,7 +6,7 @@
 
     <groupId>com.booking</groupId>
     <artifactId>mysql-replicator</artifactId>
-    <version>0.14.0</version>
+    <version>0.14.1</version>
     <packaging>jar</packaging>
 
     <name>mysql-replicator</name>

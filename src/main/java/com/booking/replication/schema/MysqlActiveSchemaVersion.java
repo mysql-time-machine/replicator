@@ -24,6 +24,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -194,6 +195,16 @@ public class MysqlActiveSchemaVersion implements ActiveSchemaVersion {
     @Override
     public String toJson() {
         return JsonBuilder.schemaVersionToJson(this);
+    }
+
+    //getter used in json serialisation
+    public Map<String, TableSchemaVersion> getActiveSchemaTables() {
+        return Collections.unmodifiableMap(activeSchemaTables);
+    }
+
+    //getter used in json serialisation
+    public Map<String, String> getActiveSchemaCreateStatements() {
+        return Collections.unmodifiableMap(activeSchemaCreateStatements);
     }
 
     @Override

@@ -5,22 +5,15 @@ package com.booking.replication.schema.exception;
  */
 public class SchemaTransitionException extends Exception {
 
-    private Exception originalException;
-
     public SchemaTransitionException() {
-        this("", null);
+        super("");
     }
 
     public SchemaTransitionException(String message) {
-        this(message, null);
+        super(message);
     }
 
     public SchemaTransitionException(String message, Exception exception) {
-        super(message);
-        originalException = exception;
-    }
-
-    public Exception getOriginalException() {
-        return originalException;
+        super(message, exception);
     }
 }

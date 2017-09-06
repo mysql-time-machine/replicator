@@ -236,7 +236,6 @@ public class PipelineOrchestrator extends Thread {
 
         } catch (SchemaTransitionException e) {
             LOGGER.error("SchemaTransitionException, requesting replicator shutdown...", e);
-            LOGGER.error("Original exception:", e.getOriginalException());
             requestReplicatorShutdown();
         } catch (InterruptedException e) {
             LOGGER.error("InterruptedException, requesting replicator shutdown...", e);

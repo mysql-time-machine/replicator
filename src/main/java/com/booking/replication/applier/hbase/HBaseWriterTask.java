@@ -6,20 +6,19 @@ import com.booking.replication.Metrics;
 import com.booking.replication.applier.ChaosMonkey;
 import com.booking.replication.applier.TaskStatus;
 import com.booking.replication.augmenter.AugmentedRow;
-
+import com.booking.replication.util.CaseInsensitiveMap;
 import com.booking.replication.validation.ValidationService;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Connection;
-import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Table;
-import org.apache.hadoop.hbase.util.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
@@ -177,7 +176,7 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
 
     private static class PerTableMetrics {
         private static String prefix = "HBase";
-        private static final HashMap<String, PerTableMetrics> tableMetricsHash = new HashMap<>();
+        private static final Map<String, PerTableMetrics> tableMetricsHash = new CaseInsensitiveMap<>();
 
         static PerTableMetrics get(String tableName) {
             synchronized (tableMetricsHash) {

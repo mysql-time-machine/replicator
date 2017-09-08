@@ -3,6 +3,7 @@ package com.booking.replication.augmenter;
 import com.booking.replication.schema.column.ColumnSchema;
 import com.booking.replication.schema.exception.TableMapException;
 import com.booking.replication.schema.table.TableSchemaVersion;
+import com.booking.replication.util.CaseInsensitiveMap;
 import com.booking.replication.util.JsonBuilder;
 
 import com.google.code.or.binlog.BinlogEventV4Header;
@@ -55,7 +56,7 @@ public class AugmentedRow {
     //          type         => $type
     //      }
     // }
-    private HashMap<String,Map<String,String>> eventColumns = new HashMap<>();
+    private Map<String,Map<String,String>> eventColumns = new CaseInsensitiveMap<>();
 
     private String eventType;
 
@@ -238,7 +239,7 @@ public class AugmentedRow {
         return tableName;
     }
 
-    public HashMap<String, Map<String, String>> getEventColumns() {
+    public Map<String, Map<String, String>> getEventColumns() {
         return eventColumns;
     }
 

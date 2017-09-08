@@ -13,6 +13,7 @@ import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 
 import com.booking.replication.schema.exception.TableMapException;
+import com.booking.replication.util.CaseInsensitiveMap;
 import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.impl.event.FormatDescriptionEvent;
 import com.google.code.or.binlog.impl.event.QueryEvent;
@@ -62,7 +63,7 @@ public class KafkaApplier implements Applier {
     private static List<String> fixedListOfIncludedTables;
     private static List<String> excludeTablePatterns;
 
-    private static final HashMap<String,Boolean> wantedTables = new HashMap<String,Boolean>();
+    private static final Map<String,Boolean> wantedTables = new CaseInsensitiveMap<>();
 
     // We need to make sure that all rows from one table end up on the same
     // partition. That is why we have a separate buffer for each partition, so

@@ -11,6 +11,7 @@ import com.booking.replication.schema.exception.SchemaTransitionException;
 import com.booking.replication.schema.exception.TableMapException;
 import com.booking.replication.schema.table.TableSchemaVersion;
 
+import com.booking.replication.util.CaseInsensitiveMap;
 import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.StatusVariable;
 import com.google.code.or.binlog.impl.event.*;
@@ -27,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import java.net.URISyntaxException;
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.Map;
 
 /**
  * EventAugmenter
@@ -617,7 +619,7 @@ public class EventAugmenter {
 
     private static class PerTableMetrics {
         private static String prefix = "mysql";
-        private static HashMap<String, PerTableMetrics> tableMetricsHash = new HashMap<>();
+        private static Map<String, PerTableMetrics> tableMetricsHash = new CaseInsensitiveMap<>();
 
         static PerTableMetrics get(String tableName) {
             if (! tableMetricsHash.containsKey(tableName)) {

@@ -183,19 +183,37 @@ class BlackholeCopyMethod(object):
             done.append((table[0], table[1]))
 
     def do_copy(self, config, table):
+        primaries_to_chunk = ['tinyint', 'smallint', 'mediumint', 'int', 'bigint']
+        table_size_to_chunk = 512 * 1024 * 1024
+
         source = self.conDis.get_source()
         cursor = source.cursor()
+
+        # is chunked copy possible
+        sql = """SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = %s and table_name = %s and column_key='PRI'"""
+        logger.info(sql % (table[0], table[1]))
+        cursor.execute(sql, (table[0], table[1]))
+        primary_key = cursor.fetchall()
+
+        # is table big
+        # big tables should be copied by chunks to prevent having huge binary logs. Despite that we shouldn't chunk small tables because of slowdown
+        sql = """SELECT data_length FROM information_schema.tables WHERE table_schema = %s and table_name = %s"""
+        logger.info(sql % (table[0], table[1]))
+        cursor.execute(sql, (table[0], table[1]))
+        table_size = cursor.fetchall()
+
+        # is table partitioned
         if len(table) == 3:
-            sql = """SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = %s and table_name = %s and column_key='PRI'"""
-            logger.info(sql % (table[0], table[1]))
-            cursor.execute(sql, (table[0], table[1]))
-            primary_key = cursor.fetchall()
-            if len(primary_key) == 1 and primary_key[0][1] in ['tinyint', 'smallint', 'int', 'bigint']:
-                self.chunked_copy(config, table, primary_key[0][0])
+            if table_size > table_size_to_chunk and len(primary_key) >= 1 and primary_key[0][1] in primaries_to_chunk:
+                self.chunked_partition_copy(config, table, primary_key[0][0])
                 return
             sql = 'INSERT INTO `{}`.`{}` SELECT * FROM `{}`.`{}` PARTITION ({})'.format(table[0], table[1], table[0], self.get_hash(table[1]), table[2])
         else:
+            if table_size > table_size_to_chunk and len(primary_key) >= 1 and primary_key[0][1] in primaries_to_chunk:
+                self.chunked_copy(config, table, primary_key[0][0])
+                return
             sql = 'INSERT INTO `{}`.`{}` SELECT * FROM `{}`.`{}`'.format(table[0], table[1], table[0], self.get_hash(table[1]))
+
         logger.info(sql)
         executed = False
         retryTimes = 0
@@ -219,17 +237,18 @@ class BlackholeCopyMethod(object):
     def chunked_copy(self, config, table, primary_key):
         source = self.conDis.get_source()
         cursor = source.cursor()
-        self.execute_sql(cursor, 'SELECT `{}` FROM `{}`.`{}` PARTITION ({})'.format(primary_key, table[0], self.get_hash(table[1]), table[2]))
+        self.execute_sql(cursor, 'SELECT DISTINCT(`{}`) FROM `{}`.`{}`'.format(primary_key, table[0], self.get_hash(table[1])))
         ids = cursor.fetchall()
         cursor.close()
         ids = map(itemgetter(0), ids)
         cursor = source.cursor()
         offset = 0
-        limit = 999
+        limit = 9999
         while offset < len(ids):
             chunk = ids[offset:limit]
-            sql = 'INSERT INTO `{}`.`{}` SELECT * FROM `{}`.`{}` PARTITION ({}) WHERE id IN ({})'.format(table[0], table[1], table[0], self.get_hash(table[1]), table[2], ','.join([str(i) for i in chunk]))
-            logger.info('Inserting chunk {} to {}'.format(min(chunk), max(chunk)))
+            # TODO: use BETWEEN x and y
+            sql = 'INSERT INTO `{}`.`{}` SELECT * FROM `{}`.`{}` WHERE {} IN ({})'.format(table[0], table[1], table[0], self.get_hash(table[1]), primary_key, ','.join([str(i) for i in chunk]))
+            logger.info('Inserting table {}.{} chunk {} to {}'.format(table[0], table[1], min(chunk), max(chunk)))
             executed = False
             retryTimes = 0
             while not executed:
@@ -237,7 +256,42 @@ class BlackholeCopyMethod(object):
                     cursor.execute(sql)
                     source.commit()
                     offset = limit
-                    limit += 1000
+                    limit += 10000
+                    executed = True
+                except Exception, MySQLdb.OperationalError:
+                    retryTimes += 1
+                    if retryTimes == self.MAX_RETRIES:
+                        break
+                    source = self.conDis.get_source()
+                    cursor = source.cursor()
+            if not executed:
+                self.post()
+                logger.error("We are unable to insert into Table: %s after %d retries" % (table, self.MAX_RETRIES))
+        cursor.close()
+
+    def chunked_partition_copy(self, config, table, primary_key):
+        source = self.conDis.get_source()
+        cursor = source.cursor()
+        self.execute_sql(cursor, 'SELECT DISTINCT(`{}`) FROM `{}`.`{}` PARTITION ({})'.format(primary_key, table[0], self.get_hash(table[1]), table[2]))
+        ids = cursor.fetchall()
+        cursor.close()
+        ids = map(itemgetter(0), ids)
+        cursor = source.cursor()
+        offset = 0
+        limit = 9999
+        while offset < len(ids):
+            chunk = ids[offset:limit]
+            # TODO: use BETWEEN x and y
+            sql = 'INSERT INTO `{}`.`{}` SELECT * FROM `{}`.`{}` PARTITION ({}) WHERE {} IN ({})'.format(table[0], table[1], table[0], self.get_hash(table[1]), table[2], primary_key, ','.join([str(i) for i in chunk]))
+            logger.info('Inserting table {}.{}.p{} chunk {} to {}'.format(table[0], table[1], table[2], min(chunk), max(chunk)))
+            executed = False
+            retryTimes = 0
+            while not executed:
+                try:
+                    cursor.execute(sql)
+                    source.commit()
+                    offset = limit
+                    limit += 10000
                     executed = True
                 except Exception, MySQLdb.OperationalError:
                     retryTimes += 1

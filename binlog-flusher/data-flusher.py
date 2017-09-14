@@ -283,7 +283,7 @@ class BlackholeCopyMethod(object):
             chunk = ids[offset:limit]
             # TODO: use BETWEEN x and y
             sql = 'INSERT INTO `{}`.`{}` SELECT * FROM `{}`.`{}` PARTITION ({}) WHERE {} IN ({})'.format(table[0], table[1], table[0], self.get_hash(table[1]), table[2], primary_key, ','.join([str(i) for i in chunk]))
-            logger.info('Inserting table {}.{}.p{} chunk {} to {}'.format(table[0], table[1], table[2], min(chunk), max(chunk)))
+            logger.info('Inserting table {}.{}.{} chunk {} to {}'.format(table[0], table[1], table[2], min(chunk), max(chunk)))
             executed = False
             retryTimes = 0
             while not executed:

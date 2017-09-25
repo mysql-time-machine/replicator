@@ -49,12 +49,12 @@ public class RotateEventHandler implements BinlogEventV4Handler {
 
         String currentBinlogFileName = pipelinePosition.getCurrentPosition().getBinlogFilename();
         long currentBinlogPosition = pipelinePosition.getCurrentPosition().getBinlogPosition();
+        // binlog begins on position 4
+        if (currentBinlogPosition <= 0L) currentBinlogPosition = 4;
 
         String nextBinlogFileName = event.getBinlogFileName().toString();
 
-
-        LOGGER.info("All rows committed for binlog file "
-                + currentBinlogFileName + ", moving to next binlog " + nextBinlogFileName);
+        LOGGER.info("All rows committed, moving to next binlog " + nextBinlogFileName);
 
         String pseudoGTID = pipelinePosition.getCurrentPseudoGTID();
         String pseudoGTIDFullQuery = pipelinePosition.getCurrentPseudoGTIDFullQuery();

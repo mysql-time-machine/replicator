@@ -28,7 +28,6 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
 
     private final Configuration configuration;
 
-    private volatile boolean isLeader = false;
     private volatile boolean isRunning = true;
 
     private SafeCheckPoint safeCheckPoint;
@@ -53,7 +52,6 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
 
         @Override
         public void takeLeadership(CuratorFramework curatorFramework) throws Exception {
-            isLeader = true;
             LOGGER.info("Acquired leadership, starting Replicator.");
 
             try {
@@ -61,6 +59,8 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+
+            // Lost leadership
             isRunning = false;
         }
 
@@ -113,7 +113,7 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
 
         le.start();
 
-        while (!isLeader || isRunning) {
+        while (isRunning) {
             Thread.sleep(1000);
         }
     }

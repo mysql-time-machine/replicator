@@ -643,9 +643,11 @@ public class PipelineOrchestrator extends Thread {
         processQueueLoop(new BinlogPositionInfo(replicantPool.getReplicantDBActiveHostServerID(),
                 EventPosition.getEventBinlogFileName(commitEvent), EventPosition.getEventBinlogPosition(commitEvent)));
 
+        if (!isRunning()) return;
+
         // at this point transaction must be committed by xidEvent which we rewinded to and the commit events must be applied
         if (currentTransaction != null) {
-            throw new TransactionException("Transaction must be already committed at this point" + currentTransaction);
+            throw new TransactionException("Transaction must be already committed at this point: " + currentTransaction);
         }
 
         isRewinding = false;

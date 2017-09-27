@@ -10,9 +10,11 @@ import org.slf4j.LoggerFactory;
  */
 public class Overseer extends Thread {
 
+    private static final int MAX_FAILS = 10;
     private PipelineOrchestrator pipelineOrchestrator;
     private BinlogEventProducer producer;
     private final PipelinePosition pipelinePosition;
+    private int failCounter = 0;
 
     private volatile boolean doMonitor = true;
 
@@ -63,17 +65,20 @@ public class Overseer extends Thread {
 
     private void makeSureProducerIsRunning() {
         // TODO: merge into health-checker class
-        if (!producer.getOpenReplicator().isRunning()) {
-            CurrentTransaction currentTransaction = pipelineOrchestrator.getCurrentTransaction();
-            if (currentTransaction == null || !currentTransaction.isRewinded()) {
-                LOGGER.error("Producer stopped running at pipeline position: "
-                        + pipelinePosition.getCurrentPosition().getBinlogFilename()
-                        + ":"
-                        + pipelinePosition.getCurrentPosition().getBinlogPosition()
-                        + ". Requesting pipeline shutdown...");
-                stopMonitoring();
-                pipelineOrchestrator.requestReplicatorShutdown();
-            }
+        if (producer.getOpenReplicator().isRunning()) {
+            failCounter = 0;
+            return;
         }
+
+        if (failCounter >= MAX_FAILS) {
+            LOGGER.error("Producer stopped running at pipeline position: "
+                    + pipelinePosition.getCurrentPosition().getBinlogFilename()
+                    + ":"
+                    + pipelinePosition.getCurrentPosition().getBinlogPosition()
+                    + ". Requesting pipeline shutdown...");
+            stopMonitoring();
+            pipelineOrchestrator.requestReplicatorShutdown();
+        }
+        failCounter++;
     }
 }

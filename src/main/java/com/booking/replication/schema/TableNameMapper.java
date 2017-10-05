@@ -11,7 +11,7 @@ import java.util.TimeZone;
  *
  *  <p>TODO: optional hourly tables (--delta-hourly) (currently only daily tables are available)</p>
  *
- *  <p>TODO: timezone specification option (currently all [timestamp => YYYYMMDD] conversions use the default
+ *  <p>TODO: timezone specification option (currently all  {@literal [timestamp = YYYYMMDD]} conversions use the default
  *        timezone of the system the replicator is running on)</p>
  */
 public class TableNameMapper {

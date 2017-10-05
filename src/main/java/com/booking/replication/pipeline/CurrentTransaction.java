@@ -180,6 +180,7 @@ public class CurrentTransaction {
 
     /**
      * Update table map cache.
+     * @param event event
      */
     public void updateCache(TableMapEvent event) {
         LOGGER.debug("Updating cache. firstMapEventInTransaction: " + firstMapEventInTransaction + ", event: " + event);
@@ -204,6 +205,10 @@ public class CurrentTransaction {
 
     /**
      * Map table id to table name.
+     *
+     * @param tableID table id
+     * @return table name
+     * @throws TableMapException Table ID not present in CurrentTransaction
      */
     public String getTableNameFromID(Long tableID) throws TableMapException {
         if (! tableID2DBName.containsKey(tableID)) {
@@ -218,6 +223,11 @@ public class CurrentTransaction {
 
     /**
      * Map table id to schema name.
+     *
+     * @param tableID table id
+     *
+     * @return schema name
+     * @throws TableMapException Table ID not present in CurrentTransaction
      */
     public String getDBNameFromTableID(Long tableID) throws TableMapException {
         String dbName = tableID2DBName.get(tableID);

@@ -36,6 +36,8 @@ public class BinlogPositionInfo {
 
     /**
      * Binlog position information.
+     * @param host              host
+     * @param serverID          server id
      * @param filename          Binlog filename
      * @param position          Binlog position
      * @param fakeMsCounter     Fake microsecond counter

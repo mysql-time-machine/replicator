@@ -199,7 +199,7 @@ public class BinlogCoordinatesFinder {
      * @param condition the stop scan condition. Should not navigate over the dataset.
      * @param file the file to scan
      * @param connection the connection to use
-     * @throws SQLException
+     * @throws SQLException Error while executing the SQL query
      */
     private void findEvent(Predicate<ResultSet> condition, String file, Connection connection) throws SQLException {
 

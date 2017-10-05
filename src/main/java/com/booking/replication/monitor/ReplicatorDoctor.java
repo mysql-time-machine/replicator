@@ -18,8 +18,8 @@ public class ReplicatorDoctor implements IReplicatorDoctor {
 
     /**
      * @param eventsPushedToWorldCounter - the counter which helps measure the work the Replicator pushes to the outside world
-     * @param counterDescription
-     * @param logger
+     * @param counterDescription - counterDescription
+     * @param logger - logger
      * @param interestingEventsObservedCounter - the counter which shows how many interesting events the Replicator has observed (the # of events
      *                                          that have reached the Applier) in the databases being monitored
      */

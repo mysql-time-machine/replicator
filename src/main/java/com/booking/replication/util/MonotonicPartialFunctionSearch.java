@@ -222,6 +222,8 @@ public class MonotonicPartialFunctionSearch<V extends Comparable<V>> {
      * of the interval such that its image is less than or equal to the value
      *
      * @param v the given value
+     * @param low minimum
+     * @param high maximum
      * @return the largest element of the domain having the image less than or equal to the value
      */
     public Integer preimageGLB(V v, int low, int high){

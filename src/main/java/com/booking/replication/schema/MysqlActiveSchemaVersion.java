@@ -269,7 +269,6 @@ public class MysqlActiveSchemaVersion implements ActiveSchemaVersion {
      * and then reloading the activeSchema objects</p>
      *
      * @param sequence Sequence of DDL statements for schema transition
-     * @return ActiveSchemaVersion
      */
     @Override
     public void applyDDL(HashMap<String, String> sequence)

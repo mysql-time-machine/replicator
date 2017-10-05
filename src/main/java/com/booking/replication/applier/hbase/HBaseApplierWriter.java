@@ -1,14 +1,11 @@
 package com.booking.replication.applier.hbase;
 
-import static com.codahale.metrics.MetricRegistry.name;
-
 import com.booking.replication.Metrics;
 import com.booking.replication.applier.ApplierException;
 import com.booking.replication.applier.TaskStatus;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
-
 import com.booking.replication.validation.ValidationService;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Gauge;
@@ -20,9 +17,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static com.codahale.metrics.MetricRegistry.name;
 
 public class HBaseApplierWriter {
 
@@ -132,11 +140,11 @@ public class HBaseApplierWriter {
     }
 
     /**
-     * Helper function to identify if any tasks are still pending, will return true only when
-     * all tasks have a success status.
+     * Helper function to identify if any tasks are still pending.
      *
-     * @todo: the logic here is sufficient but not exhaustive, improve robustness of following code
+     * @return will return <code>true</code> only when all tasks have a success status.
      */
+    // TODO: the logic here is sufficient but not exhaustive, improve robustness of following code
     public boolean areAllTasksDone() {
         int notFinished = 0;
         for (ApplierTask v: taskTransactionBuffer.values()) {
@@ -258,6 +266,7 @@ public class HBaseApplierWriter {
      * Buffer current event for processing.
      *
      * @param augmentedRowsEvent Event
+     * @throws TaskBufferInconsistencyException if task uuid doesn't exist
      */
     public synchronized void pushToCurrentTaskBuffer(AugmentedRowsEvent augmentedRowsEvent)
         throws TaskBufferInconsistencyException {
@@ -312,6 +321,9 @@ public class HBaseApplierWriter {
 
     /**
      * Rotate tasks, mark current task as ready to be submitted and initialize new task buffer.
+     * @throws TaskBufferInconsistencyException More than one partial transaction in the buffer
+     * @throws ApplierException No slots available
+     * @throws IOException Cannot apply task after maximum retries
      */
     public void markCurrentTaskAsReadyAndCreateNewUuidBuffer()
             throws TaskBufferInconsistencyException, ApplierException, IOException {
@@ -436,6 +448,7 @@ public class HBaseApplierWriter {
 
     /**
      * Clean up task statuses, requeue tasks where necessary.
+     * @throws ApplierException Task accounting exception
      */
     public synchronized void updateTaskStatuses() throws ApplierException {
         // Loop submitted tasks
@@ -571,6 +584,8 @@ public class HBaseApplierWriter {
 
     /**
      * Submit tasks that are READY_FOR_PICK_UP.
+     *
+     * @throws TaskBufferInconsistencyException Task is marked as READY_FOR_PICK_UP, but has no rows
      */
     public void submitTasksThatAreReadyForPickUp() throws IOException, TaskBufferInconsistencyException {
 

@@ -1,22 +1,21 @@
 package com.booking.replication.pipeline;
 
-import static com.codahale.metrics.MetricRegistry.name;
-
 import com.booking.replication.Configuration;
 import com.booking.replication.Constants;
 import com.booking.replication.Metrics;
 import com.booking.replication.replicant.ReplicantPool;
-import com.google.code.or.OpenReplicator;
-import com.google.code.or.binlog.BinlogEventV4;
-
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Meter;
+import com.google.code.or.OpenReplicator;
+import com.google.code.or.binlog.BinlogEventV4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Random;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
+
+import static com.codahale.metrics.MetricRegistry.name;
 
 /**
  * Simple wrapper for Open Replicator. Writes events to blocking queue.
@@ -48,6 +47,7 @@ public class BinlogEventProducer {
      * @param queue             Event queue.
      * @param pipelinePosition  Binlog position information
      * @param configuration     Replicator configuration
+     * @param replicantPool     ReplicantPool
      */
     public BinlogEventProducer(
             BlockingQueue<BinlogEventV4> queue,
@@ -128,6 +128,7 @@ public class BinlogEventProducer {
 
     /**
      * Start.
+     * @throws Exception openReplicator Exception
      */
     public void start() throws Exception {
         LOGGER.info("Starting producer from: { binlog-file => " + openReplicator.getBinlogFileName()

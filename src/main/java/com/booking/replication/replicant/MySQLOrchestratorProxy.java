@@ -25,7 +25,7 @@ import java.nio.charset.StandardCharsets;
  * Handles the calling of orchestrator http API in order to obtain
  * binlog file name and position that corresponds to Pseudo GTID
  * The request looks like:
- *  http request to => $orchestrator_api_url/find-binlog-entry/$active_replicant_host/3306/$full_pgtid_query
+ *  http request to {@literal =>} $orchestrator_api_url/find-binlog-entry/$active_replicant_host/3306/$full_pgtid_query
  *  gives result like:
  *  {
  *      Code: "OK",

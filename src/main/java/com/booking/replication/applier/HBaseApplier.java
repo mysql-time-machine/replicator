@@ -61,6 +61,9 @@ public class HBaseApplier implements Applier {
 
     /**
      * HBaseApplier constructor.
+     * @param config config
+     * @param mainProgressIndicator mainProgressIndicator
+     * @param validationService validationService
      */
     public HBaseApplier(
         com.booking.replication.Configuration config,

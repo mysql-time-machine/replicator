@@ -1,7 +1,5 @@
 package com.booking.replication.augmenter;
 
-import static com.codahale.metrics.MetricRegistry.name;
-
 import com.booking.replication.Metrics;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.schema.ActiveSchemaVersion;
@@ -10,18 +8,23 @@ import com.booking.replication.schema.column.types.Converter;
 import com.booking.replication.schema.exception.SchemaTransitionException;
 import com.booking.replication.schema.exception.TableMapException;
 import com.booking.replication.schema.table.TableSchemaVersion;
-
 import com.booking.replication.util.CaseInsensitiveMap;
+import com.codahale.metrics.Counter;
 import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.StatusVariable;
-import com.google.code.or.binlog.impl.event.*;
+import com.google.code.or.binlog.impl.event.AbstractRowEvent;
+import com.google.code.or.binlog.impl.event.DeleteRowsEvent;
+import com.google.code.or.binlog.impl.event.DeleteRowsEventV2;
+import com.google.code.or.binlog.impl.event.QueryEvent;
+import com.google.code.or.binlog.impl.event.UpdateRowsEvent;
+import com.google.code.or.binlog.impl.event.UpdateRowsEventV2;
+import com.google.code.or.binlog.impl.event.WriteRowsEvent;
+import com.google.code.or.binlog.impl.event.WriteRowsEventV2;
 import com.google.code.or.binlog.impl.variable.status.QTimeZoneCode;
 import com.google.code.or.common.glossary.Column;
 import com.google.code.or.common.glossary.Pair;
 import com.google.code.or.common.glossary.Row;
 import com.google.code.or.common.util.MySQLConstants;
-
-import com.codahale.metrics.Counter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +32,8 @@ import java.net.URISyntaxException;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
+
+import static com.codahale.metrics.MetricRegistry.name;
 
 /**
  * EventAugmenter
@@ -128,7 +133,7 @@ public class EventAugmenter {
      * <p>Maps raw binlog event to column names and types</p>
      *
      * @param  event               AbstractRowEvent
-     * @param currentTransaction
+     * @param currentTransaction   CurrentTransaction
      * @return AugmentedRowsEvent  AugmentedRow
      */
     public AugmentedRowsEvent mapDataEventToSchema(AbstractRowEvent event, CurrentTransaction currentTransaction) throws TableMapException {

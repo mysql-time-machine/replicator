@@ -6,7 +6,7 @@
 
     <groupId>com.booking</groupId>
     <artifactId>mysql-replicator</artifactId>
-    <version>0.14.1</version>
+    <version>0.14.2</version>
     <packaging>jar</packaging>
 
     <name>mysql-replicator</name>
@@ -22,6 +22,70 @@
         <mockito.version>1.10.19</mockito.version>
         <sparkWebServer.version>2.5</sparkWebServer.version>
     </properties>
+
+    <url>https://github.com/mysql-time-machine/replicator</url>
+    <scm>
+        <connection>scm:git:ssh://github.com/mysql-time-machine/replicator.git</connection>
+        <url>https://github.com/mysql-time-machine/replicator.git</url>
+    </scm>
+    <developers>
+        <developer>
+            <name>Bosko Devetak</name>
+            <email>bosko.devetak@gmail.com</email>
+        </developer>
+        <developer>
+            <id>gregf1</id>
+            <name>Greg Franklin</name>
+        </developer>
+        <developer>
+            <id>ishassan</id>
+            <name>Islam Hassan</name>
+        </developer>
+        <developer>
+            <id>mikhaildutikov</id>
+            <name>Mikhail Dutikov</name>
+        </developer>
+        <developer>
+            <id>chcat</id>
+            <name>Pavel Salimov</name>
+        </developer>
+        <developer>
+            <id>pedros</id>
+            <name>Pedro Silva</name>
+        </developer>
+        <developer>
+            <id>mrares</id>
+            <name>Rares Mirica</name>
+        </developer>
+        <developer>
+            <id>raynald</id>
+            <name>Raynald Chung</name>
+        </developer>
+    </developers>
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+            <comments>A business-friendly OSS license</comments>
+        </license>
+    </licenses>
+    <organization>
+        <name>Booking.com</name>
+        <url>http://www.booking.com</url>
+    </organization>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+    </distributionManagement>
+
     <repositories>
         <repository>
             <id>cloudera</id>
@@ -35,6 +99,7 @@
             </releases>
         </repository>
     </repositories>
+
     <dependencies>
         <dependency>
             <groupId>com.sparkjava</groupId>
@@ -159,6 +224,7 @@
             <version>0.9.0.1</version>
         </dependency>
     </dependencies>
+
     <profiles>
         <profile>
             <id>assembly</id>
@@ -176,7 +242,67 @@
                 </pluginManagement>
             </build>
         </profile>
+        <profile>
+            <!-- Profile to release to OSSRH -->
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.sonatype.plugins</groupId>
+                        <artifactId>nexus-staging-maven-plugin</artifactId>
+                        <version>1.6.8</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <serverId>ossrh</serverId>
+                            <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                            <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>1.6</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>2.2.1</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>2.9.1</version>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
+
     <build>
         <plugins>
             <plugin>

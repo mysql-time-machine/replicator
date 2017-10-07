@@ -1,3 +1,4 @@
+[![][Build Status img]][Build Status]
 [![][license img]][license]
 [![][Maven Central img]][Maven Central]
 [![][Javadocs img]][Javadocs]
@@ -143,11 +144,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
+[Build Status]:https://travis-ci.org/mysql-time-machine/replicator
+[Build Status img]:https://travis-ci.org/mysql-time-machine/replicator
 [Maven Central]:https://maven-badges.herokuapp.com/maven-central/com.booking/mysql-replicator
 [Maven Central img]:https://maven-badges.herokuapp.com/maven-central/com.booking/mysql-replicator/badge.svg
-
 [license]:LICENSE
 [license img]:https://img.shields.io/badge/license-Apache%202-blue.svg
-
 [Javadocs]:http://javadoc.io/doc/com.booking/mysql-replicator
 [Javadocs img]:http://javadoc.io/badge/com.booking/mysql-replicator.svg

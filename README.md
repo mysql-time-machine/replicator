@@ -1,4 +1,5 @@
 [![][Build Status img]][Build Status]
+[![][Coverage Status img]][Coverage Status]
 [![][license img]][license]
 [![][Maven Central img]][Maven Central]
 [![][Javadocs img]][Javadocs]
@@ -145,7 +146,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 [Build Status]:https://travis-ci.org/mysql-time-machine/replicator
-[Build Status img]:https://travis-ci.org/mysql-time-machine/replicator
+[Build Status img]:https://travis-ci.org/mysql-time-machine/replicator.svg?branch=master
+[Coverage Status]:https://codecov.io/gh/mysql-time-machine/replicator
+[Coverage Status img]:https://codecov.io/gh/mysql-time-machine/replicator/branch/master/graph/badge.svg
 [Maven Central]:https://maven-badges.herokuapp.com/maven-central/com.booking/mysql-replicator
 [Maven Central img]:https://maven-badges.herokuapp.com/maven-central/com.booking/mysql-replicator/badge.svg
 [license]:LICENSE

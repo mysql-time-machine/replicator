@@ -41,6 +41,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 
 /**
@@ -91,6 +92,9 @@ public class KafkaApplier implements Applier {
     private String rowLastPositionID = "";
     private String messageLastPositionID = "";
 
+    private int paritioningMethod;
+    private HashMap<String, String> partitionColumns;
+
     private static Properties getProducerProperties(String broker) {
         // Below is the new version of producer configuration
         Properties prop = new Properties();
@@ -132,6 +136,8 @@ public class KafkaApplier implements Applier {
         apply_commit_event = configuration.isKafkaApplyCommitEvent();
         apply_uuid = configuration.getAugmenterApplyUuid();
         apply_xid = configuration.getAugmenterApplyXid();
+        paritioningMethod = configuration.getKafkaPartitioningMethod();
+        partitionColumns = configuration.getKafkaPartitionColumns();
         this.meterForMessagesPushedToKafka = meterForMessagesPushedToKafka;
 
         if (!DRY_RUN) {
@@ -165,7 +171,7 @@ public class KafkaApplier implements Applier {
 
             totalRowsCounter++;
             updateRowLastPositionID(augmentedRow.getRowBinlogPositionID());
-            pushToBuffer(getPartitionNum(augmentedRow.getTableName().hashCode()), augmentedRow);
+            pushToBuffer(getPartitionNum(augmentedRow), augmentedRow);
         }
     }
 
@@ -186,7 +192,7 @@ public class KafkaApplier implements Applier {
         }
 
         updateRowLastPositionID(augmentedRow.getRowBinlogPositionID());
-        pushToBuffer(getPartitionNum(augmentedRow.hashCode()), augmentedRow);
+        pushToBuffer(getPartitionNum(augmentedRow), augmentedRow);
     }
 
     @Override
@@ -206,7 +212,7 @@ public class KafkaApplier implements Applier {
         }
 
         updateRowLastPositionID(augmentedRow.getRowBinlogPositionID());
-        pushToBuffer(getPartitionNum(augmentedRow.hashCode()), augmentedRow);
+        pushToBuffer(getPartitionNum(augmentedRow), augmentedRow);
     }
 
     @Override
@@ -226,7 +232,7 @@ public class KafkaApplier implements Applier {
         }
 
         updateRowLastPositionID(augmentedRow.getRowBinlogPositionID());
-        pushToBuffer(getPartitionNum(augmentedRow.hashCode()), augmentedRow);
+        pushToBuffer(getPartitionNum(augmentedRow), augmentedRow);
     }
 
     @Override
@@ -353,8 +359,56 @@ public class KafkaApplier implements Applier {
         }
     }
 
-    private int getPartitionNum(int hashCode) {
-        return (DRY_RUN) ? 0 : (hashCode % numberOfPartition + numberOfPartition) % numberOfPartition;
+    private int getPartitionNum(AugmentedRow row) {
+        if (DRY_RUN) {
+            return 0;
+        }
+
+        int hashCode;
+        // The partitioning configuration doesn't apply for those events
+        if (row.getEventType().equals("BEGIN")
+                || row.getEventType().equals("COMMIT")
+                || row.getEventType().equals("XID")
+                ) {
+            hashCode = row.hashCode();
+        } else {
+            switch (this.paritioningMethod) {
+                case Configuration.PARTITIONING_METHOD_HASH_ROW:
+                    hashCode = row.hashCode();
+                    break;
+                case Configuration.PARTITIONING_METHOD_HASH_TABLE_NAME:
+                    hashCode = row.getTableName().hashCode();
+                    break;
+                case Configuration.PARTITIONING_METHOD_HASH_PRIMARY_COLUMN:
+                     hashCode = row.getPrimaryKeyColumns().stream().map((r) -> {
+                        return row.getEventColumns().get(r).get(
+                                row.getEventType().equals("UPDATE") ? "value_after" : "value"
+                        );
+                     }).collect(Collectors.joining("-")).hashCode();
+                     break;
+                case Configuration.PARTITIONING_METHOD_HASH_CUSTOM_COLUMN:
+                    String columnName = partitionColumns.get(row.getTableName());
+                    if (columnName != null) {
+                        Map<String, String> column = row.getEventColumns().get(columnName);
+                        if (column != null) {
+                            hashCode = column.get(
+                                    row.getEventType().equals("UPDATE") ? "value_after" : "value"
+                            ).hashCode();
+                        } else {
+                            hashCode = row.getTableName().hashCode();
+                        }
+                    } else {
+                        hashCode = row.getTableName().hashCode();
+                    }
+                    break;
+
+                default:
+                    hashCode = row.getTableName().hashCode();
+                    break;
+            }
+        }
+
+        return (hashCode % numberOfPartition + numberOfPartition) % numberOfPartition;
     }
 
     private void pushToBuffer(int partitionNum, AugmentedRow augmentedRow) {

@@ -149,12 +149,19 @@ public class Configuration {
         public String broker;
         public List<String> tables;
         public List<String> excludetables;
+        public int partitioning_method = PARTITIONING_METHOD_HASH_TABLE_NAME;
+        public HashMap<String, String> partition_columns;
         public String topic;
         @JsonProperty("apply_begin_event")
         public Boolean applyBeginEvent = false;
         @JsonProperty("apply_commit_event")
         public Boolean applyCommitEvent = false;
     }
+
+    public static final int PARTITIONING_METHOD_HASH_ROW = 0;
+    public static final int PARTITIONING_METHOD_HASH_TABLE_NAME = 1;
+    public static final int PARTITIONING_METHOD_HASH_PRIMARY_COLUMN = 2;
+    public static final int PARTITIONING_METHOD_HASH_CUSTOM_COLUMN = 3;
 
     public static class ValidationConfiguration {
         private String broker;
@@ -541,6 +548,10 @@ public class Configuration {
     public String getKafkaTopicName() {
         return kafka.topic;
     }
+
+    public int getKafkaPartitioningMethod() { return kafka.partitioning_method; }
+
+    public HashMap<String, String> getKafkaPartitionColumns() { return kafka.partition_columns; }
 
     public boolean isKafkaApplyBeginEvent() { return kafka.applyBeginEvent; }
 

@@ -92,7 +92,7 @@ public class MysqlReplicantPool implements ReplicantPool {
         replicantDataSource.setDriverClassName("com.mysql.jdbc.Driver");
 
         String replicantDSN =
-            String.format("jdbc:mysql://%s/%s", host, configuration.getReplicantSchemaName());
+            String.format("jdbc:mysql://%s", host);
 
         replicantDataSource.setUrl(replicantDSN);
 

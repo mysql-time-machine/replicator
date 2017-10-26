@@ -42,7 +42,7 @@ public class EventDispatcher implements BinlogEventV4Handler {
             LOGGER.debug("Applying event: " + event + ", handler: " + eventHandler);
             eventHandler.apply(event, currentTransaction);
         } catch (Exception e) {
-            throw new EventHandlerApplyException("Failed to apply event: ", e);
+            throw new EventHandlerApplyException("Failed to apply event:", e);
         }
     }
 

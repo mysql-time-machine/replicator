@@ -81,9 +81,19 @@ kafka:
     broker: "kafka-broker-1:port,...,kafka-broken-N:port"
     topic:  topic_name
     # tables to replicate to kafka, can be either a list of tables,
-    # or an exlcussion filter
+    # or an exclusion filter
     tables: ["table_1", ..., "table_N"]
-    excludetables: ["exlude_pattern_1",..., "exclude_pattern_N"]
+    excludetables: ["exclude_pattern_1",..., "exclude_pattern_N"]
+    # events are distributed to paritions based on the hash of the table name by default. There are other settings:
+    # 0: using the row object hash.
+    # 1: using the table name hash (default).
+    # 2: using the values in the primary column.
+    # 3: using the specified column names (if none is specified, it will default to the table name).
+    partitioning_method: 3
+    partition_columns:
+        table_name: column_name
+        another_table: another_column
+
 hbase:
     namespace: 'schema_namespace'
     zookeeper_quorum:  ['hbase-zk1-host', 'hbase-zkN-host']

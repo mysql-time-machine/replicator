@@ -243,8 +243,16 @@ public class AugmentedRow {
         return eventColumns;
     }
 
+    public void setEventColumns(Map<String, Map<String, String>> eventColumns) {
+        this.eventColumns = eventColumns;
+    }
+
     public TableSchemaVersion getTableSchemaVersion() {
         return tableSchemaVersion;
+    }
+
+    public void setPrimaryKeyColumns(List<String> primaryKeyColumns) {
+        this.primaryKeyColumns = primaryKeyColumns;
     }
 
     public List<String> getPrimaryKeyColumns() {

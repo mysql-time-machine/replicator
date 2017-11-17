@@ -359,11 +359,7 @@ public class KafkaApplier implements Applier {
         }
     }
 
-    private int getPartitionNum(AugmentedRow row) {
-        if (DRY_RUN) {
-            return 0;
-        }
-
+    public int getHashcodeForRow(AugmentedRow row) {
         int hashCode;
         // The partitioning configuration doesn't apply for those events
         if (row.getEventType().equals("BEGIN")
@@ -380,12 +376,12 @@ public class KafkaApplier implements Applier {
                     hashCode = row.getTableName().hashCode();
                     break;
                 case Configuration.PARTITIONING_METHOD_HASH_PRIMARY_COLUMN:
-                     hashCode = row.getPrimaryKeyColumns().stream().map((r) -> {
+                    hashCode = row.getPrimaryKeyColumns().stream().map((r) -> {
                         return row.getEventColumns().get(r).get(
                                 row.getEventType().equals("UPDATE") ? "value_after" : "value"
                         );
-                     }).collect(Collectors.joining("-")).hashCode();
-                     break;
+                    }).collect(Collectors.joining("-")).hashCode();
+                    break;
                 case Configuration.PARTITIONING_METHOD_HASH_CUSTOM_COLUMN:
                     String columnName = partitionColumns.get(row.getTableName());
                     if (columnName != null) {
@@ -408,6 +404,15 @@ public class KafkaApplier implements Applier {
             }
         }
 
+        return hashCode;
+    }
+
+    public int getPartitionNum(AugmentedRow row) {
+        if (DRY_RUN) {
+            return 0;
+        }
+
+        int hashCode = this.getHashcodeForRow(row);
         return (hashCode % numberOfPartition + numberOfPartition) % numberOfPartition;
     }
 

@@ -145,7 +145,7 @@ public class Configuration {
     @JsonDeserialize
     private KafkaConfiguration kafka = new KafkaConfiguration();
 
-    private static class KafkaConfiguration {
+    public static class KafkaConfiguration {
         public String broker;
         public List<String> tables;
         public List<String> excludetables;
@@ -521,7 +521,7 @@ public class Configuration {
         }
     }
     /**
-     * Augmenter configuation getters.
+     * Augmenter configuration getters.
      */
     public boolean getAugmenterApplyUuid(){
         return augmenterConfiguration.apply_uuid;
@@ -531,7 +531,7 @@ public class Configuration {
     }
 
     /**
-     * Kafka configuation getters.
+     * Kafka configuration getters.
      */
     public String getKafkaBrokerAddress() {
         return kafka.broker;
@@ -561,5 +561,16 @@ public class Configuration {
         return dryRunMode;
     }
 
+    /**
+     * Kafka configuration setters
+     */
+
+    public void setKafka(KafkaConfiguration kafka) {
+        this.kafka = kafka;
+    }
+
+    public void setDryRunMode(boolean dryRunMode) {
+        this.dryRunMode = dryRunMode;
+    }
 
 }

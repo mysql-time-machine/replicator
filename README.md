@@ -1,7 +1,7 @@
 [![][Build Status img]][Build Status]
 [![][Coverage Status img]][Coverage Status]
 [![][license img]][license]
-[![][FOSSA Status]][FOSSA Status]
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fmysql-time-machine%2Freplicator.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fmysql-time-machine%2Freplicator?ref=badge_shield)
 [![][Maven Central img]][Maven Central]
 [![][Javadocs img]][Javadocs]
 
@@ -157,4 +157,3 @@ limitations under the License.
 [license img]:https://img.shields.io/badge/license-Apache%202-blue.svg
 [Javadocs]:http://javadoc.io/doc/com.booking/mysql-replicator
 [Javadocs img]:http://javadoc.io/badge/com.booking/mysql-replicator.svg
-[FOSSA Status]:https://app.fossa.io/projects/git%2Bgithub.com%2Fmysql-time-machine%2Freplicator?ref=badge_shield

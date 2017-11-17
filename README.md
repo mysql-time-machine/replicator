@@ -1,8 +1,10 @@
 [![][Build Status img]][Build Status]
 [![][Coverage Status img]][Coverage Status]
 [![][license img]][license]
+[![][FOSSA Status]][FOSSA Status]
 [![][Maven Central img]][Maven Central]
 [![][Javadocs img]][Javadocs]
+
 ## MySQL Replicator
 Replicates data changes from MySQL binlog to HBase or Kafka. In case of HBase, preserves the previous data versions. HBase storage is intended for auditing purposes of historical data. In addition, special daily-changes tables can be maintained in HBase, which are convenient for fast and cheap imports from HBase to Hive. Replication to Kafka is intended for easy real-time access to a stream of data changes.
 
@@ -155,3 +157,4 @@ limitations under the License.
 [license img]:https://img.shields.io/badge/license-Apache%202-blue.svg
 [Javadocs]:http://javadoc.io/doc/com.booking/mysql-replicator
 [Javadocs img]:http://javadoc.io/badge/com.booking/mysql-replicator.svg
+[FOSSA Status]:https://app.fossa.io/projects/git%2Bgithub.com%2Fmysql-time-machine%2Freplicator?ref=badge_shield

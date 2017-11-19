@@ -1,5 +1,7 @@
 package com.booking.replication.applier;
 
+import static com.booking.replication.applier.kafka.Util.getHashCode_HashCustomColumn;
+import static com.booking.replication.applier.kafka.Util.getHashCode_HashPrimaryKeyValuesMethod;
 import static com.codahale.metrics.MetricRegistry.name;
 
 import com.booking.replication.Configuration;
@@ -41,7 +43,6 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 
 /**
@@ -359,12 +360,21 @@ public class KafkaApplier implements Applier {
         }
     }
 
+
+
     public int getHashcodeForRow(AugmentedRow row) {
+
         int hashCode;
+
+        String eventType = row.getEventType();
+        String tableName = row.getTableName();
+        List<String> pkColumns = row.getPrimaryKeyColumns();
+        Map<String, Map<String, String>> eventColumns = row.getEventColumns();
+
         // The partitioning configuration doesn't apply for those events
-        if (row.getEventType().equals("BEGIN")
-                || row.getEventType().equals("COMMIT")
-                || row.getEventType().equals("XID")
+        if (eventType.equals("BEGIN")
+                || eventType.equals("COMMIT")
+                || eventType.equals("XID")
                 ) {
             hashCode = row.hashCode();
         } else {
@@ -373,37 +383,23 @@ public class KafkaApplier implements Applier {
                     hashCode = row.hashCode();
                     break;
                 case Configuration.PARTITIONING_METHOD_HASH_TABLE_NAME:
-                    hashCode = row.getTableName().hashCode();
+                    hashCode = tableName.hashCode();
                     break;
                 case Configuration.PARTITIONING_METHOD_HASH_PRIMARY_COLUMN:
-                    hashCode = row.getPrimaryKeyColumns().stream().map((r) -> {
-                        return row.getEventColumns().get(r).get(
-                                row.getEventType().equals("UPDATE") ? "value_after" : "value"
-                        );
-                    }).collect(Collectors.joining("-")).hashCode();
+                    hashCode = getHashCode_HashPrimaryKeyValuesMethod(
+                         eventType,pkColumns, eventColumns
+                    );
                     break;
                 case Configuration.PARTITIONING_METHOD_HASH_CUSTOM_COLUMN:
-                    String columnName = partitionColumns.get(row.getTableName());
-                    if (columnName != null) {
-                        Map<String, String> column = row.getEventColumns().get(columnName);
-                        if (column != null) {
-                            hashCode = column.get(
-                                    row.getEventType().equals("UPDATE") ? "value_after" : "value"
-                            ).hashCode();
-                        } else {
-                            hashCode = row.getTableName().hashCode();
-                        }
-                    } else {
-                        hashCode = row.getTableName().hashCode();
-                    }
+                    hashCode = getHashCode_HashCustomColumn(
+                        eventType, tableName, eventColumns, partitionColumns
+                    );
                     break;
-
                 default:
-                    hashCode = row.getTableName().hashCode();
+                    hashCode = tableName.hashCode();
                     break;
             }
         }
-
         return hashCode;
     }
 
@@ -411,7 +407,6 @@ public class KafkaApplier implements Applier {
         if (DRY_RUN) {
             return 0;
         }
-
         int hashCode = this.getHashcodeForRow(row);
         return (hashCode % numberOfPartition + numberOfPartition) % numberOfPartition;
     }

@@ -70,7 +70,7 @@ public class AugmentedRow {
      * @param binlogFileName      Name of the binlog file that contains current row
      * @param rowOrdinal          Order of the row in the binlog event that contains the row
      * @param tableName           Table name of the row
-     * @param tableSchemaVersion         TableSchemaVersion object
+     * @param tableSchemaVersion  TableSchemaVersion object
      * @param eventType           Event type identifier (INSERT/UPDATE/DELETE)
      * @param binlogEventV4Header BinlogEventV4Header object
      *

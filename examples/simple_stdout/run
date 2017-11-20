@@ -1,4 +1,4 @@
-java -jar ../../target/mysql-replicator-0.13.7.jar \
+java -jar ../../target/mysql-replicator-0.14.2.jar \
     --applier STDOUT \
     --schema test \
     --binlog-filename mysql-bin.000001 \

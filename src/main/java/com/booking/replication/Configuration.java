@@ -231,6 +231,10 @@ public class Configuration {
     }
 
 
+    @JsonDeserialize
+    @JsonProperty("orchestrator")
+    public OrchestratorConfiguration orchestratorConfiguration = new OrchestratorConfiguration();
+
     public static class OrchestratorConfiguration {
         @JsonProperty("rewinding_threshold")
         private long rewindingThreshold = 500;
@@ -246,9 +250,6 @@ public class Configuration {
         }
     }
 
-    @JsonDeserialize
-    @JsonProperty("orchestrator")
-    public OrchestratorConfiguration orchestratorConfiguration = new OrchestratorConfiguration();
 
     public OrchestratorConfiguration getOrchestratorConfiguration(){
         return orchestratorConfiguration;
@@ -347,12 +348,75 @@ public class Configuration {
      * @return String Serialized configuration
      */
     public String toString() {
-        try {
-            return new ObjectMapper(new YAMLFactory()).writeValueAsString(this);
-        } catch (JsonProcessingException e) {
-            e.printStackTrace();
+
+        Joiner joiner = Joiner.on(", ");
+
+        StringBuilder config = new StringBuilder();
+
+        // applier
+        config.append("\n")
+                .append("\tapplierType                       : ")
+                .append(applierType)
+                .append("\n");
+
+        // replication schema
+        config.append("\treplication_schema                : ")
+                .append(replication_schema.name)
+                .append("\n")
+                .append("\tuser name                         : ")
+                .append(replication_schema.username)
+                .append("\n")
+                .append("\treplicantDBSlaves                 : ")
+                .append(Joiner.on(" | ").join(replication_schema.host_pool))
+                .append("\n")
+                .append("\treplicantDBActiveHost             : ")
+                .append(this.getActiveSchemaHost())
+                .append("\n")
+                .append("\tactiveSchemaUserName              : ")
+                .append(metadata_store.username)
+                .append("\n")
+                .append("\tactiveSchemaHost                  : ")
+                .append(metadata_store.host)
+                .append("\n")
+                .append("\tactiveSchemaDB                    : ")
+                .append(metadata_store.database)
+                .append("\n");
+
+        // hbase
+        if (hbaseConfiguration != null) {
+            if (hbaseConfiguration.hive_imports.tables != null) {
+                config
+                        .append("\tdeltaTables                       : ")
+                        .append(hbaseConfiguration.writeRecentChangesToDeltaTables)
+                        .append("\n")
+                        .append("\tinitialSnapshotMode               : ")
+                        .append(initialSnapshotMode)
+                        .append("\n")
+                        .append("\ttablesForWhichToTrackDailyChanges : ")
+                        .append(joiner.join(hbaseConfiguration.hive_imports.tables))
+                        .append("\n");
+            }
         }
-        return "";
+
+        // TODO: kafkaInfo
+
+        // TODO: metadata_storeInfo
+
+        // TODO: augmenterInfo
+
+        // TODO: orchestratorInfo (rewind configuration)
+
+        // TODO: validationInfo
+
+        // metrics config
+        if (metrics.reporters != null) {
+            config.append("\tmetrics                           : ")
+                    .append(metrics.reporters.toString())
+                    .append("\n");
+        }
+
+
+        return config.toString();
     }
 
     // =========================================================================

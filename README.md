@@ -6,8 +6,6 @@
 [![][Javadocs img]][Javadocs]
 
 ## MySQL Replicator
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fmysql-time-machine%2Freplicator.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fmysql-time-machine%2Freplicator?ref=badge_shield)
-
 Replicates data changes from MySQL binlog to HBase or Kafka. In case of HBase, preserves the previous data versions. HBase storage is intended for auditing purposes of historical data. In addition, special daily-changes tables can be maintained in HBase, which are convenient for fast and cheap imports from HBase to Hive. Replication to Kafka is intended for easy real-time access to a stream of data changes.
 
 ### Documentation
@@ -127,19 +125,37 @@ metrics:
 Bosko Devetak <bosko.devetak@gmail.com>
 
 ### CONTRIBUTORS
-Greg Franklin <a href="https://github.com/gregf1">gregf1</a>
+Carlos Tasada <a href="https://github.com/raynald">[ctasada]</a>
 
-Islam Hassan <a href="https://github.com/ishassan">ishassan</a>
+Dmitrii Tcyganov <a href="https://github.com/dtcyganov">[dtcyganov]</a>
 
-Mikhail Dutikov <a href="https://github.com/mikhaildutikov">mikhaildutikov</a>
+Evgeny Dmitriev <a href="https://github.com/dmitrieveu">[dmitrieveu]</a>
 
-Pavel Salimov <a href="https://github.com/chcat">chcat</a>
+Greg Franklin <a href="https://github.com/gregf1">[gregf1]</a>
 
-Pedro Silva <a href="https://github.com/pedros">pedros</a>
+Islam Hassan <a href="https://github.com/ishassan">[ishassan]</a>
 
-Rares Mirica <a href="https://github.com/mrares">mrares</a>
+Mikhail Dutikov <a href="https://github.com/mikhaildutikov">[mikhaildutikov]</a>
 
-Raynald Chung <a href="https://github.com/raynald">raynald</a>
+Muhammad Abbady <a href="https://github.com/muhammad-abbady">[muhammad-abbady]</a>
+
+Philippe Bruhat (BooK) <a href="https://github.com/book">[book]</a>
+
+Pavel Salimov <a href="https://github.com/chcat">[chcat]</a>
+
+Pedro Silva <a href="https://github.com/pedros">[pedros]</a>
+
+Raynald Chung <a href="https://github.com/raynald">[raynald]</a>
+
+Rares Mirica <a href="https://github.com/mrares">[mrares]</a>
+
+
+
+
+
+
+
+
 
 ### ACKNOWLEDGMENT
 Replicator was originally developed for Booking.com. With approval from Booking.com, the code and specification were generalized and published as Open Source on github, for which the author would like to express his gratitude.

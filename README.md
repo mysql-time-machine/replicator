@@ -149,14 +149,6 @@ Raynald Chung <a href="https://github.com/raynald">[raynald]</a>
 
 Rares Mirica <a href="https://github.com/mrares">[mrares]</a>
 
-
-
-
-
-
-
-
-
 ### ACKNOWLEDGMENT
 Replicator was originally developed for Booking.com. With approval from Booking.com, the code and specification were generalized and published as Open Source on github, for which the author would like to express his gratitude.
 

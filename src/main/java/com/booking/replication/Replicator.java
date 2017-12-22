@@ -40,7 +40,7 @@ public class Replicator {
     private final BinlogEventProducer  binlogEventProducer;
     private final PipelineOrchestrator pipelineOrchestrator;
     private final Overseer             overseer;
-    private final ReplicantPool replicantPool;
+    private final ReplicantPool        replicantPool;
     private final PipelinePosition     pipelinePosition;
     private final ReplicatorHealthTrackerProxy healthTracker;
 

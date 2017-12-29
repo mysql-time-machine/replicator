@@ -1,7 +1,7 @@
 package com.booking.replication.binlog;
 
 import com.google.code.or.binlog.BinlogEventV4;
-import com.google.code.or.binlog.impl.event.*;
+import com.google.code.or.binlog.impl.event.AbstractBinlogEventV4;
 
 /**
  * Created by edmitriev on 7/24/17.

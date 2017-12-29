@@ -1,7 +1,6 @@
 package com.booking.replication.applier;
 
 import com.booking.replication.Constants;
-
 import com.booking.replication.applier.hbase.HBaseApplierWriter;
 import com.booking.replication.applier.hbase.TaskBufferInconsistencyException;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
@@ -10,18 +9,11 @@ import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.schema.HBaseSchemaManager;
-
 import com.booking.replication.schema.TableNameMapper;
 import com.booking.replication.validation.ValidationService;
 import com.codahale.metrics.Counter;
 import com.google.code.or.binlog.BinlogEventV4;
-
-import com.google.code.or.binlog.impl.event.FormatDescriptionEvent;
-import com.google.code.or.binlog.impl.event.QueryEvent;
-import com.google.code.or.binlog.impl.event.RotateEvent;
-import com.google.code.or.binlog.impl.event.TableMapEvent;
-import com.google.code.or.binlog.impl.event.XidEvent;
-
+import com.google.code.or.binlog.impl.event.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

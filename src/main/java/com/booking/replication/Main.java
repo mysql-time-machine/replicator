@@ -20,7 +20,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 import static com.codahale.metrics.MetricRegistry.name;
-import static spark.Spark.*;
+import static spark.Spark.get;
+import static spark.Spark.port;
 
 public class Main {
 

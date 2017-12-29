@@ -2,7 +2,6 @@ package com.booking.replication.pipeline.event.handler;
 
 import com.booking.replication.Coordinator;
 import com.booking.replication.Metrics;
-import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.ApplierException;
 import com.booking.replication.applier.HBaseApplier;
 import com.booking.replication.applier.hbase.TaskBufferInconsistencyException;

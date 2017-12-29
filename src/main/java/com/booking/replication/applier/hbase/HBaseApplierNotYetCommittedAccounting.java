@@ -2,7 +2,6 @@ package com.booking.replication.applier.hbase;
 
 import com.booking.replication.applier.TaskStatus;
 import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

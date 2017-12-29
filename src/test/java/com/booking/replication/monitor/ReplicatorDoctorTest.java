@@ -1,7 +1,6 @@
 package com.booking.replication.monitor;
 
 import com.codahale.metrics.Counting;
-import org.jruby.RubyProcess;
 import org.junit.Test;
 import org.slf4j.Logger;
 

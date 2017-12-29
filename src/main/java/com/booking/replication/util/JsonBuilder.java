@@ -5,13 +5,10 @@ import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.schema.ActiveSchemaVersion;
 import com.booking.replication.schema.table.TableSchemaVersion;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.impl.event.TableMapEvent;
 import com.google.code.or.common.util.MySQLConstants;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

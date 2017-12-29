@@ -9,25 +9,13 @@ import com.booking.replication.schema.exception.SchemaTransitionException;
 import com.booking.replication.schema.table.TableSchemaVersion;
 import com.booking.replication.util.CaseInsensitiveMap;
 import com.booking.replication.util.JsonBuilder;
-
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URISyntaxException;
-
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Statement;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.sql.*;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 

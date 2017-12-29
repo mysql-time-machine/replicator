@@ -10,8 +10,6 @@ import com.booking.replication.pipeline.PipelinePosition;
 import com.booking.replication.queues.ReplicatorQueues;
 import com.booking.replication.replicant.MysqlReplicantPool;
 import com.booking.replication.replicant.ReplicantPool;
-
-import com.booking.replication.schema.ActiveSchemaVersion;
 import com.booking.replication.schema.MysqlActiveSchemaVersion;
 import com.booking.replication.util.BinlogCoordinatesFinder;
 import com.booking.replication.validation.ValidationService;
@@ -22,10 +20,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import spark.Spark;
 
-import static com.codahale.metrics.MetricRegistry.name;
-import static spark.Spark.get;
-
 import java.util.concurrent.TimeUnit;
+
+import static com.codahale.metrics.MetricRegistry.name;
 
 /**
  * Booking replicator. Has two main objects (producer and consumer)

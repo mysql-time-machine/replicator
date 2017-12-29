@@ -1,9 +1,5 @@
 package com.booking.replication.applier;
 
-import static com.booking.replication.applier.kafka.Util.getHashCode_HashCustomColumn;
-import static com.booking.replication.applier.kafka.Util.getHashCode_HashPrimaryKeyValuesMethod;
-import static com.codahale.metrics.MetricRegistry.name;
-
 import com.booking.replication.Configuration;
 import com.booking.replication.Metrics;
 import com.booking.replication.applier.kafka.KafkaMessageBufferException;
@@ -13,20 +9,13 @@ import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
-
 import com.booking.replication.schema.exception.TableMapException;
 import com.booking.replication.util.CaseInsensitiveMap;
-import com.google.code.or.binlog.BinlogEventV4;
-import com.google.code.or.binlog.impl.event.FormatDescriptionEvent;
-import com.google.code.or.binlog.impl.event.QueryEvent;
-import com.google.code.or.binlog.impl.event.RotateEvent;
-import com.google.code.or.binlog.impl.event.TableMapEvent;
-import com.google.code.or.binlog.impl.event.XidEvent;
-
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
-
+import com.google.code.or.binlog.BinlogEventV4;
+import com.google.code.or.binlog.impl.event.*;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -34,7 +23,6 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +31,10 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static com.booking.replication.applier.kafka.Util.getHashCode_HashCustomColumn;
+import static com.booking.replication.applier.kafka.Util.getHashCode_HashPrimaryKeyValuesMethod;
+import static com.codahale.metrics.MetricRegistry.name;
 
 
 /**

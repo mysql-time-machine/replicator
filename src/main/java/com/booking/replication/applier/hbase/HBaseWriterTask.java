@@ -1,7 +1,5 @@
 package com.booking.replication.applier.hbase;
 
-import static com.codahale.metrics.MetricRegistry.name;
-
 import com.booking.replication.Metrics;
 import com.booking.replication.applier.ChaosMonkey;
 import com.booking.replication.applier.TaskStatus;
@@ -21,6 +19,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
+
+import static com.codahale.metrics.MetricRegistry.name;
 
 public class HBaseWriterTask implements Callable<HBaseTaskResult> {
 

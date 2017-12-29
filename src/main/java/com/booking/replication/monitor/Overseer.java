@@ -1,7 +1,8 @@
 package com.booking.replication.monitor;
 
-import com.booking.replication.pipeline.*;
-
+import com.booking.replication.pipeline.BinlogEventProducer;
+import com.booking.replication.pipeline.PipelineOrchestrator;
+import com.booking.replication.pipeline.PipelinePosition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

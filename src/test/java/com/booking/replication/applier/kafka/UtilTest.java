@@ -4,7 +4,6 @@ import com.booking.replication.Configuration;
 import com.booking.replication.util.CaseInsensitiveMap;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import org.jruby.RubyProcess;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
@@ -17,7 +16,7 @@ import java.util.Map;
 
 import static com.booking.replication.applier.kafka.Util.getHashCode_HashCustomColumn;
 import static com.booking.replication.applier.kafka.Util.getHashCode_HashPrimaryKeyValuesMethod;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Created by bosko on 11/19/17.

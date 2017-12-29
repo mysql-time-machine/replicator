@@ -1,12 +1,8 @@
 package com.booking.replication.sql;
 
-import com.booking.replication.Configuration;
 import com.booking.replication.binlog.event.QueryEventType;
 import com.booking.replication.sql.exception.QueryInspectorException;
-
 import com.google.code.or.binlog.impl.event.QueryEvent;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;

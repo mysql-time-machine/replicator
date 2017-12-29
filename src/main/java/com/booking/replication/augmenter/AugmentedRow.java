@@ -5,13 +5,11 @@ import com.booking.replication.schema.exception.TableMapException;
 import com.booking.replication.schema.table.TableSchemaVersion;
 import com.booking.replication.util.CaseInsensitiveMap;
 import com.booking.replication.util.JsonBuilder;
-
-import com.google.code.or.binlog.BinlogEventV4Header;
-import com.google.code.or.binlog.impl.event.BinlogEventV4HeaderImpl;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.google.code.or.binlog.BinlogEventV4Header;
+import com.google.code.or.binlog.impl.event.BinlogEventV4HeaderImpl;
 
 import java.security.InvalidParameterException;
 import java.util.*;

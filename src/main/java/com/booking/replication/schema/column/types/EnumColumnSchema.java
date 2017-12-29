@@ -1,7 +1,6 @@
 package com.booking.replication.schema.column.types;
 
 import com.booking.replication.schema.column.ColumnSchema;
-
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

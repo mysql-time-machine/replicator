@@ -2,7 +2,6 @@ package com.booking.replication.applier.hbase;
 
 import com.booking.replication.applier.TaskStatus;
 import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
-import com.booking.replication.checkpoints.SafeCheckPoint;
 
 import java.util.HashMap;
 import java.util.concurrent.Future;

@@ -2,12 +2,10 @@ package com.booking.replication.applier.kafka;
 
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.util.JsonBuilder;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**

@@ -1,6 +1,5 @@
 package com.booking.replication.augmenter;
 
-import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.impl.event.AbstractRowEvent;
 
 import java.util.ArrayList;

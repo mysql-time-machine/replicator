@@ -2,7 +2,6 @@ package com.booking.replication.schema.column.types;
 
 import com.booking.replication.schema.column.ColumnSchema;
 import com.google.common.base.Joiner;
-
 import org.apache.commons.lang.StringUtils;
 
 import java.sql.ResultSet;

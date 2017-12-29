@@ -3,7 +3,6 @@ package com.booking.replication.pipeline.event.handler;
 import com.booking.replication.applier.Applier;
 import com.booking.replication.augmenter.EventAugmenter;
 import com.booking.replication.pipeline.PipelineOrchestrator;
-import com.booking.replication.sql.QueryInspector;
 
 /**
  * Created by edmitriev on 7/19/17.

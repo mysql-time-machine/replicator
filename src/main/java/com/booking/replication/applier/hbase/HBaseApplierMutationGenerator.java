@@ -2,13 +2,9 @@ package com.booking.replication.applier.hbase;
 
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.schema.TableNameMapper;
-
 import com.google.common.base.Joiner;
-
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
-
-import org.apache.hadoop.hbase.util.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,7 +13,10 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 

@@ -6,120 +6,81 @@
 [![][Javadocs img]][Javadocs]
 
 ## MySQL Replicator
-Replicates data changes from MySQL binlog to HBase or Kafka. In case of HBase, preserves the previous data versions. HBase storage is intended for auditing purposes of historical data. In addition, special daily-changes tables can be maintained in HBase, which are convenient for fast and cheap imports from HBase to Hive. Replication to Kafka is intended for easy real-time access to a stream of data changes.
+Replicates data changes from MySQL binlog to HBase or Kafka. In case of HBase, preserves the previous data versions. HBase storage is intended for auditing and analysis of historical data. In addition, special daily-changes tables can be maintained in HBase, which are convenient for fast and cheap imports from HBase to Hive. Replication to Kafka is intended for easy real-time access to a stream of data changes.
 
 ### Documentation
-This readme file provides some basic documentation. For more details, refer to official documentation at [mysql-time-machine](https://mysql-time-machine.github.io/).
+This readme file provides some basic documentation on how to get started. For more details, refer to official documentation at [mysql-time-machine](https://mysql-time-machine.github.io/).
 
-### Usage
+### Getting Started with MySQL Replicator
+Replicator assumes that there is a preinstalled environment in which it can run. This environment consists of:
 
-#### Replicate to STDOUT
-````
-java -jar mysql-replicator.jar \
-    --applier STDOUT \
-    --schema $schema \
-    --binlog-filename $binlog-filename \
-    --last-binlog-filename $last-binlog-filename-to-process \
-    --config-path $config-path
-````
+ - MySQL Instance
+ - Zookeeper Instance
+ - Graphite Instance
+ - Target Store Instance (Kafka, HBase, or none in case of STDOUT)
+ 
+Easiest way to test drive the replicator is to use docker to locally create this needed environment. In addition to docker you will need [docker-compose](https://docs.docker.com/compose/) installed locally.
 
-#### Replicate to HBase
-Initial snapshot (after the database has been flushed to the binlog with [binlog flusher](https://github.com/mysql-time-machine/replicator/tree/master/binlog-flusher):
 ````
-java -jar mysql-replicator.jar \
-    --hbase-namespace $hbase-namespace \
-    --applier hbase --schema $schema \
-    --binlog-filename $first-binlog-filename \
-    --config-path $config-path \
-    --initial-snapshot
-````
-After intiall snapshot:
-````
-java -jar mysql-replicator.jar \
-    --hbase-namespace $hbase-namespace \
-    --applier hbase \
-    --schema $schema \
-    --binlog-filename $binlog-filename \
-    --config-path $config-path  \
-    [--delta]
+git clone https://github.com/mysql-time-machine/docker.git
+cd docker/docker-compose/replicator_kafka
 ````
 
-#### Replicate to Kafka
+Start all containers (mysql, kafka, graphite, replicator, zookeeper)
+ 
+```
+  ./run_all
+```
+
+Now, in another terminal, you can connect to the replicator container
+ 
+```` 
+ ./attach_to_replicator
+ cd /replicator
 ````
-java -jar mysql-replicator.jar \
-    --applier kafka \
-    --schema $schema \
-    --binlog-filename $binlog-filename \
-    --config-path $config-path
+ 
+ This folder contains the replicator jar, the replicator configuration file, log configuration and some utility scripts. 
+ Now we can insert some random data in mysql:
+ 
+ ````
+ ./random_mysql_ops
+ ...
+ ('TwIPn','4216871','313785','NIrnXGEpqJI gGDstvhs'),
+ ('AwqgI','4831311','930233','IHwkTOuEnOqGdEWNzJtq'),
+ ('WIJCB','1516599','487420','rPnOHfZlIvEEvFFEIGiW'),
+ ...
+ ````
+
+ This data has been inserted in pre-created database 'test' in precreated table 'sometable'. The provided mysql instance is configured to use RBR and binlogs are active.
+ 
+````
+  mysql --host=mysql --user=root --pass=mysqlPass
+  
+  mysql> use test;
+  mysql> show tables;
+  +----------------+
+  | Tables_in_test |
+  +----------------+
+  | sometable      |
+  +----------------+
+  1 row in set (0.00 sec)
+````
+ 
+ Now we can replicate the binlog content to Kafka. 
+ 
+````
+ ./run_kafka
+````
+ 
+ And read the data from Kafka
+ 
+ ````
+ ./read_kafka
 ````
 
-#### Configuration file structure
-Replicator configuration is contained in a single YAML file. The structure of the file with all supported options is:
-````
-replication_schema:
-    name:      'replicated_schema_name'
-    username:  'user'
-    password:  'pass'
-    host_pool: ['localhost']
+In this example we have writen rows to mysql, then replicated the binlogs to kafka and then red from Kafka sequentially. However, these processes can be run in parallel as the real life setup would work.
 
-metadata_store:
-    username: 'user'
-    password: 'pass'
-    host:     'active_schema_host'
-    database: 'active_schema_database'
-    # The following are options for storing replicator metadata, only one should be used (zookeeper or file)
-    zookeeper:
-        quorum: ['zk-host1', 'zk-host2']
-        path: '/path/in/zookeeper'
-    file:
-        path: '/path/on/disk'
-
-# only one applier is needed (HBase or Kafka). If none is specified, the STDOUT is used
-kafka:
-    broker: "kafka-broker-1:port,...,kafka-broken-N:port"
-    topic:  topic_name
-    # tables to replicate to kafka, can be either a list of tables,
-    # or an exclusion filter
-    tables: ["table_1", ..., "table_N"]
-    excludetables: ["exclude_pattern_1",..., "exclude_pattern_N"]
-    # events are distributed to paritions based on the hash of the table name by default. There are other settings:
-    # 0: using the row object hash.
-    # 1: using the table name hash (default).
-    # 2: using the values in the primary column.
-    # 3: using the specified column names (if none is specified, it will default to the table name).
-    partitioning_method: 3
-    partition_columns:
-        table_name: column_name
-        another_table: another_column
-
-hbase:
-    namespace: 'schema_namespace'
-    zookeeper_quorum:  ['hbase-zk1-host', 'hbase-zkN-host']
-    hive_imports:
-        tables: ['sometable']
-
-# mysql-failover is optional
-mysql_failover:
-    pgtid:
-        p_gtid_pattern: $regex_pattern_to_extract_pgtid
-        p_gtid_prefix: $prefix_to_add_to_pgtid_query_used_in_orchestrator_url
-    # orchestator is optional
-    orchestrator:
-        username: orchestrator-user-name
-        password: orchestrator-password
-        url:      http://orchestrator-host/api
-
-metrics:
-    frequency: 10 seconds
-    reporters:
-      graphite:
-        namespace: 'graphite.namespace.prefix'
-        url: 'graphite_host[:<graphite_port (default is 3002)>]'
-# Optionally you can specify a console reporter for ease of testing
-#      console:
-#        timeZone: UTC
-#        output: stdout
-````
+As the replication is running, you can observe the replication statisticts at graphite dashboard: http://localhost/dashboard/
 
 ### AUTHOR
 Bosko Devetak <bosko.devetak@gmail.com>

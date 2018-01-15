@@ -43,6 +43,13 @@ public class Configuration {
         public int          port        = 3306;
     }
 
+    @JsonDeserialize
+    private Payload payload;
+
+    private static class Payload implements Serializable {
+        public String table_name;
+    }
+
 
     @JsonDeserialize
     @JsonProperty("mysql_failover")
@@ -437,6 +444,13 @@ public class Configuration {
     @JsonIgnore
     public String getReplicantDBPassword() {
         return replication_schema.password;
+    }
+
+
+    // =========================================================================
+    // Payload config getters
+    public String getPayloadTableName() {
+        return payload.table_name;
     }
 
     // =========================================================================

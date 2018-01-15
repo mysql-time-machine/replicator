@@ -121,6 +121,9 @@ public class HBaseApplierMutationGenerator {
 
         // RowID
         String hbaseRowID = getHBaseRowKey(row);
+        if (configuration.getPayloadTableName() != null && configuration.getPayloadTableName().equals(row.getTableName())) {
+            hbaseRowID = getPayloadTableHBaseRowKey(row);
+        }
 
         String hbaseTableName =
                 configuration.getHbaseNamespace() + ":" + row.getTableName().toLowerCase();
@@ -406,6 +409,15 @@ public class HBaseApplierMutationGenerator {
         // avoid region hot-spotting
         hbaseRowID = saltRowKey(hbaseRowID, saltingPartOfKey);
         return hbaseRowID;
+    }
+
+    private static String getPayloadTableHBaseRowKey(AugmentedRow row) {
+        if (row.getTransactionUUID() != null) {
+            String uuid = row.getTransactionUUID().toString();
+            return saltRowKey(uuid, uuid);
+        } else {
+            return getHBaseRowKey(row);
+        }
     }
 
     /**

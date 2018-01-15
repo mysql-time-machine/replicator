@@ -1,4 +1,5 @@
 [![][Build Status img]][Build Status]
+[![][Quality Gate img]][Quality Gate]
 [![][Coverage Status img]][Coverage Status]
 [![][Known Vulnerabilities img]][Known Vulnerabilities]
 [![][license img]][license]
@@ -135,6 +136,8 @@ limitations under the License.
 [Coverage Status img]:https://codecov.io/gh/mysql-time-machine/replicator/branch/master/graph/badge.svg
 [Known Vulnerabilities img]:https://snyk.io/test/github/mysql-time-machine/replicator/badge.svg
 [Known Vulnerabilities]:https://snyk.io/test/github/mysql-time-machine/replicator
+[Quality Gate img]:https://sonarcloud.io/api/badges/gate?key=com.booking%3Amysql-replicator
+[Quality Gate]:https://sonarcloud.io/dashboard?id=com.booking%3Amysql-replicator
 [Maven Central]:https://maven-badges.herokuapp.com/maven-central/com.booking/mysql-replicator
 [Maven Central img]:https://maven-badges.herokuapp.com/maven-central/com.booking/mysql-replicator/badge.svg
 [license]:LICENSE

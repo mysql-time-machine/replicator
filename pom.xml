@@ -61,6 +61,11 @@
             <id>raynald</id>
             <name>Raynald Chung</name>
         </developer>
+        <developer>
+            <id>ctasada</id>
+            <name>Carlos Tasada</name>
+            <email>ctasada@gmail.com</email>
+        </developer>
     </developers>
     <licenses>
         <license>

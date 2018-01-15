@@ -120,13 +120,19 @@ public class BinlogEventProducer {
                                     case QUERY:
                                         rawBinlogEvent = new RawBinlogEventQuery(event);
                                         break;
+                                    case PRE_GA_WRITE_ROWS:
                                     case WRITE_ROWS:
+                                    case EXT_WRITE_ROWS:
                                         rawBinlogEvent = new RawBinlogEventWriteRows(event);
                                         break;
+                                    case PRE_GA_UPDATE_ROWS:
                                     case UPDATE_ROWS:
+                                    case EXT_UPDATE_ROWS:
                                         rawBinlogEvent = new RawBinlogEventUpdateRows(event);
                                         break;
+                                    case PRE_GA_DELETE_ROWS:
                                     case DELETE_ROWS:
+                                    case EXT_DELETE_ROWS:
                                         rawBinlogEvent = new RawBinlogEventDeleteRows(event);
                                         break;
                                     case TABLE_MAP:

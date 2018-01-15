@@ -114,7 +114,7 @@ Rares Mirica <a href="https://github.com/mrares">[mrares]</a>
 Replicator was originally developed for Booking.com. With approval from Booking.com, the code and specification were generalized and published as Open Source on github, for which the author would like to express his gratitude.
 
 ### COPYRIGHT AND LICENSE
-Copyright (C) 2015, 2016, 2017 by Bosko Devetak
+Copyright (C) 2015, 2016, 2017, 2018 by Author and Contributors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

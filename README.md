@@ -1,7 +1,8 @@
 [![][Build Status img]][Build Status]
 [![][Coverage Status img]][Coverage Status]
+[![][Known Vulnerabilities img]][Known Vulnerabilities]
 [![][license img]][license]
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fmysql-time-machine%2Freplicator.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fmysql-time-machine%2Freplicator?ref=badge_shield)
+[![][License Check img]][License Check]
 [![][Maven Central img]][Maven Central]
 [![][Javadocs img]][Javadocs]
 
@@ -132,12 +133,14 @@ limitations under the License.
 [Build Status img]:https://travis-ci.org/mysql-time-machine/replicator.svg?branch=master
 [Coverage Status]:https://codecov.io/gh/mysql-time-machine/replicator
 [Coverage Status img]:https://codecov.io/gh/mysql-time-machine/replicator/branch/master/graph/badge.svg
+[Known Vulnerabilities img]:https://snyk.io/test/github/mysql-time-machine/replicator/badge.svg
+[Known Vulnerabilities]:https://snyk.io/test/github/mysql-time-machine/replicator
 [Maven Central]:https://maven-badges.herokuapp.com/maven-central/com.booking/mysql-replicator
 [Maven Central img]:https://maven-badges.herokuapp.com/maven-central/com.booking/mysql-replicator/badge.svg
 [license]:LICENSE
 [license img]:https://img.shields.io/badge/license-Apache%202-blue.svg
+[License Check img]:https://app.fossa.io/api/projects/git%2Bgithub.com%2Fmysql-time-machine%2Freplicator.svg?type=shield
+[License Check]:https://app.fossa.io/projects/git%2Bgithub.com%2Fmysql-time-machine%2Freplicator?ref=badge_shield
 [Javadocs]:http://javadoc.io/doc/com.booking/mysql-replicator
 [Javadocs img]:http://javadoc.io/badge/com.booking/mysql-replicator.svg
 
-
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fmysql-time-machine%2Freplicator.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fmysql-time-machine%2Freplicator?ref=badge_large)

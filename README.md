@@ -13,8 +13,14 @@ Replicates data changes from MySQL binlog to HBase or Kafka. In case of HBase, p
 ### Documentation
 This readme file provides some basic documentation on how to get started. For more details, refer to official documentation at [mysql-time-machine](https://mysql-time-machine.github.io/).
 
+### Building required Docker images
+1. Run `mvn package` from the root of the `replicator` repository to build the MySQL Replicator jar that will be used later;
+2. Rename built jar to `mysql-replicator.jar` and copy it to the `images/002_replicator_runner/input/replicator/` directory inside the `docker` repository;
+3. Run `container_build.sh` script from the `images/002_replicator_runner/` directory inside the `docker` repository;
+4. Run `docker ps` to verify that `replicator-runner` image has been built successfully;
+
 ### Getting Started with MySQL Replicator
-Replicator assumes that there is a preinstalled environment in which it can run. This environment consists of:
+Replicator assumes that there is a pre-installed environment in which it can run. This environment consists of:
 
  - MySQL Instance
  - Zookeeper Instance

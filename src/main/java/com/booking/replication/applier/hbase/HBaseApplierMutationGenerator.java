@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -83,6 +84,7 @@ public class HBaseApplierMutationGenerator {
     }
 
     private static final byte[] CF                           = Bytes.toBytes("d");
+    private static final byte[] TID                          = Bytes.toBytes("_transaction_uuid");
     private static final String DIGEST_ALGORITHM             = "MD5";
 
     private final com.booking.replication.Configuration configuration;
@@ -124,6 +126,10 @@ public class HBaseApplierMutationGenerator {
                 configuration.getHbaseNamespace() + ":" + row.getTableName().toLowerCase();
 
         Put put = new Put(Bytes.toBytes(hbaseRowID));
+        UUID uuid = null;
+        if (configuration.getHBaseApplyUuid()) {
+            uuid = row.getTransactionUUID();
+        }
 
         switch (row.getEventType()) {
             case "DELETE": {
@@ -139,6 +145,14 @@ public class HBaseApplierMutationGenerator {
                         columnTimestamp,
                         Bytes.toBytes(columnValue)
                 );
+                if (uuid != null) {
+                    put.addColumn(
+                            CF,
+                            TID,
+                            row.getOriginalTimestamp(),
+                            Bytes.toBytes(uuid.toString())
+                    );
+                }
                 break;
             }
             case "UPDATE": {
@@ -180,6 +194,14 @@ public class HBaseApplierMutationGenerator {
                         columnTimestamp,
                         Bytes.toBytes("U")
                 );
+                if (uuid != null) {
+                    put.addColumn(
+                            CF,
+                            TID,
+                            row.getOriginalTimestamp(),
+                            Bytes.toBytes(uuid.toString())
+                    );
+                }
                 break;
             }
             case "INSERT": {
@@ -209,6 +231,14 @@ public class HBaseApplierMutationGenerator {
                         columnTimestamp,
                         Bytes.toBytes("I")
                 );
+                if (uuid != null) {
+                    put.addColumn(
+                            CF,
+                            TID,
+                            row.getOriginalTimestamp(),
+                            Bytes.toBytes(uuid.toString())
+                    );
+                }
                 break;
             }
             default:

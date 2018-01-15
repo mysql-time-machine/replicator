@@ -86,6 +86,7 @@ public class Configuration {
         public String       namespace;
         public List<String> zookeeper_quorum;
         public boolean      writeRecentChangesToDeltaTables;
+        public boolean      apply_uuid = false;
 
         @JsonDeserialize
         public HiveImports     hive_imports = new HiveImports();
@@ -579,6 +580,10 @@ public class Configuration {
         } else {
             return null;
         }
+    }
+
+    public boolean getHBaseApplyUuid(){
+        return hbaseConfiguration.apply_uuid;
     }
     /**
      * Augmenter configuration getters.

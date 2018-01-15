@@ -44,6 +44,7 @@ public class AugmentedRow {
     private String       rowBinlogPositionID;
     private UUID         transactionUUID;
     private Long         transactionXid;
+    private Long         originalTimestamp;
     private boolean      applyUuid = false;
     private boolean      applyXid = false;
 
@@ -96,6 +97,7 @@ public class AugmentedRow {
         this.transactionXid = transactionXid;
         this.applyUuid = applyUuid;
         this.applyXid = applyXid;
+        this.originalTimestamp = eventV4Header.getTimestamp();
 
         if (tableName != null && tableSchemaVersion != null) initTableSchema(tableSchemaVersion);
 
@@ -272,4 +274,6 @@ public class AugmentedRow {
     public Long getTransactionXid() {
         return transactionXid;
     }
+
+    public Long getOriginalTimestamp() { return originalTimestamp; }
 }

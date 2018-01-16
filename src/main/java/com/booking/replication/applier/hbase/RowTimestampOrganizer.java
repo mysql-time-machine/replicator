@@ -55,7 +55,7 @@ public class RowTimestampOrganizer {
     private Map<String, TimestampTuple> timestampsCache;
 
     public void organizeTimestamps(List<AugmentedRow> rows, String mysqlTableName, String transactionUUID) {
-        if (currentTransactionUUID != transactionUUID) {
+        if (!currentTransactionUUID.equals(transactionUUID)) {
             currentTransactionUUID = transactionUUID;
             timestampsCache = new HashMap<>();
         }
@@ -71,6 +71,7 @@ public class RowTimestampOrganizer {
                 v = new TimestampTuple(
                         row.getEventV4Header().getTimestamp() - TIMESTAMP_SPAN_MISCROSECONDS,
                         row.getEventV4Header().getTimestamp());
+                timestampsCache.put(key, v);
             }
             ((BinlogEventV4HeaderImpl) row.getEventV4Header()).setTimestamp(v.timestamp);
         }

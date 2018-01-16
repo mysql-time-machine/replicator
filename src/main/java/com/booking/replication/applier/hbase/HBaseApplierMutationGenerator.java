@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -83,6 +84,7 @@ public class HBaseApplierMutationGenerator {
     }
 
     private static final byte[] CF                           = Bytes.toBytes("d");
+    private static final byte[] TID                          = Bytes.toBytes("_transaction_uuid");
     private static final String DIGEST_ALGORITHM             = "MD5";
 
     private final com.booking.replication.Configuration configuration;
@@ -119,11 +121,18 @@ public class HBaseApplierMutationGenerator {
 
         // RowID
         String hbaseRowID = getHBaseRowKey(row);
+        if (configuration.getPayloadTableName() != null && configuration.getPayloadTableName().equals(row.getTableName())) {
+            hbaseRowID = getPayloadTableHBaseRowKey(row);
+        }
 
         String hbaseTableName =
                 configuration.getHbaseNamespace() + ":" + row.getTableName().toLowerCase();
 
         Put put = new Put(Bytes.toBytes(hbaseRowID));
+        UUID uuid = null;
+        if (configuration.getHBaseApplyUuid()) {
+            uuid = row.getTransactionUUID();
+        }
 
         switch (row.getEventType()) {
             case "DELETE": {
@@ -139,6 +148,14 @@ public class HBaseApplierMutationGenerator {
                         columnTimestamp,
                         Bytes.toBytes(columnValue)
                 );
+                if (uuid != null) {
+                    put.addColumn(
+                            CF,
+                            TID,
+                            row.getOriginalTimestamp(),
+                            Bytes.toBytes(uuid.toString())
+                    );
+                }
                 break;
             }
             case "UPDATE": {
@@ -180,6 +197,14 @@ public class HBaseApplierMutationGenerator {
                         columnTimestamp,
                         Bytes.toBytes("U")
                 );
+                if (uuid != null) {
+                    put.addColumn(
+                            CF,
+                            TID,
+                            row.getOriginalTimestamp(),
+                            Bytes.toBytes(uuid.toString())
+                    );
+                }
                 break;
             }
             case "INSERT": {
@@ -209,6 +234,14 @@ public class HBaseApplierMutationGenerator {
                         columnTimestamp,
                         Bytes.toBytes("I")
                 );
+                if (uuid != null) {
+                    put.addColumn(
+                            CF,
+                            TID,
+                            row.getOriginalTimestamp(),
+                            Bytes.toBytes(uuid.toString())
+                    );
+                }
                 break;
             }
             default:
@@ -345,7 +378,7 @@ public class HBaseApplierMutationGenerator {
         return String.format("mysql://%s/%s?%s", configuration.validationConfig.getSourceDomain(), table, keys  );
     }
 
-    private static String getHBaseRowKey(AugmentedRow row) {
+    public static String getHBaseRowKey(AugmentedRow row) {
         // RowID
         // This is sorted by column OP (from information schema)
         List<String> pkColumnNames  = row.getPrimaryKeyColumns();
@@ -376,6 +409,14 @@ public class HBaseApplierMutationGenerator {
         // avoid region hot-spotting
         hbaseRowID = saltRowKey(hbaseRowID, saltingPartOfKey);
         return hbaseRowID;
+    }
+
+    private static String getPayloadTableHBaseRowKey(AugmentedRow row) {
+        if (row.getTransactionUUID() != null) {
+            return row.getTransactionUUID().toString();
+        } else {
+            throw new RuntimeException("Transaction ID missing in Augmented Row");
+        }
     }
 
     /**

@@ -36,7 +36,10 @@ public class Converter {
     // Extracts string representation from or typed column. For now just
     // calls toString. Later if needed some type specific processing
     // can be added
-    public static String  orTypeToString(Column column, ColumnSchema columnSchema)
+    public static String orTypeToString(
+            Column column,
+            ColumnSchema columnSchema,
+            TypeConversionRules typeConversionRules)
         throws TableMapException {
 
         // ================================================================
@@ -59,7 +62,7 @@ public class Converter {
 
                 if (charSetName == null) {
                     // TODO: defualt to TABLE/DB charset; in the meantime return HEX-fied blob
-                    return blobToHexString(bytes);
+                    return typeConversionRules.blobToHexString(bytes);
                 } else if (charSetName.contains("utf8")) {
                     String utf8Value = null;
                     try {
@@ -78,11 +81,11 @@ public class Converter {
                     return latin1Value;
                 } else {
                     // TODO: handle other encodings; in the meantime return HEX-fied blob
-                    return blobToHexString(bytes);
+                    return typeConversionRules.blobToHexString(bytes);
                 }
             } else {
                 // Ordinary Binary BLOB - convert to HEX string
-                return blobToHexString(bytes);
+                return typeConversionRules.blobToHexString(bytes);
             }
         } else if (column instanceof StringColumn) {
             // ================================================================
@@ -99,7 +102,7 @@ public class Converter {
             if (charSetName == null) {
                 // TODO: defualt to TABLE/DB charset; in the meantime return HEX-fied blob
                 byte[] bytes = sc.getValue();
-                return blobToHexString(bytes);
+                return typeConversionRules.blobToHexString(bytes);
             } else if (charSetName.contains("utf8")) {
                 byte[] bytes = sc.getValue();
                 String utf8Value = null;
@@ -121,10 +124,10 @@ public class Converter {
             } else {
                 // TODO: handle other encodings; in the meantime return HEX-fied blob
                 byte[] bytes = sc.getValue();
-                return blobToHexString(bytes);
+                return typeConversionRules.blobToHexString(bytes);
             }
         } else if (column instanceof NullColumn) {
-            return "NULL";
+            return typeConversionRules.isStringifyNull() ? "NULL" : null;
         } else if (column instanceof SetColumn) {
             // ================================================================
             // Set and Enum types
@@ -150,7 +153,7 @@ public class Converter {
                     return ((EnumColumnSchema) columnSchema).getEnumValueFromIndex(enumIntValue);
                 } catch (Exception e) {
                     e.printStackTrace();
-                    throw new TableMapException("Probaly wrong mapping of indexes for enum array");
+                    throw new TableMapException("Probably wrong mapping of indexes for enum array");
                 }
             } else {
                 throw new TableMapException("Got enum colum, but the ColumnSchema instance is of wrong type");
@@ -263,11 +266,12 @@ public class Converter {
             return yc.toString();
         } else if (column instanceof DateColumn) {
             DateColumn dc =  (DateColumn) column;
-
-            /** A workaround for the bug in the open replicator's "0000-00-00" date parsing logic: according to MySQL
-             * spec, this date is invalid and has a special treatment in jdbc
-             */
-            return dc.getValue().equals(ZERO_DATE) ? "NULL" : dc.toString();
+            // "0000-00-00" date is invalid in Java so convert to null
+            if (dc.getValue().equals(ZERO_DATE)) {
+                return typeConversionRules.isStringifyNull() ? "NULL" : null;
+            } else {
+                return dc.toString();
+            }
         } else if (column instanceof DatetimeColumn) {
             DatetimeColumn dc = (DatetimeColumn) column;
             return dc.toString();
@@ -300,21 +304,5 @@ public class Converter {
         } else {
             throw new TableMapException("Unknown MySQL type in the event" + column.getClass() + " Object = " + column);
         }
-    }
-
-    public static String blobToHexString( byte [] raw ) {
-        if ( raw == null ) {
-            return "NULL";
-        }
-        final StringBuilder hex = new StringBuilder( 2 * raw.length );
-        for ( final byte b : raw ) {
-            int ivalue = b & 0xFF;
-            if (ivalue < 16 ) {
-                hex.append("0").append(Integer.toHexString(ivalue).toUpperCase());
-            } else {
-                hex.append(Integer.toHexString(ivalue).toUpperCase());
-            }
-        }
-        return hex.toString();
     }
 }

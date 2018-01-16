@@ -25,7 +25,7 @@ public class QueryInspector {
         if (QueryInspector.isPseudoGTIDPattern != null) {
             throw new IllegalStateException("Failed to reassign isPseudoGTIDPattern. Not null");
         }
-        QueryInspector.isPseudoGTIDPattern = Pattern.compile(isPseudoGTIDPattern, Pattern.CASE_INSENSITIVE);;
+        QueryInspector.isPseudoGTIDPattern = Pattern.compile(isPseudoGTIDPattern, Pattern.CASE_INSENSITIVE);
     }
 
     public static boolean isDDLTemporaryTable(String querySQL) {

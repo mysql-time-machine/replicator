@@ -5,6 +5,7 @@ import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.schema.ActiveSchemaVersion;
 import com.booking.replication.schema.column.ColumnSchema;
 import com.booking.replication.schema.column.types.Converter;
+import com.booking.replication.schema.column.types.TypeConversionRules;
 import com.booking.replication.schema.exception.SchemaTransitionException;
 import com.booking.replication.schema.exception.TableMapException;
 import com.booking.replication.schema.table.TableSchemaVersion;
@@ -47,6 +48,7 @@ public class EventAugmenter {
     private ActiveSchemaVersion activeSchemaVersion;
     private final boolean applyUuid;
     private final boolean applyXid;
+    private final TypeConversionRules typeConversionRules;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EventAugmenter.class);
 
@@ -54,11 +56,20 @@ public class EventAugmenter {
      * Event Augmenter constructor.
      *
      * @param asv Active schema version
+     * @param applyUuid Apply transaction Uuid
+     * @param applyXid  Apply transaction Xid
+     * @param typeConversionRules configurable conversion rules for different MySQL types
      */
-    public EventAugmenter(ActiveSchemaVersion asv, boolean applyUuid, boolean applyXid) throws SQLException, URISyntaxException {
+    public EventAugmenter(
+            ActiveSchemaVersion asv,
+            boolean applyUuid,
+            boolean applyXid,
+            TypeConversionRules typeConversionRules
+    ) throws SQLException, URISyntaxException {
         activeSchemaVersion = asv;
         this.applyUuid = applyUuid;
         this.applyXid = applyXid;
+        this.typeConversionRules = typeConversionRules;
     }
 
     /**
@@ -113,8 +124,11 @@ public class EventAugmenter {
      * @param replicantDbName   Database name
      * @return                  Rewritten query
      */
-    public String rewriteActiveSchemaName(String query, String replicantDbName) {
-        String dbNamePattern = "( " + replicantDbName + ".)|(`" + replicantDbName + "`.)";
+    public static String rewriteActiveSchemaName(String query, String replicantDbName) {
+        String dbNamePattern =
+                "( " + replicantDbName + "\\.)" +
+                "|" +
+                "( `" + replicantDbName + "`\\.)";
         query = query.replaceAll(dbNamePattern, " ");
 
         return query;
@@ -230,7 +244,7 @@ public class EventAugmenter {
                 // but here index goes from 0..
                 Column columnValue = row.getColumns().get(columnIndex - 1);
 
-                String value = Converter.orTypeToString(columnValue, columnSchema);
+                String value = Converter.orTypeToString(columnValue, columnSchema, typeConversionRules);
 
                 augEvent.addColumnDataForInsert(columnSchema.getColumnName(), value, columnSchema.getColumnType());
             }
@@ -301,7 +315,7 @@ public class EventAugmenter {
                 Column columnValue = row.getColumns().get(columnIndex - 1);
 
                 // type cast
-                String value = Converter.orTypeToString(columnValue, columnSchema);
+                String value = Converter.orTypeToString(columnValue, columnSchema, typeConversionRules);
 
                 augEvent.addColumnDataForInsert(columnSchema.getColumnName(), value, columnSchema.getColumnType());
             }
@@ -369,7 +383,7 @@ public class EventAugmenter {
                 // but here index goes from 0..
                 Column columnValue = row.getColumns().get(columnIndex - 1);
 
-                String value = Converter.orTypeToString(columnValue, columnSchema);
+                String value = Converter.orTypeToString(columnValue, columnSchema, typeConversionRules);
 
                 augEvent.addColumnDataForInsert(columnSchema.getColumnName(), value, columnSchema.getColumnType());
             }
@@ -440,7 +454,7 @@ public class EventAugmenter {
                 // but here index goes from 0..
                 Column columnValue = row.getColumns().get(columnIndex - 1);
 
-                String value = Converter.orTypeToString(columnValue, columnSchema);
+                String value = Converter.orTypeToString(columnValue, columnSchema, typeConversionRules);
 
                 // TODO: delete has same content as insert, but add a differently named method for clarity
                 augEvent.addColumnDataForInsert(columnSchema.getColumnName(), value, columnSchema.getColumnType());
@@ -514,8 +528,8 @@ public class EventAugmenter {
                 Column columnValueBefore = rowPair.getBefore().getColumns().get(columnIndex - 1);
                 Column columnValueAfter = rowPair.getAfter().getColumns().get(columnIndex - 1);
 
-                String valueBefore = Converter.orTypeToString(columnValueBefore, columnSchema);
-                String valueAfter  = Converter.orTypeToString(columnValueAfter, columnSchema);
+                String valueBefore = Converter.orTypeToString(columnValueBefore, columnSchema, typeConversionRules);
+                String valueAfter  = Converter.orTypeToString(columnValueAfter, columnSchema, typeConversionRules);
 
                 String columnType  = columnSchema.getColumnType();
 
@@ -596,8 +610,8 @@ public class EventAugmenter {
                 Column columnValueAfter = rowPair.getAfter().getColumns().get(columnIndex - 1);
 
                 try {
-                    String valueBefore = Converter.orTypeToString(columnValueBefore, columnSchema);
-                    String valueAfter  = Converter.orTypeToString(columnValueAfter, columnSchema);
+                    String valueBefore = Converter.orTypeToString(columnValueBefore, columnSchema, typeConversionRules);
+                    String valueAfter  = Converter.orTypeToString(columnValueAfter, columnSchema, typeConversionRules);
                     String columnType  = columnSchema.getColumnType();
 
                     augEvent.addColumnDataForUpdate(columnSchema.getColumnName(), valueBefore, valueAfter, columnType);

@@ -82,6 +82,8 @@ public class BinlogEventProducer {
         // disable lv2 buffer
         openReplicator.setLevel2BufferSize(-1);
 
+        openReplicator.setSocketReceiveBufferSize(16 * 1024 * 1024);
+
         openReplicator.setBinlogEventListener(event -> {
             producedEvents.mark();
 
@@ -99,8 +101,8 @@ public class BinlogEventProducer {
                         if (added) {
                             opCounter++;
                             eventQueued = true;
-                            if (opCounter % 100000 == 0) {
-                                LOGGER.info("Producer reporting queue size => " + queue.size());
+                            if (opCounter % 1000 == 0) {
+                                LOGGER.debug("Producer reporting queue size => " + queue.size());
                             }
                         } else {
                             LOGGER.error("queue.offer timed out. Will sleep for 100ms and try again");
@@ -139,7 +141,7 @@ public class BinlogEventProducer {
     public void stop(long timeout, TimeUnit unit) throws Exception {
         LOGGER.info("Stopping producer. Start point was: { binlog-file => " + openReplicator.getBinlogFileName()
                 + ", position => " + openReplicator.getBinlogPosition() + " }");
-        openReplicator.stop(timeout, unit);
+        openReplicator.stopQuietly(timeout, unit);
     }
 
     public void clearQueue() {

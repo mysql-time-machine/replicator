@@ -2,7 +2,7 @@ package com.booking.replication.pipeline.event.handler;
 
 import com.booking.replication.Coordinator;
 import com.booking.replication.applier.ApplierException;
-import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
+import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.pipeline.PipelinePosition;
@@ -40,45 +40,16 @@ public class RotateEventHandler implements BinlogEventV4Handler {
         } catch (IOException e) {
             throw new EventHandlerApplyException("Failed to apply event", e);
         }
-        LOGGER.info("End of binlog file. Waiting for all tasks to finish before moving forward...");
-
-        //TODO: Investigate if this is the right thing to do.
-
-        eventHandlerConfiguration.getApplier().waitUntilAllRowsAreCommitted(event);
 
 
         String currentBinlogFileName = pipelinePosition.getCurrentPosition().getBinlogFilename();
-        long currentBinlogPosition = pipelinePosition.getCurrentPosition().getBinlogPosition();
-        // binlog begins on position 4
-        if (currentBinlogPosition <= 0L) currentBinlogPosition = 4;
 
         String nextBinlogFileName = event.getBinlogFileName().toString();
 
-        LOGGER.info("All rows committed, moving to next binlog " + nextBinlogFileName);
-
-        String pseudoGTID = pipelinePosition.getCurrentPseudoGTID();
-        String pseudoGTIDFullQuery = pipelinePosition.getCurrentPseudoGTIDFullQuery();
-        int currentSlaveId = pipelinePosition.getCurrentPosition().getServerID();
-
-        LastCommittedPositionCheckpoint marker = new LastCommittedPositionCheckpoint(
-                pipelinePosition.getCurrentPosition().getHost(),
-                currentSlaveId,
-                currentBinlogFileName,
-                currentBinlogPosition,
-                pseudoGTID,
-                pseudoGTIDFullQuery,
-                pipelineOrchestrator.getFakeMicrosecondCounter()
-        );
-
-        try {
-            Coordinator.saveCheckpointMarker(marker);
-        } catch (Exception e) {
-            LOGGER.error("Failed to save Checkpoint!", e);
-            pipelineOrchestrator.requestShutdown();
-        }
+        LOGGER.info("Rotate Event: moving to the processing of the next binlog file" + nextBinlogFileName);
 
         if (currentBinlogFileName.equals(lastBinlogFileName)) {
-            LOGGER.info("processed the last binlog file " + lastBinlogFileName);
+            LOGGER.info("Processed the last binlog file " + lastBinlogFileName);
             pipelineOrchestrator.requestShutdown();
         }
     }

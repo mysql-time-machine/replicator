@@ -48,10 +48,14 @@ public class EventDispatcher implements BinlogEventV4Handler {
 
     @Override
     public void handle(BinlogEventV4 event) throws TransactionException, TransactionSizeLimitException {
+
         LOGGER.debug("Handling event: " + event);
+
         try {
             BinlogEventV4Handler eventHandler = getHandler(event.getHeader().getEventType());
+
             eventHandler.handle(event);
+
         } catch (TransactionSizeLimitException e) {
             throw e;
         } catch (BinlogEventProducerException e) {

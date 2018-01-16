@@ -17,4 +17,7 @@ public class DoubleCell implements Cell {
     public Double getValue() {
         return value;
     }
+
+    @Override
+    public String toString() { return Double.toString(value); }
 }

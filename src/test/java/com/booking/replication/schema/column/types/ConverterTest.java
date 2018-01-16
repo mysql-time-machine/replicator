@@ -95,12 +95,12 @@ public class ConverterTest {
         assertEquals("NULL", Converter.cellValueToString(nullCell, emptySchema));
     }
 
-    @Test(expected = Exception.class) // TODO: Specify exception type
-    public void doubleCellWithTextSchema() throws TableMapException {
-        Cell c = new DoubleCell(1.0);
-        ColumnSchema s = new ColumnSchema();
-        s.setColumnType("text");
-
-        Converter.cellValueToString(c, s);
-    }
+//    @Test(expected = Exception.class) // TODO: Specify exception type
+//    public void doubleCellWithTextSchema() throws TableMapException {
+//        Cell c = new DoubleCell(1.0);
+//        ColumnSchema s = new ColumnSchema();
+//        s.setColumnType("text");
+//
+//        Converter.cellValueToString(c, s);
+//    }
 }

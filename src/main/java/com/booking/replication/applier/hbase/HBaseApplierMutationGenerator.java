@@ -345,7 +345,7 @@ public class HBaseApplierMutationGenerator {
         return String.format("mysql://%s/%s?%s", configuration.validationConfig.getSourceDomain(), table, keys  );
     }
 
-    private static String getHBaseRowKey(AugmentedRow row) {
+    public static String getHBaseRowKey(AugmentedRow row) {
         // RowID
         // This is sorted by column OP (from information schema)
         List<String> pkColumnNames  = row.getPrimaryKeyColumns();

@@ -19,4 +19,7 @@ public class Datetime2Cell implements Cell {
     public Date getValue() {
         return value;
     }
+
+    @Override
+    public String toString() { return value.toString(); }
 }

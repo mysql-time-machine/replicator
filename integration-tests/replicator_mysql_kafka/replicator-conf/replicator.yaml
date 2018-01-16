@@ -1,0 +1,33 @@
+replication_schema:
+    name: "test"
+    username: 'root'
+    password: 'mysqlPass'
+    host_pool: ['mysql']
+
+metadata_store:
+    host: "mysql"
+    database: 'test_active_schema'
+    username: 'root'
+    password: 'mysqlPass'
+    zookeeper:
+        quorum: ["zookeeper"]
+        path: '/kafka/replicator/test_kafka'
+
+kafka:
+    broker: "kafka:9092"
+    topic:  replicator_test_kafka
+    excludetables: ["_old", "_new"]
+    apply_begin_event: true
+    apply_commit_event: true
+
+validation:
+    broker: "kafka:9092"
+    topic: replicator_validation
+    tag: test_kafka
+    source_domain: test
+    target_domain: kafka-ams4
+
+mysql_failover:
+    pgtid:
+        p_gtid_pattern: '(?<=_pseudo_gtid_hint__asc\:)(.{8}\:.{16}\:.{8})'
+        p_gtid_prefix: "use `booking_meta`; "

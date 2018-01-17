@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 
+@SuppressWarnings("unused")
 public interface Event extends Serializable, EventDecorator {
     <Header extends EventHeader> Header getHeader();
     <Data extends EventData> Data getData();

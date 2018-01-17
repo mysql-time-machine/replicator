@@ -9,6 +9,5 @@
         <version>0.16.0-alpha-1-SNAPSHOT</version>
     </parent>
     <artifactId>mysql-replicator-streams</artifactId>
-    <version>0.16.0-alpha-1-SNAPSHOT</version>
     <name>mysql-replicator-streams</name>
 </project>

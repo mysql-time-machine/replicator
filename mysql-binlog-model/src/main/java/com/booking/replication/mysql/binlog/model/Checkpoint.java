@@ -1,11 +1,11 @@
 package com.booking.replication.mysql.binlog.model;
 
+@SuppressWarnings("unused")
 public class Checkpoint {
     private long serverId;
     private String binlogFilename;
     private long binlogPosition;
 
-    @SuppressWarnings("unused")
     public Checkpoint() {
     }
 

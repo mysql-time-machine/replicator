@@ -15,27 +15,27 @@
         <dependency>
             <groupId>com.booking.replication</groupId>
             <artifactId>mysql-binlog-supplier</artifactId>
-            <version>0.16.0-alpha-1-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.booking.replication</groupId>
             <artifactId>mysql-replicator-streams</artifactId>
-            <version>0.16.0-alpha-1-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.booking.replication</groupId>
             <artifactId>mysql-replicator-coordinator</artifactId>
-            <version>0.16.0-alpha-1-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.booking.replication</groupId>
             <artifactId>mysql-replicator-augmenter</artifactId>
-            <version>0.16.0-alpha-1-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.booking.replication</groupId>
             <artifactId>mysql-replicator-applier</artifactId>
-            <version>0.16.0-alpha-1-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
     <build>

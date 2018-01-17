@@ -9,7 +9,6 @@
         <version>0.16.0-alpha-1-SNAPSHOT</version>
     </parent>
     <artifactId>mysql-binlog-supplier</artifactId>
-    <version>0.16.0-alpha-1-SNAPSHOT</version>
     <name>mysql-binlog-supplier</name>
     <dependencies>
         <dependency>
@@ -20,7 +19,7 @@
         <dependency>
             <groupId>com.booking.replication</groupId>
             <artifactId>mysql-binlog-model</artifactId>
-            <version>0.16.0-alpha-1-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 </project>

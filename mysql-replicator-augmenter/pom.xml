@@ -9,13 +9,12 @@
         <version>0.16.0-alpha-1-SNAPSHOT</version>
     </parent>
     <artifactId>mysql-replicator-augmenter</artifactId>
-    <version>0.16.0-alpha-1-SNAPSHOT</version>
     <name>mysql-replicator-augmenter</name>
     <dependencies>
         <dependency>
             <groupId>com.booking.replication</groupId>
             <artifactId>mysql-binlog-model</artifactId>
-            <version>0.16.0-alpha-1-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 </project>

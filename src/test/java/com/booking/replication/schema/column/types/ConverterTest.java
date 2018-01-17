@@ -114,6 +114,7 @@ public class ConverterTest {
     public void doubleCell() throws TableMapException {
         Cell c = new DoubleCell(1.5);
         ColumnSchema s = new ColumnSchema();
+        s.setColumnType("double");
 
         assertEquals("1.5", Converter.cellValueToString(c, s));
     }
@@ -126,7 +127,7 @@ public class ConverterTest {
 
         assertEquals("1.5", Converter.cellValueToString(c, s));
     }
-    
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // TIME AND DATE
 

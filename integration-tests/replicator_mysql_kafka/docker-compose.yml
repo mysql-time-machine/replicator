@@ -1,8 +1,8 @@
-version: "3"
+version: "2"
 services:
   replicator:
     build: "../../"
-    image: "replicator:testing"
+#    image: "replicator-it:testing"
     volumes:
       - "./replicator-conf:/etc/replicator"
     command: --schema test --applier kafka --binlog-filename binlog.000001
@@ -14,8 +14,6 @@ services:
     volumes:
       - "./mysql-conf/my.cnf:/etc/mysql/conf.d/my.cnf:ro"
       - "./mysql-conf/initdb.sh:/docker-entrypoint-initdb.d/initdb.sh:ro"
-    ports:
-      - 3306
     environment:
       MYSQL_ROOT_PASSWORD: mysqlPass
   zookeeper:
@@ -25,7 +23,5 @@ services:
     environment:
       KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
       KAFKA_CREATE_TOPICS: "replicator_test_kafka:1:1,replicator_validation:1:1"
-    ports:
-      - 9092
     depends_on:
       - zookeeper

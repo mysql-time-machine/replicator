@@ -2,13 +2,14 @@ version: "2"
 services:
   replicator:
     build: "../../"
-#    image: "replicator-it:testing"
     volumes:
       - "./replicator-conf:/etc/replicator"
     command: --schema test --applier kafka --binlog-filename binlog.000001
     depends_on:
       - mysql
       - kafka
+    environment:
+      TIMEOUT: 60
   mysql:
     image: "mysql:${MYSQL_VERSION}"
     volumes:

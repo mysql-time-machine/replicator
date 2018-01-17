@@ -55,7 +55,8 @@ public class RowTimestampOrganizer {
     private Map<String, TimestampTuple> timestampsCache;
 
     public void organizeTimestamps(List<AugmentedRow> rows, String mysqlTableName, String transactionUUID) {
-        if (!currentTransactionUUID.equals(transactionUUID)) {
+        if (currentTransactionUUID == null ||
+                !currentTransactionUUID.equals(transactionUUID)) {
             currentTransactionUUID = transactionUUID;
             timestampsCache = new HashMap<>();
         }

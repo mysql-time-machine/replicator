@@ -17,4 +17,9 @@ public class TimeCell implements Cell {
     public java.sql.Time getValue() {
         return value;
     }
+
+    @Override
+    public String toString() {
+        return Long.toString(value.getTime());
+    }
 }

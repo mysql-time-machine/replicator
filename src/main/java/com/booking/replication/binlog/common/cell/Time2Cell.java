@@ -17,4 +17,9 @@ public class Time2Cell implements Cell {
     public java.sql.Time getValue() {
         return value;
     }
+
+    @Override
+    public String toString() {
+        return Long.toString(value.getTime());
+    }
 }

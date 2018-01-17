@@ -158,9 +158,59 @@ public class ConverterTest {
         Date d = sdf.parse("16/01/2018");
         Cell c = new DatetimeCell(d);
         ColumnSchema s = new ColumnSchema();
-        s.setColumnType("datetime");
+        s.setColumnType("date");
 
         assertEquals(d.toString(), Converter.cellValueToString(c, s));
+    }
+
+    @Test
+    public void yearCell() throws TableMapException {
+        int year = 2018;
+        Cell c = YearCell.valueOf(year);
+        ColumnSchema s = new ColumnSchema();
+        s.setColumnType("year");
+
+        assertEquals(Integer.toString(year), Converter.cellValueToString(c, s));
+    }
+
+    @Test
+    public void timeCell() throws TableMapException {
+        long epoch = 1000000;
+        java.sql.Time time = new java.sql.Time(epoch);
+        ColumnSchema s = new ColumnSchema();
+        s.setColumnType("time");
+
+        assertEquals(Long.toString(epoch), Converter.cellValueToString(new TimeCell(time), s));
+    }
+
+    @Test
+    public void time2Cell() throws TableMapException {
+        long epoch = 555555;
+        java.sql.Time time = new java.sql.Time(epoch);
+        ColumnSchema s = new ColumnSchema();
+        s.setColumnType("time");
+
+        assertEquals(Long.toString(epoch), Converter.cellValueToString(new Time2Cell(time), s));
+    }
+
+    @Test
+    public void timestampCell() throws TableMapException {
+        long epoch = 666666;
+        java.sql.Timestamp t = new java.sql.Timestamp(epoch);
+        ColumnSchema s = new ColumnSchema();
+        s.setColumnType("timestamp");
+
+        assertEquals(Long.toString(epoch), Converter.cellValueToString(new TimestampCell(t), s));
+    }
+
+    @Test
+    public void timestamp2Cell() throws TableMapException {
+        long epoch = 777777;
+        java.sql.Timestamp t = new java.sql.Timestamp(epoch);
+        ColumnSchema s = new ColumnSchema();
+        s.setColumnType("timestamp");
+
+        assertEquals(Long.toString(epoch), Converter.cellValueToString(new Timestamp2Cell(t), s));
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -190,7 +240,7 @@ public class ConverterTest {
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // STRING CELLS
-    
+
     @Test
     public void stringToString() throws TableMapException {
         String testString = "test";

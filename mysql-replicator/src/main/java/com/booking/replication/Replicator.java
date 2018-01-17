@@ -68,7 +68,7 @@ public class Replicator {
 
             Streams<Event, Event> streams = Streams.<Event>builder()
                     .fromPush()
-                   // .process(augmenter)
+                    // .process(augmenter)
                     .to(applier)
                     .post(storeCheckpoint)
                     .build();

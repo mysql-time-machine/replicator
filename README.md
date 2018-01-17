@@ -1,4 +1,5 @@
 [![][Build Status img]][Build Status]
+[![][Quality Gate img]][Quality Gate]
 [![][Coverage Status img]][Coverage Status]
 [![][Known Vulnerabilities img]][Known Vulnerabilities]
 [![][license img]][license]
@@ -12,8 +13,14 @@ Replicates data changes from MySQL binlog to HBase or Kafka. In case of HBase, p
 ### Documentation
 This readme file provides some basic documentation on how to get started. For more details, refer to official documentation at [mysql-time-machine](https://mysql-time-machine.github.io/).
 
+### Building required Docker images
+1. Run `mvn package -P uberjar` from the root of the `replicator` repository to build the MySQL Replicator jar that will be used later;
+2. Rename built jar to `mysql-replicator.jar` and copy it to the `images/002_replicator_runner/input/replicator/` directory inside the `docker` repository;
+3. Run `container_build.sh` script from the `images/002_replicator_runner/` directory inside the `docker` repository;
+4. Run `docker ps` to verify that `replicator-runner` image has been built successfully;
+
 ### Getting Started with MySQL Replicator
-Replicator assumes that there is a preinstalled environment in which it can run. This environment consists of:
+Replicator assumes that there is a pre-installed environment in which it can run. This environment consists of:
 
  - MySQL Instance
  - Zookeeper Instance
@@ -43,14 +50,14 @@ Now, in another terminal, you can connect to the replicator container
  This folder contains the replicator jar, the replicator configuration file, log configuration and some utility scripts. 
  Now we can insert some random data in mysql:
  
- ````
+````
  ./random_mysql_ops
  ...
  ('TwIPn','4216871','313785','NIrnXGEpqJI gGDstvhs'),
  ('AwqgI','4831311','930233','IHwkTOuEnOqGdEWNzJtq'),
  ('WIJCB','1516599','487420','rPnOHfZlIvEEvFFEIGiW'),
  ...
- ````
+````
 
  This data has been inserted in pre-created database 'test' in precreated table 'sometable'. The provided mysql instance is configured to use RBR and binlogs are active.
  
@@ -75,19 +82,52 @@ Now, in another terminal, you can connect to the replicator container
  
  And read the data from Kafka
  
- ````
+````
  ./read_kafka
 ````
 
-In this example we have writen rows to mysql, then replicated the binlogs to kafka and then red from Kafka sequentially. However, these processes can be run in parallel as the real life setup would work.
+In this example we have written rows to mysql, then replicated the binlogs to kafka and then red from Kafka sequentially. However, these processes can be run in parallel as the real life setup would work.
 
-As the replication is running, you can observe the replication statisticts at graphite dashboard: http://localhost/dashboard/
+As the replication is running, you can observe the replication statistics at graphite dashboard: http://localhost/dashboard/
+
+### PACKAGING
+
+Packaging the project is really simple with Maven
+
+```
+mvn clean package
+```
+
+Will generate a light jar with the project. This dependency can be used in your projects directly, always that you use maven to get all the transitive dependencies.
+
+If you need to generate a Uberjar you can execute, so you don't need to worry about dependencies, you can execute
+
+```
+mvn clean package -P uberjar
+```
+
+The generated jar will contain all the dependencies included in a single jar file.
+
+### DEPLOY
+
+To deploy a new version to Maven central it's enough executing
+
+```
+mvn clean deploy -P release
+```
+
+If previous step didn't work is probably because you don't have a SonaType account or a published GPG key. Follow these steps:
+
+1. [Create a Sonatype Account](https://issues.sonatype.org/secure/Signup!default.jspa)
+2. [Create a PGP Signature](http://central.sonatype.org/pages/working-with-pgp-signatures.html)
+
+Now you should be in conditions to deploy the project.
 
 ### AUTHOR
 Bosko Devetak <bosko.devetak@gmail.com>
 
 ### CONTRIBUTORS
-Carlos Tasada <a href="https://github.com/raynald">[ctasada]</a>
+Carlos Tasada <a href="https://github.com/ctasada">[ctasada]</a>
 
 Dmitrii Tcyganov <a href="https://github.com/dtcyganov">[dtcyganov]</a>
 
@@ -135,6 +175,8 @@ limitations under the License.
 [Coverage Status img]:https://codecov.io/gh/mysql-time-machine/replicator/branch/master/graph/badge.svg
 [Known Vulnerabilities img]:https://snyk.io/test/github/mysql-time-machine/replicator/badge.svg
 [Known Vulnerabilities]:https://snyk.io/test/github/mysql-time-machine/replicator
+[Quality Gate img]:https://sonarcloud.io/api/badges/gate?key=com.booking%3Amysql-replicator
+[Quality Gate]:https://sonarcloud.io/dashboard?id=com.booking%3Amysql-replicator
 [Maven Central]:https://maven-badges.herokuapp.com/maven-central/com.booking/mysql-replicator
 [Maven Central img]:https://maven-badges.herokuapp.com/maven-central/com.booking/mysql-replicator/badge.svg
 [license]:LICENSE

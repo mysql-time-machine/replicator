@@ -11,7 +11,7 @@ public class ColumnSchema {
     private String columnName;
     private String columnKey;
     private String characterSetName;
-    private String dataType;
+    private String dataType; // TODO: Duplicates columnType. Remove
     private String columnType;
     private int ordinalPosition; // ColumnSchema position in the table
     private int characterMaximumLength;

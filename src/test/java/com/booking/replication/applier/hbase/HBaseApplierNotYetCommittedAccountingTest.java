@@ -2,7 +2,6 @@ package com.booking.replication.applier.hbase;
 
 import com.booking.replication.applier.TaskStatus;
 import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
-import com.sun.xml.internal.bind.v2.TODO;
 import org.junit.Before;
 import org.junit.Test;
 

@@ -13,7 +13,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -31,14 +30,9 @@ public class Replicator {
 
             EventSupplier supplier = EventSupplier.build(
                     configuration,
-                    Replicator.mapper.readValue(
-                            coordinator.loadCheckpoint(
-                                    configuration.getOrDefault(
-                                            Coordinator.Configuration.CHECKPOINT_PATH,
-                                            coordinator.defaultCheckpointPath()
-                                    )
-                            ),
-                            Checkpoint.class
+                    this.loadCheckpoint(
+                            coordinator,
+                            configuration
                     )
             );
 
@@ -48,17 +42,11 @@ public class Replicator {
 
             BiConsumer<Event, Set<Event>> storeCheckpoint = (event, executing) -> {
                 try {
-                    byte[] checkpoint = Replicator.mapper.writeValueAsBytes(Checkpoint.of(event));
-
-                    if (checkpoint != null) {
-                        coordinator.storeCheckpoint(
-                                configuration.getOrDefault(
-                                        Coordinator.Configuration.CHECKPOINT_PATH,
-                                        coordinator.defaultCheckpointPath()
-                                ),
-                                checkpoint
-                        );
-                    }
+                    this.storeCheckpoint(
+                            Checkpoint.of(event),
+                            coordinator,
+                            configuration
+                    );
                 } catch (IOException exception) {
                     Replicator.log.log(Level.SEVERE, "error storing checkpoint", exception);
                 }
@@ -126,6 +114,37 @@ public class Replicator {
             coordinator.join();
         } catch (Exception exception) {
             Replicator.log.log(Level.SEVERE, "error executing replicator", exception);
+        }
+    }
+
+    private Checkpoint loadCheckpoint(Coordinator coordinator, Map<String, String> configuration) throws IOException {
+        byte[] checkpointBytes = coordinator.loadCheckpoint(
+                configuration.getOrDefault(
+                        Coordinator.Configuration.CHECKPOINT_PATH,
+                        coordinator.defaultCheckpointPath()
+                )
+        );
+
+        if (checkpointBytes != null && checkpointBytes.length > 0) {
+            return Replicator.mapper.readValue(checkpointBytes, Checkpoint.class);
+        } else {
+            return null;
+        }
+    }
+
+    private void storeCheckpoint(Checkpoint checkpoint, Coordinator coordinator, Map<String, String> configuration) throws IOException {
+        if (checkpoint != null) {
+            byte[] checkpointBytes = Replicator.mapper.writeValueAsBytes(checkpoint);
+
+            if (checkpointBytes != null && checkpointBytes.length > 0) {
+                coordinator.storeCheckpoint(
+                        configuration.getOrDefault(
+                                Coordinator.Configuration.CHECKPOINT_PATH,
+                                coordinator.defaultCheckpointPath()
+                        ),
+                        checkpointBytes
+                );
+            }
         }
     }
 

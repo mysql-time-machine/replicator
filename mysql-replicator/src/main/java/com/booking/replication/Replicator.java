@@ -11,6 +11,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -44,7 +46,7 @@ public class Replicator {
                     configuration
             );
 
-            Consumer<Event> storeCheckpoint = (event) -> {
+            BiConsumer<Event, Set<Event>> storeCheckpoint = (event, executing) -> {
                 try {
                     byte[] checkpoint = Replicator.mapper.writeValueAsBytes(Checkpoint.of(event));
 

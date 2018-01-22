@@ -1,12 +1,10 @@
 package com.booking.replication.streams;
 
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
+import java.util.function.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -15,18 +13,20 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
 
     private final ExecutorService executor;
     private final int tasks;
+    private final Set<Input> executing;
     private final BlockingDeque<Input> queue;
     private final Supplier<Input> from;
     private final Predicate<Input> filter;
     private final Function<Input, Output> process;
     private final Consumer<Output> to;
-    private final Consumer<Input> post;
+    private final BiConsumer<Input, Set<Input>> post;
     private final AtomicBoolean running;
     private Consumer<Exception> handler;
 
-    StreamsImplementation(int threads, int tasks, Supplier<Input> from, Predicate<Input> filter, Function<Input, Output> process, Consumer<Output> to, Consumer<Input> post) {
+    StreamsImplementation(int threads, int tasks, Supplier<Input> from, Predicate<Input> filter, Function<Input, Output> process, Consumer<Output> to, BiConsumer<Input, Set<Input>> post) {
         this.executor = Executors.newFixedThreadPool(threads);
         this.tasks = tasks;
+        this.executing = ConcurrentHashMap.newKeySet();
 
         if (from == null) {
             this.queue = new LinkedBlockingDeque<>();
@@ -61,12 +61,16 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
                         input = this.from.get();
 
                         if (input != null && this.filter.test(input)) {
+                            this.executing.add(input);
+
                             Output output = this.process.apply(input);
 
                             if (output != null) {
                                 this.to.accept(this.process.apply(input));
-                                this.post.accept(input);
+                                this.post.accept(input, this.executing);
                             }
+
+                            this.executing.remove(input);
                         }
 
                         input = null;

@@ -1,10 +1,8 @@
 package com.booking.replication.streams;
 
 import java.util.Objects;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
+import java.util.Set;
+import java.util.function.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -22,7 +20,7 @@ public final class StreamsBuilder<Input, Output> implements
     private Predicate<Input> filter;
     private Function<Input, Output> process;
     private Consumer<Output> to;
-    private Consumer<Input> post;
+    private BiConsumer<Input, Set<Input>> post;
 
     private StreamsBuilder(Supplier<Input> from, Predicate<Input> filter, Function<Input, Output> process) {
         this.threads = 1;
@@ -31,7 +29,7 @@ public final class StreamsBuilder<Input, Output> implements
         this.filter = filter;
         this.process = process;
         this.to = (value) -> StreamsBuilder.log.log(Level.FINEST, value.toString());
-        this.post = (value) -> StreamsBuilder.log.log(Level.FINEST, value.toString());
+        this.post = (value, current) -> StreamsBuilder.log.log(Level.FINEST, value.toString());
     }
 
     @SuppressWarnings("unchecked")
@@ -92,7 +90,7 @@ public final class StreamsBuilder<Input, Output> implements
     }
 
     @Override
-    public final StreamsBuilderBuild<Input, Output> post(Consumer<Input> consumer) {
+    public final StreamsBuilderBuild<Input, Output> post(BiConsumer<Input, Set<Input>> consumer) {
         Objects.requireNonNull(consumer);
         this.post = this.post.andThen(consumer);
         return this;

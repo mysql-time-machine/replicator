@@ -94,7 +94,7 @@ public class StreamsTest {
                 .filter(value -> value > 0)
                 .process(Object::toString)
                 .to((value) -> assertTrue(String.class.isInstance(value)))
-                .post((value) -> assertTrue(value > 0))
+                .post((value, executing) -> assertTrue(value > 0))
                 .build()
                 .start()
                 .wait(1L, TimeUnit.SECONDS)

@@ -15,14 +15,15 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <maven.compiler.testSource>1.8</maven.compiler.testSource>
         <maven.compiler.testTarget>1.8</maven.compiler.testTarget>
-        <version.junit>4.12</version.junit>
-        <version.log4j1>1.2.17</version.log4j1>
-        <version.log4j2>2.10.0</version.log4j2>
-        <version.slf4j>1.7.25</version.slf4j>
-        <version.curator>4.0.0</version.curator>
-        <version.hbase>1.4.0</version.hbase>
-        <version.kafka>1.0.0</version.kafka>
-        <version.mysql-binlog-connector>0.13.0</version.mysql-binlog-connector>
+        <junit.version>4.12</junit.version>
+        <log4j1.version>1.2.17</log4j1.version>
+        <log4j2.version>2.10.0</log4j2.version>
+        <slf4j.version>1.7.25</slf4j.version>
+        <jackson.version>2.9.3</jackson.version>
+        <curator.version>4.0.0</curator.version>
+        <hbase.version>1.4.0</hbase.version>
+        <kafka.version>1.0.0</kafka.version>
+        <mysql-binlog-connector.version>0.13.0</mysql-binlog-connector.version>
         <tests.skip>false</tests.skip>
     </properties>
     <modules>
@@ -39,92 +40,97 @@
             <dependency>
                 <groupId>junit</groupId>
                 <artifactId>junit</artifactId>
-                <version>${version.junit}</version>
+                <version>${junit.version}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>org.apache.logging.log4j</groupId>
                 <artifactId>log4j-core</artifactId>
-                <version>${version.log4j2}</version>
+                <version>${log4j2.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.logging.log4j</groupId>
                 <artifactId>log4j-jul</artifactId>
-                <version>${version.log4j2}</version>
+                <version>${log4j2.version}</version>
                 <scope>runtime</scope>
             </dependency>
             <dependency>
                 <groupId>org.apache.logging.log4j</groupId>
                 <artifactId>log4j-1.2-api</artifactId>
-                <version>${version.log4j2}</version>
+                <version>${log4j2.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.logging.log4j</groupId>
                 <artifactId>log4j-slf4j-impl</artifactId>
-                <version>${version.log4j2}</version>
+                <version>${log4j2.version}</version>
             </dependency>
             <dependency>
                 <groupId>log4j</groupId>
                 <artifactId>log4j</artifactId>
-                <version>${version.log4j1}</version>
+                <version>${log4j1.version}</version>
                 <scope>provided</scope>
             </dependency>
             <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-api</artifactId>
-                <version>${version.slf4j}</version>
+                <version>${slf4j.version}</version>
                 <scope>provided</scope>
             </dependency>
             <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-log4j12</artifactId>
-                <version>${version.slf4j}</version>
+                <version>${slf4j.version}</version>
                 <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+                <version>${jackson.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.github.shyiko</groupId>
                 <artifactId>mysql-binlog-connector-java</artifactId>
-                <version>${version.mysql-binlog-connector}</version>
+                <version>${mysql-binlog-connector.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.hbase</groupId>
                 <artifactId>hbase-client</artifactId>
-                <version>${version.hbase}</version>
+                <version>${hbase.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.hbase</groupId>
                 <artifactId>hbase-common</artifactId>
-                <version>${version.hbase}</version>
+                <version>${hbase.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.hbase</groupId>
                 <artifactId>hbase-it</artifactId>
-                <version>${version.hbase}</version>
+                <version>${hbase.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.kafka</groupId>
                 <artifactId>kafka_2.12</artifactId>
-                <version>${version.kafka}</version>
+                <version>${kafka.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.curator</groupId>
                 <artifactId>curator-client</artifactId>
-                <version>${version.curator}</version>
+                <version>${curator.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.curator</groupId>
                 <artifactId>curator-framework</artifactId>
-                <version>${version.curator}</version>
+                <version>${curator.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.curator</groupId>
                 <artifactId>curator-recipes</artifactId>
-                <version>${version.curator}</version>
+                <version>${curator.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.curator</groupId>
                 <artifactId>curator-test</artifactId>
-                <version>${version.curator}</version>
+                <version>${curator.version}</version>
                 <scope>test</scope>
             </dependency>
         </dependencies>

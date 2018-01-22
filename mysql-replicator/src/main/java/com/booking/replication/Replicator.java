@@ -136,6 +136,10 @@ public class Replicator {
     public static void main(String[] arguments) {
         Map<String, String> configuration = new HashMap<>();
 
+        configuration.put(EventSupplier.Configuration.MYSQL_HOSTNAME, arguments[0]);
+        configuration.put(EventSupplier.Configuration.MYSQL_USERNAME, arguments[1]);
+        configuration.put(EventSupplier.Configuration.MYSQL_PASSWORD, arguments[2]);
+
         new Replicator().start(configuration);
     }
 }

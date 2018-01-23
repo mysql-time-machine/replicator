@@ -30,7 +30,7 @@ public final class StreamsBuilder<Input, Output> implements
         this.filter = filter;
         this.process = process;
         this.to = (value) -> StreamsBuilder.log.log(Level.FINEST, value.toString());
-        this.post = (value, current) -> StreamsBuilder.log.log(Level.FINEST, value.toString());
+        this.post = (value, executing) -> StreamsBuilder.log.log(Level.FINEST, value.toString());
     }
 
     @SuppressWarnings("unchecked")
@@ -88,6 +88,12 @@ public final class StreamsBuilder<Input, Output> implements
         Objects.requireNonNull(consumer);
         this.to = this.to.andThen(consumer);
         return this;
+    }
+
+    @Override
+    public final StreamsBuilderBuild<Input, Output> post(Consumer<Input> consumer) {
+        Objects.requireNonNull(consumer);
+        return this.post((value, executing) -> consumer.accept(value));
     }
 
     @Override

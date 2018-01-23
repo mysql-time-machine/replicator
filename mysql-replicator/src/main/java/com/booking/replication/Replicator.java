@@ -11,8 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -40,7 +39,7 @@ public class Replicator {
                     configuration
             );
 
-            BiConsumer<Event, Map<Event, AtomicReference<Event>>> storeCheckpoint = (event, executing) -> {
+            Consumer<Event> storeCheckpoint = (event) -> {
                 try {
                     this.storeCheckpoint(
                             Checkpoint.of(event),

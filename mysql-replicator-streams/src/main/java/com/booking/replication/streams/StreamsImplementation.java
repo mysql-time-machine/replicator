@@ -1,9 +1,10 @@
 package com.booking.replication.streams;
 
+import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -13,20 +14,20 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
 
     private final ExecutorService executor;
     private final int tasks;
-    private final Set<Input> executing;
+    private final Map<Input, AtomicReference<Output>> executing;
     private final BlockingDeque<Input> queue;
     private final Supplier<Input> from;
     private final Predicate<Input> filter;
     private final Function<Input, Output> process;
     private final Consumer<Output> to;
-    private final BiConsumer<Input, Set<Input>> post;
+    private final BiConsumer<Input, Map<Input, AtomicReference<Output>>> post;
     private final AtomicBoolean running;
     private Consumer<Exception> handler;
 
-    StreamsImplementation(int threads, int tasks, Supplier<Input> from, Predicate<Input> filter, Function<Input, Output> process, Consumer<Output> to, BiConsumer<Input, Set<Input>> post) {
+    StreamsImplementation(int threads, int tasks, Supplier<Input> from, Predicate<Input> filter, Function<Input, Output> process, Consumer<Output> to, BiConsumer<Input, Map<Input, AtomicReference<Output>>> post) {
         this.executor = Executors.newFixedThreadPool(threads);
         this.tasks = tasks;
-        this.executing = ConcurrentHashMap.newKeySet();
+        this.executing = new ConcurrentHashMap<>();
 
         if (from == null) {
             this.queue = new LinkedBlockingDeque<>();
@@ -61,11 +62,12 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
                         input = this.from.get();
 
                         if (input != null && this.filter.test(input)) {
-                            this.executing.add(input);
+                            this.executing.put(input, new AtomicReference<>());
 
                             Output output = this.process.apply(input);
 
                             if (output != null) {
+                                this.executing.get(input).set(output);
                                 this.to.accept(this.process.apply(input));
                                 this.post.accept(input, this.executing);
                             }

@@ -1,7 +1,8 @@
 package com.booking.replication.streams;
 
+import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -20,7 +21,7 @@ public final class StreamsBuilder<Input, Output> implements
     private Predicate<Input> filter;
     private Function<Input, Output> process;
     private Consumer<Output> to;
-    private BiConsumer<Input, Set<Input>> post;
+    private BiConsumer<Input, Map<Input, AtomicReference<Output>>> post;
 
     private StreamsBuilder(Supplier<Input> from, Predicate<Input> filter, Function<Input, Output> process) {
         this.threads = 1;
@@ -90,7 +91,7 @@ public final class StreamsBuilder<Input, Output> implements
     }
 
     @Override
-    public final StreamsBuilderBuild<Input, Output> post(BiConsumer<Input, Set<Input>> consumer) {
+    public final StreamsBuilderBuild<Input, Output> post(BiConsumer<Input, Map<Input, AtomicReference<Output>>> consumer) {
         Objects.requireNonNull(consumer);
         this.post = this.post.andThen(consumer);
         return this;

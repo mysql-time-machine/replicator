@@ -1,5 +1,6 @@
 package com.booking.replication.streams;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.*;
@@ -15,6 +16,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     private final ExecutorService executor;
     private final int tasks;
     private final Map<Input, AtomicReference<Output>> executing;
+    private final Map<Input, AtomicReference<Output>> executingReadOnly;
     private final BlockingDeque<Input> queue;
     private final Supplier<Input> from;
     private final Predicate<Input> filter;
@@ -28,6 +30,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
         this.executor = Executors.newFixedThreadPool(threads);
         this.tasks = tasks;
         this.executing = new ConcurrentHashMap<>();
+        this.executingReadOnly = Collections.unmodifiableMap(this.executing);
 
         if (from == null) {
             this.queue = new LinkedBlockingDeque<>();
@@ -62,17 +65,19 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
                         input = this.from.get();
 
                         if (input != null && this.filter.test(input)) {
-                            this.executing.put(input, new AtomicReference<>());
+                            try {
+                                this.executing.put(input, new AtomicReference<>());
 
-                            Output output = this.process.apply(input);
+                                Output output = this.process.apply(input);
 
-                            if (output != null) {
-                                this.executing.get(input).set(output);
-                                this.to.accept(this.process.apply(input));
-                                this.post.accept(input, this.executing);
+                                if (output != null) {
+                                    this.executing.get(input).set(output);
+                                    this.to.accept(output);
+                                    this.post.accept(input, this.executingReadOnly);
+                                }
+                            } finally {
+                                this.executing.remove(input);
                             }
-
-                            this.executing.remove(input);
                         }
 
                         input = null;

@@ -13,6 +13,12 @@ public interface EventApplier extends Consumer<Event>, Closeable {
             public EventApplier newInstance(Map<String, String> configuration) {
                 return new ConsoleEventApplier(configuration);
             }
+        },
+        HBASE {
+            @Override
+            public EventApplier newInstance(Map<String, String> configuration) {
+                return new HBaseEventApplier(configuration);
+            }
         };
 
         public abstract EventApplier newInstance(Map<String, String> configuration);

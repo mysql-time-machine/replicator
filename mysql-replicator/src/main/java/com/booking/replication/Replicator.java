@@ -51,22 +51,7 @@ public class Replicator {
                 }
             };
 
-//            EventApplier<Event> augmenter = Augmenter.build(
-//                    configuration
-//            );
-
-            Streams<Event, Event> streams = Streams.<Event>builder()
-                    .tasks(10)
-                    .threads(10)
-                    .fromPush()
-                    // .process(augmenter)
-                    .to(applier)
-                    .post(storeCheckpoint)
-                    .build();
-
-            supplier.onEvent(streams::push);
-
-            streams.onException((streamsException) -> {
+            Consumer<Exception> exceptionHandle = (streamsException) -> {
                 try {
                     Replicator.log.log(Level.SEVERE, "error inside streams", streamsException);
                     Replicator.log.log(Level.INFO, "stopping coordinator");
@@ -75,7 +60,29 @@ public class Replicator {
                 } catch (InterruptedException exception) {
                     Replicator.log.log(Level.SEVERE, "error stopping", exception);
                 }
-            });
+            };
+
+//            EventApplier<Event> augmenter = Augmenter.build(
+//                    configuration
+//            );
+
+            Streams<Event, Event> streamsApplier = Streams.<Event>builder()
+                    .threads(100)
+                    .tasks(100)
+                    .fromPush()
+                    .to(applier)
+                    .build();
+
+            Streams<Event, Event> streamsSupplier = Streams.<Event>builder()
+                    .fromPush()
+                    // .process(augmenter)
+                    .to(streamsApplier::push)
+                    .build();
+
+            supplier.onEvent(streamsSupplier::push);
+
+            streamsSupplier.onException(exceptionHandle);
+            streamsApplier.onException(exceptionHandle);
 
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 try {
@@ -91,7 +98,8 @@ public class Replicator {
                 try {
                     Replicator.log.log(Level.INFO, "starting replicator");
 
-                    streams.start();
+                    streamsApplier.start();
+                    streamsSupplier.start();
                     supplier.start();
                 } catch (IOException | InterruptedException exception) {
                     Replicator.log.log(Level.SEVERE, "error starting", exception);
@@ -103,7 +111,8 @@ public class Replicator {
                     Replicator.log.log(Level.INFO, "stopping replicator");
 
                     supplier.stop();
-                    streams.stop();
+                    streamsSupplier.stop();
+                    streamsApplier.stop();
                 } catch (IOException | InterruptedException exception) {
                     Replicator.log.log(Level.SEVERE, "error stopping", exception);
                 }

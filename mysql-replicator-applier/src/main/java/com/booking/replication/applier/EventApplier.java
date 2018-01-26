@@ -1,5 +1,7 @@
 package com.booking.replication.applier;
 
+import com.booking.replication.applier.console.ConsoleEventApplier;
+import com.booking.replication.applier.hbase.HBaseEventApplier;
 import com.booking.replication.mysql.binlog.model.Event;
 
 import java.io.Closeable;

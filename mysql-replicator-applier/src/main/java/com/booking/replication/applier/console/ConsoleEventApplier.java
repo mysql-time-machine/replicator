@@ -1,5 +1,6 @@
-package com.booking.replication.applier;
+package com.booking.replication.applier.console;
 
+import com.booking.replication.applier.EventApplier;
 import com.booking.replication.mysql.binlog.model.Event;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,7 +14,7 @@ public class ConsoleEventApplier implements EventApplier {
     private final ObjectMapper mapper;
 
     @SuppressWarnings("unused")
-    ConsoleEventApplier(Map<String, String> configuration) {
+    public ConsoleEventApplier(Map<String, String> configuration) {
         this.mapper = new ObjectMapper();
     }
 

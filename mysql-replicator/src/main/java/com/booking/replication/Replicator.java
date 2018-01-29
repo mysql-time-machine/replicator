@@ -1,6 +1,8 @@
 package com.booking.replication;
 
 import com.booking.replication.applier.EventApplier;
+import com.booking.replication.augmenter.Augmenter;
+import com.booking.replication.augmenter.EventAugmenter;
 import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.mysql.binlog.model.Checkpoint;
 import com.booking.replication.mysql.binlog.model.Event;
@@ -62,9 +64,9 @@ public class Replicator {
                 }
             };
 
-//            EventApplier<Event> augmenter = Augmenter.build(
-//                    configuration
-//            );
+            Augmenter augmenter = Augmenter.build(
+                    configuration
+            );
 
             Streams<Event, Event> streamsApplier = Streams.<Event>builder()
                     .threads(100)
@@ -75,7 +77,7 @@ public class Replicator {
 
             Streams<Event, Event> streamsSupplier = Streams.<Event>builder()
                     .fromPush()
-                    // .process(augmenter)
+                    .process(augmenter)
                     .to(streamsApplier::push)
                     .build();
 

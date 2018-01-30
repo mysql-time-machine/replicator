@@ -41,8 +41,10 @@ public enum EventType {
     TRANSACTION_CONTEXT(36),
     VIEW_CHANGE(37),
     XA_PREPARE(38),
-    TRANSACTION(98),
-    AUGMENTED(99);
+    TRANSACTION(100),
+    AUGMENTED_INSERT(101),
+    AUGMENTED_UPDATE(102),
+    AUGMENTED_DELETE(103);
 
     private int code;
 

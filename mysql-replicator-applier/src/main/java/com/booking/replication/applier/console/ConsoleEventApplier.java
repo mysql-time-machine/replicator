@@ -4,13 +4,13 @@ import com.booking.replication.applier.EventApplier;
 import com.booking.replication.mysql.binlog.model.Event;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class ConsoleEventApplier implements EventApplier {
-    private static final Logger log = Logger.getLogger(ConsoleEventApplier.class.getName());
+    private static final Logger log = LogManager.getLogger(ConsoleEventApplier.class);
     private final ObjectMapper mapper;
 
     @SuppressWarnings("unused")
@@ -21,9 +21,9 @@ public class ConsoleEventApplier implements EventApplier {
     @Override
     public void accept(Event event) {
         try {
-            ConsoleEventApplier.log.log(Level.INFO, this.mapper.writeValueAsString(event));
+            ConsoleEventApplier.log.info(this.mapper.writeValueAsString(event));
         } catch (JsonProcessingException exception) {
-            ConsoleEventApplier.log.log(Level.SEVERE, "error converting to json", exception);
+            ConsoleEventApplier.log.error("error converting to json", exception);
         }
     }
 

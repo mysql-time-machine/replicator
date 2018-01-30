@@ -5,8 +5,8 @@ import com.booking.replication.mysql.binlog.model.Event;
 import com.booking.replication.mysql.binlog.model.EventData;
 import com.booking.replication.mysql.binlog.model.augmented.AugmentedEventData;
 import com.booking.replication.mysql.binlog.model.transaction.TransactionEventData;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.net.URISyntaxException;
 import java.sql.SQLException;
@@ -20,7 +20,7 @@ public class EventAugmenter implements Augmenter {
     private final boolean applyUuid;
     private final boolean applyXid;
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(EventAugmenter.class);
+    private static final Logger LOGGER = LogManager.getLogger(EventAugmenter.class);
 
     public EventAugmenter(ActiveSchemaVersion asv, boolean applyUuid, boolean applyXid) throws SQLException, URISyntaxException {
         activeSchemaVersion = asv;

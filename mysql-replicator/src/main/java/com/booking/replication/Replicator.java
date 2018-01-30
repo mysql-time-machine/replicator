@@ -77,7 +77,7 @@ public class Replicator {
 
             Streams<Event, Event> streamsSupplier = Streams.<Event>builder()
                     .fromPush()
-                    .process(augmenter)
+                    // .process(augmenter)
                     .to(streamsApplier::push)
                     .build();
 

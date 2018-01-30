@@ -73,7 +73,7 @@ public final class StreamsBuilder<Input, Output> implements
     @Override
     public final StreamsBuilderTo<Input, Output> filter(Predicate<Input> predicate) {
         Objects.requireNonNull(predicate);
-        this.filter = predicate;
+        this.filter = this.filter.and(predicate);
         return this;
     }
 

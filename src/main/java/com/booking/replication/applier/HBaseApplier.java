@@ -116,7 +116,7 @@ public class HBaseApplier implements Applier {
         hbaseSchemaManager.writeSchemaSnapshotToHBase(event, configuration);
     }
 
-    public void applyPseudoGTIDEvent(LastCommittedPositionCheckpoint pseudoGTIDCheckPoint)
+    public void applyPseudo           GTIDEvent(LastCommittedPositionCheckpoint pseudoGTIDCheckPoint)
             throws TaskBufferInconsistencyException {
         hbaseApplierWriter.markCurrentTaskWithPseudoGTID(pseudoGTIDCheckPoint);
     }

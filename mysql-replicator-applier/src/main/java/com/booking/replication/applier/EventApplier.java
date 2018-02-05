@@ -1,7 +1,9 @@
 package com.booking.replication.applier;
 
+import com.booking.replication.applier.cassandra.CassandraEventApplier;
 import com.booking.replication.applier.console.ConsoleEventApplier;
 import com.booking.replication.applier.hbase.HBaseEventApplier;
+import com.booking.replication.applier.kafka.KafkaEventApplier;
 import com.booking.replication.mysql.binlog.model.Event;
 
 import java.io.Closeable;
@@ -20,6 +22,18 @@ public interface EventApplier extends Consumer<Event>, Closeable {
             @Override
             public EventApplier newInstance(Map<String, String> configuration) {
                 return new HBaseEventApplier(configuration);
+            }
+        },
+        KAFKA {
+            @Override
+            public EventApplier newInstance(Map<String, String> configuration) {
+                return new KafkaEventApplier(configuration);
+            }
+        },
+        CASSANDRA {
+            @Override
+            public EventApplier newInstance(Map<String, String> configuration) {
+                return new CassandraEventApplier(configuration);
             }
         };
 

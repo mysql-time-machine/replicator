@@ -1,9 +1,6 @@
 package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.active.schema.ActiveSchemaVersion;
-import com.booking.replication.mysql.binlog.model.EventData;
-import com.booking.replication.mysql.binlog.model.augmented.AugmentedEventData;
-import com.booking.replication.mysql.binlog.model.transaction.TransactionEventData;
 
 import java.io.IOException;
 import java.net.URISyntaxException;

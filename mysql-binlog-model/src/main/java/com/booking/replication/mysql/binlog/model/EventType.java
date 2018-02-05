@@ -45,9 +45,7 @@ public enum EventType {
     AUGMENTED_INSERT(101),
     AUGMENTED_UPDATE(102),
     AUGMENTED_DELETE(103),
-    AUGMENTED_CREATE(104),
-    AUGMENTED_ALTER(105),
-    AUGMENTED_DROP(106);
+    AUGMENTED_SCHEMA(104);
 
     private int code;
 

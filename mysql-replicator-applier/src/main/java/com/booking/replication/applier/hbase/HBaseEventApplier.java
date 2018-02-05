@@ -3,14 +3,17 @@ package com.booking.replication.applier.hbase;
 import com.booking.replication.applier.EventApplier;
 import com.booking.replication.mysql.binlog.model.*;
 import com.booking.replication.mysql.binlog.model.augmented.AugmentedEventData;
-import com.booking.replication.mysql.binlog.model.augmented.TableEventData;
+import com.booking.replication.mysql.binlog.model.augmented.TableNameEventData;
 import com.booking.replication.mysql.binlog.model.transaction.TransactionEventData;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.client.Connection;
-import org.apache.hadoop.hbase.client.ConnectionFactory;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.RegionSplitter;
+import org.jboss.netty.util.internal.ConcurrentHashMap;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -28,35 +31,39 @@ public class HBaseEventApplier implements EventApplier {
         String ZOOKEEPER_QUORUM = "hbase.zookeeper.quorum";
     }
 
-    private static final Logger log = Logger.getLogger(HBaseEventApplier.class.getName());
-
     private static final String DIGEST_ALGORITHM = "MD5";
-    private static final byte[] CF = "d".getBytes();
+    private static final byte[] CF = Bytes.toBytes("d");
+
+    private static final Logger log = Logger.getLogger(HBaseEventApplier.class.getName());
+    private static final ObjectMapper mapper = new ObjectMapper();
+    private static final Map<String, Connection> connections = new ConcurrentHashMap<>();
 
     private final Connection connection;
     private final String schema;
 
     public HBaseEventApplier(Map<String, String> configuration) {
-        try {
-            String zookeeperQuorum = configuration.get(Configuration.ZOOKEEPER_QUORUM);
-            String schema = configuration.get(Configuration.SCHEMA);
+        String zookeeperQuorum = configuration.get(Configuration.ZOOKEEPER_QUORUM);
+        String schema = configuration.get(Configuration.SCHEMA);
 
-            Objects.requireNonNull(zookeeperQuorum, String.format("Configuration required: %s", Configuration.ZOOKEEPER_QUORUM));
-            Objects.requireNonNull(schema, String.format("Configuration required: %s", Configuration.SCHEMA));
+        Objects.requireNonNull(zookeeperQuorum, String.format("Configuration required: %s", Configuration.ZOOKEEPER_QUORUM));
+        Objects.requireNonNull(schema, String.format("Configuration required: %s", Configuration.SCHEMA));
 
-            this.connection = this.createConnection(zookeeperQuorum);
-            this.schema = schema;
-        } catch (IOException exception) {
-            throw new UncheckedIOException(exception);
-        }
+        this.connection = this.getConnection(zookeeperQuorum);
+        this.schema = schema;
     }
 
-    private Connection createConnection(String zookeeperQuorum) throws IOException {
-        org.apache.hadoop.conf.Configuration configuration = HBaseConfiguration.create();
+    private Connection getConnection(String zookeeper) {
+        return HBaseEventApplier.connections.computeIfAbsent(zookeeper, zookeeperQuorum -> {
+            try {
+                org.apache.hadoop.conf.Configuration configuration = HBaseConfiguration.create();
 
-        configuration.set(Configuration.ZOOKEEPER_QUORUM, zookeeperQuorum);
+                configuration.set(Configuration.ZOOKEEPER_QUORUM, zookeeperQuorum);
 
-        return ConnectionFactory.createConnection(configuration);
+                return ConnectionFactory.createConnection(configuration);
+            } catch(IOException exception) {
+                throw new UncheckedIOException(exception);
+            }
+        });
     }
 
     @Override
@@ -67,18 +74,12 @@ public class HBaseEventApplier implements EventApplier {
                 case AUGMENTED_INSERT:
                 case AUGMENTED_UPDATE:
                 case AUGMENTED_DELETE:
-                    try (Table table = this.getTable(event.getData())) {
-                        table.put(this.handleAugmentedPutEvent(event));
+                    try (Table table = this.getTable(this.getTableName(event.getHeader(), event.getData()))) {
+                        table.put(this.handleAugmentedDataEvent(event));
                     }
                     break;
-                case AUGMENTED_CREATE:
-                    this.handleAugmentedCreateEvent(event.getHeader(), event.getData());
-                    break;
-                case AUGMENTED_ALTER:
-                    this.handleAugmentedAlterEvent(event.getHeader(), event.getData());
-                    break;
-                case AUGMENTED_DROP:
-                    this.handleAugmentedDropEvent(event.getHeader(), event.getData());
+                case AUGMENTED_SCHEMA:
+                    this.handleAugmentedSchemaEvent(event.getHeader(), event.getData());
                     break;
                 default:
                     this.handleUnknownEvent(event.getHeader(), event.getData());
@@ -91,45 +92,7 @@ public class HBaseEventApplier implements EventApplier {
         }
     }
 
-    private TableName getTableName(TableEventData data) {
-        return TableName.valueOf(String.format("%s.%s", this.schema.toLowerCase(), data.getTableName().toLowerCase()));
-    }
-
-    private Table getTable(TableEventData data) throws IOException {
-        return this.connection.getTable(this.getTableName(data));
-    }
-
-    private byte[] getRowPrimaryKey(AugmentedEventData data, String columnName) throws NoSuchAlgorithmException {
-        List<String> rowPrimaryKey = new ArrayList<>();
-
-        for (String primaryKeyColumn : data.getPrimaryKeyColumns()) {
-            rowPrimaryKey.add(data.getEventColumns().get(primaryKeyColumn).get(columnName));
-        }
-
-        return this.saltRowPrimaryKey(String.join(";", rowPrimaryKey), rowPrimaryKey.get(0)).getBytes();
-    }
-
-    private String saltRowPrimaryKey(String hbaseRowID, String firstPartOfRowKey) throws NoSuchAlgorithmException {
-        byte[] bytesMD5 = MessageDigest.getInstance(
-                HBaseEventApplier.DIGEST_ALGORITHM
-        ).digest(
-                firstPartOfRowKey.getBytes(StandardCharsets.US_ASCII)
-        );
-
-        String byte1hex = Integer.toHexString(bytesMD5[0] & 0xFF);
-        String byte2hex = Integer.toHexString(bytesMD5[1] & 0xFF);
-        String byte3hex = Integer.toHexString(bytesMD5[2] & 0xFF);
-        String byte4hex = Integer.toHexString(bytesMD5[3] & 0xFF);
-
-        String salt = ("00" + byte1hex).substring(byte1hex.length())
-                    + ("00" + byte2hex).substring(byte2hex.length())
-                    + ("00" + byte3hex).substring(byte3hex.length())
-                    + ("00" + byte4hex).substring(byte4hex.length());
-
-        return salt + ";" + hbaseRowID;
-    }
-
-    private List<Put> handleAugmentedPutEvent(Event event) throws NoSuchAlgorithmException {
+    private List<Put> handleAugmentedDataEvent(Event event) throws NoSuchAlgorithmException {
         switch (event.getHeader().getEventType()) {
             case TRANSACTION:
                 return this.handleTransactionEvent(event.getHeader(), event.getData());
@@ -148,7 +111,7 @@ public class HBaseEventApplier implements EventApplier {
         List<Put> putList = new ArrayList<>();
 
         for (Event event : data.getEvents()) {
-            putList.addAll(this.handleAugmentedPutEvent(event));
+            putList.addAll(this.handleAugmentedDataEvent(event));
         }
 
         return putList;
@@ -166,17 +129,17 @@ public class HBaseEventApplier implements EventApplier {
 
             put.addColumn(
                     HBaseEventApplier.CF,
-                    columnName.getBytes(),
+                    Bytes.toBytes(columnName),
                     header.getTimestamp(),
-                    columnValue.getBytes()
+                    Bytes.toBytes(columnValue)
             );
         }
 
         put.addColumn(
                 HBaseEventApplier.CF,
-                "row_status".getBytes(),
+                Bytes.toBytes("row_status"),
                 header.getTimestamp(),
-                "I".getBytes()
+                Bytes.toBytes("I")
         );
 
         return Collections.singletonList(put);
@@ -191,56 +154,162 @@ public class HBaseEventApplier implements EventApplier {
 
             if ((columnValueBefore != null && columnValueAfter == null) ||
                 (columnValueBefore == null && columnValueAfter != null) ||
-                !columnValueBefore.equals(columnValueAfter)) {
+                (columnValueBefore != null && !columnValueBefore.equals(columnValueAfter))) {
+                if (columnValueAfter == null) {
+                    columnValueAfter = "NULL";
+                }
+
                 put.addColumn(
                         HBaseEventApplier.CF,
-                        columnName.getBytes(),
+                        Bytes.toBytes(columnName),
                         header.getTimestamp(),
-                        columnValueAfter.getBytes()
+                        Bytes.toBytes(columnValueAfter)
                 );
             }
         }
 
         put.addColumn(
                 HBaseEventApplier.CF,
-                "row_status".getBytes(),
+                Bytes.toBytes("row_status"),
                 header.getTimestamp(),
-                "U".getBytes()
+                Bytes.toBytes("U")
         );
 
         return Collections.singletonList(put);
     }
 
     private List<Put> handleAugmentedDeleteEvent(EventHeader header, AugmentedEventData data) throws NoSuchAlgorithmException {
-        Put put = new Put(this.getRowPrimaryKey(data, "value"));
-
-        put.addColumn(
-                HBaseEventApplier.CF,
-                "row_status".getBytes(),
-                header.getTimestamp(),
-                "D".getBytes()
+        return Collections.singletonList(
+                new Put(this.getRowPrimaryKey(data, "value"))
+                        .addColumn(
+                                HBaseEventApplier.CF,
+                                Bytes.toBytes("row_status"),
+                                header.getTimestamp(),
+                                Bytes.toBytes("D")
+                        )
         );
-
-        return Collections.singletonList(put);
     }
 
-    private void handleAugmentedCreateEvent(EventHeader header, AugmentedEventData data) throws IOException {
+    private void handleAugmentedSchemaEvent(EventHeader header, AugmentedEventData data) throws IOException {
+        this.handleAugmentedSchemaEvent(header, data, 1000, 1);
     }
 
-    private void handleAugmentedAlterEvent(EventHeader header, AugmentedEventData data) throws IOException {
-    }
+    private void handleAugmentedSchemaEvent(EventHeader header, AugmentedEventData data, int maxVersions, int regions) throws IOException {
+        TableName tableName = this.getTableName(header, data);
 
-    private void handleAugmentedDropEvent(EventHeader header, AugmentedEventData data) throws IOException {
+        try (Admin admin = this.connection.getAdmin()) {
+            if (!admin.tableExists(tableName)) {
+                HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);
+                HColumnDescriptor columnDescriptor = new HColumnDescriptor("d");
+
+                columnDescriptor.setMaxVersions(maxVersions);
+                tableDescriptor.addFamily(columnDescriptor);
+
+                admin.createTable(tableDescriptor, new RegionSplitter.HexStringSplit().split(regions));
+            }
+        }
+
+        try (Table table = this.getTable(tableName)) {
+            long eventTimestamp = header.getTimestamp();
+
+            String ddl = null;
+            String schemaPreChange = null;
+            String schemaPostChange = null;
+            String createsPreChange = null;
+            String createsPostChange = null;
+
+            table.put(
+                    new Put(Bytes.toBytes((eventTimestamp > 0)?(Long.toString(eventTimestamp)):("initial-snapshot")))
+                            .addColumn(
+                                    HBaseEventApplier.CF,
+                                    Bytes.toBytes("ddl"),
+                                    eventTimestamp,
+                                    Bytes.toBytes(ddl)
+                            )
+                            .addColumn(
+                                    HBaseEventApplier.CF,
+                                    Bytes.toBytes("schemaPreChange"),
+                                    eventTimestamp,
+                                    Bytes.toBytes(schemaPreChange)
+                            )
+                            .addColumn(
+                                    HBaseEventApplier.CF,
+                                    Bytes.toBytes("schemaPostChange"),
+                                    eventTimestamp,
+                                    Bytes.toBytes(schemaPostChange)
+                            )
+                            .addColumn(
+                                    HBaseEventApplier.CF,
+                                    Bytes.toBytes("createsPreChange"),
+                                    eventTimestamp,
+                                    Bytes.toBytes(createsPreChange)
+                            )
+                            .addColumn(
+                                    HBaseEventApplier.CF,
+                                    Bytes.toBytes("createsPostChange"),
+                                    eventTimestamp,
+                                    Bytes.toBytes(createsPostChange)
+                            )
+            );
+        }
     }
 
     private void handleUnknownEvent(EventHeader header, EventData data) {
         HBaseEventApplier.log.log(Level.FINE, "Unknown event type {}", header.getEventType().name());
     }
 
+    private TableName getTableName(EventHeader header, TableNameEventData data) {
+        return TableName.valueOf(String.format("%s.%s", this.schema.toLowerCase(), data.getTableName().toLowerCase()));
+    }
+
+    private Table getTable(TableName tableName) throws IOException {
+        return this.connection.getTable(tableName);
+    }
+
+    private byte[] getRowPrimaryKey(AugmentedEventData data, String columnName) throws NoSuchAlgorithmException {
+        List<String> rowPrimaryKey = new ArrayList<>();
+
+        for (String primaryKeyColumn : data.getPrimaryKeyColumns()) {
+            rowPrimaryKey.add(data.getEventColumns().get(primaryKeyColumn).get(columnName));
+        }
+
+        return Bytes.toBytes(this.saltRowPrimaryKey(String.join(";", rowPrimaryKey), rowPrimaryKey.get(0)));
+    }
+
+    private String saltRowPrimaryKey(String hbaseRowID, String firstPartOfRowKey) throws NoSuchAlgorithmException {
+        byte[] bytesMD5 = MessageDigest.getInstance(
+                HBaseEventApplier.DIGEST_ALGORITHM
+        ).digest(
+                firstPartOfRowKey.getBytes(StandardCharsets.US_ASCII)
+        );
+
+        String byte1hex = Integer.toHexString(bytesMD5[0] & 0xFF);
+        String byte2hex = Integer.toHexString(bytesMD5[1] & 0xFF);
+        String byte3hex = Integer.toHexString(bytesMD5[2] & 0xFF);
+        String byte4hex = Integer.toHexString(bytesMD5[3] & 0xFF);
+
+        StringBuilder salt = new StringBuilder();
+
+        salt.append(String.format("00%s", byte1hex).substring(byte1hex.length()));
+        salt.append(String.format("00%s", byte2hex).substring(byte2hex.length()));
+        salt.append(String.format("00%s", byte3hex).substring(byte3hex.length()));
+        salt.append(String.format("00%s", byte4hex).substring(byte4hex.length()));
+
+        salt.append(";").append(hbaseRowID);
+
+        return salt.toString();
+    }
+
     @Override
     public void close() throws IOException {
-        if (this.connection != null) {
-            this.connection.close();
-        }
+        HBaseEventApplier.connections.keySet().forEach(
+                zookeeperQuorum -> {
+                    if (HBaseEventApplier.connections.get(zookeeperQuorum) == this.connection) {
+                        HBaseEventApplier.connections.remove(zookeeperQuorum);
+                    }
+                }
+        );
+
+        this.connection.close();
     }
 }

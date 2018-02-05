@@ -1,10 +1,12 @@
 package com.booking.replication.applier.hbase;
 
 import com.booking.replication.applier.EventApplier;
-import com.booking.replication.mysql.binlog.model.*;
-import com.booking.replication.mysql.binlog.model.augmented.AugmentedEventData;
-import com.booking.replication.mysql.binlog.model.augmented.TableNameEventData;
-import com.booking.replication.mysql.binlog.model.transaction.TransactionEventData;
+import com.booking.replication.model.Event;
+import com.booking.replication.model.EventData;
+import com.booking.replication.model.EventHeader;
+import com.booking.replication.model.augmented.AugmentedEventData;
+import com.booking.replication.model.augmented.TableNameEventData;
+import com.booking.replication.model.transaction.TransactionEventData;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -26,9 +28,9 @@ import java.util.logging.Logger;
 
 @SuppressWarnings("unused")
 public class HBaseEventApplier implements EventApplier {
-    interface Configuration {
-        String SCHEMA = "hbase.schema";
+    public interface Configuration {
         String ZOOKEEPER_QUORUM = "hbase.zookeeper.quorum";
+        String SCHEMA = "hbase.schema";
     }
 
     private static final String DIGEST_ALGORITHM = "MD5";
@@ -57,7 +59,7 @@ public class HBaseEventApplier implements EventApplier {
             try {
                 org.apache.hadoop.conf.Configuration configuration = HBaseConfiguration.create();
 
-                configuration.set(Configuration.ZOOKEEPER_QUORUM, zookeeperQuorum);
+                configuration.set("zookeeper.quorum", zookeeperQuorum);
 
                 return ConnectionFactory.createConnection(configuration);
             } catch(IOException exception) {

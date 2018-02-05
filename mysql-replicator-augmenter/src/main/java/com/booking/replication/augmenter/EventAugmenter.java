@@ -1,10 +1,10 @@
 package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.active.schema.ActiveSchemaVersion;
-import com.booking.replication.mysql.binlog.model.Event;
-import com.booking.replication.mysql.binlog.model.EventData;
-import com.booking.replication.mysql.binlog.model.augmented.AugmentedEventData;
-import com.booking.replication.mysql.binlog.model.transaction.TransactionEventData;
+import com.booking.replication.model.Event;
+import com.booking.replication.model.EventData;
+import com.booking.replication.model.augmented.AugmentedEventData;
+import com.booking.replication.model.transaction.TransactionEventData;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 

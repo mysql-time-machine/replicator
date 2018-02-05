@@ -1,13 +1,17 @@
 package com.booking.replication;
 
 import com.booking.replication.applier.EventApplier;
+import com.booking.replication.applier.cassandra.CassandraEventApplier;
+import com.booking.replication.applier.console.ConsoleEventApplier;
+import com.booking.replication.applier.hbase.HBaseEventApplier;
+import com.booking.replication.applier.kafka.KafkaEventApplier;
 import com.booking.replication.augmenter.Augmenter;
-import com.booking.replication.augmenter.EventAugmenter;
 import com.booking.replication.coordinator.Coordinator;
-import com.booking.replication.mysql.binlog.model.Checkpoint;
-import com.booking.replication.mysql.binlog.model.Event;
+import com.booking.replication.model.Checkpoint;
+import com.booking.replication.model.Event;
 import com.booking.replication.streams.Streams;
-import com.booking.replication.mysql.binlog.supplier.EventSupplier;
+import com.booking.replication.supplier.EventSupplier;
+import com.booking.replication.supplier.mysql.binlog.BinaryLogConnectorSupplier;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -20,8 +24,17 @@ import java.util.logging.Logger;
 //import com.booking.infra.bigdata.augmenter.Augmenter;
 
 public class Replicator {
-    private static final Logger log = Logger.getLogger(Replicator.class.getName());
-    private static final ObjectMapper mapper = new ObjectMapper();
+    public interface Configuration extends
+            Coordinator.Configuration,
+            BinaryLogConnectorSupplier.Configuration,
+            CassandraEventApplier.Configuration,
+            ConsoleEventApplier.Configuration,
+            HBaseEventApplier.Configuration,
+            KafkaEventApplier.Configuration {
+    }
+
+    private static final Logger LOG = Logger.getLogger(Replicator.class.getName());
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private void start(Map<String, String> configuration) {
         try {
@@ -49,18 +62,18 @@ public class Replicator {
                             configuration
                     );
                 } catch (IOException exception) {
-                    Replicator.log.log(Level.SEVERE, "error storing checkpoint", exception);
+                    Replicator.LOG.log(Level.SEVERE, "error storing checkpoint", exception);
                 }
             };
 
             Consumer<Exception> exceptionHandle = (streamsException) -> {
                 try {
-                    Replicator.log.log(Level.SEVERE, "error inside streams", streamsException);
-                    Replicator.log.log(Level.INFO, "stopping coordinator");
+                    Replicator.LOG.log(Level.SEVERE, "error inside streams", streamsException);
+                    Replicator.LOG.log(Level.INFO, "stopping coordinator");
 
                     coordinator.stop();
                 } catch (InterruptedException exception) {
-                    Replicator.log.log(Level.SEVERE, "error stopping", exception);
+                    Replicator.LOG.log(Level.SEVERE, "error stopping", exception);
                 }
             };
 
@@ -88,57 +101,57 @@ public class Replicator {
 
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 try {
-                    Replicator.log.log(Level.INFO, "stopping coordinator");
+                    Replicator.LOG.log(Level.INFO, "stopping coordinator");
 
                     coordinator.stop();
                 } catch (InterruptedException exception) {
-                    Replicator.log.log(Level.SEVERE, "error stopping", exception);
+                    Replicator.LOG.log(Level.SEVERE, "error stopping", exception);
                 }
             }));
 
             coordinator.onLeadershipTake(() -> {
                 try {
-                    Replicator.log.log(Level.INFO, "starting replicator");
+                    Replicator.LOG.log(Level.INFO, "starting replicator");
 
                     streamsApplier.start();
                     streamsSupplier.start();
                     supplier.start();
                 } catch (IOException | InterruptedException exception) {
-                    Replicator.log.log(Level.SEVERE, "error starting", exception);
+                    Replicator.LOG.log(Level.SEVERE, "error starting", exception);
                 }
             });
 
             coordinator.onLeadershipLoss(() -> {
                 try {
-                    Replicator.log.log(Level.INFO, "stopping replicator");
+                    Replicator.LOG.log(Level.INFO, "stopping replicator");
 
                     supplier.stop();
                     streamsSupplier.stop();
                     streamsApplier.stop();
                 } catch (IOException | InterruptedException exception) {
-                    Replicator.log.log(Level.SEVERE, "error stopping", exception);
+                    Replicator.LOG.log(Level.SEVERE, "error stopping", exception);
                 }
             });
 
-            Replicator.log.log(Level.INFO, "starting coordinator");
+            Replicator.LOG.log(Level.INFO, "starting coordinator");
 
             coordinator.start();
             coordinator.join();
         } catch (Exception exception) {
-            Replicator.log.log(Level.SEVERE, "error executing replicator", exception);
+            Replicator.LOG.log(Level.SEVERE, "error executing replicator", exception);
         }
     }
 
     private Checkpoint loadCheckpoint(Coordinator coordinator, Map<String, String> configuration) throws IOException {
         byte[] checkpointBytes = coordinator.loadCheckpoint(
                 configuration.getOrDefault(
-                        Coordinator.Configuration.CHECKPOINT_PATH,
+                        Configuration.CHECKPOINT_PATH,
                         coordinator.defaultCheckpointPath()
                 )
         );
 
         if (checkpointBytes != null && checkpointBytes.length > 0) {
-            return Replicator.mapper.readValue(checkpointBytes, Checkpoint.class);
+            return Replicator.MAPPER.readValue(checkpointBytes, Checkpoint.class);
         } else {
             return null;
         }
@@ -146,12 +159,12 @@ public class Replicator {
 
     private void storeCheckpoint(Checkpoint checkpoint, Coordinator coordinator, Map<String, String> configuration) throws IOException {
         if (checkpoint != null) {
-            byte[] checkpointBytes = Replicator.mapper.writeValueAsBytes(checkpoint);
+            byte[] checkpointBytes = Replicator.MAPPER.writeValueAsBytes(checkpoint);
 
             if (checkpointBytes != null && checkpointBytes.length > 0) {
                 coordinator.storeCheckpoint(
                         configuration.getOrDefault(
-                                Coordinator.Configuration.CHECKPOINT_PATH,
+                                Configuration.CHECKPOINT_PATH,
                                 coordinator.defaultCheckpointPath()
                         ),
                         checkpointBytes
@@ -167,9 +180,9 @@ public class Replicator {
     public static void main(String[] arguments) {
         Map<String, String> configuration = new HashMap<>();
 
-        configuration.put(EventSupplier.Configuration.MYSQL_HOSTNAME, arguments[0]);
-        configuration.put(EventSupplier.Configuration.MYSQL_USERNAME, arguments[1]);
-        configuration.put(EventSupplier.Configuration.MYSQL_PASSWORD, arguments[2]);
+        configuration.put(Configuration.MYSQL_HOSTNAME, arguments[0]);
+        configuration.put(Configuration.MYSQL_USERNAME, arguments[1]);
+        configuration.put(Configuration.MYSQL_PASSWORD, arguments[2]);
 
         new Replicator().start(configuration);
     }

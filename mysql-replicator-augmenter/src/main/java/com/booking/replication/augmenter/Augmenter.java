@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.sql.SQLException;
 import java.util.Map;
-import com.booking.replication.mysql.binlog.model.Event;
+import com.booking.replication.model.Event;
 import java.util.function.Function;
 
 public interface Augmenter extends Function<Event, Event> {

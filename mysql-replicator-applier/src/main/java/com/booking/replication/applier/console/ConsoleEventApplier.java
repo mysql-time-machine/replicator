@@ -1,7 +1,7 @@
 package com.booking.replication.applier.console;
 
 import com.booking.replication.applier.EventApplier;
-import com.booking.replication.mysql.binlog.model.Event;
+import com.booking.replication.model.Event;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;

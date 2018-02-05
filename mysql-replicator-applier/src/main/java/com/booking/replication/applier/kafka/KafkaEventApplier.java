@@ -1,12 +1,13 @@
 package com.booking.replication.applier.kafka;
 
 import com.booking.replication.applier.EventApplier;
-import com.booking.replication.mysql.binlog.model.Event;
+import com.booking.replication.model.Event;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
 
 import java.io.UncheckedIOException;
 import java.util.HashMap;
@@ -14,7 +15,7 @@ import java.util.Map;
 import java.util.Objects;
 
 public class KafkaEventApplier implements EventApplier {
-    interface Configuration {
+    public interface Configuration {
         String BOOTSTRAP_SERVERS = "kafka.bootstrap.servers";
         String TOPIC = "kafka.topic";
     }
@@ -39,8 +40,8 @@ public class KafkaEventApplier implements EventApplier {
         Map<String, Object> configuration = new HashMap<>();
 
         configuration.put("bootstrap.servers", bootstrapServers);
-        configuration.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
-        configuration.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
+        configuration.put("key.serializer", ByteArraySerializer.class.getName());
+        configuration.put("value.serializer", ByteArraySerializer.class.getName());
 
         return new KafkaProducer<>(configuration);
     }

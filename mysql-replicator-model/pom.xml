@@ -8,6 +8,6 @@
         <artifactId>replicator</artifactId>
         <version>0.16.0-alpha-1-SNAPSHOT</version>
     </parent>
-    <artifactId>mysql-binlog-model</artifactId>
-    <name>mysql-binlog-model</name>
+    <artifactId>mysql-replicator-model</artifactId>
+    <name>mysql-replicator-model</name>
 </project>

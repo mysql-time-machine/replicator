@@ -14,7 +14,7 @@
     <dependencies>
         <dependency>
             <groupId>com.booking.replication</groupId>
-            <artifactId>mysql-binlog-supplier</artifactId>
+            <artifactId>mysql-replicator-supplier</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

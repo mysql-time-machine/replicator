@@ -8,8 +8,8 @@
         <artifactId>replicator</artifactId>
         <version>0.16.0-alpha-1-SNAPSHOT</version>
     </parent>
-    <artifactId>mysql-binlog-supplier</artifactId>
-    <name>mysql-binlog-supplier</name>
+    <artifactId>mysql-replicator-supplier</artifactId>
+    <name>mysql-replicator-supplier</name>
     <dependencies>
         <dependency>
             <groupId>com.github.shyiko</groupId>
@@ -17,7 +17,7 @@
         </dependency>
         <dependency>
             <groupId>com.booking.replication</groupId>
-            <artifactId>mysql-binlog-model</artifactId>
+            <artifactId>mysql-replicator-model</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

@@ -27,10 +27,10 @@
         <tests.skip>false</tests.skip>
     </properties>
     <modules>
-        <module>mysql-binlog-model</module>
-        <module>mysql-binlog-supplier</module>
+        <module>mysql-replicator-model</module>
         <module>mysql-replicator-streams</module>
         <module>mysql-replicator-coordinator</module>
+        <module>mysql-replicator-supplier</module>
         <module>mysql-replicator-augmenter</module>
         <module>mysql-replicator-applier</module>
         <module>mysql-replicator</module>

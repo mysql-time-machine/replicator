@@ -10,4 +10,10 @@
     </parent>
     <artifactId>mysql-replicator-model</artifactId>
     <name>mysql-replicator-model</name>
+    <dependencies>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+        </dependency>
+    </dependencies>
 </project>

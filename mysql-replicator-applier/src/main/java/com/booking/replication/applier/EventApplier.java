@@ -41,7 +41,7 @@ public interface EventApplier extends Consumer<Event>, Closeable {
     }
 
     interface Configuration {
-        String TYPE = "consumer.type";
+        String TYPE = "applier.type";
     }
 
     static EventApplier build(Map<String, String> configuration) {

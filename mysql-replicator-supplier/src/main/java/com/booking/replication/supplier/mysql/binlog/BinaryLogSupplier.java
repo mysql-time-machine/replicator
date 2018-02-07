@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-public class BinaryLogConnectorSupplier implements EventSupplier {
+public class BinaryLogSupplier implements EventSupplier {
     public interface Configuration {
         String MYSQL_HOSTNAME = "mysql.hostname";
         String MYSQL_PORT     = "mysql.port";
@@ -21,7 +21,7 @@ public class BinaryLogConnectorSupplier implements EventSupplier {
 
     private final BinaryLogClient client;
 
-    public BinaryLogConnectorSupplier(Map<String, String> configuration, Checkpoint checkpoint) {
+    public BinaryLogSupplier(Map<String, String> configuration, Checkpoint checkpoint) {
         String hostname = configuration.get(Configuration.MYSQL_HOSTNAME);
         String port = configuration.getOrDefault(Configuration.MYSQL_PORT, "3306");
         String username = configuration.get(Configuration.MYSQL_USERNAME);

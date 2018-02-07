@@ -11,7 +11,8 @@ import com.booking.replication.model.Checkpoint;
 import com.booking.replication.model.Event;
 import com.booking.replication.streams.Streams;
 import com.booking.replication.supplier.EventSupplier;
-import com.booking.replication.supplier.mysql.binlog.BinaryLogConnectorSupplier;
+import com.booking.replication.supplier.kafka.KafkaSupplier;
+import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -26,7 +27,8 @@ import java.util.logging.Logger;
 public class Replicator {
     public interface Configuration extends
             Coordinator.Configuration,
-            BinaryLogConnectorSupplier.Configuration,
+            BinaryLogSupplier.Configuration,
+            KafkaSupplier.Configuration,
             CassandraEventApplier.Configuration,
             ConsoleEventApplier.Configuration,
             HBaseEventApplier.Configuration,

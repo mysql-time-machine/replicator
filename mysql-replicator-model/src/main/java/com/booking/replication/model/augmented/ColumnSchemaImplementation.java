@@ -1,7 +1,5 @@
 package com.booking.replication.model.augmented;
 
-import com.booking.replication.model.augmented.ColumnSchema;
-
 public class ColumnSchemaImplementation implements ColumnSchema {
     private String columnKey;
     private String characterSetName;

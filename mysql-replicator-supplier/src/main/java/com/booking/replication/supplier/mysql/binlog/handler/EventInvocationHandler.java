@@ -30,8 +30,7 @@ public class EventInvocationHandler implements InvocationHandler {
             com.github.shyiko.mysql.binlog.event.EventHeader eventHeader = this.event.getHeader();
 
             if (eventHeader != null) {
-                return EventHeader.decorate(
-                        EventHeaderV4.class,
+                return EventHeaderV4.decorate(
                         new EventHeaderInvocationHandler(eventHeader)
                 );
             } else {

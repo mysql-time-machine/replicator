@@ -52,7 +52,7 @@ public class KafkaEventApplier implements EventApplier {
             this.producer.send(new ProducerRecord<>(
                     this.topic,
                     this.mapper.writeValueAsBytes(event.getHeader()),
-                    this.mapper.writeValueAsBytes(event)
+                    this.mapper.writeValueAsBytes(event.getData())
             ));
         } catch (JsonProcessingException exception) {
             throw new UncheckedIOException(exception);

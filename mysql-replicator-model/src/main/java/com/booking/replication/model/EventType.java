@@ -59,7 +59,7 @@ public enum EventType {
     }
 
     EventType(int code) {
-        this(code, null);
+        this(code, EventData.class);
     }
 
     public int getCode() {

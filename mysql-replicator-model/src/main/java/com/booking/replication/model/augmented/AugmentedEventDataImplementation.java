@@ -1,8 +1,5 @@
 package com.booking.replication.model.augmented;
 
-import com.booking.replication.model.augmented.AugmentedEventData;
-import com.booking.replication.model.augmented.TableSchemaVersion;
-
 import java.util.List;
 import java.util.Map;
 

@@ -1,4 +1,4 @@
-package com.booking.replication.model.augmented;
+package com.booking.replication.model.augmented.active.schema;
 
 /**
  * Created by smalviya on 1/24/18.

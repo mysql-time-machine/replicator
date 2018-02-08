@@ -1,7 +1,7 @@
 package com.booking.replication.model.transaction;
 
 import com.booking.replication.model.Event;
-import com.booking.replication.model.augmented.TableNameEventData;
+import com.booking.replication.model.TableNameEventData;
 
 import java.util.List;
 import java.util.UUID;

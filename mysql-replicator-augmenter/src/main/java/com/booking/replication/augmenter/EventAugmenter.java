@@ -1,6 +1,7 @@
 package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.active.schema.ActiveSchemaVersion;
+import com.booking.replication.augmenter.exception.TableMapException;
 import com.booking.replication.model.Event;
 import com.booking.replication.model.EventData;
 import com.booking.replication.model.augmented.AugmentedEventData;
@@ -10,6 +11,10 @@ import org.apache.logging.log4j.Logger;
 
 import java.net.URISyntaxException;
 import java.sql.SQLException;
+
+import static com.google.code.or.common.util.MySQLConstants.DELETE_ROWS_EVENT;
+import static com.google.code.or.common.util.MySQLConstants.UPDATE_ROWS_EVENT;
+import static com.google.code.or.common.util.MySQLConstants.WRITE_ROWS_EVENT;
 
 
 public class EventAugmenter implements Augmenter {
@@ -29,12 +34,40 @@ public class EventAugmenter implements Augmenter {
     }
 
 
-    public AugmentedEventData mapDataEventToSchema(EventData abstractRowEvent, TransactionEventData currentTransaction) throws Exception {
-        return null;
+    public Event mapDataEventToSchema(Event abstractRowEvent, TransactionEventData currentTransaction) throws Exception {
+        Event au = null;
+
+        switch (abstractRowEvent.getHeader().getEventType()) {
+            case UPDATE_ROWS:
+                break;
+
+            case WRITE_ROWS:
+                break;
+
+            case DELETE_ROWS:
+                break;
+
+            default:
+                throw new TableMapException("RBR event type expected! Received type: " +
+                        abstractRowEvent.getHeader().getEventType().toString(), abstractRowEvent
+                );
+        }
+
+        if (au == null) {
+            throw  new TableMapException("Augmented event ended up as null - something went wrong!", abstractRowEvent);
+        }
+
+        return au;
     }
 
     @Override
     public Event apply(Event event) {
-        return null;
+        Event augmentedEvent = null;
+        try {
+            augmentedEvent = mapDataEventToSchema(event, null);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return augmentedEvent;
     }
 }

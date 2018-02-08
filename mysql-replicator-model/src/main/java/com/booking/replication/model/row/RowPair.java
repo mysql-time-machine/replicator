@@ -1,4 +1,4 @@
-package com.booking.replication.binlog.common;
+package com.booking.replication.model.row;
 
 /**
  * Created by bosko on 7/18/17.

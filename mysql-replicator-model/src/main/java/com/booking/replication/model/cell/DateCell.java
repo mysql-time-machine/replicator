@@ -1,6 +1,4 @@
-package com.booking.replication.binlog.common.cell;
-
-import com.booking.replication.binlog.common.Cell;
+package com.booking.replication.model.cell;
 
 import java.sql.Date;
 
@@ -9,12 +7,12 @@ import java.sql.Date;
  */
 public class DateCell implements Cell {
 
-    private final java.sql.Date value;
+    private final Date value;
 
     /**
      *
      */
-    public DateCell(java.sql.Date value) {
+    public DateCell(Date value) {
         this.value = value;
     }
 

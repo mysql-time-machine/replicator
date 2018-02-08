@@ -5,7 +5,7 @@ import com.booking.replication.model.Event;
 import com.booking.replication.model.EventData;
 import com.booking.replication.model.EventHeader;
 import com.booking.replication.model.augmented.AugmentedEventData;
-import com.booking.replication.model.augmented.TableNameEventData;
+import com.booking.replication.model.TableNameEventData;
 import com.booking.replication.model.transaction.TransactionEventData;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;

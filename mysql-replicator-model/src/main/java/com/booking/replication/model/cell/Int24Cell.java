@@ -1,7 +1,4 @@
-package com.booking.replication.binlog.common.cell;
-
-import com.booking.replication.binlog.common.Cell;
-
+package com.booking.replication.model.cell;
 
 /**
  * Licensed to the Apache Software Foundation (ASF) under one or more

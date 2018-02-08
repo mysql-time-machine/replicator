@@ -1,4 +1,4 @@
-package com.booking.replication.model.augmented;
+package com.booking.replication.model;
 
 import com.booking.replication.model.EventData;
 

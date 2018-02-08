@@ -1,4 +1,4 @@
-package com.booking.replication.model.augmented;
+package com.booking.replication.model.augmented.active.schema;
 
 public class ColumnSchemaImplementation implements ColumnSchema {
     private String columnKey;

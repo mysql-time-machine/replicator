@@ -1,6 +1,4 @@
-package com.booking.replication.binlog.common;
-
-import com.booking.replication.binlog.common.cell.*;
+package com.booking.replication.model.cell;
 
 import com.google.code.or.common.glossary.Column;
 import com.google.code.or.common.glossary.column.*;

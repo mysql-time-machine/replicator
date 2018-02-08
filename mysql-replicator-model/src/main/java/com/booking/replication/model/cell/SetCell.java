@@ -1,6 +1,4 @@
-package com.booking.replication.binlog.common.cell;
-
-import com.booking.replication.binlog.common.Cell;
+package com.booking.replication.model.cell;
 
 /**
  * Created by bosko on 6/21/17.

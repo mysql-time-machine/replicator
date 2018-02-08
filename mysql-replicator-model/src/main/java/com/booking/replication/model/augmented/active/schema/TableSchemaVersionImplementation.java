@@ -1,4 +1,4 @@
-package com.booking.replication.model.augmented;
+package com.booking.replication.model.augmented.active.schema;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 

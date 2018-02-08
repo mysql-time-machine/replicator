@@ -1,5 +1,6 @@
-package com.booking.replication.binlog.common;
+package com.booking.replication.model.row;
 
+import com.booking.replication.model.cell.Cell;
 import com.google.common.base.Joiner;
 
 import java.util.List;

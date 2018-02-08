@@ -1,6 +1,5 @@
-package com.booking.replication.binlog.common.cell;
+package com.booking.replication.model.cell;
 
-import com.booking.replication.binlog.common.Cell;
 import java.math.BigDecimal;
 
 /**

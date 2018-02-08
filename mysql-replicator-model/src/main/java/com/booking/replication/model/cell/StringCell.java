@@ -1,4 +1,4 @@
-package com.booking.replication.binlog.common.cell;
+package com.booking.replication.model.cell;
 /**
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,12 +16,11 @@ package com.booking.replication.binlog.common.cell;
  * limitations under the License.
  */
 
-import com.booking.replication.binlog.common.Cell;
-
 /**
  *
  * @author Jingqi Xu
  */
+
 /**
  * Copied from: https://github.com/whitesock/open-replicator/blob/master/src/main/java/com/google/code/or/common/glossary/column/StringColumn.java
  *              and renamed StringColum to StringCell

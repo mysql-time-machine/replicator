@@ -1,11 +1,13 @@
 package com.booking.replication.model;
 
 import com.booking.replication.model.augmented.AugmentedEventData;
+import com.booking.replication.model.augmented.AugmentedEventDataImplementation;
 import com.booking.replication.model.transaction.TransactionEventData;
+import com.booking.replication.model.transaction.TransactionEventDataImplementation;
 
 @SuppressWarnings("unused")
 public enum EventType {
-    UNKNOWN(0),
+    UNKNOWN(0, ByteArrayEventData.class),
     START_V3(1),
     QUERY(2, QueryEventData.class),
     STOP(3),
@@ -44,18 +46,24 @@ public enum EventType {
     TRANSACTION_CONTEXT(36),
     VIEW_CHANGE(37),
     XA_PREPARE(38, XAPrepareEventData.class),
-    TRANSACTION(100, TransactionEventData.class),
-    AUGMENTED_INSERT(101, AugmentedEventData.class),
-    AUGMENTED_UPDATE(102, AugmentedEventData.class),
-    AUGMENTED_DELETE(103, AugmentedEventData.class),
-    AUGMENTED_SCHEMA(104, null);
+    TRANSACTION(100, TransactionEventData.class, TransactionEventDataImplementation.class),
+    AUGMENTED_INSERT(101, AugmentedEventData.class, AugmentedEventDataImplementation.class),
+    AUGMENTED_UPDATE(102, AugmentedEventData.class, AugmentedEventDataImplementation.class),
+    AUGMENTED_DELETE(103, AugmentedEventData.class, AugmentedEventDataImplementation.class),
+    AUGMENTED_SCHEMA(104);
 
     private int code;
-    private Class<? extends EventData> type;
+    private Class<? extends EventData> definition;
+    private Class<? extends EventData> implementation;
 
-    EventType(int code, Class<? extends EventData> type) {
+    EventType(int code, Class<? extends EventData> definition, Class<? extends EventData> implementation) {
         this.code = code;
-        this.type = type;
+        this.definition = definition;
+        this.implementation = implementation;
+    }
+
+    EventType(int code, Class<? extends EventData> definition) {
+        this(code, definition, null);
     }
 
     EventType(int code) {
@@ -66,7 +74,11 @@ public enum EventType {
         return this.code;
     }
 
-    public Class<? extends EventData> getType() {
-        return this.type;
+    public Class<? extends EventData> getDefinition() {
+        return this.definition;
+    }
+
+    public Class<? extends EventData> getImplementation() {
+        return this.implementation;
     }
 }

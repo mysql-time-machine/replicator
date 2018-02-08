@@ -1,14 +1,15 @@
 package com.booking.replication.supplier.mysql.binlog.handler;
 
 import com.booking.replication.model.EventData;
-import com.booking.replication.model.EventHeader;
 import com.booking.replication.model.EventHeaderV4;
+import com.booking.replication.model.EventType;
 import com.github.shyiko.mysql.binlog.event.Event;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class EventInvocationHandler implements InvocationHandler {
     private Event event;
@@ -16,12 +17,16 @@ public class EventInvocationHandler implements InvocationHandler {
 
     public EventInvocationHandler(Event event) {
         this.event = event;
-        this.eventDataSubTypes = EventData.listSubTypes().stream().collect(
-                Collectors.toMap(
-                        (value) -> value.getSimpleName().toLowerCase(),
-                        (value) -> value
-                )
-        );
+        this.eventDataSubTypes = Stream
+                .of(EventType.values())
+                .map(EventType::getDefinition)
+                .distinct()
+                .collect(
+                        Collectors.toMap(
+                                (value) -> value.getSimpleName().toLowerCase(),
+                                (value) -> value
+                        )
+                );
     }
 
     @Override

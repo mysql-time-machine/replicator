@@ -52,9 +52,9 @@ public enum EventType {
     AUGMENTED_DELETE(103, AugmentedEventData.class, AugmentedEventDataImplementation.class),
     AUGMENTED_SCHEMA(104);
 
-    private int code;
-    private Class<? extends EventData> definition;
-    private Class<? extends EventData> implementation;
+    private final int code;
+    private final Class<? extends EventData> definition;
+    private final Class<? extends EventData> implementation;
 
     EventType(int code, Class<? extends EventData> definition, Class<? extends EventData> implementation) {
         this.code = code;

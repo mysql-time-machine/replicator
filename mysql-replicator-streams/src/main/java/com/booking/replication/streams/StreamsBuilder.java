@@ -13,7 +13,7 @@ public final class StreamsBuilder<Input, Output> implements
         StreamsBuilderTo<Input, Output>,
         StreamsBuilderPost<Input, Output>,
         StreamsBuilderBuild<Input, Output> {
-    private static final Logger log = Logger.getLogger(StreamsBuilder.class.getName());
+    private static final Logger LOG = Logger.getLogger(StreamsBuilder.class.getName());
 
     private int threads;
     private int tasks;
@@ -29,8 +29,8 @@ public final class StreamsBuilder<Input, Output> implements
         this.from = from;
         this.filter = filter;
         this.process = process;
-        this.to = (value) -> StreamsBuilder.log.log(Level.FINEST, value.toString());
-        this.post = (value, executing) -> StreamsBuilder.log.log(Level.FINEST, value.toString());
+        this.to = (value) -> StreamsBuilder.LOG.log(Level.FINEST, value.toString());
+        this.post = (value, executing) -> StreamsBuilder.LOG.log(Level.FINEST, value.toString());
     }
 
     @SuppressWarnings("unchecked")
@@ -39,7 +39,7 @@ public final class StreamsBuilder<Input, Output> implements
             null,
             (value) -> true,
             (value) -> {
-                StreamsBuilder.log.log(Level.FINEST, value.toString());
+                StreamsBuilder.LOG.log(Level.FINEST, value.toString());
                 return (Output) value;
             }
         );

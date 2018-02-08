@@ -24,10 +24,10 @@ public class KafkaSupplier implements EventSupplier {
         String BOOTSTRAP_SERVERS = "kafka.bootstrap.servers";
         String GROUP_ID = "kafka.group.id";
         String TOPIC = "kafka.topic";
-
     }
 
-    private final ObjectMapper mapper;
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private final Consumer<byte[], byte[]> consumer;
     private final String topic;
     private final List<java.util.function.Consumer<Event>> consumers;
@@ -43,7 +43,6 @@ public class KafkaSupplier implements EventSupplier {
         Objects.requireNonNull(groupId, String.format("Configuration required: %s", Configuration.GROUP_ID));
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
 
-        this.mapper = new ObjectMapper();
         this.consumer = this.getConsumer(bootstrapServers, groupId);
         this.topic = topic;
         this.consumers = new ArrayList<>();
@@ -94,7 +93,7 @@ public class KafkaSupplier implements EventSupplier {
     }
 
     private EventHeader getHeader(byte[] value) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException, IOException {
-        return EventHeader.decorate(new JSONInvocationHandler(this.mapper, value));
+        return EventHeader.decorate(new JSONInvocationHandler(KafkaSupplier.MAPPER, value));
     }
 
     private EventData getData(EventHeader header, byte[] value) throws NoSuchMethodException, IllegalAccessException, java.lang.reflect.InvocationTargetException, InstantiationException, IOException {
@@ -104,9 +103,9 @@ public class KafkaSupplier implements EventSupplier {
             case AUGMENTED_UPDATE:
             case AUGMENTED_DELETE:
             case AUGMENTED_SCHEMA:
-                return this.mapper.readValue(value, header.getEventType().getImplementation());
+                return KafkaSupplier.MAPPER.readValue(value, header.getEventType().getImplementation());
             default:
-                return EventData.decorate(header.getEventType().getDefinition(), new JSONInvocationHandler(this.mapper, value));
+                return EventData.decorate(header.getEventType().getDefinition(), new JSONInvocationHandler(KafkaSupplier.MAPPER, value));
         }
     }
 

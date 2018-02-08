@@ -20,7 +20,7 @@ public class KafkaEventApplier implements EventApplier {
         String TOPIC = "kafka.topic";
     }
 
-    private final ObjectMapper mapper;
+    private static final ObjectMapper MAPPER = new ObjectMapper();
     private final Producer<byte[], byte[]> producer;
     private final String topic;
 
@@ -31,7 +31,6 @@ public class KafkaEventApplier implements EventApplier {
         Objects.requireNonNull(bootstrapServers, String.format("Configuration required: %s", Configuration.BOOTSTRAP_SERVERS));
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
 
-        this.mapper = new ObjectMapper();
         this.producer = this.getProducer(bootstrapServers);
         this.topic = topic;
     }
@@ -51,8 +50,8 @@ public class KafkaEventApplier implements EventApplier {
         try {
             this.producer.send(new ProducerRecord<>(
                     this.topic,
-                    this.mapper.writeValueAsBytes(event.getHeader()),
-                    this.mapper.writeValueAsBytes(event.getData())
+                    KafkaEventApplier.MAPPER.writeValueAsBytes(event.getHeader()),
+                    KafkaEventApplier.MAPPER.writeValueAsBytes(event.getData())
             ));
         } catch (JsonProcessingException exception) {
             throw new UncheckedIOException(exception);

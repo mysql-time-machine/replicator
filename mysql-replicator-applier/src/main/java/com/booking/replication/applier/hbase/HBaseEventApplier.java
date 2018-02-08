@@ -7,7 +7,6 @@ import com.booking.replication.model.EventHeader;
 import com.booking.replication.model.augmented.AugmentedEventData;
 import com.booking.replication.model.augmented.TableNameEventData;
 import com.booking.replication.model.transaction.TransactionEventData;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -36,9 +35,8 @@ public class HBaseEventApplier implements EventApplier {
     private static final String DIGEST_ALGORITHM = "MD5";
     private static final byte[] CF = Bytes.toBytes("d");
 
-    private static final Logger log = Logger.getLogger(HBaseEventApplier.class.getName());
-    private static final ObjectMapper mapper = new ObjectMapper();
-    private static final Map<String, Connection> connections = new ConcurrentHashMap<>();
+    private static final Logger LOG = Logger.getLogger(HBaseEventApplier.class.getName());
+    private static final Map<String, Connection> CONNECTIONS = new ConcurrentHashMap<>();
 
     private final Connection connection;
     private final String schema;
@@ -55,7 +53,7 @@ public class HBaseEventApplier implements EventApplier {
     }
 
     private Connection getConnection(String zookeeper) {
-        return HBaseEventApplier.connections.computeIfAbsent(zookeeper, zookeeperQuorum -> {
+        return HBaseEventApplier.CONNECTIONS.computeIfAbsent(zookeeper, zookeeperQuorum -> {
             try {
                 org.apache.hadoop.conf.Configuration configuration = HBaseConfiguration.create();
 
@@ -257,7 +255,7 @@ public class HBaseEventApplier implements EventApplier {
     }
 
     private void handleUnknownEvent(EventHeader header, EventData data) {
-        HBaseEventApplier.log.log(Level.FINE, "Unknown event type {}", header.getEventType().name());
+        HBaseEventApplier.LOG.log(Level.FINE, "Unknown event type {}", header.getEventType().name());
     }
 
     private TableName getTableName(EventHeader header, TableNameEventData data) {
@@ -304,10 +302,10 @@ public class HBaseEventApplier implements EventApplier {
 
     @Override
     public void close() throws IOException {
-        HBaseEventApplier.connections.keySet().forEach(
+        HBaseEventApplier.CONNECTIONS.keySet().forEach(
                 zookeeperQuorum -> {
-                    if (HBaseEventApplier.connections.get(zookeeperQuorum) == this.connection) {
-                        HBaseEventApplier.connections.remove(zookeeperQuorum);
+                    if (HBaseEventApplier.CONNECTIONS.get(zookeeperQuorum) == this.connection) {
+                        HBaseEventApplier.CONNECTIONS.remove(zookeeperQuorum);
                     }
                 }
         );

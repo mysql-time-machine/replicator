@@ -12,8 +12,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class EventInvocationHandler implements InvocationHandler {
-    private Event event;
-    private Map<String, Class<? extends EventData>> eventDataSubTypes;
+    private final Event event;
+    private final Map<String, Class<? extends EventData>> eventDataSubTypes;
 
     public EventInvocationHandler(Event event) {
         this.event = event;

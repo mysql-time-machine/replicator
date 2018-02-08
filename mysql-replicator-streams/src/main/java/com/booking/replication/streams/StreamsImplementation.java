@@ -11,7 +11,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class StreamsImplementation<Input, Output> implements Streams<Input, Output> {
-    private static final Logger log = Logger.getLogger(StreamsImplementation.class.getName());
+    private static final Logger LOG = Logger.getLogger(StreamsImplementation.class.getName());
 
     private final ExecutorService executor;
     private final int tasks;
@@ -51,7 +51,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
         this.to = to;
         this.post = post;
         this.running = new AtomicBoolean();
-        this.handler = (exception) -> StreamsImplementation.log.log(Level.WARNING, "streams exception handler", exception);
+        this.handler = (exception) -> StreamsImplementation.LOG.log(Level.WARNING, "streams exception handler", exception);
     }
 
     @Override
@@ -95,7 +95,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
                 this.executor.execute(runnable);
             }
 
-            StreamsImplementation.log.log(Level.FINE, "streams started");
+            StreamsImplementation.LOG.log(Level.FINE, "streams started");
         }
 
         return this;
@@ -125,7 +125,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
                 this.executor.shutdownNow();
             }
 
-            StreamsImplementation.log.log(Level.FINE, "streams stopped");
+            StreamsImplementation.LOG.log(Level.FINE, "streams stopped");
         }
     }
 

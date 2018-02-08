@@ -10,7 +10,7 @@ import java.lang.reflect.Method;
 import java.util.Map;
 
 public class JSONInvocationHandler implements InvocationHandler {
-    private static TypeReference<Map<String, Object>> TYPE_REFERENCE = new TypeReference<Map<String, Object>>(){};
+    private static final TypeReference<Map<String, Object>> TYPE_REFERENCE = new TypeReference<Map<String, Object>>(){};
 
     private final Map<String, Object> map;
 

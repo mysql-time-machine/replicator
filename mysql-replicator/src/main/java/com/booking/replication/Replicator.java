@@ -1,20 +1,18 @@
 package com.booking.replication;
 
 import com.booking.replication.applier.EventApplier;
-import com.booking.replication.applier.cassandra.CassandraEventApplier;
-import com.booking.replication.applier.console.ConsoleEventApplier;
-import com.booking.replication.applier.hbase.HBaseEventApplier;
-import com.booking.replication.applier.kafka.KafkaEventApplier;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.model.Checkpoint;
 import com.booking.replication.model.Event;
 import com.booking.replication.streams.Streams;
 import com.booking.replication.supplier.EventSupplier;
-import com.booking.replication.supplier.kafka.KafkaSupplier;
-import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import org.apache.commons.cli.*;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -22,19 +20,7 @@ import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-//import com.booking.infra.bigdata.augmenter.Augmenter;
-
 public class Replicator {
-    public interface Configuration extends
-            Coordinator.Configuration,
-            BinaryLogSupplier.Configuration,
-            KafkaSupplier.Configuration,
-            CassandraEventApplier.Configuration,
-            ConsoleEventApplier.Configuration,
-            HBaseEventApplier.Configuration,
-            KafkaEventApplier.Configuration {
-    }
-
     private static final Logger LOG = Logger.getLogger(Replicator.class.getName());
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -147,7 +133,7 @@ public class Replicator {
     private Checkpoint loadCheckpoint(Coordinator coordinator, Map<String, String> configuration) throws IOException {
         byte[] checkpointBytes = coordinator.loadCheckpoint(
                 configuration.getOrDefault(
-                        Configuration.CHECKPOINT_PATH,
+                        Coordinator.Configuration.CHECKPOINT_PATH,
                         coordinator.defaultCheckpointPath()
                 )
         );
@@ -166,7 +152,7 @@ public class Replicator {
             if (checkpointBytes != null && checkpointBytes.length > 0) {
                 coordinator.storeCheckpoint(
                         configuration.getOrDefault(
-                                Configuration.CHECKPOINT_PATH,
+                                Coordinator.Configuration.CHECKPOINT_PATH,
                                 coordinator.defaultCheckpointPath()
                         ),
                         checkpointBytes
@@ -175,17 +161,69 @@ public class Replicator {
         }
     }
 
-    /**
+    /*
      * Start the JVM with the argument -Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager
-     * @param arguments
      */
     public static void main(String[] arguments) {
-        Map<String, String> configuration = new HashMap<>();
+        Options options = new Options();
 
-        configuration.put(Configuration.MYSQL_HOSTNAME, arguments[0]);
-        configuration.put(Configuration.MYSQL_USERNAME, arguments[1]);
-        configuration.put(Configuration.MYSQL_PASSWORD, arguments[2]);
+        options.addOption(Option.builder().longOpt("config").argName("key-value").desc("the configuration to be used with the format <key>=<value>").hasArgs().build());
+        options.addOption(Option.builder().longOpt("config-file").argName("filename").desc("the configuration file to be used (YAML)").hasArg().build());
+        options.addOption(Option.builder().longOpt("supplier").argName("supplier").desc("the supplier to be used").hasArg().build());
+        options.addOption(Option.builder().longOpt("applier").argName("applier").desc("the applier to be used").hasArg().build());
 
-        new Replicator().start(configuration);
+        try {
+            CommandLine line = new DefaultParser().parse(options, arguments);
+
+            Map<String, String> configuration = new HashMap<>();
+
+            if (line.hasOption("config")) {
+                for (String keyValue : line.getOptionValues("config")) {
+                    int index = keyValue.indexOf('=');
+
+                    configuration.put(keyValue.substring(0, index), keyValue.substring(index));
+                }
+            }
+
+            if (line.hasOption("config-file")) {
+                configuration.putAll(Replicator.flattenMap(new ObjectMapper(new YAMLFactory()).readValue(
+                        new File(line.getOptionValue("config-file")),
+                        new TypeReference<Map<String, Object>>(){}
+                )));
+            }
+
+            if (line.hasOption("supplier")) {
+                configuration.put(EventSupplier.Configuration.TYPE, line.getOptionValue("supplier").toUpperCase());
+            }
+
+            if (line.hasOption("applier")) {
+                configuration.put(EventApplier.Configuration.TYPE, line.getOptionValue("applier").toUpperCase());
+            }
+
+            new Replicator().start(configuration);
+        } catch (Exception exception) {
+            System.out.println();
+        }
+    }
+
+    private static Map<String, String> flattenMap(Map<String, Object> map) {
+        Map<String, String> flattenMap = new HashMap<>();
+
+        Replicator.flattenMap(null, map, flattenMap);
+
+        return flattenMap;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void flattenMap(String path, Map<String, Object> map, Map<String, String> flattenMap) {
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            String flattenPath = (path != null)?String.format("%s.%s", path, entry.getKey()):entry.getKey();
+
+            if (Map.class.isInstance(entry.getValue())) {
+                Replicator.flattenMap(flattenPath, Map.class.cast(entry.getValue()), flattenMap);
+            } else {
+                flattenMap.put(flattenPath, entry.getValue().toString());
+            }
+        }
     }
 }

@@ -277,7 +277,7 @@
                                 <configuration>
                                     <transformers>
                                         <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                            <mainClass>com.booking.replication.Main</mainClass>
+                                            <mainClass>com.booking.replication.Replicator</mainClass>
                                         </transformer>
                                     </transformers>
                                 </configuration>

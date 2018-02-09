@@ -6,10 +6,9 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 public class FileCoordinatorTest {
@@ -57,15 +56,13 @@ public class FileCoordinatorTest {
     public void testCheckpoint() throws InterruptedException, IOException {
         Thread.sleep(2000L);
 
-        byte[] checkpoint1 = new byte[20];
-
-        ThreadLocalRandom.current().nextBytes(checkpoint1);
+        String checkpoint1 = UUID.randomUUID().toString();
 
         coordinator1.storeCheckpoint("/tmp/checkpoint", checkpoint1);
 
-        byte[] checkpoint2 = coordinator2.loadCheckpoint("/tmp/checkpoint");
+        String checkpoint2 = coordinator2.loadCheckpoint("/tmp/checkpoint", String.class);
 
-        assertArrayEquals(checkpoint1, checkpoint2);
+        assertEquals(checkpoint1, checkpoint2);
     }
 
     @After

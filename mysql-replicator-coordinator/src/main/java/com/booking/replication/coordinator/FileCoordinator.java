@@ -1,5 +1,7 @@
 package com.booking.replication.coordinator;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
@@ -16,6 +18,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FileCoordinator implements Coordinator {
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private final ExecutorService executor;
     private final String path;
     private final List<Runnable> takeRunnableList;
@@ -33,14 +37,22 @@ public class FileCoordinator implements Coordinator {
     }
 
     @Override
-    public void storeCheckpoint(String path, byte[] checkpoint) throws IOException {
-        Files.write(Paths.get(path), checkpoint);
+    public <Type> void storeCheckpoint(String path, Type checkpoint) throws IOException {
+        if (checkpoint != null) {
+            Files.write(Paths.get(path), FileCoordinator.MAPPER.writeValueAsBytes(checkpoint));
+        }
     }
 
     @Override
-    public byte[] loadCheckpoint(String path) throws IOException {
+    public <Type> Type loadCheckpoint(String path, Class<Type> type) throws IOException {
         try {
-            return Files.readAllBytes(Paths.get(path));
+            byte[] bytes = Files.readAllBytes(Paths.get(path));
+
+            if (bytes.length > 0) {
+                return FileCoordinator.MAPPER.readValue(bytes, type);
+            } else {
+                return null;
+            }
         } catch (NoSuchFileException exception) {
             return null;
         }

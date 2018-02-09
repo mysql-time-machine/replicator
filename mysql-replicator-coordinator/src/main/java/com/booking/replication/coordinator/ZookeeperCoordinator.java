@@ -1,5 +1,6 @@
 package com.booking.replication.coordinator;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -18,6 +19,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ZookeeperCoordinator extends LeaderSelectorListenerAdapter implements Coordinator {
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private final CuratorFramework client;
     private final LeaderSelector selector;
     private final List<Runnable> takeRunnableList;
@@ -47,12 +50,16 @@ public class ZookeeperCoordinator extends LeaderSelectorListenerAdapter implemen
     }
 
     @Override
-    public void storeCheckpoint(String path, byte[] checkpoint) throws IOException {
+    public <Type> void storeCheckpoint(String path, Type checkpoint) throws IOException {
         try {
-            if (this.client.checkExists().forPath(path) != null) {
-                this.client.setData().forPath(path, checkpoint);
-            } else {
-                this.client.create().withMode(CreateMode.PERSISTENT).forPath(path, checkpoint);
+            if (checkpoint != null) {
+                byte[] bytes = ZookeeperCoordinator.MAPPER.writeValueAsBytes(checkpoint);
+
+                if (this.client.checkExists().forPath(path) != null) {
+                    this.client.setData().forPath(path, bytes);
+                } else {
+                    this.client.create().withMode(CreateMode.PERSISTENT).forPath(path, bytes);
+                }
             }
         } catch (Exception exception) {
             throw new IOException(exception);
@@ -60,10 +67,16 @@ public class ZookeeperCoordinator extends LeaderSelectorListenerAdapter implemen
     }
 
     @Override
-    public byte[] loadCheckpoint(String path) throws IOException {
+    public <Type> Type loadCheckpoint(String path, Class<Type> type) throws IOException {
         try {
             if (this.client.checkExists().forPath(path) != null) {
-                return this.client.getData().forPath(path);
+                byte[] bytes = this.client.getData().forPath(path);
+
+                if (bytes != null && bytes.length > 0) {
+                    return ZookeeperCoordinator.MAPPER.readValue(bytes, type);
+                } else {
+                    return null;
+                }
             } else {
                 return null;
             }

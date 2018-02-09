@@ -32,9 +32,12 @@ public class Replicator {
 
             EventSupplier supplier = EventSupplier.build(
                     configuration,
-                    this.loadCheckpoint(
-                            coordinator,
-                            configuration
+                    coordinator.loadCheckpoint(
+                            configuration.getOrDefault(
+                                    Coordinator.Configuration.CHECKPOINT_PATH,
+                                    coordinator.defaultCheckpointPath()
+                            ),
+                            Checkpoint.class
                     )
             );
 
@@ -44,10 +47,12 @@ public class Replicator {
 
             Consumer<Event> storeCheckpoint = (event) -> {
                 try {
-                    this.storeCheckpoint(
-                            Checkpoint.of(event),
-                            coordinator,
-                            configuration
+                    coordinator.storeCheckpoint(
+                            configuration.getOrDefault(
+                                    Coordinator.Configuration.CHECKPOINT_PATH,
+                                    coordinator.defaultCheckpointPath()
+                            ),
+                            Checkpoint.of(event)
                     );
                 } catch (IOException exception) {
                     Replicator.LOG.log(Level.SEVERE, "error storing checkpoint", exception);
@@ -74,6 +79,7 @@ public class Replicator {
                     .tasks(100)
                     .fromPush()
                     .to(applier)
+                    .post(storeCheckpoint)
                     .build();
 
             Streams<Event, Event> streamsSupplier = Streams.<Event>builder()
@@ -127,37 +133,6 @@ public class Replicator {
             coordinator.join();
         } catch (Exception exception) {
             Replicator.LOG.log(Level.SEVERE, "error executing replicator", exception);
-        }
-    }
-
-    private Checkpoint loadCheckpoint(Coordinator coordinator, Map<String, String> configuration) throws IOException {
-        byte[] checkpointBytes = coordinator.loadCheckpoint(
-                configuration.getOrDefault(
-                        Coordinator.Configuration.CHECKPOINT_PATH,
-                        coordinator.defaultCheckpointPath()
-                )
-        );
-
-        if (checkpointBytes != null && checkpointBytes.length > 0) {
-            return Replicator.MAPPER.readValue(checkpointBytes, Checkpoint.class);
-        } else {
-            return null;
-        }
-    }
-
-    private void storeCheckpoint(Checkpoint checkpoint, Coordinator coordinator, Map<String, String> configuration) throws IOException {
-        if (checkpoint != null) {
-            byte[] checkpointBytes = Replicator.MAPPER.writeValueAsBytes(checkpoint);
-
-            if (checkpointBytes != null && checkpointBytes.length > 0) {
-                coordinator.storeCheckpoint(
-                        configuration.getOrDefault(
-                                Coordinator.Configuration.CHECKPOINT_PATH,
-                                coordinator.defaultCheckpointPath()
-                        ),
-                        checkpointBytes
-                );
-            }
         }
     }
 

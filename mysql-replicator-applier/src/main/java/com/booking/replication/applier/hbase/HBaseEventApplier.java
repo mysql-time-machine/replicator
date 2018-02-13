@@ -5,6 +5,7 @@ import com.booking.replication.model.Event;
 import com.booking.replication.model.EventData;
 import com.booking.replication.model.EventHeader;
 import com.booking.replication.model.augmented.AugmentedEventData;
+import com.booking.replication.model.augmented.AugmentedRow;
 import com.booking.replication.model.TableNameEventData;
 import com.booking.replication.model.transaction.TransactionEventData;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -117,7 +118,7 @@ public class HBaseEventApplier implements EventApplier {
         return putList;
     }
 
-    private List<Put> handleAugmentedInsertEvent(EventHeader header, AugmentedEventData data) throws NoSuchAlgorithmException {
+    private List<Put> handleAugmentedInsertEvent(EventHeader header, AugmentedRow data) throws NoSuchAlgorithmException {
         Put put = new Put(this.getRowPrimaryKey(data, "value"));
 
         for (String columnName : data.getTableSchemaVersion().getColumnNames()) {
@@ -145,7 +146,7 @@ public class HBaseEventApplier implements EventApplier {
         return Collections.singletonList(put);
     }
 
-    private List<Put> handleAugmentedUpdateEvent(EventHeader header, AugmentedEventData data) throws NoSuchAlgorithmException {
+    private List<Put> handleAugmentedUpdateEvent(EventHeader header, AugmentedRow data) throws NoSuchAlgorithmException {
         Put put = new Put(this.getRowPrimaryKey(data, "value_after"));
 
         for (String columnName : data.getTableSchemaVersion().getColumnNames()) {
@@ -178,7 +179,7 @@ public class HBaseEventApplier implements EventApplier {
         return Collections.singletonList(put);
     }
 
-    private List<Put> handleAugmentedDeleteEvent(EventHeader header, AugmentedEventData data) throws NoSuchAlgorithmException {
+    private List<Put> handleAugmentedDeleteEvent(EventHeader header, AugmentedRow data) throws NoSuchAlgorithmException {
         return Collections.singletonList(
                 new Put(this.getRowPrimaryKey(data, "value"))
                         .addColumn(
@@ -266,7 +267,7 @@ public class HBaseEventApplier implements EventApplier {
         return this.connection.getTable(tableName);
     }
 
-    private byte[] getRowPrimaryKey(AugmentedEventData data, String columnName) throws NoSuchAlgorithmException {
+    private byte[] getRowPrimaryKey(AugmentedRow data, String columnName) throws NoSuchAlgorithmException {
         List<String> rowPrimaryKey = new ArrayList<>();
 
         for (String primaryKeyColumn : data.getPrimaryKeyColumns()) {

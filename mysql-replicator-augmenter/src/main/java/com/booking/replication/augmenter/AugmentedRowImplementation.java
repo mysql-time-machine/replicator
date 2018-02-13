@@ -3,6 +3,7 @@ package com.booking.replication.augmenter;
 import com.booking.replication.augmenter.exception.TableMapException;
 import com.booking.replication.augmenter.util.CaseInsensitiveMap;
 import com.booking.replication.augmenter.util.JsonBuilder;
+import com.booking.replication.model.augmented.AugmentedRow;
 import com.booking.replication.model.augmented.active.schema.ColumnSchema;
 import com.booking.replication.model.augmented.active.schema.TableSchemaVersion;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -24,7 +25,7 @@ import java.util.*;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties({"tableSchemaVersion"})
-public class AugmentedRow {
+public class AugmentedRowImplementation implements AugmentedRow {
 
     @JsonDeserialize(as = TableSchemaVersion.class)
     private TableSchemaVersion tableSchemaVersion;
@@ -55,7 +56,7 @@ public class AugmentedRow {
 
     private String eventType;
 
-    public AugmentedRow() {
+    public AugmentedRowImplementation() {
 
     }
 
@@ -71,7 +72,7 @@ public class AugmentedRow {
      * @throws InvalidParameterException    Invalid parameter
      * @throws TableMapException            Invalid table
      */
-    public AugmentedRow(
+    public AugmentedRowImplementation(
             String              binlogFileName,
             long                rowOrdinal,
             String              tableName,

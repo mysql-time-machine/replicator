@@ -3,18 +3,12 @@ package com.booking.replication.augmenter;
 import com.booking.replication.augmenter.active.schema.ActiveSchemaVersion;
 import com.booking.replication.augmenter.exception.TableMapException;
 import com.booking.replication.model.Event;
-import com.booking.replication.model.EventData;
-import com.booking.replication.model.augmented.AugmentedEventData;
 import com.booking.replication.model.transaction.TransactionEventData;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.net.URISyntaxException;
 import java.sql.SQLException;
-
-import static com.google.code.or.common.util.MySQLConstants.DELETE_ROWS_EVENT;
-import static com.google.code.or.common.util.MySQLConstants.UPDATE_ROWS_EVENT;
-import static com.google.code.or.common.util.MySQLConstants.WRITE_ROWS_EVENT;
 
 
 public class EventAugmenter implements Augmenter {
@@ -62,12 +56,13 @@ public class EventAugmenter implements Augmenter {
 
     @Override
     public Event apply(Event event) {
-        Event augmentedEvent = null;
-        try {
-            augmentedEvent = mapDataEventToSchema(event, null);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return augmentedEvent;
+        return event;
+//        Event augmentedEvent = null;
+//        try {
+//            augmentedEvent = mapDataEventToSchema(event, null);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//        return augmentedEvent;
     }
 }

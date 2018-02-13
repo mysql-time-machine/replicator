@@ -70,9 +70,9 @@ public class Replicator {
                 }
             };
 
-//            Augmenter augmenter = Augmenter.build(
-//                    configuration
-//            );
+            Augmenter augmenter = Augmenter.build(
+                    configuration
+            );
 
             Streams<Event, Event> streamsApplier = Streams.<Event>builder()
                     .threads(100)
@@ -84,7 +84,7 @@ public class Replicator {
 
             Streams<Event, Event> streamsSupplier = Streams.<Event>builder()
                     .fromPush()
-                    //.process(augmenter)
+                    .process(augmenter)
                     .to(streamsApplier::push)
                     .build();
 

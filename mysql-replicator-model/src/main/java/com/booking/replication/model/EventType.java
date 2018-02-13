@@ -1,7 +1,7 @@
 package com.booking.replication.model;
 
 import com.booking.replication.model.augmented.AugmentedEventData;
-import com.booking.replication.model.augmented.AugmentedEventDataImplementation;
+import com.booking.replication.model.augmented.AugmentedRow;
 import com.booking.replication.model.transaction.TransactionEventData;
 import com.booking.replication.model.transaction.TransactionEventDataImplementation;
 
@@ -47,9 +47,9 @@ public enum EventType {
     VIEW_CHANGE(37),
     XA_PREPARE(38, XAPrepareEventData.class),
     TRANSACTION(100, TransactionEventData.class, TransactionEventDataImplementation.class),
-    AUGMENTED_INSERT(101, AugmentedEventData.class, AugmentedEventDataImplementation.class),
-    AUGMENTED_UPDATE(102, AugmentedEventData.class, AugmentedEventDataImplementation.class),
-    AUGMENTED_DELETE(103, AugmentedEventData.class, AugmentedEventDataImplementation.class),
+    AUGMENTED_INSERT(101, AugmentedEventData.class),
+    AUGMENTED_UPDATE(102, AugmentedEventData.class),
+    AUGMENTED_DELETE(103, AugmentedEventData.class),
     AUGMENTED_SCHEMA(104);
 
     private final int code;

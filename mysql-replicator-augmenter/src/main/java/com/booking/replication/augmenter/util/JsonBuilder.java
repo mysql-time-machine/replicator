@@ -1,7 +1,7 @@
 package com.booking.replication.augmenter.util;
 
 //import com.booking.replication.applier.kafka.RowListMessage;
-import com.booking.replication.augmenter.AugmentedRow;
+import com.booking.replication.augmenter.AugmentedRowImplementation;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.augmenter.active.schema.ActiveSchemaVersion;
 import com.booking.replication.model.augmented.active.schema.TableSchemaVersion;
@@ -23,7 +23,7 @@ public class JsonBuilder {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JsonBuilder.class);
 
-    public static String augmentedRowToJson(AugmentedRow augmentedRow) {
+    public static String augmentedRowToJson(AugmentedRowImplementation augmentedRow) {
         String json = null;
         try {
             json = om.writeValueAsString(augmentedRow);

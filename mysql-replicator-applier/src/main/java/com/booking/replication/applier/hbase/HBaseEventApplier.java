@@ -30,7 +30,7 @@ import java.util.logging.Logger;
 public class HBaseEventApplier implements EventApplier {
     public interface Configuration {
         String ZOOKEEPER_QUORUM = "hbase.zookeeper.quorum";
-        String SCHEMA = "hbase.schema";
+        String NAMESPACE = "hbase.namespace";
     }
 
     private static final String DIGEST_ALGORITHM = "MD5";
@@ -40,17 +40,17 @@ public class HBaseEventApplier implements EventApplier {
     private static final Map<String, Connection> CONNECTIONS = new ConcurrentHashMap<>();
 
     private final Connection connection;
-    private final String schema;
+    private final String namespace;
 
     public HBaseEventApplier(Map<String, String> configuration) {
         String zookeeperQuorum = configuration.get(Configuration.ZOOKEEPER_QUORUM);
-        String schema = configuration.get(Configuration.SCHEMA);
+        String namespace = configuration.get(Configuration.NAMESPACE);
 
         Objects.requireNonNull(zookeeperQuorum, String.format("Configuration required: %s", Configuration.ZOOKEEPER_QUORUM));
-        Objects.requireNonNull(schema, String.format("Configuration required: %s", Configuration.SCHEMA));
+        Objects.requireNonNull(namespace, String.format("Configuration required: %s", Configuration.NAMESPACE));
 
         this.connection = this.getConnection(zookeeperQuorum);
-        this.schema = schema;
+        this.namespace = namespace;
     }
 
     private Connection getConnection(String zookeeper) {
@@ -260,7 +260,7 @@ public class HBaseEventApplier implements EventApplier {
     }
 
     private TableName getTableName(EventHeader header, TableNameEventData data) {
-        return TableName.valueOf(String.format("%s.%s", this.schema.toLowerCase(), data.getTableName().toLowerCase()));
+        return TableName.valueOf(String.format("%s:%s", this.namespace.toLowerCase(), data.getTableName().toLowerCase()));
     }
 
     private Table getTable(TableName tableName) throws IOException {

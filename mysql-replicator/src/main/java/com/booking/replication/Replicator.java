@@ -151,10 +151,11 @@ public class Replicator {
 
             if (line.hasOption("config")) {
                 for (String keyValue : line.getOptionValues("config")) {
-                    int index = keyValue.indexOf('=');
+                    int startIndex = keyValue.indexOf('=');
+                    int endIndex = startIndex + 1;
 
-                    if (index + 1 < keyValue.length()) {
-                        configuration.put(keyValue.substring(0, index), keyValue.substring(index + 1));
+                    if (endIndex < keyValue.length()) {
+                        configuration.put(keyValue.substring(0, startIndex), keyValue.substring(endIndex));
                     }
                 }
             }

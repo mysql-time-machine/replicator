@@ -59,15 +59,20 @@ public class Replicator {
                 }
             };
 
-            Consumer<Exception> exceptionHandle = (streamsException) -> {
+            Runnable shutdown = () -> {
                 try {
-                    Replicator.LOG.log(Level.SEVERE, "error inside streams", streamsException);
                     Replicator.LOG.log(Level.INFO, "stopping coordinator");
 
                     coordinator.stop();
                 } catch (InterruptedException exception) {
                     Replicator.LOG.log(Level.SEVERE, "error stopping", exception);
                 }
+            };
+
+            Consumer<Exception> exceptionHandle = (externalException) -> {
+                Replicator.LOG.log(Level.SEVERE, "error", externalException);
+
+                shutdown.run();
             };
 
             Augmenter augmenter = Augmenter.build(
@@ -93,15 +98,7 @@ public class Replicator {
             streamsSupplier.onException(exceptionHandle);
             streamsApplier.onException(exceptionHandle);
 
-            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                try {
-                    Replicator.LOG.log(Level.INFO, "stopping coordinator");
-
-                    coordinator.stop();
-                } catch (InterruptedException exception) {
-                    Replicator.LOG.log(Level.SEVERE, "error stopping", exception);
-                }
-            }));
+            Runtime.getRuntime().addShutdownHook(new Thread(shutdown));
 
             coordinator.onLeadershipTake(() -> {
                 try {
@@ -111,7 +108,7 @@ public class Replicator {
                     streamsSupplier.start();
                     supplier.start();
                 } catch (IOException | InterruptedException exception) {
-                    Replicator.LOG.log(Level.SEVERE, "error starting", exception);
+                    exceptionHandle.accept(exception);
                 }
             });
 
@@ -123,7 +120,7 @@ public class Replicator {
                     streamsSupplier.stop();
                     streamsApplier.stop();
                 } catch (IOException | InterruptedException exception) {
-                    Replicator.LOG.log(Level.SEVERE, "error stopping", exception);
+                    exceptionHandle.accept(exception);
                 }
             });
 
@@ -156,7 +153,9 @@ public class Replicator {
                 for (String keyValue : line.getOptionValues("config")) {
                     int index = keyValue.indexOf('=');
 
-                    configuration.put(keyValue.substring(0, index), keyValue.substring(index));
+                    if (index + 1 < keyValue.length()) {
+                        configuration.put(keyValue.substring(0, index), keyValue.substring(index + 1));
+                    }
                 }
             }
 

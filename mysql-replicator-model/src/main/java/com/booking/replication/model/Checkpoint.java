@@ -2,9 +2,12 @@ package com.booking.replication.model;
 
 @SuppressWarnings("unused")
 public class Checkpoint {
-    private final long serverId;
-    private final String binlogFilename;
-    private final long binlogPosition;
+    private long serverId;
+    private String binlogFilename;
+    private long binlogPosition;
+
+    public Checkpoint() {
+    }
 
     private Checkpoint(EventHeaderV4 eventHeader, RotateEventData eventData) {
         this.serverId = eventHeader.getServerId();

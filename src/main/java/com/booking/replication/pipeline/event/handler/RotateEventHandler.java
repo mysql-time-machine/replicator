@@ -2,7 +2,7 @@ package com.booking.replication.pipeline.event.handler;
 
 import com.booking.replication.Coordinator;
 import com.booking.replication.applier.ApplierException;
-import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
+import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.pipeline.PipelinePosition;
@@ -60,7 +60,7 @@ public class RotateEventHandler implements BinlogEventV4Handler {
         String pseudoGTIDFullQuery = pipelinePosition.getCurrentPseudoGTIDFullQuery();
         int currentSlaveId = pipelinePosition.getCurrentPosition().getServerID();
 
-        LastCommittedPositionCheckpoint marker = new LastCommittedPositionCheckpoint(
+        PseudoGTIDCheckpoint marker = new PseudoGTIDCheckpoint(
                 pipelinePosition.getCurrentPosition().getHost(),
                 currentSlaveId,
                 currentBinlogFileName,

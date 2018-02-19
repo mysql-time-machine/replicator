@@ -9,9 +9,9 @@ import java.io.IOException;
 /**
  * Created by bosko on 5/30/16.
  */
-public class LastCommittedPositionCheckpoint implements SafeCheckPoint {
+public class PseudoGTIDCheckpoint implements SafeCheckPoint {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(LastCommittedPositionCheckpoint.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(PseudoGTIDCheckpoint.class);
 
     private final int checkpointType;
 
@@ -24,11 +24,11 @@ public class LastCommittedPositionCheckpoint implements SafeCheckPoint {
     private String pseudoGTIDFullQuery;
     private long fakeMicrosecondCounter = 0L;
 
-    public LastCommittedPositionCheckpoint(int slaveId, String binlogFileName, long fakeMicrosecondCounter) {
-        this(slaveId, binlogFileName, 4L, fakeMicrosecondCounter);
-    }
+//    public PseudoGTIDCheckpoint(int slaveId, String binlogFileName, long fakeMicrosecondCounter) {
+//        this(slaveId, binlogFileName, 4L, fakeMicrosecondCounter);
+//    }
 
-    public LastCommittedPositionCheckpoint() {
+    public PseudoGTIDCheckpoint() {
         checkpointType = SafeCheckpointType.BINLOG_POSITION;
     }
 
@@ -39,21 +39,21 @@ public class LastCommittedPositionCheckpoint implements SafeCheckPoint {
      * @param binlogFileName    File name
      * @param binlogPosition    File position
      */
-    public LastCommittedPositionCheckpoint(
-        int slaveId,
-        String binlogFileName,
-        long binlogPosition,
-        long fakeMicrosecondCounter
-    ) {
-        this.slaveId = slaveId;
-        lastVerifiedBinlogFileName = binlogFileName;
-        lastVerifiedBinlogPosition = binlogPosition;
-        checkpointType = SafeCheckpointType.BINLOG_POSITION;
-        this.fakeMicrosecondCounter = fakeMicrosecondCounter;
-    }
+//    public PseudoGTIDCheckpoint(
+//        int slaveId,
+//        String binlogFileName,
+//        long binlogPosition,
+//        long fakeMicrosecondCounter
+//    ) {
+//        this.slaveId = slaveId;
+//        lastVerifiedBinlogFileName = binlogFileName;
+//        lastVerifiedBinlogPosition = binlogPosition;
+//        checkpointType = SafeCheckpointType.BINLOG_POSITION;
+//        this.fakeMicrosecondCounter = fakeMicrosecondCounter;
+//    }
 
     /**
-     * Represents the last processed binlog file with last commited postion and pGTID.
+     * Represents the pGTID checkpoint.
      *
      * @param hostName            Host name of the mysql host that originated the binlog
      * @param slaveId             Server Id of the mysql host that originated the binlog
@@ -62,7 +62,7 @@ public class LastCommittedPositionCheckpoint implements SafeCheckPoint {
      * @param pseudoGTID          Pseudo GTID identifier extracted from full pGTID query
      * @param pseudoGTIDFullQuery Pseudo GTID Full Query
      */
-    public LastCommittedPositionCheckpoint(
+    public PseudoGTIDCheckpoint(
         String hostName,
         int slaveId,
         String binlogFileName,

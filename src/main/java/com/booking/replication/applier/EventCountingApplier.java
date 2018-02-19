@@ -7,6 +7,7 @@ import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.codahale.metrics.Counter;
 import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.impl.event.*;
+import com.booking.replication.applier.SupportedAppliers.ApplierName;
 
 import java.io.IOException;
 
@@ -15,8 +16,27 @@ import java.io.IOException;
  */
 public class EventCountingApplier implements Applier {
 
+    public Applier getWrapped() {
+        return wrapped;
+    }
+
     private final Applier wrapped;
     private final Counter counter;
+
+    @Override
+    public ApplierName getApplierName() throws ApplierException {
+        if (wrapped instanceof HBaseApplier) {
+            return ApplierName.HBaseApplier;
+        } else if (wrapped instanceof  KafkaApplier) {
+            return ApplierName.KafkaApplier;
+        } else if (wrapped instanceof StdoutJsonApplier) {
+            return ApplierName.StdoutJsonApplier;
+        } else if (wrapped instanceof  DummyApplier) {
+            return ApplierName.DummyApplier;
+        } else {
+            throw new ApplierException("Unsupported applier: " + wrapped.toString());
+        }
+    }
 
     public EventCountingApplier(Applier wrapped, Counter counter)
         {

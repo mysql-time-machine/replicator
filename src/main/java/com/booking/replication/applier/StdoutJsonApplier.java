@@ -53,6 +53,11 @@ public class StdoutJsonApplier implements Applier  {
     }
 
     @Override
+    public SupportedAppliers.ApplierName getApplierName() throws ApplierException {
+        return SupportedAppliers.ApplierName.StdoutJsonApplier;
+    }
+
+    @Override
     public void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedRowsEvent, CurrentTransaction currentTransaction) {
         if (VERBOSE) {
             LOGGER.info("Row Event: number of rows in event => " + augmentedRowsEvent.getSingleRowEvents().size());

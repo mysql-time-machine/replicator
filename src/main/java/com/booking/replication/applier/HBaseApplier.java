@@ -5,7 +5,7 @@ import com.booking.replication.applier.hbase.HBaseApplierWriter;
 import com.booking.replication.applier.hbase.TaskBufferInconsistencyException;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
-import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
+import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.schema.HBaseSchemaManager;
@@ -103,7 +103,7 @@ public class HBaseApplier implements Applier {
         markAndSubmit(); // mark current as ready; flush all;
     }
 
-    public LastCommittedPositionCheckpoint getLastCommittedPseudGTIDCheckPoint() {
+    public PseudoGTIDCheckpoint getLastCommittedPseudGTIDCheckPoint() {
         return hbaseApplierWriter.getLatestCommittedPseudoGTIDCheckPoint();
     }
 
@@ -114,10 +114,19 @@ public class HBaseApplier implements Applier {
         hbaseSchemaManager.writeSchemaSnapshotToHBase(event, configuration);
     }
 
-    public void applyPseudoGTIDEvent(LastCommittedPositionCheckpoint pseudoGTIDCheckPoint)
+    public void applyPseudoGTIDEvent(PseudoGTIDCheckpoint pseudoGTIDCheckPoint)
             throws TaskBufferInconsistencyException {
+
+        LOGGER.warn("applyPseudoGTIDEvent" + pseudoGTIDCheckPoint.getPseudoGTID());
+
         hbaseApplierWriter.markCurrentTaskWithPseudoGTID(pseudoGTIDCheckPoint);
     }
+
+    @Override
+    public SupportedAppliers.ApplierName getApplierName() throws ApplierException {
+        return SupportedAppliers.ApplierName.HBaseApplier;
+    }
+
     /**
      * Core logic of the applier. Processes data events and writes to HBase.
      *  @param augmentedRowsEvent Rows event

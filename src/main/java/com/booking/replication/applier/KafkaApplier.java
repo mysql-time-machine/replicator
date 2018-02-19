@@ -151,6 +151,11 @@ public class KafkaApplier implements Applier {
     }
 
     @Override
+    public SupportedAppliers.ApplierName getApplierName() throws ApplierException {
+        return SupportedAppliers.ApplierName.KafkaApplier;
+    }
+
+    @Override
     public void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedDataEvent, CurrentTransaction currentTransaction) {
         for (AugmentedRow augmentedRow : augmentedDataEvent.getSingleRowEvents()) {
             if (exceptionFlag.get()) throw new RuntimeException("Producer has problem with sending messages, could be a connection issue");

@@ -1,7 +1,7 @@
 package com.booking.replication.coordinator;
 
 import com.booking.replication.Configuration;
-import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
+import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 import com.booking.replication.checkpoints.SafeCheckPoint;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -149,14 +149,14 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
     }
 
     @Override
-    public LastCommittedPositionCheckpoint getSafeCheckPoint() {
+    public PseudoGTIDCheckpoint getSafeCheckPoint() {
         try {
             if (client.checkExists().forPath(checkPointPath) == null) {
                 LOGGER.warn("Could not find metadata in zookeeper.");
                 return null;
             }
             byte[] data = client.getData().forPath(checkPointPath);
-            return mapper.readValue(data, LastCommittedPositionCheckpoint.class);
+            return mapper.readValue(data, PseudoGTIDCheckpoint.class);
         } catch (JsonProcessingException e) {
             LOGGER.error(String.format("Failed to deserialize checkpoint data. %s", e.getMessage()));
             e.printStackTrace();

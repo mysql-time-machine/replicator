@@ -14,6 +14,11 @@ import java.io.IOException;
  */
 public class DummyApplier implements Applier {
     @Override
+    public SupportedAppliers.ApplierName getApplierName() throws ApplierException {
+        return SupportedAppliers.ApplierName.DummyApplier;
+    }
+
+    @Override
     public void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedSingleRowEvent, CurrentTransaction currentTransaction) throws ApplierException, IOException {
 
     }

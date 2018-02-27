@@ -1,6 +1,7 @@
 package com.booking.replication;
 
 import com.booking.replication.applier.EventApplier;
+import com.booking.replication.applier.EventSeeker;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.model.Checkpoint;
@@ -30,15 +31,25 @@ public class Replicator {
                     configuration
             );
 
+            Checkpoint checkpoint = coordinator.loadCheckpoint(
+                    configuration.getOrDefault(
+                            Coordinator.Configuration.CHECKPOINT_PATH,
+                            coordinator.defaultCheckpointPath()
+                    ),
+                    Checkpoint.class
+            );
+
             EventSupplier supplier = EventSupplier.build(
                     configuration,
-                    coordinator.loadCheckpoint(
-                            configuration.getOrDefault(
-                                    Coordinator.Configuration.CHECKPOINT_PATH,
-                                    coordinator.defaultCheckpointPath()
-                            ),
-                            Checkpoint.class
-                    )
+                    checkpoint
+            );
+
+            Augmenter augmenter = Augmenter.build(
+                    configuration
+            );
+
+            EventSeeker seeker = EventSeeker.build(
+                    configuration
             );
 
             EventApplier applier = EventApplier.build(
@@ -75,10 +86,6 @@ public class Replicator {
                 shutdown.run();
             };
 
-            Augmenter augmenter = Augmenter.build(
-                    configuration
-            );
-
             Streams<Event, Event> streamsApplier = Streams.<Event>builder()
                     .threads(100)
                     .tasks(100)
@@ -90,6 +97,7 @@ public class Replicator {
             Streams<Event, Event> streamsSupplier = Streams.<Event>builder()
                     .fromPush()
                     .process(augmenter)
+                    .process(seeker)
                     .to(streamsApplier::push)
                     .build();
 

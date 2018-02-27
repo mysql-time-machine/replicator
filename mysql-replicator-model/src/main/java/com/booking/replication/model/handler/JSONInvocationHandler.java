@@ -1,4 +1,4 @@
-package com.booking.replication.supplier.kafka.handler;
+package com.booking.replication.model.handler;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -38,7 +38,27 @@ public class JSONInvocationHandler implements InvocationHandler {
     }
 
     private Object invokeGet(Method method, int length) {
-        return method.getReturnType().cast(this.map.get(this.getPropertyName(method, length)));
+        Object value = this.map.get(this.getPropertyName(method, length));
+
+        if (method.getReturnType().isEnum()) {
+            return Enum.valueOf(method.getReturnType().asSubclass(Enum.class), value.toString());
+        } else if (method.getReturnType().isPrimitive() && !value.getClass().isPrimitive()) {
+            if (method.getReturnType() == byte.class) {
+                return Number.class.cast(value).byteValue();
+            } else if (method.getReturnType() == double.class) {
+                return Number.class.cast(value).doubleValue();
+            } else if (method.getReturnType() == float.class) {
+                return Number.class.cast(value).floatValue();
+            } else if (method.getReturnType() == int.class) {
+                return Number.class.cast(value).intValue();
+            } else if (method.getReturnType() == long.class) {
+                return Number.class.cast(value).longValue();
+            } else if (method.getReturnType() == short.class) {
+                return Number.class.cast(value).shortValue();
+            }
+        }
+
+        return value;
     }
 
     private Object invokeSet(Method method, Object value) {

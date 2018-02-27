@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.errors.InvalidPartitionsException;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 
 import java.io.UncheckedIOException;
@@ -18,21 +20,35 @@ public class KafkaEventApplier implements EventApplier {
     public interface Configuration {
         String BOOTSTRAP_SERVERS = "kafka.bootstrap.servers";
         String TOPIC = "kafka.topic";
+        String PARTITIONER = "kafka.partitioner";
     }
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private final Producer<byte[], byte[]> producer;
     private final String topic;
+    private final int totalPartitions;
+    private final KafkaEventPartitioner partitioner;
+
+    public KafkaEventApplier(Producer<byte[], byte[]> producer, String topic, int totalPartitions, KafkaEventPartitioner partitioner) {
+        this.producer = producer;
+        this.topic = topic;
+        this.totalPartitions = totalPartitions;
+        this.partitioner = partitioner;
+    }
 
     public KafkaEventApplier(Map<String, String> configuration) {
         String bootstrapServers = configuration.get(Configuration.BOOTSTRAP_SERVERS);
         String topic = configuration.get(Configuration.TOPIC);
+        String partitioner = configuration.get(Configuration.PARTITIONER);
 
         Objects.requireNonNull(bootstrapServers, String.format("Configuration required: %s", Configuration.BOOTSTRAP_SERVERS));
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
+        Objects.requireNonNull(partitioner, String.format("Configuration required: %s", Configuration.PARTITIONER));
 
         this.producer = this.getProducer(bootstrapServers);
         this.topic = topic;
+        this.totalPartitions = this.getTotalPartitions();
+        this.partitioner = KafkaEventPartitioner.valueOf(partitioner);
     }
 
     private Producer<byte[],byte[]> getProducer(String bootstrapServers) {
@@ -45,11 +61,16 @@ public class KafkaEventApplier implements EventApplier {
         return new KafkaProducer<>(configuration);
     }
 
+    private int getTotalPartitions() {
+        return this.producer.partitionsFor(this.topic).stream().mapToInt(PartitionInfo::partition).max().orElseThrow(() -> new InvalidPartitionsException("partitions not found"));
+    }
+
     @Override
     public void accept(Event event) {
         try {
             this.producer.send(new ProducerRecord<>(
                     this.topic,
+                    this.partitioner.partition(event, this.totalPartitions),
                     KafkaEventApplier.MAPPER.writeValueAsBytes(event.getHeader()),
                     KafkaEventApplier.MAPPER.writeValueAsBytes(event.getData())
             ));

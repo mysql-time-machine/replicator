@@ -1,10 +1,13 @@
 package com.booking.replication.applier.kafka;
 
+//import com.booking.replication.applier.KafkaApplier;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.util.JsonBuilder;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
@@ -13,6 +16,8 @@ import java.util.List;
  */
 public class RowListMessage {
 
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(RowListMessage.class);
     // metadata
     private int     messageSize;
     private String  messageBinlogPositionID;
@@ -52,6 +57,9 @@ public class RowListMessage {
 
     @JsonIgnore
     public boolean isFull() {
+
+        LOGGER.debug("isFull check: messageSize " + messageSize + ", rows.size " + rows.size() );
+
         return (!(messageSize > rows.size()));
     }
 

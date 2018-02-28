@@ -60,7 +60,9 @@ public class PipelineOrchestrator extends Thread {
     private static final int BUFFER_FLUSH_INTERVAL = 30000; // <- force buffer flush every 30 sec
     private static final int DEFAULT_VERSIONS_FOR_MIRRORED_TABLES = 1000;
     private static final long QUEUE_POLL_TIMEOUT = 100L;
-    private static final long QUEUE_POLL_SLEEP = 500;
+    private static final long QUEUE_POLL_SLEEP = 1000;
+    private static       int numberOfForceFlushesSinceLastEvent = 0;
+
     private static EventAugmenter eventAugmenter;
     private static ActiveSchemaVersion activeSchemaVersion;
     private static PseudoGTIDCheckpoint lastVerifiedPseudoGTIDCheckPoint;
@@ -264,6 +266,7 @@ public class PipelineOrchestrator extends Thread {
             LOGGER.debug("Received event: " + event);
 
             timeOfLastEvent = System.currentTimeMillis();
+
             eventsReceivedCounter.mark();
 
             // Update pipeline position
@@ -335,7 +338,10 @@ public class PipelineOrchestrator extends Thread {
     private BinlogEventV4 waitForEvent(long timeout, long sleep) throws InterruptedException, ApplierException, IOException {
         while (isRunning()) {
             if (queues.rawQueue.size() > 0) {
+
                 BinlogEventV4 event = queues.rawQueue.poll(timeout, TimeUnit.MILLISECONDS);
+
+                numberOfForceFlushesSinceLastEvent = 0;
 
                 if (event == null) {
                     LOGGER.warn("Poll timeout. Will sleep for " + QUEUE_POLL_SLEEP * 2  + "ms and try again.");
@@ -345,13 +351,16 @@ public class PipelineOrchestrator extends Thread {
                 return event;
 
             } else {
-                LOGGER.debug("Pipeline report: no items in producer event rawQueue. Will sleep for " + QUEUE_POLL_SLEEP + " and check again.");
+                LOGGER.info("Pipeline report: no items in producer event rawQueue. Will sleep for " + QUEUE_POLL_SLEEP + " and check again.");
                 Thread.sleep(sleep);
                 long currentTime = System.currentTimeMillis();
                 long timeDiff = currentTime - timeOfLastEvent;
-                boolean forceFlush = (timeDiff > BUFFER_FLUSH_INTERVAL);
-                if (forceFlush) {
+
+                // Force flush if more than 30 seconds passed since last event and there was no flush since then
+                boolean forceFlush = (timeDiff > BUFFER_FLUSH_INTERVAL) && (numberOfForceFlushesSinceLastEvent == 0);
+                if (forceFlush ) {
                     applier.forceFlush();
+                    numberOfForceFlushesSinceLastEvent++;
                 }
             }
         }

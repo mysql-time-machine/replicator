@@ -357,8 +357,6 @@ public class KafkaApplier implements Applier {
         }
     }
 
-
-
     public int getHashcodeForRow(AugmentedRow row) {
 
         int hashCode;
@@ -494,10 +492,36 @@ public class KafkaApplier implements Applier {
 
     @Override
     public void forceFlush() {
+
+        LOGGER.debug("Kafka Applier force flush");
+
+        // flush partition buffers
+        for (int partitionNum : partitionCurrentMessageBuffer.keySet()) {
+
+            LOGGER.debug("will force flush partition " + partitionNum);
+
+            if ( partitionCurrentMessageBuffer.get(partitionNum) != null) {
+
+                LOGGER.debug("content to force flush: " + partitionCurrentMessageBuffer.get(partitionNum).toJSON());
+
+                partitionCurrentMessageBuffer.get(partitionNum).closeMessageBuffer();
+
+                sendMessage(partitionNum);
+
+                // open new buffer
+                partitionCurrentMessageBuffer.put(partitionNum, null);
+
+            } else {
+                LOGGER.debug("nothing to flush for partition " + partitionNum);
+            }
+        }
+
         final Timer.Context context = closingTimer.time();
+
         // Producer close does the waiting, see documentation.
         producer.close();
         context.stop();
+
         producer = new KafkaProducer<>(getProducerProperties(brokerAddress));
         LOGGER.info("A new producer has been created");
     }

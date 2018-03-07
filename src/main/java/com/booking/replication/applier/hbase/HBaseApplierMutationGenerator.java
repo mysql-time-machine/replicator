@@ -415,7 +415,7 @@ public class HBaseApplierMutationGenerator {
         if (row.getTransactionUUID() != null) {
             return row.getTransactionUUID().toString();
         } else {
-            return getHBaseRowKey(row);
+            throw new RuntimeException("Transaction ID missing in Augmented Row");
         }
     }
 

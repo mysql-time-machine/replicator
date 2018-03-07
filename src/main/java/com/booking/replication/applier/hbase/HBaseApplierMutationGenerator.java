@@ -413,8 +413,7 @@ public class HBaseApplierMutationGenerator {
 
     private static String getPayloadTableHBaseRowKey(AugmentedRow row) {
         if (row.getTransactionUUID() != null) {
-            String uuid = row.getTransactionUUID().toString();
-            return saltRowKey(uuid, uuid);
+            return row.getTransactionUUID().toString();
         } else {
             return getHBaseRowKey(row);
         }

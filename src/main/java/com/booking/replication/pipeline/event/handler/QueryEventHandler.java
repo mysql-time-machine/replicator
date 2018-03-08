@@ -27,9 +27,6 @@ import java.io.IOException;
 
 import static com.codahale.metrics.MetricRegistry.name;
 
-/**
- * Created by edmitriev on 7/12/17.
- */
 public class QueryEventHandler implements BinlogEventV4Handler {
     private static final Logger LOGGER = LoggerFactory.getLogger(QueryEventHandler.class);
 
@@ -112,7 +109,7 @@ public class QueryEventHandler implements BinlogEventV4Handler {
                     pipelinePosition.setCurrentPseudoGTIDFullQuery(querySQL);
 
                     try {
-                        eventHandlerConfiguration.getApplier().applyPseudoGTIDEvent(new LastCommittedPositionCheckpoint(
+                        eventHandlerConfiguration.getApplier().applyPseudoGTIDEvent(new PseudoGTIDCheckpoint(
                                 pipelinePosition.getCurrentPosition().getHost(),
                                 pipelinePosition.getCurrentPosition().getServerID(),
                                 pipelinePosition.getCurrentPosition().getBinlogFilename(),

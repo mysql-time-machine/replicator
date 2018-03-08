@@ -104,7 +104,7 @@ public class HBaseApplier implements Applier {
     }
 
     public PseudoGTIDCheckpoint getLastCommittedPseudGTIDCheckPoint() {
-        return hbaseApplierWriter.getLatestCommittedPseudoGTIDCheckPoint();
+        return HBaseApplierWriter.getLatestCommittedPseudoGTIDCheckPoint();
     }
 
     @Override
@@ -115,7 +115,7 @@ public class HBaseApplier implements Applier {
     }
 
     @Override
-    public void applyPseudoGTIDEvent(LastCommittedPositionCheckpoint pseudoGTIDCheckPoint) throws Exception {
+    public void applyPseudoGTIDEvent(PseudoGTIDCheckpoint pseudoGTIDCheckPoint) throws Exception {
         hbaseApplierWriter.markCurrentTaskWithPseudoGTID(pseudoGTIDCheckPoint);
     }
 

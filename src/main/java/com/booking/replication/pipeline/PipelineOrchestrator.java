@@ -396,7 +396,7 @@ public class PipelineOrchestrator extends Thread {
      */
     private void calculateAndPropagateChanges(BinlogEventV4 event) throws Exception {
 
-        // Calculate replication delay before the event timestamp is extended with fake miscrosecond part
+        // Calculate replication delay before the event timestamp is extended with fake microsecond part
         // Note: there is a bug in open replicator which results in rotate event having timestamp value = 0.
         //       This messes up the replication delay time series. The workaround is not to calculate the
         //       replication delay at rotate event.
@@ -405,10 +405,8 @@ public class PipelineOrchestrator extends Thread {
                     && (event.getHeader().getTimestamp() > 0) ) {
                 replDelay = event.getHeader().getTimestampOfReceipt() - event.getHeader().getTimestamp();
             } else {
-                if (event.getHeader().getEventType() == MySQLConstants.ROTATE_EVENT) {
-                    // do nothing, expected for rotate event
-                } else {
-                    // warn, not expected for other events
+                if (event.getHeader().getEventType() != MySQLConstants.ROTATE_EVENT) {
+                    // warn, not expected for other (non-rotate) events
                     LOGGER.warn("Invalid timestamp value for event " + event.toString());
                 }
             }
@@ -417,15 +415,23 @@ public class PipelineOrchestrator extends Thread {
             requestReplicatorShutdown();
         }
 
-        // check if the applier commit stream moved to a new check point. If so,
-        // store the the new safe check point; currently only supported for hbase applier.
-        if (applier.getApplierName() == SupportedAppliers.ApplierName.HBaseApplier) {
+        // check if the applier commit stream moved to a new check point. If so, store the the new safe check point.
+        PseudoGTIDCheckpoint lastCommittedPseudoGTIDReportedByApplier =
+            applier.getLastCommittedPseudGTIDCheckPoint();
 
-            // TODO: Currenly every applier is wrapped into EventCountingApplier class. Make this simpler.
-            PseudoGTIDCheckpoint lastCommittedPseudoGTIDReportedByApplier =
-                ((HBaseApplier) (((EventCountingApplier) applier).getWrapped())).getLastCommittedPseudGTIDCheckPoint();
+        if (lastVerifiedPseudoGTIDCheckPoint == null && lastCommittedPseudoGTIDReportedByApplier != null) {
 
-            if (lastVerifiedPseudoGTIDCheckPoint == null && lastCommittedPseudoGTIDReportedByApplier != null) {
+            lastVerifiedPseudoGTIDCheckPoint = lastCommittedPseudoGTIDReportedByApplier;
+
+            Coordinator.saveCheckpointMarker(lastVerifiedPseudoGTIDCheckPoint);
+
+            LOGGER.info("Saved new checkpoint: " + lastVerifiedPseudoGTIDCheckPoint.toJson());
+
+        } else if (lastVerifiedPseudoGTIDCheckPoint != null && lastCommittedPseudoGTIDReportedByApplier != null) {
+
+            if (lastVerifiedPseudoGTIDCheckPoint.isBeforeCheckpoint(lastCommittedPseudoGTIDReportedByApplier)) {
+
+                LOGGER.info("Reached new safe checkpoint " + lastCommittedPseudoGTIDReportedByApplier.getPseudoGTID());
 
                 lastVerifiedPseudoGTIDCheckPoint = lastCommittedPseudoGTIDReportedByApplier;
 
@@ -433,21 +439,6 @@ public class PipelineOrchestrator extends Thread {
 
                 LOGGER.info("Saved new checkpoint: " + lastVerifiedPseudoGTIDCheckPoint.toJson());
 
-            } else if (lastVerifiedPseudoGTIDCheckPoint != null && lastCommittedPseudoGTIDReportedByApplier != null) {
-
-                // next pGTID is lexicographically greater than the previous one
-                // TODO: replace equals with compareTo, move this logic to pseudoGTID object, add tests
-                if (!lastVerifiedPseudoGTIDCheckPoint.getPseudoGTID().equals(lastCommittedPseudoGTIDReportedByApplier.getPseudoGTID())) {
-
-                    LOGGER.info("Reached new safe checkpoint " + lastCommittedPseudoGTIDReportedByApplier.getPseudoGTID());
-
-                    lastVerifiedPseudoGTIDCheckPoint = lastCommittedPseudoGTIDReportedByApplier;
-
-                    Coordinator.saveCheckpointMarker(lastVerifiedPseudoGTIDCheckPoint);
-
-                    LOGGER.info("Saved new checkpoint: " + lastVerifiedPseudoGTIDCheckPoint.toJson());
-
-                }
             }
         }
 

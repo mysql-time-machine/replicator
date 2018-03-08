@@ -7,6 +7,7 @@ import com.booking.replication.applier.kafka.RowListMessage;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
+import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.schema.exception.TableMapException;
@@ -87,6 +88,8 @@ public class KafkaApplier implements Applier {
 
     private int paritioningMethod;
     private HashMap<String, String> partitionColumns;
+
+    private LastCommittedPositionCheckpoint lastCommittedPositionCheckpoint;
 
     private static Properties getProducerProperties(String broker) {
         // Below is the new version of producer configuration
@@ -416,7 +419,7 @@ public class KafkaApplier implements Applier {
             if (partitionCurrentMessageBuffer.get(partitionNum) == null) {
                 List<AugmentedRow> rowsBucket = new ArrayList<>();
                 rowsBucket.add(augmentedRow);
-                partitionCurrentMessageBuffer.put(partitionNum, new RowListMessage(MESSAGE_BATCH_SIZE, rowsBucket));
+                partitionCurrentMessageBuffer.put(partitionNum, new RowListMessage(MESSAGE_BATCH_SIZE, rowsBucket, this.lastCommittedPositionCheckpoint != null?this.lastCommittedPositionCheckpoint.getPseudoGTID():null));
             } else {
                 // if buffer is full do:
                 //      (close) -> (send message) -> (create new buffer - sets current row as the first in the buffer)
@@ -433,7 +436,7 @@ public class KafkaApplier implements Applier {
                     // 3. open new buffer with current row as buffer-start-row
                     List<AugmentedRow> rowsBucket = new ArrayList<>();
                     rowsBucket.add(augmentedRow);
-                    partitionCurrentMessageBuffer.put(partitionNum, new RowListMessage(MESSAGE_BATCH_SIZE, rowsBucket));
+                    partitionCurrentMessageBuffer.put(partitionNum, new RowListMessage(MESSAGE_BATCH_SIZE, rowsBucket, this.lastCommittedPositionCheckpoint != null?this.lastCommittedPositionCheckpoint.getPseudoGTID():null));
 
                 } else {
                     // buffer row to current buffer
@@ -534,5 +537,10 @@ public class KafkaApplier implements Applier {
         context.stop();
         producer = new KafkaProducer<>(getProducerProperties(brokerAddress));
         LOGGER.info("A new producer has been created");
+    }
+
+    @Override
+    public void applyPseudoGTIDEvent(LastCommittedPositionCheckpoint pseudoGTIDCheckPoint) throws Exception {
+        this.lastCommittedPositionCheckpoint = pseudoGTIDCheckPoint;
     }
 }

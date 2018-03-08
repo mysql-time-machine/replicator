@@ -2,6 +2,7 @@ package com.booking.replication.applier;
 
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
+import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.google.code.or.binlog.BinlogEventV4;
@@ -39,4 +40,5 @@ public interface Applier {
 
     void waitUntilAllRowsAreCommitted(BinlogEventV4 event) throws IOException, ApplierException;
 
+    void applyPseudoGTIDEvent(LastCommittedPositionCheckpoint pseudoGTIDCheckPoint) throws Exception;
 }

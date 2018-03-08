@@ -544,6 +544,6 @@ public class KafkaApplier implements Applier {
 
     @Override
     public void applyPseudoGTIDEvent(PseudoGTIDCheckpoint pseudoGTIDCheckPoint) throws Exception {
-        this.lastCheckpointCommittedByApplier = pseudoGTIDCheckPoint;
+        this.lastCheckpointReceivedByApplier = pseudoGTIDCheckPoint;
     }
 }

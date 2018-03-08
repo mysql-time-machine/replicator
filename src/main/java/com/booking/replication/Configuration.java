@@ -25,6 +25,7 @@ public class Configuration {
      */
     public Configuration() {}
 
+    private int     healthTrackerPort;
     private boolean initialSnapshotMode;
     private boolean dryRunMode;
     private long    startingBinlogPosition;
@@ -552,6 +553,10 @@ public class Configuration {
             return "";
         }
         return metadata_store.file.path;
+    }
+
+    public int getHealthTrackerPort() {
+        return this.healthTrackerPort;
     }
 
     /**

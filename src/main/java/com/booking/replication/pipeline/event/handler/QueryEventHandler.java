@@ -27,9 +27,6 @@ import java.io.IOException;
 
 import static com.codahale.metrics.MetricRegistry.name;
 
-/**
- * Created by edmitriev on 7/12/17.
- */
 public class QueryEventHandler implements BinlogEventV4Handler {
     private static final Logger LOGGER = LoggerFactory.getLogger(QueryEventHandler.class);
 
@@ -111,30 +108,18 @@ public class QueryEventHandler implements BinlogEventV4Handler {
                     pipelinePosition.setCurrentPseudoGTID(pseudoGTID);
                     pipelinePosition.setCurrentPseudoGTIDFullQuery(querySQL);
 
-                    LOGGER.debug("applier type: " + eventHandlerConfiguration.getApplier().toString());
-
-                    // All appliers are wrapped into EventCountingApplier so we need to check which one
-                    // we have.
-                    // TODO: Do we need a wrapper class just for the event counting?
-                    // TODO: Make the codebase more consistent in terms of inheritance vs composition.
-
-                    if (eventHandlerConfiguration.getApplier().getApplierName() == ApplierName.HBaseApplier) {
-
-                        try {
-                            ((HBaseApplier) ((EventCountingApplier) eventHandlerConfiguration.getApplier()).getWrapped()).applyPseudoGTIDEvent(
-                                    new PseudoGTIDCheckpoint(
-                                        pipelinePosition.getCurrentPosition().getHost(),
-                                        pipelinePosition.getCurrentPosition().getServerID(),
-                                        pipelinePosition.getCurrentPosition().getBinlogFilename(),
-                                        pipelinePosition.getCurrentPosition().getBinlogPosition(),
-                                        pseudoGTID,
-                                        querySQL,
-                                        pipelineOrchestrator.getFakeMicrosecondCounter()
-                                )
-                            );
-                        } catch (TaskBufferInconsistencyException e) {
-                            e.printStackTrace();
-                        }
+                    try {
+                        eventHandlerConfiguration.getApplier().applyPseudoGTIDEvent(new PseudoGTIDCheckpoint(
+                                pipelinePosition.getCurrentPosition().getHost(),
+                                pipelinePosition.getCurrentPosition().getServerID(),
+                                pipelinePosition.getCurrentPosition().getBinlogFilename(),
+                                pipelinePosition.getCurrentPosition().getBinlogPosition(),
+                                pseudoGTID,
+                                querySQL,
+                                pipelineOrchestrator.getFakeMicrosecondCounter()
+                        ));
+                    } catch (Exception exception) {
+                        LOGGER.error("error: ", exception);
                     }
                 } catch (QueryInspectorException e) {
                     LOGGER.error("Failed to update pipelinePosition with new pGTID!", e);

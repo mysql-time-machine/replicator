@@ -6,9 +6,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-/**
- * Created by bosko on 5/30/16.
- */
 public class PseudoGTIDCheckpoint implements SafeCheckPoint {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PseudoGTIDCheckpoint.class);
@@ -24,52 +21,29 @@ public class PseudoGTIDCheckpoint implements SafeCheckPoint {
     private String pseudoGTIDFullQuery;
     private long fakeMicrosecondCounter = 0L;
 
-//    public PseudoGTIDCheckpoint(int slaveId, String binlogFileName, long fakeMicrosecondCounter) {
-//        this(slaveId, binlogFileName, 4L, fakeMicrosecondCounter);
-//    }
 
-    public PseudoGTIDCheckpoint() {
-        checkpointType = SafeCheckpointType.BINLOG_POSITION;
-    }
+//    public PseudoGTIDCheckpoint() {
+  //      checkpointType = SafeCheckpointType.BINLOG_POSITION;
+   // }
 
     /**
-     * Represents the last processed binlog file with last commited position.
-     *
-     * @param slaveId           Id of the slave that originated the binlog.
-     * @param binlogFileName    File name
-     * @param binlogPosition    File position
-     */
-//    public PseudoGTIDCheckpoint(
-//        int slaveId,
-//        String binlogFileName,
-//        long binlogPosition,
-//        long fakeMicrosecondCounter
-//    ) {
-//        this.slaveId = slaveId;
-//        lastVerifiedBinlogFileName = binlogFileName;
-//        lastVerifiedBinlogPosition = binlogPosition;
-//        checkpointType = SafeCheckpointType.BINLOG_POSITION;
-//        this.fakeMicrosecondCounter = fakeMicrosecondCounter;
-//    }
-
-    /**
-     * Represents the pGTID checkpoint.
+     * Represents the pseudoGTID checkpoint.
      *
      * @param hostName            Host name of the mysql host that originated the binlog
      * @param slaveId             Server Id of the mysql host that originated the binlog
      * @param binlogFileName      File name
      * @param binlogPosition      File position
-     * @param pseudoGTID          Pseudo GTID identifier extracted from full pGTID query
-     * @param pseudoGTIDFullQuery Pseudo GTID Full Query
+     * @param pseudoGTID          PseudoGTID identifier extracted from full pseudoGTID query
+     * @param pseudoGTIDFullQuery PseudoGTID Full Query
      */
     public PseudoGTIDCheckpoint(
         String hostName,
-        int slaveId,
+        int    slaveId,
         String binlogFileName,
-        long binlogPosition,
+        long   binlogPosition,
         String pseudoGTID,
         String pseudoGTIDFullQuery,
-        long fakeMicrosecondCounter
+        long   fakeMicrosecondCounter
     ) {
         this.hostName                   = hostName;
         this.slaveId                    = slaveId;
@@ -140,6 +114,11 @@ public class PseudoGTIDCheckpoint implements SafeCheckPoint {
     }
 
     private ObjectMapper mapper = new ObjectMapper();
+
+    public boolean isBeforeCheckpoint(PseudoGTIDCheckpoint checkpointToCompareTo) {
+        // next pseudoGTID is lexicographically greater than the previous one
+        return (!this.getPseudoGTID().equals(checkpointToCompareTo.getPseudoGTID()));
+    }
 
     @Override
     public String toJson() {

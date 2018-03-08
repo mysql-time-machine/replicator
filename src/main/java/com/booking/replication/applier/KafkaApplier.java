@@ -7,6 +7,7 @@ import com.booking.replication.applier.kafka.RowListMessage;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
+import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.schema.exception.TableMapException;
@@ -36,15 +37,10 @@ import static com.booking.replication.applier.kafka.Util.getHashCode_HashCustomC
 import static com.booking.replication.applier.kafka.Util.getHashCode_HashPrimaryKeyValuesMethod;
 import static com.codahale.metrics.MetricRegistry.name;
 
-
-/**
- * Created by raynald on 08/06/16.
- */
-
 public class KafkaApplier implements Applier {
 
     // how many rows go into one message
-    private static final int MESSAGE_BATCH_SIZE = 10;
+    private static final int MESSAGE_BATCH_SIZE = 1; // 10;
 
     private static boolean DRY_RUN;
 
@@ -76,8 +72,8 @@ public class KafkaApplier implements Applier {
     private static final Counter outlier_counter = Metrics.registry.counter(name("Kafka", "outliersCounter"));
     private static final Timer closingTimer = Metrics.registry.timer(name("Kafka", "producerCloseTimer"));
 
-    private static final HashMap<Integer, String> partitionLastBufferedRow = new HashMap<>();
-    private static final HashMap<Integer, String> partitionLastCommittedMessage = new HashMap<>();
+    private static final HashMap<Integer, RowListMessage> partitionLastBufferedRow = new HashMap<>();
+    private static final HashMap<Integer, RowListMessage> partitionLastCommittedMessage = new HashMap<>();
 
     private int numberOfPartition;
     private String brokerAddress;
@@ -88,6 +84,9 @@ public class KafkaApplier implements Applier {
     private int paritioningMethod;
     private HashMap<String, String> partitionColumns;
 
+    private PseudoGTIDCheckpoint lastCheckpointCommittedByApplier;
+    private PseudoGTIDCheckpoint lastCheckpointReceivedByApplier;
+
     private static Properties getProducerProperties(String broker) {
         // Below is the new version of producer configuration
         Properties prop = new Properties();
@@ -95,7 +94,7 @@ public class KafkaApplier implements Applier {
         prop.put("acks", "all"); // Default 1
         prop.put("retries", 30); // Default value: 0
         prop.put("batch.size", 16384); // Default value: 16384
-        prop.put("linger.ms", 20); // Default 0, Artificial delay
+        // prop.put("linger.ms", 20); // Default 0, Artificial delay
         prop.put("buffer.memory", 33554432); // Default value: 33554432
         prop.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         prop.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
@@ -118,7 +117,7 @@ public class KafkaApplier implements Applier {
         return prop;
     }
 
-    public KafkaApplier(Configuration configuration, Meter meterForMessagesPushedToKafka) throws IOException {
+    public KafkaApplier(Configuration configuration, Meter meterForMessagesPushedToKafka) {
         DRY_RUN = configuration.isDryRunMode();
 
         fixedListOfIncludedTables = configuration.getKafkaTableList();
@@ -151,7 +150,7 @@ public class KafkaApplier implements Applier {
     }
 
     @Override
-    public SupportedAppliers.ApplierName getApplierName() throws ApplierException {
+    public SupportedAppliers.ApplierName getApplierName() {
         return SupportedAppliers.ApplierName.KafkaApplier;
     }
 
@@ -253,7 +252,7 @@ public class KafkaApplier implements Applier {
 
     }
 
-    private void loadLastMessagePositionForEachPartition() throws IOException {
+    private void loadLastMessagePositionForEachPartition() {
         // Method to fetch the last committed message in each partition of each topic.
         final int RetriesLimit = 100;
         final int POLL_TIME_OUT = 1000;
@@ -290,9 +289,11 @@ public class KafkaApplier implements Applier {
                         // there is a cached message ID that is older than the last message, update cache
                         // with the last message ID for this parition
                         String lastMessageBinlogPositionID = lastMessage.key();
-                        if (!partitionLastCommittedMessage.containsKey(pi.partition())
-                                || partitionLastCommittedMessage.get(pi.partition()).compareTo(lastMessageBinlogPositionID) < 0) {
-                            partitionLastCommittedMessage.put(pi.partition(), lastMessageBinlogPositionID);
+                        RowListMessage lastMessageDecoded = RowListMessage.fromJSON(lastMessage.value());
+
+                        if (!partitionLastCommittedMessage.containsKey(pi.partition()) ||
+                            partitionLastCommittedMessage.get(pi.partition()).getLastRowBinlogPositionID().compareTo(lastMessageBinlogPositionID) < 0) {
+                            partitionLastCommittedMessage.put(pi.partition(), lastMessageDecoded);
                         }
 
                         // ------------------------------------------------------------------------------
@@ -301,19 +302,23 @@ public class KafkaApplier implements Applier {
                         // now we need to get the last row id that was in that last message and update last
                         // row position cache (that is needed to compare with rows arrving from producer)
                         // in order to avoid duplicate rows being pushed to kafka
-                        String lastMessageJSON = lastMessage.value();
-                        RowListMessage lastMessageDecoded = RowListMessage.fromJSON(lastMessageJSON);
                         String lastRowBinlogPositionID = lastMessageDecoded.getLastRowBinlogPositionID();
-                        if (!partitionLastBufferedRow.containsKey(pi.partition())
-                                || partitionLastBufferedRow.get(pi.partition()).compareTo(lastRowBinlogPositionID) < 0) {
-                            partitionLastBufferedRow.put(pi.partition(), lastRowBinlogPositionID);
+                        String lastPseudoGTID = lastMessageDecoded.getLastPseudoGTID();
+
+                        if (!partitionLastBufferedRow.containsKey(pi.partition()) ||
+                            partitionLastBufferedRow.get(pi.partition()).getLastRowBinlogPositionID().compareTo(lastRowBinlogPositionID) < 0) {
+                            partitionLastBufferedRow.put(pi.partition(), lastMessageDecoded);
+                        } else if (!partitionLastBufferedRow.containsKey(pi.partition()) ||
+                           (partitionLastBufferedRow.get(pi.partition()).getLastPseudoGTID() != null && lastPseudoGTID != null &&
+                            partitionLastBufferedRow.get(pi.partition()).getLastPseudoGTID().compareTo(lastPseudoGTID) < 0)) {
+                            partitionLastBufferedRow.put(pi.partition(), lastMessageDecoded);
                         }
                     }
                     retries++;
                 }
                 if (!partitionLastCommittedMessage.containsKey(pi.partition())) {
                     LOGGER.error("Poll failed, probably the messages got purged!");
-                    throw new RuntimeException("Poll failed, probably the messages got purged!");
+                    // throw new RuntimeException("Poll failed, probably the messages got purged!");
                 }
             }
         }
@@ -357,8 +362,7 @@ public class KafkaApplier implements Applier {
         }
     }
 
-    public int getHashcodeForRow(AugmentedRow row) {
-
+    private int getHashcodeForRow(AugmentedRow row) {
         int hashCode;
 
         String eventType = row.getEventType();
@@ -398,7 +402,7 @@ public class KafkaApplier implements Applier {
         return hashCode;
     }
 
-    public int getPartitionNum(AugmentedRow row) {
+     private int getPartitionNum(AugmentedRow row) {
         if (DRY_RUN) {
             return 0;
         }
@@ -416,7 +420,7 @@ public class KafkaApplier implements Applier {
             if (partitionCurrentMessageBuffer.get(partitionNum) == null) {
                 List<AugmentedRow> rowsBucket = new ArrayList<>();
                 rowsBucket.add(augmentedRow);
-                partitionCurrentMessageBuffer.put(partitionNum, new RowListMessage(MESSAGE_BATCH_SIZE, rowsBucket));
+                partitionCurrentMessageBuffer.put(partitionNum, new RowListMessage(MESSAGE_BATCH_SIZE, rowsBucket, this.lastCheckpointCommittedByApplier != null?this.lastCheckpointCommittedByApplier.getPseudoGTID():null));
             } else {
                 // if buffer is full do:
                 //      (close) -> (send message) -> (create new buffer - sets current row as the first in the buffer)
@@ -433,7 +437,7 @@ public class KafkaApplier implements Applier {
                     // 3. open new buffer with current row as buffer-start-row
                     List<AugmentedRow> rowsBucket = new ArrayList<>();
                     rowsBucket.add(augmentedRow);
-                    partitionCurrentMessageBuffer.put(partitionNum, new RowListMessage(MESSAGE_BATCH_SIZE, rowsBucket));
+                    partitionCurrentMessageBuffer.put(partitionNum, new RowListMessage(MESSAGE_BATCH_SIZE, rowsBucket, this.lastCheckpointCommittedByApplier != null?this.lastCheckpointCommittedByApplier.getPseudoGTID():null));
 
                 } else {
                     // buffer row to current buffer
@@ -451,13 +455,13 @@ public class KafkaApplier implements Applier {
         }
     }
 
-    public boolean isAfterLastRow(int partitionNum, String rowBinlogPositionID) {
-        if (!partitionLastBufferedRow.containsKey(partitionNum)) return true;
-        if (rowBinlogPositionID.compareTo(partitionLastBufferedRow.get(partitionNum)) > 0) return true;
-        return false;
+    private boolean isAfterLastRow(int partitionNum, String rowBinlogPositionID) {
+        return !partitionLastBufferedRow.containsKey(partitionNum) ||
+                rowBinlogPositionID.compareTo(partitionLastBufferedRow.get(partitionNum).getLastRowBinlogPositionID()) > 0 ||
+                (this.lastCheckpointCommittedByApplier != null && this.lastCheckpointCommittedByApplier.getPseudoGTID().compareTo(partitionLastBufferedRow.get(partitionNum).getLastPseudoGTID()) > 0);
     }
 
-    public void updateRowLastPositionID(String rowBinlogPositionID) {
+    private void updateRowLastPositionID(String rowBinlogPositionID) {
         // Row binlog position id. Position inside a begin event always 0 because there's only one "row"
         if (rowBinlogPositionID.compareTo(rowLastPositionID) <= 0) {
             throw new RuntimeException(
@@ -534,5 +538,15 @@ public class KafkaApplier implements Applier {
         context.stop();
         producer = new KafkaProducer<>(getProducerProperties(brokerAddress));
         LOGGER.info("A new producer has been created");
+    }
+
+    @Override
+    public PseudoGTIDCheckpoint getLastCommittedPseudGTIDCheckPoint() {
+        return null;
+    }
+
+    @Override
+    public void applyPseudoGTIDEvent(PseudoGTIDCheckpoint pseudoGTIDCheckPoint) {
+        this.lastCheckpointCommittedByApplier = pseudoGTIDCheckPoint;
     }
 }

@@ -40,7 +40,7 @@ import static com.codahale.metrics.MetricRegistry.name;
 public class KafkaApplier implements Applier {
 
     // how many rows go into one message
-    private static final int MESSAGE_BATCH_SIZE = 10;
+    private static final int MESSAGE_BATCH_SIZE = 1; // 10;
 
     private static boolean DRY_RUN;
 
@@ -94,7 +94,7 @@ public class KafkaApplier implements Applier {
         prop.put("acks", "all"); // Default 1
         prop.put("retries", 30); // Default value: 0
         prop.put("batch.size", 16384); // Default value: 16384
-        prop.put("linger.ms", 20); // Default 0, Artificial delay
+        // prop.put("linger.ms", 20); // Default 0, Artificial delay
         prop.put("buffer.memory", 33554432); // Default value: 33554432
         prop.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         prop.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
@@ -318,7 +318,7 @@ public class KafkaApplier implements Applier {
                 }
                 if (!partitionLastCommittedMessage.containsKey(pi.partition())) {
                     LOGGER.error("Poll failed, probably the messages got purged!");
-                    throw new RuntimeException("Poll failed, probably the messages got purged!");
+                    // throw new RuntimeException("Poll failed, probably the messages got purged!");
                 }
             }
         }

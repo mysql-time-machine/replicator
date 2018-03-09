@@ -74,7 +74,10 @@ public class Main {
             Coordinator.setImplementation(coordinator);
 
             ReplicatorHealthTrackerProxy healthTracker = new ReplicatorHealthTrackerProxy();
-            startServerForHealthInquiries(healthTracker);
+
+            if (configuration.getHealthTrackerPort() > 0) {
+                startServerForHealthInquiries(configuration.getHealthTrackerPort(), healthTracker);
+            }
 
             Coordinator.onLeaderElection(
                 new Runnable() {
@@ -97,8 +100,8 @@ public class Main {
         }
     }
 
-    private static void startServerForHealthInquiries(IReplicatorHealthTracker healthTracker) {
-        port(8080);
+    private static void startServerForHealthInquiries(int port, IReplicatorHealthTracker healthTracker) {
+        port(port);
 
         get("/is_healthy",
                 (req, response) ->

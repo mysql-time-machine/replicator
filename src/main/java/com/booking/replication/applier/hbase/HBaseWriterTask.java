@@ -11,6 +11,7 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Table;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -119,8 +120,13 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
                         List<HBaseApplierMutationGenerator.PutMutation> mutations = entry.getValue();
 
                         if (!DRY_RUN) {
+                            List<Put> putList = mutations.stream().map(mutation -> mutation.getPut() ).collect(Collectors.toList());
+
+                            LOGGER.debug("Inserting on table {} using the put list {}", tableName, putList);
+
                             Table table = hbaseConnection.getTable(TableName.valueOf(tableName));
-                            table.put( mutations.stream().map( mutation -> mutation.getPut() ).collect(Collectors.toList()) );
+
+                            table.put(putList);
                             table.close();
 
                             for (HBaseApplierMutationGenerator.PutMutation mutation : mutations){

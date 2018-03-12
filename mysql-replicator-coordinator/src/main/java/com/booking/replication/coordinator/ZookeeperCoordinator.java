@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ZookeeperCoordinator extends LeaderSelectorListenerAdapter implements Coordinator {
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final long WAIT_STEP_MILLIS = 100;
 
     private final CuratorFramework client;
     private final LeaderSelector selector;
@@ -130,8 +131,12 @@ public class ZookeeperCoordinator extends LeaderSelectorListenerAdapter implemen
 
     @Override
     public void wait(long timeout, TimeUnit unit) throws InterruptedException {
-        while (this.client.getState() != CuratorFrameworkState.STOPPED) {
-            Thread.sleep(100L);
+        long remainMillis = unit.toMillis(timeout);
+
+        while (remainMillis > 0 && this.client.getState() != CuratorFrameworkState.STOPPED) {
+            long sleepMillis = remainMillis > ZookeeperCoordinator.WAIT_STEP_MILLIS ? ZookeeperCoordinator.WAIT_STEP_MILLIS : remainMillis;
+            Thread.sleep(sleepMillis);
+            remainMillis -= sleepMillis;
         }
     }
 

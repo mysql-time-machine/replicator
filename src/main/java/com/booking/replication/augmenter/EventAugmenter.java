@@ -114,7 +114,7 @@ public class EventAugmenter {
      * @return                  Rewritten query
      */
     public String rewriteActiveSchemaName(String query, String replicantDbName) {
-        String dbNamePattern = "( " + replicantDbName + ".)|(`" + replicantDbName + "`.)";
+        String dbNamePattern = "( " + replicantDbName + "\\.)|(`" + replicantDbName + "`\\.)";
         query = query.replaceAll(dbNamePattern, " ");
 
         return query;

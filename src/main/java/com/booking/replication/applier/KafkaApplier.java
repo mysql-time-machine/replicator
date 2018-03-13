@@ -15,7 +15,6 @@ import com.booking.replication.util.CaseInsensitiveMap;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
-import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.impl.event.*;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -27,7 +26,6 @@ import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
@@ -84,7 +82,10 @@ public class KafkaApplier implements Applier {
     private int paritioningMethod;
     private HashMap<String, String> partitionColumns;
 
-    private PseudoGTIDCheckpoint lastCheckpointCommittedByApplier;
+    // safeCheckPoint:
+    //  - can be the last check point successfully committed by applier
+    //  - or on startup it is the safe checkpoint loaded from zookeeper
+    private PseudoGTIDCheckpoint safeCheckPoint;
 
     private static Properties getProducerProperties(String broker) {
         // Below is the new version of producer configuration
@@ -266,9 +267,11 @@ public class KafkaApplier implements Applier {
     }
 
     private void loadLastMessagePositionForEachPartition() {
+
         // Method to fetch the last committed message in each partition of each topic.
         final int RetriesLimit = 100;
         final int POLL_TIME_OUT = 1000;
+
         ConsumerRecord<String, String> lastMessage;
         ConsumerRecords<String, String> messages;
 
@@ -276,21 +279,36 @@ public class KafkaApplier implements Applier {
         for (PartitionInfo pi: producer.partitionsFor(topicName)) {
 
             TopicPartition partition = new TopicPartition(topicName, pi.partition());
+
             consumer.assign(Collections.singletonList(partition));
-            LOGGER.info("Position: " + String.valueOf(consumer.position(partition)));
+
             long endPosition = consumer.position(partition);
+
+            LOGGER.info(
+                    "{ " +
+                    "partition   => " + partition.toString() + ", " +
+                    "endPosition => " + String.valueOf(endPosition) + " " +
+                    "}"
+            );
+
 
             // There is an edge case here. With a brand new partition, consumer position is equal to 0
             if (endPosition > 0) {
-                LOGGER.info(String.format("Consumer seek to position minus one, current position %d", endPosition));
+
+                LOGGER.info(String.format("Consumer: seek to endPosition minus one, current endPosition is %d", endPosition));
+
                 consumer.seek(partition, endPosition - 1);
+
                 if (consumer.position(partition) != endPosition - 1) {
                     LOGGER.error("Error seek position minus one");
                 }
+
                 int retries = 0;
                 while (!partitionLastCommittedMessage.containsKey(pi.partition()) && retries < RetriesLimit) {
+
                     // We have rewinded the position one element back from the last one, so the list of messages
-                    // returned by poll method will only contain one message
+                    // returned by poll method will only contain one message which is the last message in the
+                    // partition
                     messages = consumer.poll(POLL_TIME_OUT);
                     if (!messages.isEmpty()) {
 
@@ -298,9 +316,9 @@ public class KafkaApplier implements Applier {
 
                         // ------------------------------------------------------------------------------
                         // Update last message position cache:
-                        // if this message ID is not cached in the last committed message cache, or if
+                        // If this message ID is not cached in the last committed message cache, or if
                         // there is a cached message ID that is older than the last message, update cache
-                        // with the last message ID for this parition
+                        // with the last message ID for this partition
                         String lastMessageBinlogPositionID = lastMessage.key();
                         RowListMessage lastMessageDecoded = RowListMessage.fromJSON(lastMessage.value());
 
@@ -424,26 +442,42 @@ public class KafkaApplier implements Applier {
     }
 
     /**
-     * Push to Kafka broker if one of the following is true:
-     *     1. there are no rows on current partition
-     *     2. If current message unique ID is greater than the last committed
-     *        message unique ID
-     * */
+     * Adds row to message and send message to Kafka according to the following rules:
+     *
+     *  1. If there are no rows on current partition, row is added to the current message
+     *
+     *  2. If message has reached its maximum number of rows, send message to kafka,
+     *     create a new message and add current row to the new message
+     *
+     *  3. If partition is not empty, and message has not reached maximum number of
+     *     rows, add row to the current message
+     */
     private void pushToBuffer(int partitionNum, AugmentedRow augmentedRow) {
 
         String rowBinlogPositionID = augmentedRow.getRowBinlogPositionID();
 
+        // isAfterLastRow() check gives some level of protection against duplicate
+        // rows. The pseudoGTIDs are in ascending order and are arriving every 5 seconds.
+        // This means in case of fail-over we can have up to 5 seconds of duplicate rows
+        // in Kafka, but not more than that.
         if (isAfterLastRow(partitionNum, rowBinlogPositionID)) {
+
             // if buffer is not initialized for partition, do init
             if (partitionCurrentMessageBuffer.get(partitionNum) == null) {
+
                 List<AugmentedRow> rowsBucket = new ArrayList<>();
                 rowsBucket.add(augmentedRow);
-                partitionCurrentMessageBuffer.put(partitionNum, new RowListMessage(MESSAGE_BATCH_SIZE, rowsBucket, this.lastCheckpointCommittedByApplier != null?this.lastCheckpointCommittedByApplier.getPseudoGTID():null));
+                partitionCurrentMessageBuffer.put(
+                        partitionNum,
+                        new RowListMessage(
+                                MESSAGE_BATCH_SIZE,
+                                rowsBucket,
+                                this.safeCheckPoint != null ? this.safeCheckPoint.getPseudoGTID() : null
+                        )
+                );
+
             } else {
-                // if buffer is full do:
-                //      (close) -> (send message) -> (create new buffer - sets current row as the first in the buffer)
-                // else:
-                //      (add current row to the buffer)
+
                 if (partitionCurrentMessageBuffer.get(partitionNum).isFull()) {
 
                     // 1. close buffer
@@ -455,7 +489,14 @@ public class KafkaApplier implements Applier {
                     // 3. open new buffer with current row as buffer-start-row
                     List<AugmentedRow> rowsBucket = new ArrayList<>();
                     rowsBucket.add(augmentedRow);
-                    partitionCurrentMessageBuffer.put(partitionNum, new RowListMessage(MESSAGE_BATCH_SIZE, rowsBucket, this.lastCheckpointCommittedByApplier != null?this.lastCheckpointCommittedByApplier.getPseudoGTID():null));
+                    partitionCurrentMessageBuffer.put(
+                            partitionNum,
+                            new RowListMessage(
+                                    MESSAGE_BATCH_SIZE,
+                                    rowsBucket,
+                                    this.safeCheckPoint != null ? this.safeCheckPoint.getPseudoGTID() : null
+                            )
+                    );
 
                 } else {
                     // buffer row to current buffer
@@ -486,10 +527,10 @@ public class KafkaApplier implements Applier {
                 ||
                 // pseudoGTID checkpoints are ascending strings.
                 (
-                    this.lastCheckpointCommittedByApplier != null
+                    this.safeCheckPoint != null
                     &&
                     this
-                        .lastCheckpointCommittedByApplier
+                        .safeCheckPoint
                         .getPseudoGTID()
                         .compareTo(
                             partitionLastBufferedRow
@@ -573,17 +614,8 @@ public class KafkaApplier implements Applier {
 
     @Override
     public void waitUntilAllRowsAreCommitted() {
-
-        final Timer.Context context = closingTimer.time();
-
-        // Producer close does the waiting, see documentation.
-        producer.close();
-
-        context.stop();
-
-        producer = new KafkaProducer<>(getProducerProperties(brokerAddress));
-
-        LOGGER.info("A new producer has been created");
+        // Flush buffer
+        producer.flush();
     }
 
     @Override
@@ -593,7 +625,13 @@ public class KafkaApplier implements Applier {
 
     @Override
     public void applyPseudoGTIDEvent(PseudoGTIDCheckpoint pseudoGTIDCheckPoint) {
+
+        // TODO: this can be optimized by implementing a producer callback and
+        // tracking the rows committed in a separate thread so that pGTID can
+        // be marked as a safe checkpoint without blocking the main pipeline.
+        // Currently we get pGTID every 5 seconds so every 5s there is a
+        // blocking operation in the Kafka Applier.
         waitUntilAllRowsAreCommitted();
-        this.lastCheckpointCommittedByApplier = pseudoGTIDCheckPoint;
+        this.safeCheckPoint = pseudoGTIDCheckPoint;
     }
 }

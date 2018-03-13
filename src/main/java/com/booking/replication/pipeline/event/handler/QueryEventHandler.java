@@ -64,7 +64,7 @@ public class QueryEventHandler implements BinlogEventV4Handler {
             case DDLTABLE:
                 // Sync all the things here.
                 eventHandlerConfiguration.getApplier().forceFlush();
-                eventHandlerConfiguration.getApplier().waitUntilAllRowsAreCommitted(event);
+                eventHandlerConfiguration.getApplier().waitUntilAllRowsAreCommitted();
 
                 try {
                     AugmentedSchemaChangeEvent augmentedSchemaChangeEvent = activeSchemaVersion.transitionSchemaToNextVersion(
@@ -109,7 +109,8 @@ public class QueryEventHandler implements BinlogEventV4Handler {
                     pipelinePosition.setCurrentPseudoGTIDFullQuery(querySQL);
 
                     try {
-                        eventHandlerConfiguration.getApplier().applyPseudoGTIDEvent(new PseudoGTIDCheckpoint(
+                        eventHandlerConfiguration.getApplier().applyPseudoGTIDEvent(
+                            new PseudoGTIDCheckpoint(
                                 pipelinePosition.getCurrentPosition().getHost(),
                                 pipelinePosition.getCurrentPosition().getServerID(),
                                 pipelinePosition.getCurrentPosition().getBinlogFilename(),
@@ -117,7 +118,8 @@ public class QueryEventHandler implements BinlogEventV4Handler {
                                 pseudoGTID,
                                 querySQL,
                                 pipelineOrchestrator.getFakeMicrosecondCounter()
-                        ));
+                            )
+                        );
                     } catch (Exception exception) {
                         LOGGER.error("error: ", exception);
                     }

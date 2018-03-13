@@ -85,7 +85,6 @@ public class KafkaApplier implements Applier {
     private HashMap<String, String> partitionColumns;
 
     private PseudoGTIDCheckpoint lastCheckpointCommittedByApplier;
-    private PseudoGTIDCheckpoint lastCheckpointReceivedByApplier;
 
     private static Properties getProducerProperties(String broker) {
         // Below is the new version of producer configuration
@@ -118,33 +117,42 @@ public class KafkaApplier implements Applier {
     }
 
     public KafkaApplier(Configuration configuration, Meter meterForMessagesPushedToKafka) {
+
         DRY_RUN = configuration.isDryRunMode();
 
         fixedListOfIncludedTables = configuration.getKafkaTableList();
-        excludeTablePatterns = configuration.getKafkaExcludeTableList();
-        topicName = configuration.getKafkaTopicName();
-        brokerAddress = configuration.getKafkaBrokerAddress();
-        apply_begin_event = configuration.isKafkaApplyBeginEvent();
-        apply_commit_event = configuration.isKafkaApplyCommitEvent();
-        apply_uuid = configuration.getAugmenterApplyUuid();
-        apply_xid = configuration.getAugmenterApplyXid();
-        paritioningMethod = configuration.getKafkaPartitioningMethod();
-        partitionColumns = configuration.getKafkaPartitionColumns();
+        excludeTablePatterns      = configuration.getKafkaExcludeTableList();
+        topicName                 = configuration.getKafkaTopicName();
+        brokerAddress             = configuration.getKafkaBrokerAddress();
+        apply_begin_event         = configuration.isKafkaApplyBeginEvent();
+        apply_commit_event        = configuration.isKafkaApplyCommitEvent();
+        apply_uuid                = configuration.getAugmenterApplyUuid();
+        apply_xid                 = configuration.getAugmenterApplyXid();
+        paritioningMethod         = configuration.getKafkaPartitioningMethod();
+        partitionColumns          = configuration.getKafkaPartitionColumns();
+
         this.meterForMessagesPushedToKafka = meterForMessagesPushedToKafka;
 
         if (!DRY_RUN) {
+
             producer = new KafkaProducer<>(getProducerProperties(brokerAddress));
+
             numberOfPartition = producer.partitionsFor(topicName).size();
+
             consumer = new KafkaConsumer<>(getConsumerProperties(brokerAddress));
+
             LOGGER.info("Start to fetch last positions");
+
             // Fetch last committed messages on each partition in order to prevent duplicate messages
             loadLastMessagePositionForEachPartition();
+
             LOGGER.info("Size of partitionLastCommittedMessage: " + partitionLastCommittedMessage.size());
+
             for (Integer i : partitionLastCommittedMessage.keySet()) {
-                LOGGER.info("{ partition: " + i.toString()
-                        + "} -> { lastCommittedMessageUniqueID: "
-                        + partitionLastCommittedMessage.get(i)
-                        + " }");
+                LOGGER.info(
+                        "{ partition: "                    + i.toString() + "} -> " +
+                        "{ lastCommittedMessageUniqueID: " + partitionLastCommittedMessage.get(i) + " }"
+                );
             }
         }
     }
@@ -156,8 +164,11 @@ public class KafkaApplier implements Applier {
 
     @Override
     public void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedDataEvent, CurrentTransaction currentTransaction) {
+
         for (AugmentedRow augmentedRow : augmentedDataEvent.getSingleRowEvents()) {
+
             if (exceptionFlag.get()) throw new RuntimeException("Producer has problem with sending messages, could be a connection issue");
+
             if (augmentedRow.getTableName() == null) throw new RuntimeException("tableName does not exist");
 
             if (!tableIsWanted(augmentedRow.getTableName())) {
@@ -167,7 +178,9 @@ public class KafkaApplier implements Applier {
             }
 
             totalRowsCounter++;
+
             updateRowLastPositionID(augmentedRow.getRowBinlogPositionID());
+
             pushToBuffer(getPartitionNum(augmentedRow), augmentedRow);
         }
     }
@@ -410,11 +423,16 @@ public class KafkaApplier implements Applier {
         return (hashCode % numberOfPartition + numberOfPartition) % numberOfPartition;
     }
 
+    /**
+     * Push to Kafka broker if one of the following is true:
+     *     1. there are no rows on current partition
+     *     2. If current message unique ID is greater than the last committed
+     *        message unique ID
+     * */
     private void pushToBuffer(int partitionNum, AugmentedRow augmentedRow) {
-        // Push to Kafka broker one of the following is true:
-        //     1. there are no rows on current partition
-        //     2. If current message unique ID is greater than the last committed message unique ID
+
         String rowBinlogPositionID = augmentedRow.getRowBinlogPositionID();
+
         if (isAfterLastRow(partitionNum, rowBinlogPositionID)) {
             // if buffer is not initialized for partition, do init
             if (partitionCurrentMessageBuffer.get(partitionNum) == null) {
@@ -456,9 +474,29 @@ public class KafkaApplier implements Applier {
     }
 
     private boolean isAfterLastRow(int partitionNum, String rowBinlogPositionID) {
-        return !partitionLastBufferedRow.containsKey(partitionNum) ||
-                rowBinlogPositionID.compareTo(partitionLastBufferedRow.get(partitionNum).getLastRowBinlogPositionID()) > 0 ||
-                (this.lastCheckpointCommittedByApplier != null && this.lastCheckpointCommittedByApplier.getPseudoGTID().compareTo(partitionLastBufferedRow.get(partitionNum).getLastPseudoGTID()) > 0);
+
+        return
+                // if no messages in partition then there is no last row,
+                // so current row is the latest for that partition
+                (!partitionLastBufferedRow.containsKey(partitionNum))
+                ||
+                // temporarily we still use binlog positions, but this is deprecated and
+                // in the non-beta release it will be removed in favour of pseudoGTIDs only.
+                (rowBinlogPositionID.compareTo(partitionLastBufferedRow.get(partitionNum).getLastRowBinlogPositionID()) > 0)
+                ||
+                // pseudoGTID checkpoints are ascending strings.
+                (
+                    this.lastCheckpointCommittedByApplier != null
+                    &&
+                    this
+                        .lastCheckpointCommittedByApplier
+                        .getPseudoGTID()
+                        .compareTo(
+                            partitionLastBufferedRow
+                                .get(partitionNum)
+                                .getLastPseudoGTID()
+                        ) > 0
+                );
     }
 
     private void updateRowLastPositionID(String rowBinlogPositionID) {
@@ -471,6 +509,7 @@ public class KafkaApplier implements Applier {
     }
 
     private void sendMessage(int partitionNum) {
+
         RowListMessage rowListMessage = partitionCurrentMessageBuffer.get(partitionNum);
         String jsonMessage = rowListMessage.toJSON();
 
@@ -485,7 +524,9 @@ public class KafkaApplier implements Applier {
                 rowListMessage.getMessageBinlogPositionID(),
                 jsonMessage);
 
-        producer.send(message, (recordMetadata, sendException) -> {
+        producer.send(
+                message,
+                (recordMetadata, sendException) -> {
             if (sendException != null) {
                 LOGGER.error("Error producing to Kafka broker", sendException);
                 exceptionFlag.set(true);
@@ -531,12 +572,17 @@ public class KafkaApplier implements Applier {
     }
 
     @Override
-    public void waitUntilAllRowsAreCommitted(BinlogEventV4 event) {
+    public void waitUntilAllRowsAreCommitted() {
+
         final Timer.Context context = closingTimer.time();
+
         // Producer close does the waiting, see documentation.
         producer.close();
+
         context.stop();
+
         producer = new KafkaProducer<>(getProducerProperties(brokerAddress));
+
         LOGGER.info("A new producer has been created");
     }
 
@@ -547,6 +593,7 @@ public class KafkaApplier implements Applier {
 
     @Override
     public void applyPseudoGTIDEvent(PseudoGTIDCheckpoint pseudoGTIDCheckPoint) {
+        waitUntilAllRowsAreCommitted();
         this.lastCheckpointCommittedByApplier = pseudoGTIDCheckPoint;
     }
 }

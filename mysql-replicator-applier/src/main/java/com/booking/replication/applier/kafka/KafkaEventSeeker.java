@@ -105,6 +105,23 @@ public class KafkaEventSeeker implements EventSeeker, Comparator<Event> {
 
     @Override
     public int compare(Event event1, Event event2) {
-        return event1.toString().compareTo(event2.toString());
+        // TODO: Replace after implement the augmenter
+        if (event1.getHeader().getEventType() == event2.getHeader().getEventType()) {
+            switch (event1.getHeader().getEventType()) {
+                case ROTATE:
+                    RotateEventData rotateEventData1 = RotateEventData.class.cast(event1.getData());
+                    RotateEventData rotateEventData2 = RotateEventData.class.cast(event2.getData());
+
+                    if (rotateEventData1.getBinlogFilename().equals(rotateEventData2.getBinlogFilename())) {
+                        return Long.compare(rotateEventData1.getBinlogPosition(), rotateEventData2.getBinlogPosition());
+                    } else {
+                        return rotateEventData1.getBinlogFilename().compareTo(rotateEventData2.getBinlogFilename());
+                    }
+                default:
+                    return event1.toString().compareTo(event2.toString());
+            }
+        } else {
+            return event1.getHeader().getEventType().compareTo(event2.getHeader().getEventType());
+        }
     }
 }

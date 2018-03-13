@@ -56,7 +56,7 @@ public class KafkaEventTest {
         Event event2 = Event.build(
                 mapper,
                 String.format("{\"timestamp\": %d, \"eventType\": \"%s\"}", new Date().getTime(), EventType.ROTATE).getBytes(),
-                "{\"binlogFilename\": \"binlog.0001\", \"binlogPosition\": 1}".getBytes()
+                "{\"binlogFilename\": \"binlog.0001\", \"binlogPosition\": 2}".getBytes()
         );
 
         EventSeeker seeker = new KafkaEventSeeker(KafkaEventPartitioner.RANDOM, new Event[] { event1 });

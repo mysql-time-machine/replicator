@@ -70,7 +70,7 @@ public class KafkaApplier implements Applier {
     private static final Counter outlier_counter = Metrics.registry.counter(name("Kafka", "outliersCounter"));
     private static final Timer closingTimer = Metrics.registry.timer(name("Kafka", "producerCloseTimer"));
 
-    private static final HashMap<Integer, RowListMessage> partitionLastBufferedRow = new HashMap<>();
+    private static final HashMap<Integer, RowListMessage> partitionLastBufferedMessage = new HashMap<>();
     private static final HashMap<Integer, RowListMessage> partitionLastCommittedMessage = new HashMap<>();
 
     private int numberOfPartition;
@@ -334,13 +334,13 @@ public class KafkaApplier implements Applier {
                         String lastRowBinlogPositionID = lastMessageDecoded.getLastRowBinlogPositionID();
                         String lastPseudoGTID = lastMessageDecoded.getLastPseudoGTID();
 
-                        if (!partitionLastBufferedRow.containsKey(pi.partition()) ||
-                            partitionLastBufferedRow.get(pi.partition()).getLastRowBinlogPositionID().compareTo(lastRowBinlogPositionID) < 0) {
-                            partitionLastBufferedRow.put(pi.partition(), lastMessageDecoded);
-                        } else if (!partitionLastBufferedRow.containsKey(pi.partition()) ||
-                           (partitionLastBufferedRow.get(pi.partition()).getLastPseudoGTID() != null && lastPseudoGTID != null &&
-                            partitionLastBufferedRow.get(pi.partition()).getLastPseudoGTID().compareTo(lastPseudoGTID) < 0)) {
-                            partitionLastBufferedRow.put(pi.partition(), lastMessageDecoded);
+                        if (!partitionLastBufferedMessage.containsKey(pi.partition()) ||
+                            partitionLastBufferedMessage.get(pi.partition()).getLastRowBinlogPositionID().compareTo(lastRowBinlogPositionID) < 0) {
+                            partitionLastBufferedMessage.put(pi.partition(), lastMessageDecoded);
+                        } else if (!partitionLastBufferedMessage.containsKey(pi.partition()) ||
+                           (partitionLastBufferedMessage.get(pi.partition()).getLastPseudoGTID() != null && lastPseudoGTID != null &&
+                            partitionLastBufferedMessage.get(pi.partition()).getLastPseudoGTID().compareTo(lastPseudoGTID) < 0)) {
+                            partitionLastBufferedMessage.put(pi.partition(), lastMessageDecoded);
                         }
                     }
                     retries++;
@@ -517,11 +517,11 @@ public class KafkaApplier implements Applier {
         return
                 // if no messages in partition then there is no last row,
                 // so current row is the latest for that partition
-                (!partitionLastBufferedRow.containsKey(partitionNum))
+                (!partitionLastBufferedMessage.containsKey(partitionNum))
                 ||
                 // temporarily we still use binlog positions, but this is deprecated and
                 // in the non-beta release it will be removed in favour of pseudoGTIDs only.
-                (rowBinlogPositionID.compareTo(partitionLastBufferedRow.get(partitionNum).getLastRowBinlogPositionID()) > 0)
+                (rowBinlogPositionID.compareTo(partitionLastBufferedMessage.get(partitionNum).getLastRowBinlogPositionID()) > 0)
                 ||
                 // pseudoGTID checkpoints are ascending strings.
                 (
@@ -531,7 +531,7 @@ public class KafkaApplier implements Applier {
                         .safeCheckPoint
                         .getPseudoGTID()
                         .compareTo(
-                            partitionLastBufferedRow
+                            partitionLastBufferedMessage
                                 .get(partitionNum)
                                 .getLastPseudoGTID()
                         ) > 0

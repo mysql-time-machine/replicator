@@ -45,7 +45,7 @@ public class StdoutJsonApplier implements Applier  {
     }
 
     @Override
-    public void waitUntilAllRowsAreCommitted(BinlogEventV4 event) {
+    public void waitUntilAllRowsAreCommitted() {
 
         try {
             LOGGER.info("Sleeping as to simulate waiting for all rows being committed");

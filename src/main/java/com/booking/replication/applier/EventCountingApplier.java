@@ -108,8 +108,8 @@ public class EventCountingApplier implements Applier {
     }
 
     @Override
-    public void waitUntilAllRowsAreCommitted(BinlogEventV4 event) throws IOException, ApplierException {
-        wrapped.waitUntilAllRowsAreCommitted(event);
+    public void waitUntilAllRowsAreCommitted() throws IOException, ApplierException {
+        wrapped.waitUntilAllRowsAreCommitted();
     }
 
     @Override

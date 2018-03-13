@@ -35,7 +35,7 @@ public interface Applier {
 
     void applyTableMapEvent(TableMapEvent event);
 
-    void waitUntilAllRowsAreCommitted(BinlogEventV4 event) throws IOException, ApplierException;
+    void waitUntilAllRowsAreCommitted() throws IOException, ApplierException;
 
     void applyPseudoGTIDEvent(PseudoGTIDCheckpoint pseudoGTIDCheckPoint) throws Exception;
 

@@ -64,7 +64,7 @@ public class QueryEventHandler implements BinlogEventV4Handler {
             case DDLTABLE:
                 // Sync all the things here.
                 eventHandlerConfiguration.getApplier().forceFlush();
-                eventHandlerConfiguration.getApplier().waitUntilAllRowsAreCommitted(event);
+                eventHandlerConfiguration.getApplier().waitUntilAllRowsAreCommitted();
 
                 try {
                     AugmentedSchemaChangeEvent augmentedSchemaChangeEvent = activeSchemaVersion.transitionSchemaToNextVersion(

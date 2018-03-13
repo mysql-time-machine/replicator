@@ -531,13 +531,8 @@ public class KafkaApplier implements Applier {
     }
 
     @Override
-    public void waitUntilAllRowsAreCommitted(BinlogEventV4 event) {
-        final Timer.Context context = closingTimer.time();
-        // Producer close does the waiting, see documentation.
-        producer.close();
-        context.stop();
-        producer = new KafkaProducer<>(getProducerProperties(brokerAddress));
-        LOGGER.info("A new producer has been created");
+    public void waitUntilAllRowsAreCommitted() {
+        producer.flush();
     }
 
     @Override
@@ -547,6 +542,7 @@ public class KafkaApplier implements Applier {
 
     @Override
     public void applyPseudoGTIDEvent(PseudoGTIDCheckpoint pseudoGTIDCheckPoint) {
+        waitUntilAllRowsAreCommitted();
         this.lastCheckpointCommittedByApplier = pseudoGTIDCheckPoint;
     }
 }

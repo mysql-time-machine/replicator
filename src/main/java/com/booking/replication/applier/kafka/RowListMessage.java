@@ -35,7 +35,8 @@ public class RowListMessage {
     @JsonCreator
     public RowListMessage(
             @JsonProperty("messageSize") int messageSize,
-            @JsonProperty("rows") List<AugmentedRow> rowsInitialBucket, String  lastPseudoGTID) {
+            @JsonProperty("rows") List<AugmentedRow> rowsInitialBucket,
+            @JsonProperty("lastPseudoGTID") String  lastPseudoGTID) {
 
         // init meta
         this.messageSize              = messageSize;

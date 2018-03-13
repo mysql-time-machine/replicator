@@ -16,8 +16,8 @@ import java.util.List;
  */
 public class RowListMessage {
 
-
     private static final Logger LOGGER = LoggerFactory.getLogger(RowListMessage.class);
+
     // metadata
     private int     messageSize;
     private String  messageBinlogPositionID;
@@ -36,7 +36,7 @@ public class RowListMessage {
     public RowListMessage(
             @JsonProperty("messageSize") int messageSize,
             @JsonProperty("rows") List<AugmentedRow> rowsInitialBucket,
-            @JsonProperty("lastPseudoGTID") String  lastPseudoGTID) {
+            @JsonProperty("lastPseudoGTID") String lastPseudoGTID) {
 
         // init meta
         this.messageSize              = messageSize;
@@ -54,8 +54,7 @@ public class RowListMessage {
     }
 
     public String toJSON() {
-        String json = JsonBuilder.rowListMessageToJSON(this);
-        return json;
+        return JsonBuilder.rowListMessageToJSON(this);
     }
 
     @JsonIgnore

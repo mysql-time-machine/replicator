@@ -16,8 +16,8 @@ import java.util.List;
  */
 public class RowListMessage {
 
-
     private static final Logger LOGGER = LoggerFactory.getLogger(RowListMessage.class);
+
     // metadata
     private int     messageSize;
     private String  messageBinlogPositionID;
@@ -25,6 +25,7 @@ public class RowListMessage {
     private String  firstRowBinlogPositionID;
     private String  lastRowBinlogPositionID;
 
+    private String  lastPseudoGTID;
     private boolean isOpen;
 
     // payload
@@ -34,12 +35,14 @@ public class RowListMessage {
     @JsonCreator
     public RowListMessage(
             @JsonProperty("messageSize") int messageSize,
-            @JsonProperty("rows") List<AugmentedRow> rowsInitialBucket) {
+            @JsonProperty("rows") List<AugmentedRow> rowsInitialBucket,
+            @JsonProperty("lastPseudoGTID") String lastPseudoGTID) {
 
         // init meta
         this.messageSize              = messageSize;
         this.firstRowBinlogPositionID = rowsInitialBucket.get(0).getRowBinlogPositionID();
         this.messageBinlogPositionID  = "M-" + firstRowBinlogPositionID;
+        this.lastPseudoGTID           = lastPseudoGTID;
         this.isOpen                   = true; // TODO: add separate 'committed' property
 
         // init payload
@@ -51,8 +54,7 @@ public class RowListMessage {
     }
 
     public String toJSON() {
-        String json = JsonBuilder.rowListMessageToJSON(this);
-        return json;
+        return JsonBuilder.rowListMessageToJSON(this);
     }
 
     @JsonIgnore
@@ -101,6 +103,14 @@ public class RowListMessage {
 
     public List<AugmentedRow> getRows() {
         return rows;
+    }
+
+    public String getLastPseudoGTID() {
+        return this.lastPseudoGTID;
+    }
+
+    public void setLastPseudoGTID(String lastPseudoGTID) {
+        this.lastPseudoGTID = lastPseudoGTID;
     }
 
     public boolean isOpen() {

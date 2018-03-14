@@ -4,6 +4,7 @@ import com.booking.replication.Configuration;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
+import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.google.code.or.binlog.BinlogEventV4;
@@ -19,13 +20,16 @@ public class StdoutJsonApplier implements Applier  {
     private static long totalRowsCounter = 0;
 
     // TODO: move these to Cmd config params
-    public static final String FILTERED_TABLE_NAME = null;
-    public static final Boolean VERBOSE = true;
-    public static final Boolean STATS_OUT = true;
-    public static final Boolean DATA_OUT = true;
-    public static final Boolean SCHEMA_OUT = false;
+    private static final String FILTERED_TABLE_NAME = null;
+    private static final Boolean VERBOSE = true;
+    private static final Boolean STATS_OUT = true;
+    private static final Boolean DATA_OUT = true;
+    private static final Boolean SCHEMA_OUT = false;
+    private static final Boolean META_OUT = true;
 
     private static final Map<String, Long> stats = new ConcurrentHashMap<>();
+
+    private PseudoGTIDCheckpoint lastCommittedPositionCheckpoint;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StdoutJsonApplier.class);
 
@@ -41,7 +45,7 @@ public class StdoutJsonApplier implements Applier  {
     }
 
     @Override
-    public void waitUntilAllRowsAreCommitted(BinlogEventV4 event) {
+    public void waitUntilAllRowsAreCommitted() {
 
         try {
             LOGGER.info("Sleeping as to simulate waiting for all rows being committed");
@@ -50,6 +54,20 @@ public class StdoutJsonApplier implements Applier  {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+    @Override
+    public void applyPseudoGTIDEvent(PseudoGTIDCheckpoint pseudoGTIDCheckPoint) throws Exception {
+        this.lastCommittedPositionCheckpoint = pseudoGTIDCheckPoint;
+        if (META_OUT) {
+            LOGGER.info("new pseudoGTID: " + lastCommittedPositionCheckpoint);
+
+        }
+    }
+
+    @Override
+    public PseudoGTIDCheckpoint getLastCommittedPseudGTIDCheckPoint() {
+        return this.lastCommittedPositionCheckpoint;
     }
 
     @Override

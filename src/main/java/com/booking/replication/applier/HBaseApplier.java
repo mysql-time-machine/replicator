@@ -104,7 +104,7 @@ public class HBaseApplier implements Applier {
     }
 
     public PseudoGTIDCheckpoint getLastCommittedPseudGTIDCheckPoint() {
-        return hbaseApplierWriter.getLatestCommittedPseudoGTIDCheckPoint();
+        return HBaseApplierWriter.getLatestCommittedPseudoGTIDCheckPoint();
     }
 
     @Override
@@ -114,11 +114,8 @@ public class HBaseApplier implements Applier {
         hbaseSchemaManager.writeSchemaSnapshotToHBase(event, configuration);
     }
 
-    public void applyPseudoGTIDEvent(PseudoGTIDCheckpoint pseudoGTIDCheckPoint)
-            throws TaskBufferInconsistencyException {
-
-        LOGGER.warn("applyPseudoGTIDEvent" + pseudoGTIDCheckPoint.getPseudoGTID());
-
+    @Override
+    public void applyPseudoGTIDEvent(PseudoGTIDCheckpoint pseudoGTIDCheckPoint) throws Exception {
         hbaseApplierWriter.markCurrentTaskWithPseudoGTID(pseudoGTIDCheckPoint);
     }
 
@@ -260,7 +257,7 @@ public class HBaseApplier implements Applier {
     }
 
     @Override
-    public void waitUntilAllRowsAreCommitted(BinlogEventV4 event) throws IOException, ApplierException {
+    public void waitUntilAllRowsAreCommitted() throws IOException, ApplierException {
         boolean wait = true;
 
         while (wait) {

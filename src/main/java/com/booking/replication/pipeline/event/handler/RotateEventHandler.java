@@ -44,7 +44,7 @@ public class RotateEventHandler implements BinlogEventV4Handler {
 
         //TODO: Investigate if this is the right thing to do.
 
-        eventHandlerConfiguration.getApplier().waitUntilAllRowsAreCommitted(event);
+        eventHandlerConfiguration.getApplier().waitUntilAllRowsAreCommitted();
 
 
         String currentBinlogFileName = pipelinePosition.getCurrentPosition().getBinlogFilename();

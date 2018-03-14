@@ -2,6 +2,7 @@ package com.booking.replication.applier;
 
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
+import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.google.code.or.binlog.BinlogEventV4;
@@ -9,9 +10,6 @@ import com.google.code.or.binlog.impl.event.*;
 
 import java.io.IOException;
 
-/**
- * Created by bosko on 11/14/15.
- */
 public interface Applier {
 
     SupportedAppliers.ApplierName getApplierName() throws ApplierException;
@@ -37,6 +35,9 @@ public interface Applier {
 
     void applyTableMapEvent(TableMapEvent event);
 
-    void waitUntilAllRowsAreCommitted(BinlogEventV4 event) throws IOException, ApplierException;
+    void waitUntilAllRowsAreCommitted() throws IOException, ApplierException;
 
+    void applyPseudoGTIDEvent(PseudoGTIDCheckpoint pseudoGTIDCheckPoint) throws Exception;
+
+    PseudoGTIDCheckpoint getLastCommittedPseudGTIDCheckPoint();
 }

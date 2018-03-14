@@ -25,6 +25,7 @@ public class Configuration {
      */
     public Configuration() {}
 
+    private int     healthTrackerPort;
     private boolean initialSnapshotMode;
     private boolean dryRunMode;
     private long    startingBinlogPosition;
@@ -82,6 +83,14 @@ public class Configuration {
     private static class AugmenterConfiguration {
         public boolean apply_uuid = false;
         public boolean apply_xid = false;
+    }
+
+    @JsonDeserialize
+    @JsonProperty("converter")
+    private ConverterConfiguration converterConfiguration = new ConverterConfiguration();
+
+    private static class ConverterConfiguration {
+        public boolean stringify_null = true;
     }
 
     @JsonDeserialize
@@ -554,6 +563,10 @@ public class Configuration {
         return metadata_store.file.path;
     }
 
+    public int getHealthTrackerPort() {
+        return this.healthTrackerPort;
+    }
+
     /**
      * Get initial snapshot mode flag.
      */
@@ -599,6 +612,14 @@ public class Configuration {
     public boolean getHBaseApplyUuid(){
         return hbaseConfiguration.apply_uuid;
     }
+
+    /**
+     * Converter configuration getters.
+     */
+    public boolean getConverterStringifyNull(){
+        return converterConfiguration.stringify_null;
+    }
+
     /**
      * Augmenter configuration getters.
      */

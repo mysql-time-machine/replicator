@@ -2,6 +2,7 @@ package com.booking.replication.applier;
 
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
+import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.codahale.metrics.Counter;
@@ -107,7 +108,17 @@ public class EventCountingApplier implements Applier {
     }
 
     @Override
-    public void waitUntilAllRowsAreCommitted(BinlogEventV4 event) throws IOException, ApplierException {
-        wrapped.waitUntilAllRowsAreCommitted(event);
+    public void waitUntilAllRowsAreCommitted() throws IOException, ApplierException {
+        wrapped.waitUntilAllRowsAreCommitted();
+    }
+
+    @Override
+    public void applyPseudoGTIDEvent(PseudoGTIDCheckpoint pseudoGTIDCheckPoint) throws Exception {
+        wrapped.applyPseudoGTIDEvent(pseudoGTIDCheckPoint);
+    }
+
+    @Override
+    public PseudoGTIDCheckpoint getLastCommittedPseudGTIDCheckPoint() {
+        return wrapped.getLastCommittedPseudGTIDCheckPoint();
     }
 }

@@ -12,6 +12,7 @@ import com.booking.replication.pipeline.event.handler.*;
 import com.booking.replication.queues.ReplicatorQueues;
 import com.booking.replication.replicant.ReplicantPool;
 import com.booking.replication.schema.ActiveSchemaVersion;
+import com.booking.replication.schema.column.types.TypeConversionRules;
 import com.booking.replication.schema.exception.SchemaTransitionException;
 import com.booking.replication.schema.exception.TableMapException;
 import com.booking.replication.sql.QueryInspector;
@@ -124,7 +125,12 @@ public class PipelineOrchestrator extends Thread {
         this.fakeMicrosecondCounter = fakeMicrosecondCounter;
         this.binlogEventProducer = binlogEventProducer;
 
-        eventAugmenter = new EventAugmenter(activeSchemaVersion, configuration.getAugmenterApplyUuid(), configuration.getAugmenterApplyXid());
+        eventAugmenter = new EventAugmenter(
+                activeSchemaVersion,
+                configuration.getAugmenterApplyUuid(),
+                configuration.getAugmenterApplyXid(),
+                new TypeConversionRules(configuration)
+        );
 
         this.applier = applier;
 

@@ -61,6 +61,7 @@ public class KafkaApplier implements Applier {
     private String topicName;
     private final boolean apply_begin_event;
     private final boolean apply_commit_event;
+    private final boolean stringify_json_null;
     private final boolean apply_uuid;
     private final boolean apply_xid;
     private AtomicBoolean exceptionFlag = new AtomicBoolean(false);
@@ -126,6 +127,7 @@ public class KafkaApplier implements Applier {
         brokerAddress             = configuration.getKafkaBrokerAddress();
         apply_begin_event         = configuration.isKafkaApplyBeginEvent();
         apply_commit_event        = configuration.isKafkaApplyCommitEvent();
+        stringify_json_null       = configuration.getConverterStringifyNull();
         apply_uuid                = configuration.getAugmenterApplyUuid();
         apply_xid                 = configuration.getAugmenterApplyXid();
         paritioningMethod         = configuration.getKafkaPartitioningMethod();

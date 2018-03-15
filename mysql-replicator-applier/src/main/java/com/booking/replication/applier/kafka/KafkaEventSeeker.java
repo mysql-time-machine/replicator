@@ -2,6 +2,7 @@ package com.booking.replication.applier.kafka;
 
 import com.booking.replication.applier.EventSeeker;
 import com.booking.replication.model.*;
+import com.booking.replication.model.augmented.AugmentedEventHeader;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -105,23 +106,26 @@ public class KafkaEventSeeker implements EventSeeker, Comparator<Event> {
 
     @Override
     public int compare(Event event1, Event event2) {
-        // TODO: Replace after implement the augmenter
-        if (event1.getHeader().getEventType() == event2.getHeader().getEventType()) {
-            switch (event1.getHeader().getEventType()) {
-                case ROTATE:
-                    RotateEventData rotateEventData1 = RotateEventData.class.cast(event1.getData());
-                    RotateEventData rotateEventData2 = RotateEventData.class.cast(event2.getData());
+        if (AugmentedEventHeader.class.isInstance(event1.getHeader()) &&
+            AugmentedEventHeader.class.isInstance(event2.getHeader())) {
+            AugmentedEventHeader eventHeader1 = AugmentedEventHeader.class.cast(event1.getHeader());
+            AugmentedEventHeader eventHeader2 = AugmentedEventHeader.class.cast(event2.getHeader());
 
-                    if (rotateEventData1.getBinlogFilename().equals(rotateEventData2.getBinlogFilename())) {
-                        return Long.compare(rotateEventData1.getBinlogPosition(), rotateEventData2.getBinlogPosition());
-                    } else {
-                        return rotateEventData1.getBinlogFilename().compareTo(rotateEventData2.getBinlogFilename());
-                    }
-                default:
-                    return event1.toString().compareTo(event2.toString());
+            if (eventHeader1.getPseudoGTID() != null && eventHeader2.getPseudoGTID() != null) {
+                if (eventHeader1.getPseudoGTID().equals(eventHeader2.getPseudoGTID())) {
+                    return Integer.compare(eventHeader1.getPseudoGTIDIndex(), eventHeader2.getPseudoGTIDIndex());
+                } else {
+                    return eventHeader1.getPseudoGTID().compareTo(eventHeader2.getPseudoGTID());
+                }
+            } else if (eventHeader1.getPseudoGTID() != null) {
+                return Integer.MAX_VALUE;
+            } else if (eventHeader2.getPseudoGTID() != null) {
+                return Integer.MIN_VALUE;
+            } else {
+                return Integer.compare(eventHeader1.getPseudoGTIDIndex(), eventHeader2.getPseudoGTIDIndex());
             }
         } else {
-            return event1.getHeader().getEventType().compareTo(event2.getHeader().getEventType());
+            throw new IllegalArgumentException();
         }
     }
 }

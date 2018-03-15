@@ -17,8 +17,7 @@ public interface Event extends Serializable, EventDecorator {
         return EventDecorator.decorate(Event.class, handler);
     }
 
-    static Event build(ObjectMapper mapper, byte[] header, byte[] data) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException, IOException {
-        EventHeader eventHeader = EventHeader.decorate(new JSONInvocationHandler(mapper, header));
+    static Event build(ObjectMapper mapper, EventHeader eventHeader, byte[] data) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException, IOException {
         EventData eventData;
 
         switch (eventHeader.getEventType()) {
@@ -35,5 +34,9 @@ public interface Event extends Serializable, EventDecorator {
         }
 
         return new EventImplementation<>(eventHeader, eventData);
+    }
+
+    static Event build(ObjectMapper mapper, byte[] header, byte[] data) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException, IOException {
+        return Event.build(mapper, EventHeader.decorate(new JSONInvocationHandler(mapper, header)), data);
     }
 }

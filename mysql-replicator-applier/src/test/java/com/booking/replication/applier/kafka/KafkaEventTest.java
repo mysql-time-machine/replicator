@@ -4,6 +4,7 @@ import com.booking.replication.applier.EventApplier;
 import com.booking.replication.applier.EventSeeker;
 import com.booking.replication.model.Event;
 import com.booking.replication.model.EventType;
+import com.booking.replication.model.augmented.AugmentedEventHeaderImplementation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.producer.MockProducer;
 import org.junit.Before;
@@ -32,7 +33,7 @@ public class KafkaEventTest {
 
         applier.accept(Event.build(
                 mapper,
-                String.format("{\"timestamp\": %d, \"eventType\": \"%s\"}", new Date().getTime(), EventType.ROTATE).getBytes(),
+                new AugmentedEventHeaderImplementation(0 ,0 ,0, 0, new Date().getTime(), EventType.ROTATE, "PSEUDO_GTID", 0),
                 "{\"binlogFilename\": \"binlog.0001\", \"binlogPosition\": 0}".getBytes()
         ));
     }
@@ -43,19 +44,19 @@ public class KafkaEventTest {
 
         Event event0 = Event.build(
                 mapper,
-                String.format("{\"timestamp\": %d, \"eventType\": \"%s\"}", new Date().getTime(), EventType.ROTATE).getBytes(),
+                new AugmentedEventHeaderImplementation(0 ,0 ,0, 0, new Date().getTime(), EventType.ROTATE, "PSEUDO_GTID", 0),
                 "{\"binlogFilename\": \"binlog.0001\", \"binlogPosition\": 0}".getBytes()
         );
 
         Event event1 = Event.build(
                 mapper,
-                String.format("{\"timestamp\": %d, \"eventType\": \"%s\"}", new Date().getTime(), EventType.ROTATE).getBytes(),
+                new AugmentedEventHeaderImplementation(0 ,0 ,0, 0, new Date().getTime(), EventType.ROTATE, "PSEUDO_GTID", 1),
                 "{\"binlogFilename\": \"binlog.0001\", \"binlogPosition\": 1}".getBytes()
         );
 
         Event event2 = Event.build(
                 mapper,
-                String.format("{\"timestamp\": %d, \"eventType\": \"%s\"}", new Date().getTime(), EventType.ROTATE).getBytes(),
+                new AugmentedEventHeaderImplementation(0 ,0 ,0, 0, new Date().getTime(), EventType.ROTATE, "PSEUDO_GTID", 2),
                 "{\"binlogFilename\": \"binlog.0001\", \"binlogPosition\": 2}".getBytes()
         );
 

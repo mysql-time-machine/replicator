@@ -1,7 +1,10 @@
 package com.booking.replication.augmenter;
 
-import com.booking.replication.model.*;
-import com.booking.replication.model.augmented.AugmentedEventHeader;
+import com.booking.replication.model.Event;
+import com.booking.replication.model.EventImplementation;
+import com.booking.replication.model.EventType;
+import com.booking.replication.model.QueryEventData;
+import com.booking.replication.model.augmented.AugmentedEventHeaderImplementation;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -10,57 +13,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class PseudoGTIDAugmenter implements Augmenter {
-    private class PseudoGTIDEventData implements AugmentedEventHeader {
-        private EventHeaderV4 eventHeader;
-        private String pseudoGTID;
-        private int pseudoGTIDIndex;
-
-        private PseudoGTIDEventData(EventHeaderV4 eventHeader, String pseudoGTID, int pseudoGTIDIndex) {
-            this.eventHeader = eventHeader;
-            this.pseudoGTID = pseudoGTID;
-            this.pseudoGTIDIndex = pseudoGTIDIndex;
-        }
-
-        @Override
-        public long getServerId() {
-            return this.eventHeader.getServerId();
-        }
-
-        @Override
-        public long getEventLength() {
-            return this.eventHeader.getEventLength();
-        }
-
-        @Override
-        public long getNextPosition() {
-            return this.eventHeader.getNextPosition();
-        }
-
-        @Override
-        public int getFlags() {
-            return this.eventHeader.getFlags();
-        }
-
-        @Override
-        public long getTimestamp() {
-            return this.eventHeader.getTimestamp();
-        }
-
-        @Override
-        public EventType getEventType() {
-            return this.eventHeader.getEventType();
-        }
-
-        @Override
-        public String getPseudoGTID() {
-            return this.pseudoGTID;
-        }
-
-        @Override
-        public int getPseudoGTIDIndex() {
-            return this.pseudoGTIDIndex;
-        }
-    }
 
     private static final String DEFAULT_PSEUDO_GTID_PATTERN = "(?<=_pseudo_gtid_hint__asc\\:)(.{8}\\:.{16}\\:.{8})";
 
@@ -97,7 +49,7 @@ public class PseudoGTIDAugmenter implements Augmenter {
         }
 
         return new EventImplementation<>(
-                new PseudoGTIDEventData(
+                new AugmentedEventHeaderImplementation(
                         event.getHeader(),
                         this.currentPseudoGTID.get(),
                         this.currentIndex.get()

@@ -3,6 +3,7 @@ package com.booking.replication;
 import com.booking.replication.applier.EventApplier;
 import com.booking.replication.applier.EventSeeker;
 import com.booking.replication.augmenter.Augmenter;
+import com.booking.replication.checkpoint.CheckpointStorer;
 import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.model.Checkpoint;
 import com.booking.replication.model.Event;
@@ -33,7 +34,7 @@ public class Replicator {
 
             Checkpoint checkpoint = coordinator.loadCheckpoint(
                     configuration.getOrDefault(
-                            Coordinator.Configuration.CHECKPOINT_PATH,
+                            CheckpointStorer.Configuration.PATH,
                             coordinator.defaultCheckpointPath()
                     ),
                     Checkpoint.class
@@ -56,19 +57,10 @@ public class Replicator {
                     configuration
             );
 
-            Consumer<Event> storeCheckpoint = (event) -> {
-                try {
-                    coordinator.storeCheckpoint(
-                            configuration.getOrDefault(
-                                    Coordinator.Configuration.CHECKPOINT_PATH,
-                                    coordinator.defaultCheckpointPath()
-                            ),
-                            Checkpoint.of(event)
-                    );
-                } catch (IOException exception) {
-                    Replicator.LOG.log(Level.SEVERE, "error storing checkpoint", exception);
-                }
-            };
+            CheckpointStorer checkpointStorer = CheckpointStorer.build(
+                    configuration,
+                    coordinator
+            );
 
             Runnable shutdown = () -> {
                 try {
@@ -91,7 +83,7 @@ public class Replicator {
                     .tasks(100)
                     .fromPush()
                     .to(applier)
-                    .post(storeCheckpoint)
+                    .post(checkpointStorer)
                     .build();
 
             Streams<Event, Event> streamsSupplier = Streams.<Event>builder()

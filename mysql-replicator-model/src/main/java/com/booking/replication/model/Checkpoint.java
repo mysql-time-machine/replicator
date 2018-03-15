@@ -5,14 +5,18 @@ public class Checkpoint {
     private long serverId;
     private String binlogFilename;
     private long binlogPosition;
+    private String pseudoGTID;
+    private int pseudoGTIDIndex;
 
     public Checkpoint() {
     }
 
-    private Checkpoint(EventHeaderV4 eventHeader, RotateEventData eventData) {
-        this.serverId = eventHeader.getServerId();
-        this.binlogFilename = eventData.getBinlogFilename();
-        this.binlogPosition = eventData.getBinlogPosition();
+    public Checkpoint(long serverId, String binlogFilename, long binlogPosition, String pseudoGTID, int pseudoGTIDIndex) {
+        this.serverId = serverId;
+        this.binlogFilename = binlogFilename;
+        this.binlogPosition = binlogPosition;
+        this.pseudoGTID = pseudoGTID;
+        this.pseudoGTIDIndex = pseudoGTIDIndex;
     }
 
     public long getServerId() {
@@ -27,11 +31,11 @@ public class Checkpoint {
         return this.binlogPosition;
     }
 
-    public static Checkpoint of(Event event) {
-        if (event.getHeader().getEventType() == EventType.ROTATE) {
-            return new Checkpoint(event.getHeader(), RotateEventData.class.cast(event.getData()));
-        } else {
-            return null;
-        }
+    public String getPseudoGTID() {
+        return this.pseudoGTID;
+    }
+
+    public int getPseudoGTIDIndex() {
+        return this.pseudoGTIDIndex;
     }
 }

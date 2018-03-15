@@ -6,7 +6,7 @@
 
     <groupId>com.booking</groupId>
     <artifactId>mysql-replicator</artifactId>
-    <version>0.14.4-beta</version>
+    <version>0.14.4-rc1</version>
     <packaging>jar</packaging>
 
     <name>mysql-replicator</name>
@@ -173,17 +173,17 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
-            <version>2.6.3</version>
+            <version>2.9.1</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.6.3</version>
+            <version>2.9.1</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.dataformat</groupId>
             <artifactId>jackson-dataformat-yaml</artifactId>
-            <version>2.6.3</version>
+            <version>2.9.1</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>

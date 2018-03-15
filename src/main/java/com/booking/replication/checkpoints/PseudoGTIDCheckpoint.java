@@ -10,7 +10,7 @@ public class PseudoGTIDCheckpoint implements SafeCheckPoint {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PseudoGTIDCheckpoint.class);
 
-    private final int checkpointType;
+    private int checkpointType;
 
     private String hostName;
     private int    slaveId;
@@ -22,9 +22,9 @@ public class PseudoGTIDCheckpoint implements SafeCheckPoint {
     private long fakeMicrosecondCounter = 0L;
 
 
-//    public PseudoGTIDCheckpoint() {
-  //      checkpointType = SafeCheckpointType.BINLOG_POSITION;
-   // }
+    public  PseudoGTIDCheckpoint() {
+
+    }
 
     /**
      * Represents the pseudoGTID checkpoint.
@@ -55,7 +55,6 @@ public class PseudoGTIDCheckpoint implements SafeCheckPoint {
         this.fakeMicrosecondCounter     = fakeMicrosecondCounter;
     }
 
-    @Override
     public int getCheckpointType() {
         return this.checkpointType;
     }
@@ -118,6 +117,14 @@ public class PseudoGTIDCheckpoint implements SafeCheckPoint {
     public boolean isBeforeCheckpoint(PseudoGTIDCheckpoint checkpointToCompareTo) {
         // next pseudoGTID is lexicographically greater than the previous one
         return (!this.getPseudoGTID().equals(checkpointToCompareTo.getPseudoGTID()));
+    }
+
+    public void setCheckpointType(int checkpointType) {
+        this.checkpointType = checkpointType;
+    }
+
+    public void setFakeMicrosecondCounter(long fakeMicrosecondCounter) {
+        this.fakeMicrosecondCounter = fakeMicrosecondCounter;
     }
 
     @Override

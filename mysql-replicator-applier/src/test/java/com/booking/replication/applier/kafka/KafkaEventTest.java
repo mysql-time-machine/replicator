@@ -39,6 +39,8 @@ public class KafkaEventTest {
                     0,
                     0,
                     0,
+                    0,
+                    0,
                     new Date().getTime(),
                     EventType.ROTATE,
                     new Checkpoint()
@@ -58,6 +60,8 @@ public class KafkaEventTest {
                         0,
                         0,
                         0,
+                        0,
+                        0,
                         new Date().getTime(),
                         EventType.ROTATE,
                         new Checkpoint(0, null, 0, "PSEUDO_GTID", 0)
@@ -68,6 +72,8 @@ public class KafkaEventTest {
         Event event1 = Event.build(
                 mapper,
                 new AugmentedEventHeaderImplementation(
+                        0,
+                        0,
                         0,
                         0,
                         0,
@@ -86,6 +92,8 @@ public class KafkaEventTest {
                         0,
                         0,
                         0,
+                        0,
+                        0,
                         new Date().getTime(),
                         EventType.ROTATE,
                         new Checkpoint(0, null, 0, "PSEUDO_GTID", 2)
@@ -93,7 +101,7 @@ public class KafkaEventTest {
                 "{\"binlogFilename\": \"binlog.0001\", \"binlogPosition\": 2}".getBytes()
         );
 
-        EventSeeker seeker = new KafkaEventSeeker(KafkaEventPartitioner.RANDOM, new Checkpoint[] { new Checkpoint(0, null, 0, "PSEUDO_GTID", 1) });
+        EventSeeker seeker = new KafkaEventSeeker(new Checkpoint(0, null, 0, "PSEUDO_GTID", 1));
 
         assertNull(seeker.apply(event0));
         assertNull(seeker.apply(event1));

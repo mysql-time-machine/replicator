@@ -25,15 +25,11 @@ public class KafkaEventSeeker implements EventSeeker, Comparator<Checkpoint> {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private final KafkaEventPartitioner partitioner;
-    private final Checkpoint[] partitionLast;
-    private final BitSet partitionSeeked;
+    private final Checkpoint checkpoint;
     private boolean seeked;
 
-    public KafkaEventSeeker(KafkaEventPartitioner partitioner, Checkpoint[] partitionLast) {
-        this.partitioner = partitioner;
-        this.partitionLast = partitionLast;
-        this.partitionSeeked = new BitSet(this.partitionLast.length);
+    public KafkaEventSeeker(Checkpoint checkpoint) {
+        this.checkpoint = checkpoint;
         this.seeked = false;
     }
 
@@ -41,19 +37,16 @@ public class KafkaEventSeeker implements EventSeeker, Comparator<Checkpoint> {
         String bootstrapServers = configuration.get(Configuration.BOOTSTRAP_SERVERS);
         String groupId = configuration.get(Configuration.GROUP_ID);
         String topic = configuration.get(Configuration.TOPIC);
-        String partitioner = configuration.getOrDefault(Configuration.PARTITIONER, KafkaEventPartitioner.RANDOM.name());
 
         Objects.requireNonNull(bootstrapServers, String.format("Configuration required: %s", Configuration.BOOTSTRAP_SERVERS));
         Objects.requireNonNull(groupId, String.format("Configuration required: %s", Configuration.GROUP_ID));
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
 
-        this.partitioner = KafkaEventPartitioner.valueOf(partitioner);
-        this.partitionLast = this.getPartitionLast(checkpoint, bootstrapServers, groupId, topic);
-        this.partitionSeeked = new BitSet(this.partitionLast.length);
+        this.checkpoint = this.geCheckpoint(checkpoint, bootstrapServers, groupId, topic);
         this.seeked = false;
     }
 
-    private Checkpoint[] getPartitionLast(Checkpoint checkpoint, String bootstrapServers, String groupId, String topic) {
+    private Checkpoint geCheckpoint(Checkpoint checkpoint, String bootstrapServers, String groupId, String topic) {
         Map<String, Object> configuration = new HashMap<>();
 
         configuration.put("bootstrap.servers", bootstrapServers);
@@ -62,26 +55,29 @@ public class KafkaEventSeeker implements EventSeeker, Comparator<Checkpoint> {
         configuration.put("value.deserializer", ByteArrayDeserializer.class.getName());
 
         try (Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(configuration)) {
-            List<TopicPartition> topicPartitions = consumer.partitionsFor(topic).stream().map(partitionInfo -> new TopicPartition(partitionInfo.topic(), partitionInfo.partition())).collect(Collectors.toList());
-            Checkpoint[] partitionLast = new Checkpoint[topicPartitions.stream().mapToInt(TopicPartition::partition).max().orElseThrow(() -> new InvalidPartitionsException("partitions not found")) + 1];
+            Checkpoint lastCheckpoint = checkpoint;
 
-            Arrays.fill(partitionLast, checkpoint);
+            List<TopicPartition> topicPartitions = consumer.partitionsFor(topic).stream().map(partitionInfo -> new TopicPartition(partitionInfo.topic(), partitionInfo.partition())).collect(Collectors.toList());
 
             for (TopicPartition topicPartition : topicPartitions) {
                 consumer.assign(Collections.singletonList(topicPartition));
                 Map<TopicPartition, Long> endOffsets = consumer.endOffsets(Collections.singletonList(topicPartition));
-                consumer.seek(topicPartition, endOffsets.get(topicPartition));
+                consumer.seek(topicPartition, endOffsets.get(topicPartition) - 1);
 
                 ConsumerRecords<byte[], byte[]> consumerRecords = consumer.poll(100);
 
                 for (ConsumerRecord<byte[], byte[]> consumerRecord : consumerRecords) {
-                    partitionLast[topicPartition.partition()] = KafkaEventSeeker.MAPPER.readValue(
+                    Checkpoint currentCheckpoint = KafkaEventSeeker.MAPPER.readValue(
                             consumerRecord.key(), AugmentedEventHeaderImplementation.class
                     ).getCheckpoint();
+
+                    if (this.compare(lastCheckpoint, currentCheckpoint) < 0) {
+                        lastCheckpoint = currentCheckpoint;
+                    }
                 }
             }
 
-            return partitionLast;
+            return lastCheckpoint;
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }
@@ -91,35 +87,47 @@ public class KafkaEventSeeker implements EventSeeker, Comparator<Checkpoint> {
     public Event apply(Event event) {
         if (this.seeked) {
             return event;
+        } else if (this.compare(this.checkpoint, AugmentedEventHeader.class.cast(event.getHeader()).getCheckpoint()) < 0) {
+            this.seeked = true;
+            return event;
         } else {
-            int partition = this.partitioner.partition(event, this.partitionLast.length);
-
-            if (this.partitionLast[partition] == null ||
-                this.compare(this.partitionLast[partition], AugmentedEventHeader.class.cast(event.getHeader()).getCheckpoint()) < 0) {
-                this.partitionSeeked.set(partition, true);
-                this.seeked = this.partitionSeeked.cardinality() == this.partitionSeeked.length();
-
-                return event;
-            } else {
-                return null;
-            }
+            return null;
         }
     }
 
     @Override
     public int compare(Checkpoint checkpoint1, Checkpoint checkpoint2) {
-        if (checkpoint1.getPseudoGTID() != null && checkpoint2.getPseudoGTID() != null) {
+        if (checkpoint1 != null && checkpoint1.getPseudoGTID() != null &&
+            checkpoint2 != null && checkpoint2.getPseudoGTID() != null) {
             if (checkpoint1.getPseudoGTID().equals(checkpoint2.getPseudoGTID())) {
                 return Integer.compare(checkpoint1.getPseudoGTIDIndex(), checkpoint2.getPseudoGTIDIndex());
             } else {
                 return checkpoint1.getPseudoGTID().compareTo(checkpoint2.getPseudoGTID());
             }
-        } else if (checkpoint1.getPseudoGTID() != null) {
+        } else if (checkpoint1 != null && checkpoint1.getPseudoGTID() != null) {
             return Integer.MAX_VALUE;
-        } else if (checkpoint2.getPseudoGTID() != null) {
+        } else if (checkpoint2 != null && checkpoint2.getPseudoGTID() != null) {
+            return Integer.MIN_VALUE;
+        } else if (checkpoint1 != null && checkpoint2 != null) {
+            if (checkpoint1.getBinlogFilename() != null && checkpoint2.getBinlogFilename() != null) {
+                if (checkpoint1.getBinlogFilename().equals(checkpoint2.getBinlogFilename())) {
+                    return Long.compare(checkpoint1.getBinlogPosition(), checkpoint2.getBinlogPosition());
+                } else {
+                    return checkpoint1.getBinlogFilename().compareTo(checkpoint2.getBinlogFilename());
+                }
+            } else if (checkpoint1.getBinlogFilename() != null) {
+                return Integer.MAX_VALUE;
+            } else if (checkpoint2.getBinlogFilename() != null) {
+                return Integer.MIN_VALUE;
+            } else {
+                return 0;
+            }
+        } else if (checkpoint1 != null) {
+            return Integer.MAX_VALUE;
+        } else if (checkpoint2 != null) {
             return Integer.MIN_VALUE;
         } else {
-            return Integer.compare(checkpoint1.getPseudoGTIDIndex(), checkpoint2.getPseudoGTIDIndex());
+            return 0;
         }
     }
 }

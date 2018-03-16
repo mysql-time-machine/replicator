@@ -36,27 +36,26 @@ public class PseudoGTIDAugmenter implements Augmenter {
 
             this.checkpoint.setBinlogFilename(eventData.getBinlogFilename());
             this.checkpoint.setBinlogPosition(eventData.getBinlogPosition());
-            this.checkpoint.setPseudoGTIDIndex(this.checkpoint.getPseudoGTIDIndex() + 1);
-        } if (eventHeader.getEventType() == EventType.QUERY) {
+        } else if (eventHeader.getEventType() == EventType.QUERY) {
             QueryEventData eventData = QueryEventData.class.cast(event.getData());
             Matcher matcher = this.pseudoGTIDPattern.matcher(eventData.getSQL());
 
             if (matcher.find() && matcher.groupCount() == 1) {
                 this.checkpoint.setPseudoGTID(matcher.group(0));
                 this.checkpoint.setPseudoGTIDIndex(0);
-            } else {
-                this.checkpoint.setPseudoGTIDIndex(this.checkpoint.getPseudoGTIDIndex() + 1);
             }
-        } else {
-            this.checkpoint.setPseudoGTIDIndex(this.checkpoint.getPseudoGTIDIndex() + 1);
         }
 
-        return new EventImplementation<>(
-                new AugmentedEventHeaderImplementation(
-                        eventHeader,
-                        this.checkpoint
-                ),
-                event.getData()
-        );
+        try {
+            return new EventImplementation<>(
+                    new AugmentedEventHeaderImplementation(
+                            eventHeader,
+                            new Checkpoint(this.checkpoint)
+                    ),
+                    event.getData()
+            );
+        } finally {
+            this.checkpoint.setPseudoGTIDIndex(this.checkpoint.getPseudoGTIDIndex() + 1);
+        }
     }
 }

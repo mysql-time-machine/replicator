@@ -19,6 +19,16 @@ public class Checkpoint {
         this.pseudoGTIDIndex = pseudoGTIDIndex;
     }
 
+    public Checkpoint(Checkpoint checkpoint) {
+        this(
+                checkpoint.serverId,
+                checkpoint.binlogFilename,
+                checkpoint.binlogPosition,
+                checkpoint.pseudoGTID,
+                checkpoint.pseudoGTIDIndex
+        );
+    }
+
     public long getServerId() {
         return this.serverId;
     }

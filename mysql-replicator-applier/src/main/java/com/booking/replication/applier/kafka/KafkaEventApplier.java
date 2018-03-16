@@ -39,11 +39,10 @@ public class KafkaEventApplier implements EventApplier {
     public KafkaEventApplier(Map<String, String> configuration) {
         String bootstrapServers = configuration.get(Configuration.BOOTSTRAP_SERVERS);
         String topic = configuration.get(Configuration.TOPIC);
-        String partitioner = configuration.get(Configuration.PARTITIONER);
+        String partitioner = configuration.getOrDefault(Configuration.PARTITIONER, KafkaEventPartitioner.RANDOM.name());
 
         Objects.requireNonNull(bootstrapServers, String.format("Configuration required: %s", Configuration.BOOTSTRAP_SERVERS));
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
-        Objects.requireNonNull(partitioner, String.format("Configuration required: %s", Configuration.PARTITIONER));
 
         this.producer = this.getProducer(bootstrapServers);
         this.topic = topic;

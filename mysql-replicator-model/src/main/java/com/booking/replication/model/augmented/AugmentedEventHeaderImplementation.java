@@ -1,5 +1,6 @@
 package com.booking.replication.model.augmented;
 
+import com.booking.replication.model.Checkpoint;
 import com.booking.replication.model.EventHeaderV4;
 import com.booking.replication.model.EventType;
 
@@ -10,21 +11,19 @@ public class AugmentedEventHeaderImplementation implements AugmentedEventHeader 
     private final int flags;
     private final long timestamp;
     private final EventType eventType;
-    private final String pseudoGTID;
-    private final int pseudoGTIDIndex;
+    private final Checkpoint checkpoint;
 
-    public AugmentedEventHeaderImplementation(long serverId, long eventLength, long nextPosition, int flags, long timestamp, EventType eventType, String pseudoGTID, int pseudoGTIDIndex) {
+    public AugmentedEventHeaderImplementation(long serverId, long eventLength, long nextPosition, int flags, long timestamp, EventType eventType, Checkpoint checkpoint) {
         this.serverId = serverId;
         this.eventLength = eventLength;
         this.nextPosition = nextPosition;
         this.flags = flags;
         this.timestamp = timestamp;
         this.eventType = eventType;
-        this.pseudoGTID = pseudoGTID;
-        this.pseudoGTIDIndex = pseudoGTIDIndex;
+        this.checkpoint = checkpoint;
     }
 
-    public AugmentedEventHeaderImplementation(EventHeaderV4 eventHeader, String pseudoGTID, int pseudoGTIDIndex) {
+    public AugmentedEventHeaderImplementation(EventHeaderV4 eventHeader, Checkpoint checkpoint) {
         this(
                 eventHeader.getServerId(),
                 eventHeader.getEventLength(),
@@ -32,8 +31,7 @@ public class AugmentedEventHeaderImplementation implements AugmentedEventHeader 
                 eventHeader.getFlags(),
                 eventHeader.getTimestamp(),
                 eventHeader.getEventType(),
-                pseudoGTID,
-                pseudoGTIDIndex
+                checkpoint
         );
     }
 
@@ -68,12 +66,7 @@ public class AugmentedEventHeaderImplementation implements AugmentedEventHeader 
     }
 
     @Override
-    public String getPseudoGTID() {
-        return this.pseudoGTID;
-    }
-
-    @Override
-    public int getPseudoGTIDIndex() {
-        return this.pseudoGTIDIndex;
+    public Checkpoint getCheckpoint() {
+        return this.checkpoint;
     }
 }

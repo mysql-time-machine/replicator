@@ -1,14 +1,9 @@
 package com.booking.replication.augmenter;
 
-import com.booking.replication.model.Event;
-import com.booking.replication.model.EventImplementation;
-import com.booking.replication.model.EventType;
-import com.booking.replication.model.QueryEventData;
+import com.booking.replication.model.*;
 import com.booking.replication.model.augmented.AugmentedEventHeaderImplementation;
 
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -17,8 +12,7 @@ public class PseudoGTIDAugmenter implements Augmenter {
     private static final String DEFAULT_PSEUDO_GTID_PATTERN = "(?<=_pseudo_gtid_hint__asc\\:)(.{8}\\:.{16}\\:.{8})";
 
     private final Pattern pseudoGTIDPattern;
-    private final AtomicReference<String> currentPseudoGTID;
-    private final AtomicInteger currentIndex;
+    private final Checkpoint checkpoint;
 
     public PseudoGTIDAugmenter(Map<String, String> configuration) {
         this.pseudoGTIDPattern = Pattern.compile(
@@ -28,31 +22,39 @@ public class PseudoGTIDAugmenter implements Augmenter {
                 ),
                 Pattern.CASE_INSENSITIVE
         );
-        this.currentPseudoGTID = new AtomicReference<>();
-        this.currentIndex = new AtomicInteger();
+        this.checkpoint = new Checkpoint();
     }
 
     @Override
     public Event apply(Event event) {
-        if (event.getHeader().getEventType() == EventType.QUERY) {
+        EventHeaderV4 eventHeader = event.getHeader();
+
+        this.checkpoint.setServerId(eventHeader.getServerId());
+
+        if (eventHeader.getEventType() == EventType.ROTATE) {
+            RotateEventData eventData = RotateEventData.class.cast(event.getData());
+
+            this.checkpoint.setBinlogFilename(eventData.getBinlogFilename());
+            this.checkpoint.setBinlogPosition(eventData.getBinlogPosition());
+            this.checkpoint.setPseudoGTIDIndex(this.checkpoint.getPseudoGTIDIndex() + 1);
+        } if (eventHeader.getEventType() == EventType.QUERY) {
             QueryEventData eventData = QueryEventData.class.cast(event.getData());
             Matcher matcher = this.pseudoGTIDPattern.matcher(eventData.getSQL());
 
             if (matcher.find() && matcher.groupCount() == 1) {
-                this.currentPseudoGTID.set(matcher.group(0));
-                this.currentIndex.set(0);
+                this.checkpoint.setPseudoGTID(matcher.group(0));
+                this.checkpoint.setPseudoGTIDIndex(0);
             } else {
-                this.currentIndex.incrementAndGet();
+                this.checkpoint.setPseudoGTIDIndex(this.checkpoint.getPseudoGTIDIndex() + 1);
             }
         } else {
-            this.currentIndex.incrementAndGet();
+            this.checkpoint.setPseudoGTIDIndex(this.checkpoint.getPseudoGTIDIndex() + 1);
         }
 
         return new EventImplementation<>(
                 new AugmentedEventHeaderImplementation(
-                        event.getHeader(),
-                        this.currentPseudoGTID.get(),
-                        this.currentIndex.get()
+                        eventHeader,
+                        this.checkpoint
                 ),
                 event.getData()
         );

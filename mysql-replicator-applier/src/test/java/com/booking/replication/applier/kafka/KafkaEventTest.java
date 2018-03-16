@@ -2,6 +2,7 @@ package com.booking.replication.applier.kafka;
 
 import com.booking.replication.applier.EventApplier;
 import com.booking.replication.applier.EventSeeker;
+import com.booking.replication.model.Checkpoint;
 import com.booking.replication.model.Event;
 import com.booking.replication.model.EventType;
 import com.booking.replication.model.augmented.AugmentedEventHeaderImplementation;
@@ -33,7 +34,15 @@ public class KafkaEventTest {
 
         applier.accept(Event.build(
                 mapper,
-                new AugmentedEventHeaderImplementation(0 ,0 ,0, 0, new Date().getTime(), EventType.ROTATE, "PSEUDO_GTID", 0),
+                new AugmentedEventHeaderImplementation(
+                    0,
+                    0,
+                    0,
+                    0,
+                    new Date().getTime(),
+                    EventType.ROTATE,
+                    new Checkpoint()
+                ),
                 "{\"binlogFilename\": \"binlog.0001\", \"binlogPosition\": 0}".getBytes()
         ));
     }
@@ -44,23 +53,47 @@ public class KafkaEventTest {
 
         Event event0 = Event.build(
                 mapper,
-                new AugmentedEventHeaderImplementation(0 ,0 ,0, 0, new Date().getTime(), EventType.ROTATE, "PSEUDO_GTID", 0),
+                new AugmentedEventHeaderImplementation(
+                        0,
+                        0,
+                        0,
+                        0,
+                        new Date().getTime(),
+                        EventType.ROTATE,
+                        new Checkpoint(0, null, 0, "PSEUDO_GTID", 0)
+                ),
                 "{\"binlogFilename\": \"binlog.0001\", \"binlogPosition\": 0}".getBytes()
         );
 
         Event event1 = Event.build(
                 mapper,
-                new AugmentedEventHeaderImplementation(0 ,0 ,0, 0, new Date().getTime(), EventType.ROTATE, "PSEUDO_GTID", 1),
+                new AugmentedEventHeaderImplementation(
+                        0,
+                        0,
+                        0,
+                        0,
+                        new Date().getTime(),
+                        EventType.ROTATE,
+                        new Checkpoint(0, null, 0, "PSEUDO_GTID", 1)
+                ),
                 "{\"binlogFilename\": \"binlog.0001\", \"binlogPosition\": 1}".getBytes()
         );
 
         Event event2 = Event.build(
                 mapper,
-                new AugmentedEventHeaderImplementation(0 ,0 ,0, 0, new Date().getTime(), EventType.ROTATE, "PSEUDO_GTID", 2),
+                new AugmentedEventHeaderImplementation(
+                        0,
+                        0,
+                        0,
+                        0,
+                        new Date().getTime(),
+                        EventType.ROTATE,
+                        new Checkpoint(0, null, 0, "PSEUDO_GTID", 2)
+                ),
                 "{\"binlogFilename\": \"binlog.0001\", \"binlogPosition\": 2}".getBytes()
         );
 
-        EventSeeker seeker = new KafkaEventSeeker(KafkaEventPartitioner.RANDOM, new Event[] { event1 });
+        EventSeeker seeker = new KafkaEventSeeker(KafkaEventPartitioner.RANDOM, new Checkpoint[] { new Checkpoint(0, null, 0, "PSEUDO_GTID", 1) });
 
         assertNull(seeker.apply(event0));
         assertNull(seeker.apply(event1));

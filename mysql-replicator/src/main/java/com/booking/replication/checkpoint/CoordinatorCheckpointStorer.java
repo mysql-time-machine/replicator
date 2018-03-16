@@ -15,42 +15,19 @@ import java.util.concurrent.atomic.AtomicReference;
 public class CoordinatorCheckpointStorer implements CheckpointStorer {
     private final CheckpointCoordinator coordinator;
     private final String checkpointPath;
-    private final AtomicLong currentServerID;
-    private final AtomicReference<String> currentBinlogFilename;
-    private final AtomicLong currentBinlogPosition;
 
     public CoordinatorCheckpointStorer(CheckpointCoordinator coordinator, String checkpointPath) {
         this.coordinator = coordinator;
         this.checkpointPath = checkpointPath;
-        this.currentServerID = new AtomicLong();
-        this.currentBinlogFilename = new AtomicReference<>();
-        this.currentBinlogPosition = new AtomicLong();
     }
 
     @Override
     public void accept(Event event) {
-        AugmentedEventHeader eventHeader = AugmentedEventHeader.class.cast(event.getHeader());
+        Checkpoint checkpoint = AugmentedEventHeader.class.cast(event.getHeader()).getCheckpoint();
 
-        if (eventHeader.getEventType() == EventType.ROTATE) {
-            RotateEventData eventData = RotateEventData.class.cast(event.getData());
-
-            this.currentServerID.set(eventHeader.getServerId());
-            this.currentBinlogFilename.set(eventData.getBinlogFilename());
-            this.currentBinlogPosition.set(eventData.getBinlogPosition());
-        }
-
-        if (eventHeader.getPseudoGTIDIndex() == 0) {
+        if (checkpoint.getPseudoGTID() != null && checkpoint.getPseudoGTIDIndex() == 0) {
             try {
-                this.coordinator.storeCheckpoint(
-                        this.checkpointPath,
-                        new Checkpoint(
-                                this.currentServerID.get(),
-                                this.currentBinlogFilename.get(),
-                                this.currentBinlogPosition.get(),
-                                eventHeader.getPseudoGTID(),
-                                eventHeader.getPseudoGTIDIndex()
-                        )
-                );
+                this.coordinator.storeCheckpoint(this.checkpointPath, checkpoint);
             } catch (IOException exception) {
                 throw new UncheckedIOException(exception);
             }

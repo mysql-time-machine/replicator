@@ -11,27 +11,27 @@ public interface EventSeeker extends Function<Event, Event> {
     enum Type {
         NONE {
             @Override
-            public EventSeeker newInstance(Map<String, String> configuration) {
+            public EventSeeker newInstance(Map<String, String> configuration, Checkpoint checkpoint) {
                 return event -> event;
             }
         },
         KAFKA {
             @Override
-            public EventSeeker newInstance(Map<String, String> configuration) {
-                return new KafkaEventSeeker(configuration);
+            public EventSeeker newInstance(Map<String, String> configuration, Checkpoint checkpoint) {
+                return new KafkaEventSeeker(configuration, checkpoint);
             }
         };
 
-        public abstract EventSeeker newInstance(Map<String, String> configuration);
+        public abstract EventSeeker newInstance(Map<String, String> configuration, Checkpoint checkpoint);
     }
 
     interface Configuration {
         String TYPE = "seeker.type";
     }
 
-    static EventSeeker build(Map<String, String> configuration) {
+    static EventSeeker build(Map<String, String> configuration, Checkpoint checkpoint) {
         return EventSeeker.Type.valueOf(
                 configuration.getOrDefault(Configuration.TYPE, Type.NONE.name())
-        ).newInstance(configuration);
+        ).newInstance(configuration, checkpoint);
     }
 }

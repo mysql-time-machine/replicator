@@ -50,7 +50,8 @@ public class Replicator {
             );
 
             EventSeeker seeker = EventSeeker.build(
-                    configuration
+                    configuration,
+                    checkpoint
             );
 
             EventApplier applier = EventApplier.build(

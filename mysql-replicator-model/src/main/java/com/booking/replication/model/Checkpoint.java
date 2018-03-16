@@ -23,19 +23,39 @@ public class Checkpoint {
         return this.serverId;
     }
 
+    public void setServerId(long serverId) {
+        this.serverId = serverId;
+    }
+
     public String getBinlogFilename() {
         return this.binlogFilename;
+    }
+
+    public void setBinlogFilename(String binlogFilename) {
+        this.binlogFilename = binlogFilename;
     }
 
     public long getBinlogPosition() {
         return this.binlogPosition;
     }
 
+    public void setBinlogPosition(long binlogPosition) {
+        this.binlogPosition = binlogPosition;
+    }
+
     public String getPseudoGTID() {
         return this.pseudoGTID;
     }
 
+    public void setPseudoGTID(String pseudoGTID) {
+        this.pseudoGTID = pseudoGTID;
+    }
+
     public int getPseudoGTIDIndex() {
         return this.pseudoGTIDIndex;
+    }
+
+    public void setPseudoGTIDIndex(int pseudoGTIDIndex) {
+        this.pseudoGTIDIndex = pseudoGTIDIndex;
     }
 }

@@ -38,7 +38,7 @@ import static com.codahale.metrics.MetricRegistry.name;
 public class KafkaApplier implements Applier {
 
     // how many rows go into one message
-    private static final int MESSAGE_BATCH_SIZE = 1; // 10;
+    private static final int MESSAGE_BATCH_SIZE = 10;
 
     private static boolean DRY_RUN;
 

@@ -61,7 +61,7 @@ public class PipelineOrchestrator extends Thread {
     private static final int BUFFER_FLUSH_INTERVAL = 30000; // <- force buffer flush every 30 sec
     private static final int DEFAULT_VERSIONS_FOR_MIRRORED_TABLES = 1000;
     private static final long QUEUE_POLL_TIMEOUT = 100L;
-    private static final long QUEUE_POLL_SLEEP = 1000;
+    private static final long QUEUE_POLL_SLEEP = 500;
     private static       int numberOfForceFlushesSinceLastEvent = 0;
 
     private static EventAugmenter eventAugmenter;
@@ -266,22 +266,34 @@ public class PipelineOrchestrator extends Thread {
         processQueueLoop(null);
     }
 
+    private BinlogPositionInfo updateCurrentPipelinePosition(BinlogEventV4 event) {
+
+        fakeMicrosecondCounter++;
+
+        BinlogPositionInfo currentPosition = new BinlogPositionInfo(
+                replicantPool.getReplicantDBActiveHost(),
+                replicantPool.getReplicantDBActiveHostServerID(),
+                EventPosition.getEventBinlogFileName(event),
+                EventPosition.getEventBinlogPosition(event),
+                fakeMicrosecondCounter
+        );
+
+        pipelinePosition.setCurrentPosition(currentPosition);
+
+        return currentPosition;
+    }
+
     private void processQueueLoop(BinlogPositionInfo exitOnBinlogPosition) throws Exception {
+
         while (isRunning()) {
+
             BinlogEventV4 event = waitForEvent(QUEUE_POLL_TIMEOUT, QUEUE_POLL_SLEEP);
+
             LOGGER.debug("Received event: " + event);
-
             timeOfLastEvent = System.currentTimeMillis();
-
             eventsReceivedCounter.mark();
 
-            // Update pipeline position
-            fakeMicrosecondCounter++;
-
-            BinlogPositionInfo currentPosition = new BinlogPositionInfo(replicantPool.getReplicantDBActiveHost(),
-                    replicantPool.getReplicantDBActiveHostServerID(), EventPosition.getEventBinlogFileName(event),
-                    EventPosition.getEventBinlogPosition(event), fakeMicrosecondCounter);
-            pipelinePosition.setCurrentPosition(currentPosition);
+            BinlogPositionInfo currentPosition = updateCurrentPipelinePosition(event);
 
             processEvent(event);
 
@@ -297,6 +309,7 @@ public class PipelineOrchestrator extends Thread {
     }
 
     private void processEvent(BinlogEventV4 event) throws Exception {
+
         if (skipEvent(event)) {
             LOGGER.debug("Skipping event: " + event);
             eventsSkippedCounter.mark();
@@ -312,9 +325,13 @@ public class PipelineOrchestrator extends Thread {
     }
 
     private BinlogEventV4 rewindToCommitEvent(long timeout, long sleep) throws ApplierException, IOException, InterruptedException {
-        LOGGER.debug("Rewinding to the next commit event. Either XidEvent or QueryEvent with COMMIT statement");
+
+        LOGGER.info("Rewinding to the next commit event. Either XidEvent or QueryEvent with COMMIT statement");
+
         BinlogEventV4 resultEvent = null;
+
         while (isRunning() && resultEvent == null) {
+
             BinlogEventV4 event = waitForEvent(timeout, sleep);
             if (event == null) continue;
 
@@ -342,7 +359,9 @@ public class PipelineOrchestrator extends Thread {
     }
 
     private BinlogEventV4 waitForEvent(long timeout, long sleep) throws InterruptedException, ApplierException, IOException {
+
         while (isRunning()) {
+
             if (queues.rawQueue.size() > 0) {
 
                 BinlogEventV4 event = queues.rawQueue.poll(timeout, TimeUnit.MILLISECONDS);
@@ -611,13 +630,17 @@ public class PipelineOrchestrator extends Thread {
     }
 
     public void addEventIntoTransaction(BinlogEventV4 event) throws TransactionException, TransactionSizeLimitException {
+
         if (!isInTransaction()) {
             throw new TransactionException("Failed to add new event into a transaction buffer while not in transaction: " + event);
         }
+
         if (isTransactionSizeLimitExceeded()) {
             throw new TransactionSizeLimitException();
         }
+
         currentTransaction.addEvent(event);
+
         if (currentTransaction.getEventsCounter() % 10 == 0) {
             LOGGER.debug("Number of events in current transaction " + currentTransaction.getUuid() + " is: " + currentTransaction.getEventsCounter());
         }
@@ -731,7 +754,9 @@ public class PipelineOrchestrator extends Thread {
 
     private void applyTransactionDataEvents() throws EventHandlerApplyException, TransactionException {
         // apply data-changing events
-        if (currentTransaction.hasFinishEvent())    currentTransaction.setEventsTimestampToFinishEvent();
+        if (currentTransaction.hasFinishEvent())  {
+            currentTransaction.setEventsTimestampToFinishEvent();
+        }
         for (BinlogEventV4 event : currentTransaction.getEvents()) {
             eventDispatcher.apply(event, currentTransaction);
         }

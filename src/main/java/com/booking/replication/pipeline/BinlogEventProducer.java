@@ -99,8 +99,8 @@ public class BinlogEventProducer {
                         if (added) {
                             opCounter++;
                             eventQueued = true;
-                            if (opCounter % 100000 == 0) {
-                                LOGGER.info("Producer reporting queue size => " + queue.size());
+                            if (opCounter % 1000 == 0) {
+                                LOGGER.debug("Producer reporting queue size => " + queue.size());
                             }
                         } else {
                             LOGGER.error("queue.offer timed out. Will sleep for 100ms and try again");

@@ -120,6 +120,7 @@ public class Replicator {
                     supplier.stop();
                     streamsSupplier.stop();
                     streamsApplier.stop();
+                    applier.close();
                 } catch (IOException | InterruptedException exception) {
                     exceptionHandle.accept(exception);
                 }

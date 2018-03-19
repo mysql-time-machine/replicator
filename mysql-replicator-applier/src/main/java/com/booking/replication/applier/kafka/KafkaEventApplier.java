@@ -91,5 +91,6 @@ public class KafkaEventApplier implements EventApplier {
     @Override
     public void close() {
         this.producers.values().forEach(Producer::close);
+        this.producers.clear();
     }
 }

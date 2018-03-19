@@ -12,9 +12,11 @@ import org.apache.kafka.common.errors.InvalidPartitionsException;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 
 import java.io.UncheckedIOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class KafkaEventApplier implements EventApplier {
     public interface Configuration {
@@ -24,13 +26,15 @@ public class KafkaEventApplier implements EventApplier {
     }
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private final Producer<byte[], byte[]> producer;
+    private final Map<String, Producer<byte[], byte[]>> producers;
+    private final String bootstrapServers;
     private final String topic;
     private final int totalPartitions;
     private final KafkaEventPartitioner partitioner;
 
     public KafkaEventApplier(Producer<byte[], byte[]> producer, String topic, int totalPartitions, KafkaEventPartitioner partitioner) {
-        this.producer = producer;
+        this.producers = new ConcurrentHashMap<>(Collections.singletonMap(Thread.currentThread().getName(), producer));
+        this.bootstrapServers = null;
         this.topic = topic;
         this.totalPartitions = totalPartitions;
         this.partitioner = partitioner;
@@ -44,7 +48,8 @@ public class KafkaEventApplier implements EventApplier {
         Objects.requireNonNull(bootstrapServers, String.format("Configuration required: %s", Configuration.BOOTSTRAP_SERVERS));
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
 
-        this.producer = this.getProducer(bootstrapServers);
+        this.producers = new ConcurrentHashMap<>();
+        this.bootstrapServers = bootstrapServers;
         this.topic = topic;
         this.totalPartitions = this.getTotalPartitions();
         this.partitioner = KafkaEventPartitioner.valueOf(partitioner);
@@ -61,13 +66,18 @@ public class KafkaEventApplier implements EventApplier {
     }
 
     private int getTotalPartitions() {
-        return this.producer.partitionsFor(this.topic).stream().mapToInt(PartitionInfo::partition).max().orElseThrow(() -> new InvalidPartitionsException("partitions not found"));
+        try (Producer<byte[], byte[]> producer = this.getProducer(this.bootstrapServers)) {
+            return producer.partitionsFor(this.topic).stream().mapToInt(PartitionInfo::partition).max().orElseThrow(() -> new InvalidPartitionsException("partitions not found"));
+        }
     }
 
     @Override
     public void accept(Event event) {
         try {
-            this.producer.send(new ProducerRecord<>(
+            this.producers.computeIfAbsent(
+                    Thread.currentThread().getName(),
+                    key -> this.getProducer(this.bootstrapServers)
+            ).send(new ProducerRecord<>(
                     this.topic,
                     this.partitioner.partition(event, this.totalPartitions),
                     KafkaEventApplier.MAPPER.writeValueAsBytes(event.getHeader()),
@@ -80,6 +90,6 @@ public class KafkaEventApplier implements EventApplier {
 
     @Override
     public void close() {
-        this.producer.close();
+        this.producers.values().forEach(Producer::close);
     }
 }

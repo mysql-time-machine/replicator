@@ -94,7 +94,8 @@ public class FileCoordinator implements Coordinator {
                     } catch (Exception exception) {
                         try {
                             Thread.sleep(100L);
-                        } catch (InterruptedException ignored) {
+                        } catch (InterruptedException interruptedException) {
+                            throw new RuntimeException(interruptedException);
                         }
                     }
                 }

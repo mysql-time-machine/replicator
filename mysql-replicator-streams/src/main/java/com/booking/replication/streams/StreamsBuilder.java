@@ -3,7 +3,11 @@ package com.booking.replication.streams;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.*;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -36,12 +40,12 @@ public final class StreamsBuilder<Input, Output> implements
     @SuppressWarnings("unchecked")
     StreamsBuilder() {
         this(
-            null,
-            (value) -> true,
-            (value) -> {
-                StreamsBuilder.LOG.log(Level.FINEST, value.toString());
-                return (Output) value;
-            }
+                null,
+                (value) -> true,
+                (value) -> {
+                    StreamsBuilder.LOG.log(Level.FINEST, value.toString());
+                    return (Output) value;
+                }
         );
     }
 

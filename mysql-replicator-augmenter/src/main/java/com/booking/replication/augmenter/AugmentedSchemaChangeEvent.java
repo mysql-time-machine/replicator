@@ -13,43 +13,43 @@ import java.util.HashMap;
  */
 public class AugmentedSchemaChangeEvent implements AugmentedSchemaChangeEventData {
 
-    private final long             schemaChangeEventTimestamp;
+    private final long schemaChangeEventTimestamp;
 
-    private SchemaVersionSnapshot  preTransitionSchemaSnapshot;
+    private SchemaVersionSnapshot preTransitionSchemaSnapshot;
 
-    private HashMap<String,String> schemaTransitionSequence;
+    private HashMap<String, String> schemaTransitionSequence;
 
-    private SchemaVersionSnapshot  postTransitionSchemaSnapshot;
+    private SchemaVersionSnapshot postTransitionSchemaSnapshot;
 
     /**
      * DDL event.
      *
-     * @param snapshotBefore        Schema version snapshot
-     * @param transitionSequence    Schema transition sequence
-     * @param snapshotAfter         Schema version snapshot
-     * @param ddlTimestamp          Timestamp
+     * @param snapshotBefore     Schema version snapshot
+     * @param transitionSequence Schema transition sequence
+     * @param snapshotAfter      Schema version snapshot
+     * @param ddlTimestamp       Timestamp
      */
     public AugmentedSchemaChangeEvent(
             SchemaVersionSnapshot snapshotBefore,
-            HashMap<String,String> transitionSequence,
+            HashMap<String, String> transitionSequence,
             SchemaVersionSnapshot snapshotAfter,
             long ddlTimestamp) {
 
-        preTransitionSchemaSnapshot  = snapshotBefore;
+        preTransitionSchemaSnapshot = snapshotBefore;
         schemaTransitionSequence = transitionSequence;
         postTransitionSchemaSnapshot = snapshotAfter;
-        schemaChangeEventTimestamp   = ddlTimestamp;
+        schemaChangeEventTimestamp = ddlTimestamp;
     }
 
     public String toJson() {
         return JsonBuilder.schemaChangeEventToJson(this);
     }
 
-    public HashMap<String,String> getSchemaTransitionSequence() {
+    public HashMap<String, String> getSchemaTransitionSequence() {
         return schemaTransitionSequence;
     }
 
-    public void setSchemaTransitionSequence(HashMap<String,String> schemaTransitionSequence) {
+    public void setSchemaTransitionSequence(HashMap<String, String> schemaTransitionSequence) {
         this.schemaTransitionSequence = schemaTransitionSequence;
     }
 

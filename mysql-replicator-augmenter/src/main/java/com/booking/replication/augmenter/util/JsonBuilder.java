@@ -1,6 +1,7 @@
 package com.booking.replication.augmenter.util;
 
 //import com.booking.replication.applier.kafka.RowListMessage;
+
 import com.booking.replication.augmenter.AugmentedRowImplementation;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.augmenter.active.schema.ActiveSchemaVersion;
@@ -80,7 +81,7 @@ public class JsonBuilder {
         return json;
     }
 
-    public static String schemaTransitionSequenceToJson(HashMap<String,String> schemaTransitionSequence) {
+    public static String schemaTransitionSequenceToJson(HashMap<String, String> schemaTransitionSequence) {
         String json = null;
         try {
             json = om.writeValueAsString(schemaTransitionSequence);

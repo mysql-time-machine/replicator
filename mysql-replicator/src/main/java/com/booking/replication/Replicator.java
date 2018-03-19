@@ -12,7 +12,11 @@ import com.booking.replication.supplier.EventSupplier;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import org.apache.commons.cli.*;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
 
 import java.io.File;
 import java.io.IOException;
@@ -201,7 +205,7 @@ public class Replicator {
     @SuppressWarnings("unchecked")
     private static void flattenMap(String path, Map<String, Object> map, Map<String, String> flattenMap) {
         for (Map.Entry<String, Object> entry : map.entrySet()) {
-            String flattenPath = (path != null)?String.format("%s.%s", path, entry.getKey()):entry.getKey();
+            String flattenPath = (path != null) ? String.format("%s.%s", path, entry.getKey()) : entry.getKey();
 
             if (Map.class.isInstance(entry.getValue())) {
                 Replicator.flattenMap(flattenPath, Map.class.cast(entry.getValue()), flattenMap);

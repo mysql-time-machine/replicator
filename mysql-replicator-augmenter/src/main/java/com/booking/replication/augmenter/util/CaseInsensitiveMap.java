@@ -54,7 +54,7 @@ public class CaseInsensitiveMap<V> implements Map<String, V> {
 
     @Override
     public void putAll(Map<? extends String, ? extends V> m) {
-        m.forEach((k,v) -> innerMap.put(verifyAndGetLowercaseKey(k), v));
+        m.forEach((k, v) -> innerMap.put(verifyAndGetLowercaseKey(k), v));
     }
 
     @Override

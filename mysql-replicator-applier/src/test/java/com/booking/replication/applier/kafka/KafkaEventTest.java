@@ -29,21 +29,21 @@ public class KafkaEventTest {
         ObjectMapper mapper = new ObjectMapper();
 
         EventApplier applier = new KafkaEventApplier(
-               new MockProducer<>(), "test", 10, KafkaEventPartitioner.RANDOM
+                new MockProducer<>(), "test", 10, KafkaEventPartitioner.RANDOM
         );
 
         applier.accept(Event.build(
                 mapper,
                 new AugmentedEventHeaderImplementation(
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    new Date().getTime(),
-                    EventType.ROTATE,
-                    new Checkpoint()
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        new Date().getTime(),
+                        EventType.ROTATE,
+                        new Checkpoint()
                 ),
                 "{\"binlogFilename\": \"binlog.0001\", \"binlogPosition\": 0}".getBytes()
         ));

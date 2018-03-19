@@ -9,6 +9,8 @@ import java.util.UUID;
 @SuppressWarnings("unused")
 public interface TransactionEventData extends TableNameEventData {
     List<Event> getEvents();
+
     UUID getUuid();
+
     long getXid();
 }

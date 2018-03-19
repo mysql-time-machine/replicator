@@ -1,7 +1,6 @@
 package com.booking.replication.model;
 
 import com.booking.replication.model.augmented.AugmentedEventData;
-import com.booking.replication.model.augmented.AugmentedRow;
 import com.booking.replication.model.transaction.TransactionEventData;
 import com.booking.replication.model.transaction.TransactionEventDataImplementation;
 

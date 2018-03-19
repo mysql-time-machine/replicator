@@ -32,7 +32,9 @@ public interface EventSupplier {
     }
 
     void onEvent(Consumer<Event> consumer);
+
     void start() throws IOException;
+
     void stop() throws IOException;
 
     @SuppressWarnings("unchecked")

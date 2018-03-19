@@ -4,15 +4,19 @@ import com.booking.replication.applier.EventApplier;
 import com.booking.replication.model.Event;
 import com.booking.replication.model.EventData;
 import com.booking.replication.model.EventHeader;
+import com.booking.replication.model.TableNameEventData;
 import com.booking.replication.model.augmented.AugmentedEventData;
 import com.booking.replication.model.augmented.AugmentedRow;
-import com.booking.replication.model.TableNameEventData;
 import com.booking.replication.model.transaction.TransactionEventData;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.client.Admin;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.RegionSplitter;
 import org.jboss.netty.util.internal.ConcurrentHashMap;
@@ -22,7 +26,11 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -61,7 +69,7 @@ public class HBaseEventApplier implements EventApplier {
                 configuration.set("zookeeper.quorum", zookeeperQuorum);
 
                 return ConnectionFactory.createConnection(configuration);
-            } catch(IOException exception) {
+            } catch (IOException exception) {
                 throw new UncheckedIOException(exception);
             }
         });
@@ -154,8 +162,8 @@ public class HBaseEventApplier implements EventApplier {
             String columnValueAfter = data.getEventColumns().get(columnName).get("value_after");
 
             if ((columnValueBefore != null && columnValueAfter == null) ||
-                (columnValueBefore == null && columnValueAfter != null) ||
-                (columnValueBefore != null && !columnValueBefore.equals(columnValueAfter))) {
+                    (columnValueBefore == null && columnValueAfter != null) ||
+                    (columnValueBefore != null && !columnValueBefore.equals(columnValueAfter))) {
                 if (columnValueAfter == null) {
                     columnValueAfter = "NULL";
                 }
@@ -220,7 +228,7 @@ public class HBaseEventApplier implements EventApplier {
             String createsPostChange = null;
 
             table.put(
-                    new Put(Bytes.toBytes((eventTimestamp > 0)?(Long.toString(eventTimestamp)):("initial-snapshot")))
+                    new Put(Bytes.toBytes((eventTimestamp > 0) ? (Long.toString(eventTimestamp)) : ("initial-snapshot")))
                             .addColumn(
                                     HBaseEventApplier.CF,
                                     Bytes.toBytes("ddl"),

@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
 
 /**
  * Created by bosko on 6/21/17.
- *
+ * <p>
  * ParsedRow is just a list of ParsedColumns.
  */
 public class Row {
@@ -31,8 +31,8 @@ public class Row {
     @Override
     public String toString() {
         List<String> cl = rowCells.stream()
-                                 .map(c -> c.getValue().toString())
-                                 .collect(Collectors.toList());
+                .map(c -> c.getValue().toString())
+                .collect(Collectors.toList());
         return "rowCells: " + Joiner.on(",").join(cl);
     }
 

@@ -1,6 +1,7 @@
 package com.booking.replication.supplier.kafka;
 
-import com.booking.replication.model.*;
+import com.booking.replication.model.Checkpoint;
+import com.booking.replication.model.Event;
 import com.booking.replication.supplier.EventSupplier;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -11,7 +12,12 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -48,7 +54,7 @@ public class KafkaSupplier implements EventSupplier {
         this.running = new AtomicBoolean();
     }
 
-    private Consumer<byte[],byte[]> getConsumer(String bootstrapServers, String groupId) {
+    private Consumer<byte[], byte[]> getConsumer(String bootstrapServers, String groupId) {
         Map<String, Object> configuration = new HashMap<>();
 
         configuration.put("bootstrap.servers", bootstrapServers);

@@ -1,7 +1,6 @@
 package com.booking.replication.checkpoint;
 
 import com.booking.replication.coordinator.Coordinator;
-import com.booking.replication.model.Checkpoint;
 import com.booking.replication.model.Event;
 
 import java.util.Map;
@@ -12,7 +11,8 @@ public interface CheckpointStorer extends Consumer<Event> {
         NONE {
             @Override
             public <Destination> CheckpointStorer newInstance(Map<String, String> configuration, Destination destination) {
-                return event -> {};
+                return event -> {
+                };
             }
         },
         COORDINATOR {

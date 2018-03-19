@@ -1,7 +1,8 @@
 package com.booking.replication.applier.kafka;
 
 import com.booking.replication.applier.EventSeeker;
-import com.booking.replication.model.*;
+import com.booking.replication.model.Checkpoint;
+import com.booking.replication.model.Event;
 import com.booking.replication.model.augmented.AugmentedEventHeader;
 import com.booking.replication.model.augmented.AugmentedEventHeaderImplementation;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,12 +11,16 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.errors.InvalidPartitionsException;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.*;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class KafkaEventSeeker implements EventSeeker, Comparator<Checkpoint> {
@@ -98,7 +103,7 @@ public class KafkaEventSeeker implements EventSeeker, Comparator<Checkpoint> {
     @Override
     public int compare(Checkpoint checkpoint1, Checkpoint checkpoint2) {
         if (checkpoint1 != null && checkpoint1.getPseudoGTID() != null &&
-            checkpoint2 != null && checkpoint2.getPseudoGTID() != null) {
+                checkpoint2 != null && checkpoint2.getPseudoGTID() != null) {
             if (checkpoint1.getPseudoGTID().equals(checkpoint2.getPseudoGTID())) {
                 return Integer.compare(checkpoint1.getPseudoGTIDIndex(), checkpoint2.getPseudoGTIDIndex());
             } else {

@@ -15,7 +15,7 @@ public class TableMapException extends Exception {
                 "%s\nBinlog Position: %s",
                 message,
                 "TODO pos in binlog"
-                ));
+        ));
     }
 
 

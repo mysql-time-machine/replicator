@@ -7,6 +7,8 @@ import java.util.List;
 @SuppressWarnings("unused")
 public interface DeleteRowsEventData extends EventData {
     long getTableId();
+
     BitSet getIncludedColumns();
+
     List<Serializable[]> getRows();
 }

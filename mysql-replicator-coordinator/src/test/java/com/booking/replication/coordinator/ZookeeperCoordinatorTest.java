@@ -61,7 +61,7 @@ public class ZookeeperCoordinatorTest {
     }
 
     @Test
-    public void testCheckpoint()throws InterruptedException, IOException {
+    public void testCheckpoint() throws InterruptedException, IOException {
         Thread.sleep(2000L);
 
         String checkpoint1 = UUID.randomUUID().toString();

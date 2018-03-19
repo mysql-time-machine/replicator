@@ -1,12 +1,9 @@
 package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.active.schema.ActiveSchemaVersion;
-
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.sql.SQLException;
-import java.util.Map;
 import com.booking.replication.model.Event;
+
+import java.util.Map;
 import java.util.function.Function;
 
 public interface Augmenter extends Function<Event, Event> {

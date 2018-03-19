@@ -7,6 +7,7 @@ import java.lang.reflect.InvocationTargetException;
 @SuppressWarnings("unused")
 public interface EventHeader extends Serializable, EventDecorator {
     long getTimestamp();
+
     EventType getEventType();
 
     static <SubEventHeader extends EventHeader> SubEventHeader decorate(Class<SubEventHeader> type, InvocationHandler handler) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {

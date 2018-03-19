@@ -14,7 +14,7 @@ import java.util.function.Consumer;
 public class BinaryLogSupplier implements EventSupplier {
     public interface Configuration {
         String MYSQL_HOSTNAME = "mysql.hostname";
-        String MYSQL_PORT     = "mysql.port";
+        String MYSQL_PORT = "mysql.port";
         String MYSQL_USERNAME = "mysql.username";
         String MYSQL_PASSWORD = "mysql.password";
     }
@@ -50,13 +50,13 @@ public class BinaryLogSupplier implements EventSupplier {
     @Override
     public void onEvent(Consumer<Event> consumer) {
         this.client.registerEventListener(
-            event -> {
-                try {
-                    consumer.accept(Event.decorate(new EventInvocationHandler(event)));
-                } catch (ReflectiveOperationException exception) {
-                    throw new RuntimeException(exception);
+                event -> {
+                    try {
+                        consumer.accept(Event.decorate(new EventInvocationHandler(event)));
+                    } catch (ReflectiveOperationException exception) {
+                        throw new RuntimeException(exception);
+                    }
                 }
-            }
         );
     }
 

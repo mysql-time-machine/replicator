@@ -11,17 +11,23 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import java.security.InvalidParameterException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.UUID;
 
 /**
- *  Before actually applying event to HBase table,
- *  we need to know some data about the schema.
- *  From raw event (which is BinlogEventV4) and
- *  metaPosition (which is the corresponding schema
- *  version for that event) we do a matching of
- *  column names and types and construct augmented
- *  event which has both schema and data.
- *  This class encapsulates this type of event.
+ * Before actually applying event to HBase table,
+ * we need to know some data about the schema.
+ * From raw event (which is BinlogEventV4) and
+ * metaPosition (which is the corresponding schema
+ * version for that event) we do a matching of
+ * column names and types and construct augmented
+ * event which has both schema and data.
+ * This class encapsulates this type of event.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties({"tableSchemaVersion"})
@@ -30,20 +36,20 @@ public class AugmentedRowImplementation implements AugmentedRow {
     @JsonDeserialize(as = TableSchemaVersion.class)
     private TableSchemaVersion tableSchemaVersion;
 
-    private String       binlogFileName;
-    private long         rowBinlogEventOrdinal;
-    private String       tableName;
+    private String binlogFileName;
+    private long rowBinlogEventOrdinal;
+    private String tableName;
     private List<String> primaryKeyColumns = new ArrayList<>();
 
-    private String       rowUUID;
-    private String       rowBinlogPositionID;
+    private String rowUUID;
+    private String rowBinlogPositionID;
 
-    private UUID         transactionUUID;
-    private Long         transactionXid;
-    private boolean      applyUuid = false;
-    private boolean      applyXid = false;
+    private UUID transactionUUID;
+    private Long transactionXid;
+    private boolean applyUuid = false;
+    private boolean applyXid = false;
 
-    private Long         rowBinlogPositionTimestamp; // TODO: replace with commit_time when feature is ready
+    private Long rowBinlogPositionTimestamp; // TODO: replace with commit_time when feature is ready
 
     // eventColumns: {
     //          column_name  => $name,
@@ -52,7 +58,7 @@ public class AugmentedRowImplementation implements AugmentedRow {
     //          type         => $type
     //      }
     // }
-    private Map<String,Map<String,String>> eventColumns = new CaseInsensitiveMap<>();
+    private Map<String, Map<String, String>> eventColumns = new CaseInsensitiveMap<>();
 
     private String eventType;
 
@@ -63,28 +69,27 @@ public class AugmentedRowImplementation implements AugmentedRow {
     /**
      * Create AugmentedRow.
      *
-     * @param binlogFileName      Name of the binlog file that contains current row
-     * @param rowOrdinal          Order of the row in the binlog event that contains the row
-     * @param tableName           Table name of the row
-     * @param tableSchemaVersion  TableSchemaVersion object
-     * @param eventType           Event type identifier (INSERT/UPDATE/DELETE)
-     *
-     * @throws InvalidParameterException    Invalid parameter
-     * @throws TableMapException            Invalid table
+     * @param binlogFileName     Name of the binlog file that contains current row
+     * @param rowOrdinal         Order of the row in the binlog event that contains the row
+     * @param tableName          Table name of the row
+     * @param tableSchemaVersion TableSchemaVersion object
+     * @param eventType          Event type identifier (INSERT/UPDATE/DELETE)
+     * @throws InvalidParameterException Invalid parameter
+     * @throws TableMapException         Invalid table
      */
     public AugmentedRowImplementation(
-            String              binlogFileName,
-            long                rowOrdinal,
-            String              tableName,
-            TableSchemaVersion  tableSchemaVersion,
-            String              eventType,
-            UUID                transactionUUID,
-            Long                transactionXid,
-            boolean             applyUuid,
-            boolean             applyXid,
-            Long                eventPosition,
-            Long                rowBinlogPositionTimestamp
-    )  throws TableMapException {
+            String binlogFileName,
+            long rowOrdinal,
+            String tableName,
+            TableSchemaVersion tableSchemaVersion,
+            String eventType,
+            UUID transactionUUID,
+            Long transactionXid,
+            boolean applyUuid,
+            boolean applyXid,
+            Long eventPosition,
+            Long rowBinlogPositionTimestamp
+    ) throws TableMapException {
 
         this.rowBinlogEventOrdinal = rowOrdinal;
         this.binlogFileName = binlogFileName;
@@ -111,12 +116,12 @@ public class AugmentedRowImplementation implements AugmentedRow {
     /**
      * Add column data.
      *
-     * @param columnName    Name of the column to update
-     * @param valueBefore   Value before the update
-     * @param valueAfter    Value after the update
-     * @param columnType    ParsedColumn type
-     * @throws InvalidParameterException    Invalid parameter
-     * @throws TableMapException            Invalid table
+     * @param columnName  Name of the column to update
+     * @param valueBefore Value before the update
+     * @param valueAfter  Value after the update
+     * @param columnType  ParsedColumn type
+     * @throws InvalidParameterException Invalid parameter
+     * @throws TableMapException         Invalid table
      */
     public void addColumnDataForUpdate(
             String columnName,
@@ -143,9 +148,10 @@ public class AugmentedRowImplementation implements AugmentedRow {
 
     /**
      * Add column data.
+     *
      * @param columnName Name of the column to insert
-     * @param value       Value to insert
-     * @param columnType  ParsedColumn type
+     * @param value      Value to insert
+     * @param columnType ParsedColumn type
      */
     public void addColumnDataForInsert(
             String columnName,
@@ -158,8 +164,8 @@ public class AugmentedRowImplementation implements AugmentedRow {
     /**
      * Set table schema.
      *
-     * @param tableSchemaVersion           Schema of the table
-     * @throws TableMapException    Invalid table
+     * @param tableSchemaVersion Schema of the table
+     * @throws TableMapException Invalid table
      */
     private void initTableSchema(TableSchemaVersion tableSchemaVersion) throws TableMapException {
         this.tableSchemaVersion = tableSchemaVersion;
@@ -169,11 +175,11 @@ public class AugmentedRowImplementation implements AugmentedRow {
 
     /**
      * Initialize column data slots.
-     *
+     * <p>
      * <p>Pre-create objects for speed (this improves overall runtime speed ~10%)</p>
      */
     public void initColumnDataSlots() {
-        for (String columnName: tableSchemaVersion.getColumnNames()) {
+        for (String columnName : tableSchemaVersion.getColumnNames()) {
             eventColumns.put(columnName, new HashMap<String, String>());
         }
         if (applyUuid) {
@@ -191,7 +197,7 @@ public class AugmentedRowImplementation implements AugmentedRow {
     /**
      * Initialize primary key columns.
      *
-     * @throws TableMapException    Invalid table.
+     * @throws TableMapException Invalid table.
      */
     public void initPKList() throws TableMapException {
         if (tableSchemaVersion == null) {
@@ -200,20 +206,20 @@ public class AugmentedRowImplementation implements AugmentedRow {
             Map<Integer, String> pkColumns = new HashMap<>();
 
             Set<String> columnNames = tableSchemaVersion.getColumnNames();
-            for (String columnName: columnNames) {
+            for (String columnName : columnNames) {
 
                 ColumnSchema cs = tableSchemaVersion.getColumnSchemaByColumnName(columnName);
 
-                String  ck = cs.getColumnKey();
+                String ck = cs.getColumnKey();
                 Integer op = cs.getOrdinalPosition();
-                String  cn = cs.getColumnName();
+                String cn = cs.getColumnName();
 
                 if ((ck != null) && (ck.equals("PRI"))) {
                     pkColumns.put(op, cn);
                 }
             }
 
-            TreeMap<Integer,String> pkColumnSortedByOP = new TreeMap<>();
+            TreeMap<Integer, String> pkColumnSortedByOP = new TreeMap<>();
             pkColumnSortedByOP.putAll(pkColumns);
 
             primaryKeyColumns.addAll(pkColumnSortedByOP.values());

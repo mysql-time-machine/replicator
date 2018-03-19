@@ -7,7 +7,8 @@ import java.util.Calendar;
  */
 public class MySQLUtils {
     public static java.sql.Date toDate(int value) {
-        final int d = value % 32; value >>>= 5;
+        final int d = value % 32;
+        value >>>= 5;
         final int m = value % 16;
         final int y = value >> 4;
         final Calendar cal = Calendar.getInstance();

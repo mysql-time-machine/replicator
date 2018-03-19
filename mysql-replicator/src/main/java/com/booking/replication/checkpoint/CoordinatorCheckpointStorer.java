@@ -3,14 +3,10 @@ package com.booking.replication.checkpoint;
 import com.booking.replication.coordinator.CheckpointCoordinator;
 import com.booking.replication.model.Checkpoint;
 import com.booking.replication.model.Event;
-import com.booking.replication.model.EventType;
 import com.booking.replication.model.augmented.AugmentedEventHeader;
-import com.github.shyiko.mysql.binlog.event.RotateEventData;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class CoordinatorCheckpointStorer implements CheckpointStorer {
     private final CheckpointCoordinator coordinator;

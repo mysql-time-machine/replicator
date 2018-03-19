@@ -30,8 +30,11 @@ public interface Coordinator extends LeaderCoordinator, CheckpointCoordinator {
     }
 
     void start() throws InterruptedException;
+
     void wait(long timeout, TimeUnit unit) throws InterruptedException;
+
     void join() throws InterruptedException;
+
     void stop() throws InterruptedException;
 
     static Coordinator build(Map<String, String> configuration) {

@@ -55,7 +55,7 @@ public class KafkaEventApplier implements EventApplier {
         this.partitioner = KafkaEventPartitioner.valueOf(partitioner);
     }
 
-    private Producer<byte[],byte[]> getProducer(String bootstrapServers) {
+    private Producer<byte[], byte[]> getProducer(String bootstrapServers) {
         Map<String, Object> configuration = new HashMap<>();
 
         configuration.put("bootstrap.servers", bootstrapServers);

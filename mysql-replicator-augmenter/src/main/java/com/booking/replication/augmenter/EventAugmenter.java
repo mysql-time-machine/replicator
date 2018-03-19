@@ -48,7 +48,7 @@ public class EventAugmenter implements Augmenter {
         }
 
         if (au == null) {
-            throw  new TableMapException("Augmented event ended up as null - something went wrong!", abstractRowEvent);
+            throw new TableMapException("Augmented event ended up as null - something went wrong!", abstractRowEvent);
         }
 
         return au;

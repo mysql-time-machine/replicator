@@ -3,8 +3,6 @@ package com.booking.replication.model;
 import java.io.Serializable;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
-import java.util.Arrays;
-import java.util.List;
 
 @SuppressWarnings("unused")
 public interface EventData extends Serializable, EventDecorator {

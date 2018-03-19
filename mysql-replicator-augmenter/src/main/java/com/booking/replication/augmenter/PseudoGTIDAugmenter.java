@@ -1,6 +1,12 @@
 package com.booking.replication.augmenter;
 
-import com.booking.replication.model.*;
+import com.booking.replication.model.Checkpoint;
+import com.booking.replication.model.Event;
+import com.booking.replication.model.EventHeaderV4;
+import com.booking.replication.model.EventImplementation;
+import com.booking.replication.model.EventType;
+import com.booking.replication.model.QueryEventData;
+import com.booking.replication.model.RotateEventData;
 import com.booking.replication.model.augmented.AugmentedEventHeaderImplementation;
 
 import java.util.Map;

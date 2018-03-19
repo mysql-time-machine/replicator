@@ -13,7 +13,8 @@ public class StreamsTest {
     public void testFromPull() throws InterruptedException {
         Streams.<Integer>builder()
                 .fromPull(() -> ThreadLocalRandom.current().nextInt())
-                .to((value) -> {})
+                .to((value) -> {
+                })
                 .build()
                 .start()
                 .wait(1L, TimeUnit.SECONDS)
@@ -21,7 +22,7 @@ public class StreamsTest {
     }
 
     @Test
-    public void testFromPush() throws InterruptedException  {
+    public void testFromPush() throws InterruptedException {
         int number = ThreadLocalRandom.current().nextInt();
 
         Streams<Integer, Integer> streams = Streams.<Integer>builder()
@@ -35,7 +36,7 @@ public class StreamsTest {
     }
 
     @Test
-    public void testFilter() throws InterruptedException  {
+    public void testFilter() throws InterruptedException {
         Streams.<Integer>builder()
                 .fromPull(() -> ThreadLocalRandom.current().nextInt())
                 .filter((value) -> value > 0)
@@ -107,7 +108,9 @@ public class StreamsTest {
 
         Streams<Integer, Integer> streams = Streams.<Integer>builder()
                 .fromPush()
-                .to((value) -> { throw new NullPointerException(); })
+                .to((value) -> {
+                    throw new NullPointerException();
+                })
                 .build()
                 .start();
 

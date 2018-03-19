@@ -139,7 +139,7 @@ public class BinlogEventProducer {
     public void stop(long timeout, TimeUnit unit) throws Exception {
         LOGGER.info("Stopping producer. Start point was: { binlog-file => " + openReplicator.getBinlogFileName()
                 + ", position => " + openReplicator.getBinlogPosition() + " }");
-        openReplicator.stop(timeout, unit);
+        openReplicator.stopQuietly(timeout, unit);
     }
 
     public void clearQueue() {

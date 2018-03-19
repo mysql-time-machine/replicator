@@ -25,6 +25,7 @@ import java.util.logging.Logger;
 public class Replicator {
     private static final Logger LOG = Logger.getLogger(Replicator.class.getName());
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final String COMMAND_LINE_SYNTAX = "java -jar mysql-replicator-<version>.jar";
 
     private void start(Map<String, String> configuration) {
         try {
@@ -141,6 +142,7 @@ public class Replicator {
     public static void main(String[] arguments) {
         Options options = new Options();
 
+        options.addOption(Option.builder().longOpt("help").desc("print the help message").build());
         options.addOption(Option.builder().longOpt("config").argName("key-value").desc("the configuration to be used with the format <key>=<value>").hasArgs().build());
         options.addOption(Option.builder().longOpt("config-file").argName("filename").desc("the configuration file to be used (YAML)").hasArg().build());
         options.addOption(Option.builder().longOpt("supplier").argName("supplier").desc("the supplier to be used").hasArg().build());
@@ -149,37 +151,42 @@ public class Replicator {
         try {
             CommandLine line = new DefaultParser().parse(options, arguments);
 
-            Map<String, String> configuration = new HashMap<>();
+            if (line.hasOption("help")) {
+                new HelpFormatter().printHelp(Replicator.COMMAND_LINE_SYNTAX, options);
+            } else {
+                Map<String, String> configuration = new HashMap<>();
 
-            if (line.hasOption("config")) {
-                for (String keyValue : line.getOptionValues("config")) {
-                    int startIndex = keyValue.indexOf('=');
-                    int endIndex = startIndex + 1;
+                if (line.hasOption("config")) {
+                    for (String keyValue : line.getOptionValues("config")) {
+                        int startIndex = keyValue.indexOf('=');
+                        int endIndex = startIndex + 1;
 
-                    if (endIndex < keyValue.length()) {
-                        configuration.put(keyValue.substring(0, startIndex), keyValue.substring(endIndex));
+                        if (endIndex < keyValue.length()) {
+                            configuration.put(keyValue.substring(0, startIndex), keyValue.substring(endIndex));
+                        }
                     }
                 }
-            }
 
-            if (line.hasOption("config-file")) {
-                configuration.putAll(Replicator.flattenMap(new ObjectMapper(new YAMLFactory()).readValue(
-                        new File(line.getOptionValue("config-file")),
-                        new TypeReference<Map<String, Object>>(){}
-                )));
-            }
+                if (line.hasOption("config-file")) {
+                    configuration.putAll(Replicator.flattenMap(new ObjectMapper(new YAMLFactory()).readValue(
+                            new File(line.getOptionValue("config-file")),
+                            new TypeReference<Map<String, Object>>() {
+                            }
+                    )));
+                }
 
-            if (line.hasOption("supplier")) {
-                configuration.put(EventSupplier.Configuration.TYPE, line.getOptionValue("supplier").toUpperCase());
-            }
+                if (line.hasOption("supplier")) {
+                    configuration.put(EventSupplier.Configuration.TYPE, line.getOptionValue("supplier").toUpperCase());
+                }
 
-            if (line.hasOption("applier")) {
-                configuration.put(EventApplier.Configuration.TYPE, line.getOptionValue("applier").toUpperCase());
-            }
+                if (line.hasOption("applier")) {
+                    configuration.put(EventApplier.Configuration.TYPE, line.getOptionValue("applier").toUpperCase());
+                }
 
-            new Replicator().start(configuration);
+                new Replicator().start(configuration);
+            }
         } catch (Exception exception) {
-            System.out.println();
+            new HelpFormatter().printHelp(Replicator.COMMAND_LINE_SYNTAX, null, options, exception.getMessage());
         }
     }
 

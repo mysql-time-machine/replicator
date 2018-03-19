@@ -38,7 +38,7 @@ import static com.codahale.metrics.MetricRegistry.name;
 public class KafkaApplier implements Applier {
 
     // how many rows go into one message
-    private static final int MESSAGE_BATCH_SIZE = 10;
+    private final int MESSAGE_BATCH_SIZE;
 
     private static boolean DRY_RUN;
 
@@ -119,6 +119,7 @@ public class KafkaApplier implements Applier {
     }
 
     public KafkaApplier(Configuration configuration, Meter meterForMessagesPushedToKafka) {
+
         DRY_RUN = configuration.isDryRunMode();
 
         fixedListOfIncludedTables = configuration.getKafkaTableList();
@@ -132,8 +133,11 @@ public class KafkaApplier implements Applier {
         apply_xid                 = configuration.getAugmenterApplyXid();
         paritioningMethod         = configuration.getKafkaPartitioningMethod();
         partitionColumns          = configuration.getKafkaPartitionColumns();
+        MESSAGE_BATCH_SIZE        = configuration.getKafkaNumberOfRowsPerMessage();
 
         this.meterForMessagesPushedToKafka = meterForMessagesPushedToKafka;
+
+        LOGGER.info("KafkaApplier: MESSAGE_BATCH_SIZE set to " + MESSAGE_BATCH_SIZE);
 
         if (!DRY_RUN) {
 
@@ -620,7 +624,7 @@ public class KafkaApplier implements Applier {
 
     @Override
     public PseudoGTIDCheckpoint getLastCommittedPseudGTIDCheckPoint() {
-        return null;
+        return this.safeCheckPoint;
     }
 
     @Override

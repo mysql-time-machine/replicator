@@ -6,7 +6,7 @@
 
     <groupId>com.booking</groupId>
     <artifactId>mysql-replicator</artifactId>
-    <version>0.14.4-rc2</version>
+    <version>0.14.4</version>
     <packaging>jar</packaging>
 
     <name>mysql-replicator</name>
@@ -30,8 +30,22 @@
     </scm>
     <developers>
         <developer>
+            <name>Aliaksandr Antaniuk</name>
+        </developer>
+        <developer>
             <name>Bosko Devetak</name>
             <email>bosko.devetak@gmail.com</email>
+        </developer>
+        <developer>
+            <id>dmitrieveu</id>
+            <name>Evgeny Dmitriev</name>
+        </developer>
+        <developer>
+            <name>Dmitry Bobrov</name>
+        </developer>
+        <developer>
+            <id>forlando</id>
+            <name>Fabricio Damasceno</name>
         </developer>
         <developer>
             <id>gregf1</id>
@@ -46,6 +60,13 @@
             <name>Mikhail Dutikov</name>
         </developer>
         <developer>
+            <id>muhammad-abbady</id>
+            <name>Muhammad Abbady</name>
+        </developer>
+        <developer>
+            <name>Nemanja Djuric</name>
+        </developer>
+        <developer>
             <id>chcat</id>
             <name>Pavel Salimov</name>
         </developer>
@@ -54,12 +75,27 @@
             <name>Pedro Silva</name>
         </developer>
         <developer>
+            <id>book</id>
+            <name>Philippe Bruhat (BooK)</name>
+        </developer>
+        <developer>
             <id>mrares</id>
             <name>Rares Mirica</name>
         </developer>
         <developer>
             <id>raynald</id>
             <name>Raynald Chung</name>
+        </developer>
+        <developer>
+            <id>grzkv</id>
+            <name>Roman Grytskiv</name>
+        </developer>
+        <developer>
+            <name>Somesh Malviya</name>
+        </developer>
+        <developer>
+            <id>vpytak</id>
+            <name>Volodymyr Pytak</name>
         </developer>
     </developers>
     <licenses>

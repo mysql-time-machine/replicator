@@ -17,7 +17,11 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 
 /**
- * Created by bosko on 11/10/15.
+ * Class that represents the current transaction
+ *
+ * There is an assumption that all tables in the transaction
+ * are from the same database. Cross database transactions
+ * are not supported.
  */
 public class CurrentTransaction {
 

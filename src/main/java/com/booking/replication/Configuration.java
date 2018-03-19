@@ -169,6 +169,8 @@ public class Configuration {
         public Boolean applyBeginEvent = false;
         @JsonProperty("apply_commit_event")
         public Boolean applyCommitEvent = false;
+        @JsonProperty("rows_per_message")
+        public Integer numberOfRowsPerMessage = 10;
     }
 
     public static final int PARTITIONING_METHOD_HASH_ROW = 0;
@@ -250,7 +252,7 @@ public class Configuration {
 
     public static class OrchestratorConfiguration {
         @JsonProperty("rewinding_threshold")
-        private long rewindingThreshold = 500;
+        private long rewindingThreshold = 1000;
         @JsonProperty("rewinding_enabled")
         private boolean rewindingEnabled = true;
 
@@ -656,6 +658,10 @@ public class Configuration {
     public boolean isKafkaApplyBeginEvent() { return kafka.applyBeginEvent; }
 
     public boolean isKafkaApplyCommitEvent() { return kafka.applyCommitEvent; }
+
+    public int getKafkaNumberOfRowsPerMessage() {
+        return kafka.numberOfRowsPerMessage;
+    }
 
     public boolean isDryRunMode() {
         return dryRunMode;

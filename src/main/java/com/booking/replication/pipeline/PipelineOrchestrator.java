@@ -376,7 +376,7 @@ public class PipelineOrchestrator extends Thread {
                 return event;
 
             } else {
-                LOGGER.info("Pipeline report: no items in producer event rawQueue. Will sleep for " + QUEUE_POLL_SLEEP + " and check again.");
+                LOGGER.debug("Pipeline report: no items in producer event rawQueue. Will sleep for " + QUEUE_POLL_SLEEP + " and check again.");
                 Thread.sleep(sleep);
                 long currentTime = System.currentTimeMillis();
                 long timeDiff = currentTime - timeOfLastEvent;
@@ -520,26 +520,39 @@ public class PipelineOrchestrator extends Thread {
             case MySQLConstants.QUERY_EVENT:
 
                 switch (QueryInspector.getQueryEventType((QueryEvent) event)) {
+                    // BEGIN and PSEUDOGTID are never skipped
                     case BEGIN:
                     case PSEUDOGTID:
                         return false;
                     case COMMIT:
-                        // COMMIT does not always contain database name so we get it
-                        // from current transaction metadata.
-                        // There is an assumption that all tables in the transaction
-                        // are from the same database. Cross database transactions
-                        // are not supported.
+
                         LOGGER.debug("Got commit event: " + event);
                         TableMapEvent firstMapEvent = currentTransaction.getFirstMapEventInTransaction();
+
+                        // ----------------------------------------------------------------------------------
+                        // Handle empty transactions:
+                        //
+                        // Transactions from non-replicated schemas are empty since their events are skipped.
+                        // If however we encounter an empty transaction for the replicated schema than a WARN
+                        // should be logged since this is not expected.
                         if (firstMapEvent == null) {
-                            LOGGER.warn(String.format(
-                                    "Received COMMIT event, but currentTransaction is empty! Tables in transaction are %s",
+                            String schemaName = ((QueryEvent) event).getDatabaseName().toString();
+                            if (isReplicant(schemaName)) {
+                                LOGGER.warn(String.format(
+                                    "Received COMMIT event for the replicated schema, but currentTransaction is empty! Tables in transaction are %s",
                                     Joiner.on(", ").join(currentTransaction.getCurrentTransactionTableMapEvents().keySet())
                                     )
-                            );
+                                );
+                            } else {
+                                LOGGER.debug(
+                                    String.format(
+                                        "Received COMMIT event for the non-replicated schema %s and currentTransaction is empty as expected.",
+                                        schemaName
+                                    )
+                                );
+                            }
                             dropTransaction();
                             return true;
-                            //throw new TransactionException("Got COMMIT while not in transaction: " + currentTransaction);
                         }
 
                         String currentTransactionDBName = firstMapEvent.getDatabaseName().toString();
@@ -784,7 +797,8 @@ public class PipelineOrchestrator extends Thread {
     }
 
     private boolean isTransactionSizeLimitExceeded() {
-        return configuration.getOrchestratorConfiguration().isRewindingEnabled() && (currentTransaction.getEventsCounter() > orchestratorConfiguration.getRewindingThreshold());
+        return configuration.getOrchestratorConfiguration().isRewindingEnabled()
+                && (currentTransaction.getEventsCounter() > orchestratorConfiguration.getRewindingThreshold());
     }
 
     private void doTimestampOverride(BinlogEventV4 event) {

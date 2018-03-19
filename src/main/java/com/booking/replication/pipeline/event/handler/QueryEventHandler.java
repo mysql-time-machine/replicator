@@ -101,9 +101,7 @@ public class QueryEventHandler implements BinlogEventV4Handler {
                 try {
                     String pseudoGTID = QueryInspector.extractPseudoGTID(querySQL);
 
-                    LOGGER.debug("PGTID: " + pseudoGTID);
-
-                    // THIS IS EXECUTED
+                    LOGGER.info("pseudoGTID event: " + pseudoGTID);
 
                     pipelinePosition.setCurrentPseudoGTID(pseudoGTID);
                     pipelinePosition.setCurrentPseudoGTIDFullQuery(querySQL);

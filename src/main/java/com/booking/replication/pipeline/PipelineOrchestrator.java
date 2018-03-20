@@ -536,10 +536,11 @@ public class PipelineOrchestrator extends Thread {
                         if (firstMapEvent == null) {
                             String schemaName = ((QueryEvent) event).getDatabaseName().toString();
                             if (isReplicant(schemaName)) {
-                                LOGGER.warn(String.format(
-                                        "Received COMMIT event for the replicated schema, but currentTransaction is empty! Tables in transaction are %s",
-                                        Joiner.on(", ").join(currentTransaction.getCurrentTransactionTableMapEvents().keySet())
-                                        )
+                                LOGGER.warn(
+                                    String.format(
+                                        "Received COMMIT event for the replicated schema, but currentTransaction is empty! Position of COMMIT %s",
+                                        ((QueryEvent) event).getBinlogFilename() + ":" + event.getHeader().getPosition()
+                                    )
                                 );
                             } else {
                                 LOGGER.debug(

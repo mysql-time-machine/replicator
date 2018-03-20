@@ -530,7 +530,22 @@ public class KafkaApplier implements Applier {
                 (rowBinlogPositionID.compareTo(partitionLastBufferedMessage.get(partitionNum).getLastRowBinlogPositionID()) > 0)
                 ||
                 // pseudoGTID checkpoints are ascending strings.
-                (
+                currentPseudoGtidIsAfterPartitionLastBufferedMessagePseudoGtid(partitionNum);
+
+    }
+
+    private boolean currentPseudoGtidIsAfterPartitionLastBufferedMessagePseudoGtid(int partitionNum) {
+
+        // There are some corner cases when safeCheckPoint is not initialized (for example before the
+        // first safe checkpoint is reached). This also applied for the messages in Kafka. In those cases
+        // we can not do the comparison and default to true, meaning that we assume that current message
+        // is the most recent received and allow writing to Kafka topic.
+        if (this.safeCheckPoint != null && partitionLastBufferedMessage.get(partitionNum) != null) {
+
+            if (this.safeCheckPoint.getPseudoGTID() != null
+                    && partitionLastBufferedMessage.get(partitionNum).getLastPseudoGTID() != null) {
+
+                boolean isAfter =
                     this.safeCheckPoint != null
                     &&
                     this
@@ -540,8 +555,16 @@ public class KafkaApplier implements Applier {
                             partitionLastBufferedMessage
                                 .get(partitionNum)
                                 .getLastPseudoGTID()
-                        ) > 0
-                );
+                        ) > 0;
+
+                return isAfter;
+
+            } else {
+                return true;
+            }
+        } else {
+            return true;
+        }
     }
 
     private void updateRowLastPositionID(String rowBinlogPositionID) {

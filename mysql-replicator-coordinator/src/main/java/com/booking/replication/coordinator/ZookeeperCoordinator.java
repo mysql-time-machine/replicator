@@ -15,10 +15,18 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ZookeeperCoordinator extends LeaderSelectorListenerAdapter implements Coordinator {
+    public interface Configuration {
+        String LEADERSHIP_PATH = "zookeeper.leadership.path";
+        String CONNECTION_STRING = "zookeeper.connection.string";
+        String RETRY_INITIAL_SLEEP = "zookeeper.retry.initial.sleep";
+        String RETRY_MAXIMUM_ATTEMPTS = "zookeeper.retry.maximum.attempts";
+    }
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final long WAIT_STEP_MILLIS = 100;
 
@@ -29,25 +37,21 @@ public class ZookeeperCoordinator extends LeaderSelectorListenerAdapter implemen
     private final AtomicBoolean hasLeadership;
 
     ZookeeperCoordinator(Map<String, String> configuration) {
-        RetryPolicy retryPolicy = new ExponentialBackoffRetry(
-                Integer.parseInt(configuration.getOrDefault(Configuration.RETRY_INITIAL_SLEEP, "1000")),
-                Integer.parseInt(configuration.getOrDefault(Configuration.RETRY_MAXIMUM_ATTEMPTS, "3"))
-        );
+        String leadershipPath = configuration.get(Configuration.LEADERSHIP_PATH);
+        String connectionString = configuration.get(Configuration.CONNECTION_STRING);
+        String retryInitialSleep = configuration.getOrDefault(Configuration.RETRY_INITIAL_SLEEP, "1000");
+        String retryMaximumAttempts = configuration.getOrDefault(Configuration.RETRY_MAXIMUM_ATTEMPTS, "3");
 
-        this.client = CuratorFrameworkFactory.newClient(
-                configuration.get(Configuration.CONNECTION_STRING),
-                retryPolicy
-        );
+        Objects.requireNonNull(leadershipPath, String.format("Configuration required: %s", Configuration.LEADERSHIP_PATH));
+        Objects.requireNonNull(connectionString, String.format("Configuration required: %s", Configuration.CONNECTION_STRING));
 
-        this.selector = new LeaderSelector(
-                this.client,
-                configuration.get(Configuration.LEADERSHIP_PATH),
-                this
-        );
-
+        this.client = CuratorFrameworkFactory.newClient(connectionString, new ExponentialBackoffRetry(Integer.parseInt(retryInitialSleep), Integer.parseInt(retryMaximumAttempts)));
+        this.selector = new LeaderSelector(this.client, leadershipPath, this);
         this.takeRunnableList = new ArrayList<>();
         this.lossRunnableList = new ArrayList<>();
         this.hasLeadership = new AtomicBoolean();
+
+        this.client.start();
     }
 
     @Override
@@ -119,13 +123,7 @@ public class ZookeeperCoordinator extends LeaderSelectorListenerAdapter implemen
     }
 
     @Override
-    public String defaultCheckpointPath() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public void start() {
-        this.client.start();
         this.selector.start();
     }
 

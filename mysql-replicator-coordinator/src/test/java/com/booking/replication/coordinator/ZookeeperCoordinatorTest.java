@@ -41,8 +41,8 @@ public class ZookeeperCoordinatorTest {
         Map<String, String> configuration = new HashMap<>();
 
         configuration.put(Coordinator.Configuration.TYPE, Coordinator.Type.ZOOKEEPER.name());
-        configuration.put(Coordinator.Configuration.CONNECTION_STRING, server.getConnectString());
-        configuration.put(Coordinator.Configuration.LEADERSHIP_PATH, "/leadership.coordinator");
+        configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, server.getConnectString());
+        configuration.put(ZookeeperCoordinator.Configuration.LEADERSHIP_PATH, "/leadership.coordinator");
 
         this.coordinator1 = Coordinator.build(configuration);
         this.coordinator1.onLeadershipTake(leadershipTake);

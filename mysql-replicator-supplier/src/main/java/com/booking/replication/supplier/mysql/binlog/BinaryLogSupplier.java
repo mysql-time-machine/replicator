@@ -15,6 +15,7 @@ public class BinaryLogSupplier implements EventSupplier {
     public interface Configuration {
         String MYSQL_HOSTNAME = "mysql.hostname";
         String MYSQL_PORT = "mysql.port";
+        String MYSQL_SCHEMA = "mysql.schema";
         String MYSQL_USERNAME = "mysql.username";
         String MYSQL_PASSWORD = "mysql.password";
     }
@@ -24,19 +25,20 @@ public class BinaryLogSupplier implements EventSupplier {
     public BinaryLogSupplier(Map<String, String> configuration, Checkpoint checkpoint) {
         String hostname = configuration.get(Configuration.MYSQL_HOSTNAME);
         String port = configuration.getOrDefault(Configuration.MYSQL_PORT, "3306");
+        String schema = configuration.get(Configuration.MYSQL_SCHEMA);
         String username = configuration.get(Configuration.MYSQL_USERNAME);
         String password = configuration.get(Configuration.MYSQL_PASSWORD);
 
         Objects.requireNonNull(hostname, String.format("Configuration required: %s", Configuration.MYSQL_HOSTNAME));
-        Objects.requireNonNull(port, String.format("Configuration required: %s", Configuration.MYSQL_PORT));
+        Objects.requireNonNull(schema, String.format("Configuration required: %s", Configuration.MYSQL_SCHEMA));
         Objects.requireNonNull(username, String.format("Configuration required: %s", Configuration.MYSQL_USERNAME));
         Objects.requireNonNull(password, String.format("Configuration required: %s", Configuration.MYSQL_PASSWORD));
 
-        this.client = this.getClient(hostname, Integer.parseInt(port), username, password, checkpoint);
+        this.client = this.getClient(hostname, Integer.parseInt(port), schema, username, password, checkpoint);
     }
 
-    private BinaryLogClient getClient(String hostname, int port, String username, String password, Checkpoint checkpoint) {
-        BinaryLogClient client = new BinaryLogClient(hostname, port, username, password);
+    private BinaryLogClient getClient(String hostname, int port, String schema, String username, String password, Checkpoint checkpoint) {
+        BinaryLogClient client = new BinaryLogClient(hostname, port, schema, username, password);
 
         if (checkpoint != null) {
             client.setServerId(checkpoint.getServerId());

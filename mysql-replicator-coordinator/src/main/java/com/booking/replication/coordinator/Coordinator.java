@@ -23,10 +23,6 @@ public interface Coordinator extends LeaderCoordinator, CheckpointCoordinator {
 
     interface Configuration {
         String TYPE = "coordinator.type";
-        String CONNECTION_STRING = "coordinator.connection.string";
-        String LEADERSHIP_PATH = "coordinator.leadership.path";
-        String RETRY_INITIAL_SLEEP = "coordinator.retry.initial.sleep";
-        String RETRY_MAXIMUM_ATTEMPTS = "coordinator.retry.maximum.attempts";
     }
 
     void start() throws InterruptedException;

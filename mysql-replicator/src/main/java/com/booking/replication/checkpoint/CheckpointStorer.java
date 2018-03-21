@@ -22,10 +22,7 @@ public interface CheckpointStorer extends Consumer<Event> {
 
                 return new CoordinatorCheckpointStorer(
                         coordinator,
-                        configuration.getOrDefault(
-                                CheckpointStorer.Configuration.PATH,
-                                coordinator.defaultCheckpointPath()
-                        )
+                        configuration.get(CheckpointStorer.Configuration.PATH)
                 );
             }
         };

@@ -12,12 +12,17 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FileCoordinator implements Coordinator {
+    public interface Configuration {
+        String LEADERSHIP_PATH = "file.leadership.path";
+    }
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final ExecutorService executor;
@@ -66,11 +71,6 @@ public class FileCoordinator implements Coordinator {
     @Override
     public void onLeadershipLoss(Runnable runnable) {
         this.lossRunnableList.add(runnable);
-    }
-
-    @Override
-    public String defaultCheckpointPath() {
-        return "/tmp/checkpoint.coordinator";
     }
 
     @Override

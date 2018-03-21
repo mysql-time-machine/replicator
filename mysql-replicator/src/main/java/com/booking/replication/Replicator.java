@@ -38,10 +38,7 @@ public class Replicator {
             );
 
             Checkpoint checkpoint = coordinator.loadCheckpoint(
-                    configuration.getOrDefault(
-                            CheckpointStorer.Configuration.PATH,
-                            coordinator.defaultCheckpointPath()
-                    ),
+                    configuration.get(CheckpointStorer.Configuration.PATH),
                     Checkpoint.class
             );
 

@@ -10,10 +10,8 @@ class ApplierTask extends HashMap<String, TransactionProxy> {
     private Future<HBaseTaskResult> taskFuture;
     private TaskStatus taskStatus;
 
-    // TODO: rename PseudoGTIDCheckpoint since its no longer just
-    //       for committed positions
-    //       One task can contain row ops sequence that spance across more than
-    //       one pGTID, so the last seen is maintained in the task
+    // One task can contain row ops sequence that spans across more than
+    // one pGTID, so the last seen is maintained in the task
     private PseudoGTIDCheckpoint pseudoGTIDCheckPoint; // <- latest one withing the task event range
 
     ApplierTask(TaskStatus taskStatus) {

@@ -45,10 +45,13 @@ public class Configuration {
     }
 
     @JsonDeserialize
-    private Payload payload;
+    @JsonProperty("payload")
+    private Payload payload = new Payload();
 
     private static class Payload implements Serializable {
-        public String table_name;
+
+        @JsonDeserialize
+        public String table_name = "";
     }
 
 

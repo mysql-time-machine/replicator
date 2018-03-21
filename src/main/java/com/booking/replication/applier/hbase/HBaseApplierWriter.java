@@ -240,7 +240,7 @@ public class HBaseApplierWriter {
             }
             retry--;
         }
-        LOGGER.error("Failed to create hbase connection from HBaseApplier, attempt " + retry + "/10. Giving up. Last expcetion was:" + lastException);
+        LOGGER.error("Failed to create hbase connection from HBaseApplier, attempt " + retry + "/10. Giving up. Last exception was:" + lastException);
         throw new IOException("Could not create HBase connection, all retry attempts failed. Last exception was:", lastException);
     }
 

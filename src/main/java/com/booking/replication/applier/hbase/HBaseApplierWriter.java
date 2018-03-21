@@ -521,7 +521,7 @@ public class HBaseApplierWriter {
             } catch (ExecutionException ex) {
                 LOGGER.error(String.format("Future failed for task %s, with exception: %s",
                         submittedTaskUuid,
-                        ex.getCause()));
+                        ex));
                 requeueTask(submittedTaskUuid);
                 applierTasksFailedCounter.inc();
             } catch (NullPointerException e) {
@@ -530,12 +530,6 @@ public class HBaseApplierWriter {
                 LOGGER.info(String.format("Task %s was canceled by interrupt. "
                         + "The task that has been canceled "
                         + "will be retired later by another future.", submittedTaskUuid), ei);
-                requeueTask(submittedTaskUuid);
-                applierTasksFailedCounter.inc();
-            } catch (CancellationException ce) {
-                LOGGER.error(String.format("Future failed for task %s, with exception: %s",
-                        submittedTaskUuid ,
-                        ce));
                 requeueTask(submittedTaskUuid);
                 applierTasksFailedCounter.inc();
             } catch (TaskAccountingException e) {

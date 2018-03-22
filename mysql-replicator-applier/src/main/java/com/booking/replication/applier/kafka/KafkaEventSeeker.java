@@ -16,14 +16,13 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class KafkaEventSeeker implements EventSeeker, Comparator<Checkpoint> {
+public class KafkaEventSeeker implements EventSeeker {
     public interface Configuration extends KafkaEventApplier.Configuration {
         String GROUP_ID = "kafka.group.id";
     }
@@ -76,7 +75,7 @@ public class KafkaEventSeeker implements EventSeeker, Comparator<Checkpoint> {
                             consumerRecord.key(), AugmentedEventHeaderImplementation.class
                     ).getCheckpoint();
 
-                    if (this.compare(lastCheckpoint, currentCheckpoint) < 0) {
+                    if (lastCheckpoint != null && lastCheckpoint.compareTo(currentCheckpoint) < 0) {
                         lastCheckpoint = currentCheckpoint;
                     }
                 }
@@ -92,47 +91,11 @@ public class KafkaEventSeeker implements EventSeeker, Comparator<Checkpoint> {
     public Event apply(Event event) {
         if (this.seeked) {
             return event;
-        } else if (this.compare(this.checkpoint, AugmentedEventHeader.class.cast(event.getHeader()).getCheckpoint()) < 0) {
+        } else if (this.checkpoint != null && this.checkpoint.compareTo(AugmentedEventHeader.class.cast(event.getHeader()).getCheckpoint()) < 0) {
             this.seeked = true;
             return event;
         } else {
             return null;
-        }
-    }
-
-    @Override
-    public int compare(Checkpoint checkpoint1, Checkpoint checkpoint2) {
-        if (checkpoint1 != null && checkpoint1.getPseudoGTID() != null &&
-                checkpoint2 != null && checkpoint2.getPseudoGTID() != null) {
-            if (checkpoint1.getPseudoGTID().equals(checkpoint2.getPseudoGTID())) {
-                return Integer.compare(checkpoint1.getPseudoGTIDIndex(), checkpoint2.getPseudoGTIDIndex());
-            } else {
-                return checkpoint1.getPseudoGTID().compareTo(checkpoint2.getPseudoGTID());
-            }
-        } else if (checkpoint1 != null && checkpoint1.getPseudoGTID() != null) {
-            return Integer.MAX_VALUE;
-        } else if (checkpoint2 != null && checkpoint2.getPseudoGTID() != null) {
-            return Integer.MIN_VALUE;
-        } else if (checkpoint1 != null && checkpoint2 != null) {
-            if (checkpoint1.getBinlogFilename() != null && checkpoint2.getBinlogFilename() != null) {
-                if (checkpoint1.getBinlogFilename().equals(checkpoint2.getBinlogFilename())) {
-                    return Long.compare(checkpoint1.getBinlogPosition(), checkpoint2.getBinlogPosition());
-                } else {
-                    return checkpoint1.getBinlogFilename().compareTo(checkpoint2.getBinlogFilename());
-                }
-            } else if (checkpoint1.getBinlogFilename() != null) {
-                return Integer.MAX_VALUE;
-            } else if (checkpoint2.getBinlogFilename() != null) {
-                return Integer.MIN_VALUE;
-            } else {
-                return 0;
-            }
-        } else if (checkpoint1 != null) {
-            return Integer.MAX_VALUE;
-        } else if (checkpoint2 != null) {
-            return Integer.MIN_VALUE;
-        } else {
-            return 0;
         }
     }
 }

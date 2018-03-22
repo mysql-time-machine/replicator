@@ -4,14 +4,15 @@ import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.model.Event;
 
 import java.util.Map;
-import java.util.function.Consumer;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 
-public interface CheckpointStorer extends Consumer<Event> {
+public interface CheckpointStorer extends BiConsumer<Event, Map<Event, AtomicReference<Event>>> {
     enum Type {
         NONE {
             @Override
             public <Destination> CheckpointStorer newInstance(Map<String, String> configuration, Destination destination) {
-                return event -> {
+                return (event, map) -> {
                 };
             }
         },

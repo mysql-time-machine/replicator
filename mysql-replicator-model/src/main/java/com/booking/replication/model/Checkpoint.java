@@ -1,7 +1,7 @@
 package com.booking.replication.model;
 
 @SuppressWarnings("unused")
-public class Checkpoint {
+public class Checkpoint implements Comparable<Checkpoint> {
     private long serverId;
     private String binlogFilename;
     private long binlogPosition;
@@ -67,5 +67,36 @@ public class Checkpoint {
 
     public void setPseudoGTIDIndex(int pseudoGTIDIndex) {
         this.pseudoGTIDIndex = pseudoGTIDIndex;
+    }
+
+    @Override
+    public int compareTo(Checkpoint checkpoint) {
+        if (this.getPseudoGTID() != null && checkpoint != null && checkpoint.getPseudoGTID() != null) {
+            if (this.getPseudoGTID().equals(checkpoint.getPseudoGTID())) {
+                return Integer.compare(this.getPseudoGTIDIndex(), checkpoint.getPseudoGTIDIndex());
+            } else {
+                return this.getPseudoGTID().compareTo(checkpoint.getPseudoGTID());
+            }
+        } else if (this.getPseudoGTID() != null) {
+            return Integer.MAX_VALUE;
+        } else if (checkpoint != null && checkpoint.getPseudoGTID() != null) {
+            return Integer.MIN_VALUE;
+        } else if (checkpoint != null) {
+            if (this.getBinlogFilename() != null && checkpoint.getBinlogFilename() != null) {
+                if (this.getBinlogFilename().equals(checkpoint.getBinlogFilename())) {
+                    return Long.compare(this.getBinlogPosition(), checkpoint.getBinlogPosition());
+                } else {
+                    return this.getBinlogFilename().compareTo(checkpoint.getBinlogFilename());
+                }
+            } else if (this.getBinlogFilename() != null) {
+                return Integer.MAX_VALUE;
+            } else if (checkpoint.getBinlogFilename() != null) {
+                return Integer.MIN_VALUE;
+            } else {
+                return 0;
+            }
+        } else {
+            return Integer.MAX_VALUE;
+        }
     }
 }

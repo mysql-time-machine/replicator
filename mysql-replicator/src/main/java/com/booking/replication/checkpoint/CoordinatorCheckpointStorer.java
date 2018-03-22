@@ -7,6 +7,8 @@ import com.booking.replication.model.augmented.AugmentedEventHeader;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class CoordinatorCheckpointStorer implements CheckpointStorer {
     private final CheckpointCoordinator coordinator;
@@ -18,10 +20,20 @@ public class CoordinatorCheckpointStorer implements CheckpointStorer {
     }
 
     @Override
-    public void accept(Event event) {
+    public void accept(Event event, Map<Event, AtomicReference<Event>> executing) {
         Checkpoint checkpoint = AugmentedEventHeader.class.cast(event.getHeader()).getCheckpoint();
 
         if (checkpoint.getPseudoGTID() != null && checkpoint.getPseudoGTIDIndex() == 0) {
+            while (executing.keySet().stream().map(Event::getHeader).anyMatch(
+                    eventHeader -> checkpoint.compareTo(AugmentedEventHeader.class.cast(eventHeader).getCheckpoint()) < 0
+            )) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException exception) {
+                    throw new RuntimeException(exception);
+                }
+            }
+
             try {
                 this.coordinator.storeCheckpoint(this.checkpointPath, checkpoint);
             } catch (IOException exception) {

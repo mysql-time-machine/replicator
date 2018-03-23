@@ -56,7 +56,7 @@ public class EventDispatcher implements RawBinlogEventHandler {
     public void handle(RawBinlogEvent event) throws TransactionException, TransactionSizeLimitException {
         LOGGER.debug("Handling event: " + event);
         try {
-            LOGGER.info("getting handler for { event type => " + event.getEventType() + ", class type => " + event.getClass().toString());
+            LOGGER.debug("trying to acquire handler for { event type => " + event.getEventType() + ", class type => " + event.getClass().toString());
             RawBinlogEventHandler eventHandler = getHandler(event.getEventType());
             eventHandler.handle(event);
         } catch (TransactionSizeLimitException e) {

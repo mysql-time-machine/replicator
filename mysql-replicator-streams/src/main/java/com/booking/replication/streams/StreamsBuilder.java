@@ -1,7 +1,9 @@
 package com.booking.replication.streams;
 
+import java.util.Deque;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -21,6 +23,7 @@ public final class StreamsBuilder<Input, Output> implements
 
     private int threads;
     private int tasks;
+    private Deque<Input> queue;
     private Supplier<Input> from;
     private Predicate<Input> filter;
     private Function<Input, Output> process;
@@ -30,6 +33,7 @@ public final class StreamsBuilder<Input, Output> implements
     private StreamsBuilder(Supplier<Input> from, Predicate<Input> filter, Function<Input, Output> process) {
         this.threads = 1;
         this.tasks = 1;
+        this.queue = null;
         this.from = from;
         this.filter = filter;
         this.process = process;
@@ -58,6 +62,17 @@ public final class StreamsBuilder<Input, Output> implements
     @Override
     public final StreamsBuilderFrom<Input, Output> tasks(int tasks) {
         this.tasks = tasks;
+        return this;
+    }
+
+    @Override
+    public StreamsBuilderFrom<Input, Output> queue() {
+        return this.queue(new ConcurrentLinkedDeque<>());
+    }
+
+    @Override
+    public StreamsBuilderFrom<Input, Output> queue(Deque<Input> queue) {
+        this.queue = queue;
         return this;
     }
 
@@ -109,6 +124,6 @@ public final class StreamsBuilder<Input, Output> implements
 
     @Override
     public final Streams<Input, Output> build() {
-        return new StreamsImplementation<>(this.threads, this.tasks, this.from, this.filter, this.process, this.to, this.post);
+        return new StreamsImplementation<>(this.threads, this.tasks, this.queue, this.from, this.filter, this.process, this.to, this.post);
     }
 }

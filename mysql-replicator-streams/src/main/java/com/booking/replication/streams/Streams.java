@@ -16,6 +16,8 @@ public interface Streams<Input, Output> {
 
     boolean push(Input input);
 
+    int size();
+
     static <Input> StreamsBuilderFrom<Input, Input> builder() {
         return new StreamsBuilder<>();
     }

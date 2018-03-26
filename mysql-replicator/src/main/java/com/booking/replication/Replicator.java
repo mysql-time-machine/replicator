@@ -22,6 +22,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -81,9 +85,15 @@ public class Replicator {
                 shutdown.run();
             };
 
+            ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+
+            AtomicLong delay = new AtomicLong();
+            AtomicLong count = new AtomicLong();
+
             Streams<Event, Event> streamsApplier = Streams.<Event>builder()
                     .threads(100)
                     .tasks(100)
+                    .queue()
                     .fromPush()
                     .to(applier)
                     .post(checkpointStorer)
@@ -94,7 +104,25 @@ public class Replicator {
                     .process(augmenter)
                     .process(seeker)
                     .to(streamsApplier::push)
+                    .post(event -> {
+                        delay.set(System.currentTimeMillis() - event.getHeader().getTimestamp());
+                        count.incrementAndGet();
+                    })
                     .build();
+
+            executor.scheduleAtFixedRate(() -> {
+                long timestamp = delay.get();
+                long quantity = count.getAndSet(0);
+
+                Replicator.LOG.info(
+                    String.format("Delay: %03d hours %02d minutes %02d seconds, Quantity: %d",
+                            TimeUnit.MILLISECONDS.toHours(timestamp),
+                            TimeUnit.MILLISECONDS.toMinutes(timestamp) - TimeUnit.HOURS.toMinutes(TimeUnit.MILLISECONDS.toHours(timestamp)),
+                            TimeUnit.MILLISECONDS.toSeconds(timestamp) - TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(timestamp)),
+                            quantity
+                    )
+                );
+            }, 10, 10, TimeUnit.SECONDS);
 
             supplier.onEvent(streamsSupplier::push);
 
@@ -123,6 +151,7 @@ public class Replicator {
                     streamsSupplier.stop();
                     streamsApplier.stop();
                     applier.close();
+                    executor.shutdown();
                 } catch (IOException | InterruptedException exception) {
                     exceptionHandle.accept(exception);
                 }

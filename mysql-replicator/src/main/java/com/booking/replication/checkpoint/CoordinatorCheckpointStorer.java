@@ -24,21 +24,15 @@ public class CoordinatorCheckpointStorer implements CheckpointStorer {
         Checkpoint checkpoint = AugmentedEventHeader.class.cast(event.getHeader()).getCheckpoint();
 
         if (checkpoint.getPseudoGTID() != null && checkpoint.getPseudoGTIDIndex() == 0) {
-            while (executing.keySet().stream().map(Event::getHeader).anyMatch(
-                    eventHeader -> checkpoint.compareTo(AugmentedEventHeader.class.cast(eventHeader).getCheckpoint()) < 0
-            )) {
+            /*if (executing.keySet().stream().map(Event::getHeader).allMatch(
+                    eventHeader -> checkpoint.compareTo(AugmentedEventHeader.class.cast(eventHeader).getCheckpoint()) >= 0
+            )) {*/
                 try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException exception) {
-                    throw new RuntimeException(exception);
+                    this.coordinator.storeCheckpoint(this.checkpointPath, checkpoint);
+                } catch (IOException exception) {
+                    throw new UncheckedIOException(exception);
                 }
-            }
-
-            try {
-                this.coordinator.storeCheckpoint(this.checkpointPath, checkpoint);
-            } catch (IOException exception) {
-                throw new UncheckedIOException(exception);
-            }
+            //}
         }
     }
 }

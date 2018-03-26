@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class KafkaEventSeeker implements EventSeeker {
@@ -30,11 +31,11 @@ public class KafkaEventSeeker implements EventSeeker {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final Checkpoint checkpoint;
-    private boolean seeked;
+    private final AtomicBoolean seeked;
 
     public KafkaEventSeeker(Checkpoint checkpoint) {
         this.checkpoint = checkpoint;
-        this.seeked = false;
+        this.seeked = new AtomicBoolean();
     }
 
     public KafkaEventSeeker(Map<String, String> configuration, Checkpoint checkpoint) {
@@ -47,7 +48,7 @@ public class KafkaEventSeeker implements EventSeeker {
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
 
         this.checkpoint = this.geCheckpoint(checkpoint, bootstrapServers, groupId, topic);
-        this.seeked = false;
+        this.seeked = new AtomicBoolean();
     }
 
     private Checkpoint geCheckpoint(Checkpoint checkpoint, String bootstrapServers, String groupId, String topic) {
@@ -89,10 +90,10 @@ public class KafkaEventSeeker implements EventSeeker {
 
     @Override
     public Event apply(Event event) {
-        if (this.seeked) {
+        if (this.seeked.get()) {
             return event;
-        } else if (this.checkpoint != null && this.checkpoint.compareTo(AugmentedEventHeader.class.cast(event.getHeader()).getCheckpoint()) < 0) {
-            this.seeked = true;
+        } else if (this.checkpoint == null || this.checkpoint.compareTo(AugmentedEventHeader.class.cast(event.getHeader()).getCheckpoint()) < 0) {
+            this.seeked.set(true);
             return event;
         } else {
             return null;

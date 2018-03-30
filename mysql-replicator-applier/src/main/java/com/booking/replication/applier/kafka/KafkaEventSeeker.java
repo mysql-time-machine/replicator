@@ -66,18 +66,22 @@ public class KafkaEventSeeker implements EventSeeker {
 
             for (TopicPartition topicPartition : topicPartitions) {
                 consumer.assign(Collections.singletonList(topicPartition));
-                Map<TopicPartition, Long> endOffsets = consumer.endOffsets(Collections.singletonList(topicPartition));
-                consumer.seek(topicPartition, endOffsets.get(topicPartition) - 1);
 
-                ConsumerRecords<byte[], byte[]> consumerRecords = consumer.poll(100);
+                long endOffset = consumer.endOffsets(Collections.singletonList(topicPartition)).get(topicPartition);
 
-                for (ConsumerRecord<byte[], byte[]> consumerRecord : consumerRecords) {
-                    Checkpoint currentCheckpoint = KafkaEventSeeker.MAPPER.readValue(
-                            consumerRecord.key(), AugmentedEventHeaderImplementation.class
-                    ).getCheckpoint();
+                if (endOffset > 0) {
+                    consumer.seek(topicPartition, endOffset - 1);
 
-                    if (lastCheckpoint != null && lastCheckpoint.compareTo(currentCheckpoint) < 0) {
-                        lastCheckpoint = currentCheckpoint;
+                    ConsumerRecords<byte[], byte[]> consumerRecords = consumer.poll(100);
+
+                    for (ConsumerRecord<byte[], byte[]> consumerRecord : consumerRecords) {
+                        Checkpoint currentCheckpoint = KafkaEventSeeker.MAPPER.readValue(
+                                consumerRecord.key(), AugmentedEventHeaderImplementation.class
+                        ).getCheckpoint();
+
+                        if (lastCheckpoint != null && lastCheckpoint.compareTo(currentCheckpoint) < 0) {
+                            lastCheckpoint = currentCheckpoint;
+                        }
                     }
                 }
             }

@@ -67,7 +67,7 @@ public class KafkaEventApplier implements EventApplier {
 
     private int getTotalPartitions() {
         try (Producer<byte[], byte[]> producer = this.getProducer(this.bootstrapServers)) {
-            return producer.partitionsFor(this.topic).stream().mapToInt(PartitionInfo::partition).max().orElseThrow(() -> new InvalidPartitionsException("partitions not found"));
+            return producer.partitionsFor(this.topic).stream().mapToInt(PartitionInfo::partition).max().orElseThrow(() -> new InvalidPartitionsException("partitions not found")) + 1;
         }
     }
 

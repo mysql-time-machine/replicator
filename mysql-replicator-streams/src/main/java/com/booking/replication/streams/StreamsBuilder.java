@@ -6,10 +6,10 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -23,17 +23,19 @@ public final class StreamsBuilder<Input, Output> implements
 
     private int threads;
     private int tasks;
-    private Deque<Input> queue;
-    private Supplier<Input> from;
+    private BiFunction<Input, Integer, Integer> partitioner;
+    private Class<? extends Deque> queueType;
+    private Function<Integer, Input> from;
     private Predicate<Input> filter;
     private Function<Input, Output> process;
     private Consumer<Output> to;
     private BiConsumer<Input, Map<Input, AtomicReference<Output>>> post;
 
-    private StreamsBuilder(Supplier<Input> from, Predicate<Input> filter, Function<Input, Output> process) {
+    private StreamsBuilder(Function<Integer, Input> from, Predicate<Input> filter, Function<Input, Output> process) {
         this.threads = 1;
         this.tasks = 1;
-        this.queue = null;
+        this.partitioner = null;
+        this.queueType = null;
         this.from = from;
         this.filter = filter;
         this.process = process;
@@ -55,29 +57,45 @@ public final class StreamsBuilder<Input, Output> implements
 
     @Override
     public final StreamsBuilderFrom<Input, Output> threads(int threads) {
-        this.threads = threads;
-        return this;
+        if (tasks > 0) {
+            this.threads = threads;
+            return this;
+        } else {
+            throw new IllegalArgumentException();
+        }
     }
 
     @Override
     public final StreamsBuilderFrom<Input, Output> tasks(int tasks) {
-        this.tasks = tasks;
+        if (tasks > 0) {
+            this.tasks = tasks;
+            return this;
+        } else {
+            throw new IllegalArgumentException();
+        }
+    }
+
+    @Override
+    public StreamsBuilderFrom<Input, Output> partitioner(BiFunction<Input, Integer, Integer> partitioner) {
+        Objects.requireNonNull(partitioner);
+        this.partitioner = partitioner;
         return this;
     }
 
     @Override
     public StreamsBuilderFrom<Input, Output> queue() {
-        return this.queue(new ConcurrentLinkedDeque<>());
+        return this.queue(ConcurrentLinkedDeque.class);
     }
 
     @Override
-    public StreamsBuilderFrom<Input, Output> queue(Deque<Input> queue) {
-        this.queue = queue;
+    public StreamsBuilderFrom<Input, Output> queue(Class<? extends Deque> queueType) {
+        Objects.requireNonNull(queueType);
+        this.queueType = queueType;
         return this;
     }
 
     @Override
-    public final StreamsBuilderFilter<Input, Output> fromPull(Supplier<Input> supplier) {
+    public final StreamsBuilderFilter<Input, Output> fromPull(Function<Integer, Input> supplier) {
         Objects.requireNonNull(supplier);
         this.from = supplier;
         return this;
@@ -124,6 +142,6 @@ public final class StreamsBuilder<Input, Output> implements
 
     @Override
     public final Streams<Input, Output> build() {
-        return new StreamsImplementation<>(this.threads, this.tasks, this.queue, this.from, this.filter, this.process, this.to, this.post);
+        return new StreamsImplementation<>(this.threads, this.tasks, this.partitioner, this.queueType, this.from, this.filter, this.process, this.to, this.post);
     }
 }

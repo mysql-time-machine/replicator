@@ -13,7 +13,7 @@ public class StreamsTest {
     public void testFromPull() throws InterruptedException {
         Streams.<Integer>builder()
                 .queue()
-                .fromPull(() -> ThreadLocalRandom.current().nextInt())
+                .fromPull((task) -> ThreadLocalRandom.current().nextInt())
                 .to((value) -> {
                 })
                 .build()
@@ -41,7 +41,7 @@ public class StreamsTest {
     public void testFilter() throws InterruptedException {
         Streams.<Integer>builder()
                 .queue()
-                .fromPull(() -> ThreadLocalRandom.current().nextInt())
+                .fromPull((task) -> ThreadLocalRandom.current().nextInt())
                 .filter((value) -> value > 0)
                 .to((value) -> assertTrue(value > 0))
                 .build()
@@ -54,7 +54,7 @@ public class StreamsTest {
     public void testProcess() throws InterruptedException {
         Streams.<Integer>builder()
                 .queue()
-                .fromPull(() -> ThreadLocalRandom.current().nextInt())
+                .fromPull((task) -> ThreadLocalRandom.current().nextInt())
                 .filter((value) -> value > 0)
                 .process(Object::toString)
                 .to((value) -> assertTrue(String.class.isInstance(value)))
@@ -68,7 +68,7 @@ public class StreamsTest {
     public void testMultipleProcess() throws InterruptedException {
         Streams.<Integer>builder()
                 .queue()
-                .fromPull(() -> ThreadLocalRandom.current().nextInt())
+                .fromPull((task) -> ThreadLocalRandom.current().nextInt())
                 .filter(value -> value > 0)
                 .process(Object::toString)
                 .process((value) -> String.format("value=%s", value))
@@ -83,7 +83,7 @@ public class StreamsTest {
     public void testMultipleTo() throws InterruptedException {
         Streams.<Integer>builder()
                 .queue()
-                .fromPull(() -> ThreadLocalRandom.current().nextInt())
+                .fromPull((task) -> ThreadLocalRandom.current().nextInt())
                 .filter(value -> value > 0)
                 .process(Object::toString)
                 .to((value) -> assertTrue(String.class.isInstance(value)))
@@ -98,7 +98,7 @@ public class StreamsTest {
     public void testPost() throws InterruptedException {
         Streams.<Integer>builder()
                 .queue()
-                .fromPull(() -> ThreadLocalRandom.current().nextInt())
+                .fromPull((task) -> ThreadLocalRandom.current().nextInt())
                 .filter(value -> value > 0)
                 .process(Object::toString)
                 .to((value) -> assertTrue(String.class.isInstance(value)))

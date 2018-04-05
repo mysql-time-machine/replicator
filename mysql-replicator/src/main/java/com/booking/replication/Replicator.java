@@ -69,30 +69,14 @@ public class Replicator {
                     coordinator
             );
 
-            Runnable shutdown = () -> {
-                try {
-                    Replicator.LOG.log(Level.INFO, "stopping coordinator");
-
-                    coordinator.stop();
-                } catch (InterruptedException exception) {
-                    Replicator.LOG.log(Level.SEVERE, "error stopping", exception);
-                }
-            };
-
-            Consumer<Exception> exceptionHandle = (externalException) -> {
-                Replicator.LOG.log(Level.SEVERE, "error", externalException);
-
-                shutdown.run();
-            };
-
             ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
             AtomicLong delay = new AtomicLong();
             AtomicLong count = new AtomicLong();
 
             Streams<Event, Event> streamsApplier = Streams.<Event>builder()
-                    .threads(100)
-                    .tasks(100)
+                    .threads(10)
+                    .tasks(8)
                     .queue()
                     .fromPush()
                     .to(applier)
@@ -125,6 +109,22 @@ public class Replicator {
             }, 10, 10, TimeUnit.SECONDS);
 
             supplier.onEvent(streamsSupplier::push);
+
+            Runnable shutdown = () -> {
+                try {
+                    Replicator.LOG.log(Level.INFO, "stopping coordinator");
+
+                    coordinator.stop();
+                } catch (InterruptedException exception) {
+                    Replicator.LOG.log(Level.SEVERE, "error stopping", exception);
+                }
+            };
+
+            Consumer<Exception> exceptionHandle = (externalException) -> {
+                Replicator.LOG.log(Level.SEVERE, "error", externalException);
+
+                shutdown.run();
+            };
 
             streamsSupplier.onException(exceptionHandle);
             streamsApplier.onException(exceptionHandle);

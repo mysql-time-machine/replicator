@@ -1,5 +1,6 @@
 package com.booking.replication.streams;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.Map;
@@ -7,14 +8,15 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -22,9 +24,11 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     private static final Logger LOG = Logger.getLogger(StreamsImplementation.class.getName());
 
     private final int tasks;
-    private final Deque<Input> queue;
+    private final BiFunction<Input, Integer, Integer> partitioner;
+    private final Deque<Input>[] queues;
     private final ExecutorService executor;
-    private final Supplier<Input> from;
+    private final Function<Integer, Input> from;
+    private final BiConsumer<Integer, Input> requeue;
     private final Predicate<Input> filter;
     private final Function<Input, Output> process;
     private final Consumer<Output> to;
@@ -34,21 +38,42 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     private final AtomicBoolean running;
     private Consumer<Exception> handler;
 
-    StreamsImplementation(int threads, int tasks, Deque<Input> queue, Supplier<Input> from, Predicate<Input> filter, Function<Input, Output> process, Consumer<Output> to, BiConsumer<Input, Map<Input, AtomicReference<Output>>> post) {
+    @SuppressWarnings("unchecked")
+    StreamsImplementation(int threads, int tasks, BiFunction<Input, Integer, Integer> partitioner, Class<? extends Deque> queueType, Function<Integer, Input> from, Predicate<Input> filter, Function<Input, Output> process, Consumer<Output> to, BiConsumer<Input, Map<Input, AtomicReference<Output>>> post) {
         this.tasks = tasks;
-        this.queue = queue;
 
-        if (this.queue != null) {
-            this.executor = Executors.newFixedThreadPool(threads);
+        if (partitioner != null) {
+            this.partitioner = partitioner;
+        } else {
+            this.partitioner = (input, maximum) -> ThreadLocalRandom.current().nextInt(maximum);
+        }
 
-            if (from == null) {
-                this.from = StreamsImplementation.this.queue::poll;
-            } else {
-                this.from = from;
+        if (queueType != null) {
+            this.queues = new Deque[this.tasks];
+
+            for (int index = 0; index < this.queues.length; index++) {
+                try {
+                    this.queues[index] = queueType.newInstance();
+                } catch (ReflectiveOperationException exception) {
+                    throw new RuntimeException(exception);
+                }
             }
+        } else {
+            this.queues = null;
+        }
+
+        if (this.queues != null) {
+            this.executor = Executors.newFixedThreadPool(threads);
+            this.from = (task) -> StreamsImplementation.this.queues[task].poll();
+            this.requeue = (task, input) -> StreamsImplementation.this.queues[task].offerFirst(input);
+        } else if(from != null) {
+            this.executor = Executors.newFixedThreadPool(threads);
+            this.from = from;
+            this.requeue = null;
         } else {
             this.executor = null;
             this.from = null;
+            this.requeue = null;
         }
 
         this.filter = filter;
@@ -82,26 +107,28 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     @Override
     public final Streams<Input, Output> start() {
         if (this.executor != null && !this.running.getAndSet(true)) {
-            Runnable runnable = () -> {
+            Consumer<Integer> consumer = (task) -> {
                 Input input = null;
 
                 try {
                     while (this.running.get()) {
-                        input = this.from.get();
+                        input = this.from.apply(task);
                         this.process(input);
                         input = null;
                     }
                 } catch (Exception exception) {
                     this.handler.accept(exception);
                 } finally {
-                    if (this.queue != null && input != null) {
-                        this.queue.offerFirst(input);
+                    if (this.requeue != null) {
+                        this.requeue.accept(task, input);
                     }
                 }
             };
 
-            for (int task = 0; task < this.tasks; task++) {
-                this.executor.execute(runnable);
+            for (int index = 0; index < this.tasks; index++) {
+                final int task = index;
+
+                this.executor.execute(() -> consumer.accept(task));
             }
 
             StreamsImplementation.LOG.log(Level.FINE, "streams started");
@@ -146,7 +173,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
 
     @Override
     public final boolean push(Input input) {
-        if (this.queue == null && this.from == null) {
+        if (this.queues == null && this.from == null) {
             try {
                 this.process(input);
                 return true;
@@ -155,20 +182,20 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
                 return false;
             }
         } else {
-            Objects.requireNonNull(this.queue, "invalid operation");
+            Objects.requireNonNull(this.queues, "invalid operation");
 
             if (!this.running.get()) {
                 throw new IllegalStateException("streams is stopped");
             }
 
-            return this.queue.offer(input);
+            return this.queues[this.partitioner.apply(input, this.tasks)].offer(input);
         }
     }
 
     @Override
     public final int size() {
-        if (this.queue != null) {
-            return this.queue.size();
+        if (this.queues != null) {
+            return Arrays.stream(this.queues).mapToInt(Deque::size).sum();
         } else {
             return 0;
         }

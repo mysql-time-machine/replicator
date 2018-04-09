@@ -84,6 +84,7 @@ public class Replicator {
                     .build();
 
             Streams<Event, Event> streamsSupplier = Streams.<Event>builder()
+                    .queue() // TODO: internal buffer for push - for some reason reduces performance - investigate
                     .fromPush()
                     .process(augmenter)
                     .process(seeker)

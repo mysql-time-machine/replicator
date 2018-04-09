@@ -19,7 +19,7 @@ public interface Augmenter extends Function<Event, Event> {
             public Augmenter newInstance(Map<String, String> configuration) {
                 return new PseudoGTIDAugmenter(configuration);
             }
-        },
+        }, // TODO: add augmenter chaining: augmenter = Augmenter.with(Peudo).then(Event)
         EVENT {
             @Override
             public Augmenter newInstance(Map<String, String> configuration) {
@@ -47,6 +47,7 @@ public interface Augmenter extends Function<Event, Event> {
     }
 
     static Augmenter build(Map<String, String> configuration) {
+
         return Augmenter.Type.valueOf(
                 configuration.getOrDefault(Configuration.TYPE, Type.NONE.name())
         ).newInstance(configuration);

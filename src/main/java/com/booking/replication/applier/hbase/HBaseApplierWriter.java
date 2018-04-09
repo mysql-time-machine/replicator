@@ -83,7 +83,7 @@ public class HBaseApplierWriter {
     private static final
         ConcurrentHashMap<String, String> taskUUIDToPseudoGTID = new ConcurrentHashMap<>();
 
-    private final RowTimestampOrganizer timestampOrganizer;
+    private RowTimestampOrganizer timestampOrganizer;
     private static PseudoGTIDCheckpoint latestCommittedPseudoGTIDCheckPoint;
     /**
      * Shared connection used by all tasks in applier.
@@ -172,7 +172,9 @@ public class HBaseApplierWriter {
         taskPool          = Executors.newFixedThreadPool(this.poolSize);
 
         mutationGenerator = new HBaseApplierMutationGenerator(configuration);
-        timestampOrganizer = new RowTimestampOrganizer();
+        if (!configuration.isInitialSnapshotMode()) {
+            timestampOrganizer = new RowTimestampOrganizer();
+        }
 
         hbaseConf.set("hbase.zookeeper.quorum", configuration.getHBaseQuorum());
         hbaseConf.set("hbase.client.keyvalue.maxsize", "0");
@@ -290,7 +292,9 @@ public class HBaseApplierWriter {
         }
 
         List<AugmentedRow> augmentedRows  = augmentedRowsEvent.getSingleRowEvents();
-        timestampOrganizer.organizeTimestamps(augmentedRows, mySQLTableName, currentTransactionUUID);
+        if (timestampOrganizer != null) {
+            timestampOrganizer.organizeTimestamps(augmentedRows, mySQLTableName, currentTransactionUUID);
+        }
 
         // Add to buffer
         for (AugmentedRow augmentedRow : augmentedRows) {

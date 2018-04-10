@@ -525,7 +525,7 @@ public class HBaseApplierWriter {
             } catch (ExecutionException ex) {
                 LOGGER.error(String.format("Future failed for task %s, with exception: %s",
                         submittedTaskUuid,
-                        ex));
+                        ex.getMessage()), ex);
                 requeueTask(submittedTaskUuid);
                 applierTasksFailedCounter.inc();
             } catch (NullPointerException e) {

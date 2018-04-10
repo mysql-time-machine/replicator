@@ -8,6 +8,7 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.io.compress.Compression;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.RegionSplitter;
 import org.slf4j.Logger;
@@ -81,8 +82,10 @@ public class HBaseSchemaManager {
 
                     HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);
                     HColumnDescriptor cd = new HColumnDescriptor("d");
+                    cd.setCompressionType(Compression.Algorithm.SNAPPY);
                     cd.setMaxVersions(versions);
                     tableDescriptor.addFamily(cd);
+                    tableDescriptor.setCompactionEnabled(true);
 
                     // presplit into 16 regions
                     RegionSplitter.HexStringSplit splitter = new RegionSplitter.HexStringSplit();
@@ -119,12 +122,14 @@ public class HBaseSchemaManager {
 
                     HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);
                     HColumnDescriptor cd = new HColumnDescriptor("d");
+                    cd.setCompressionType(Compression.Algorithm.SNAPPY);
                     cd.setMaxVersions(DELTA_TABLE_MAX_VERSIONS);
                     tableDescriptor.addFamily(cd);
+                    tableDescriptor.setCompactionEnabled(true);
 
                     // if daily table pre-split to 16 regions;
                     // if initial snapshot pre-split to 256 regions
-                    if (isInitialSnapshotMode) {
+                    /*if (isInitialSnapshotMode) {
                         RegionSplitter.HexStringSplit splitter = new RegionSplitter.HexStringSplit();
                         byte[][] splitKeys = splitter.split(INITIAL_SNAPSHOT_DEFAULT_REGIONS);
                         admin.createTable(tableDescriptor, splitKeys);
@@ -132,7 +137,9 @@ public class HBaseSchemaManager {
                         RegionSplitter.HexStringSplit splitter = new RegionSplitter.HexStringSplit();
                         byte[][] splitKeys = splitter.split(DAILY_DELTA_TABLE_DEFAULT_REGIONS);
                         admin.createTable(tableDescriptor, splitKeys);
-                    }
+                    }*/
+
+                    admin.createTable(tableDescriptor);
                 } else {
                     LOGGER.info("Table " + hbaseTableName + " allready exists in HBase. Probably a case of replaying the binlog.");
                 }
@@ -211,12 +218,13 @@ public class HBaseSchemaManager {
                 HColumnDescriptor cd = new HColumnDescriptor("d");
                 cd.setMaxVersions(DEFAULT_SCHEMA_VERSIONS);
                 tableDescriptor.addFamily(cd);
+                tableDescriptor.setCompactionEnabled(true);
 
                 // pre-split into 16 regions
-                RegionSplitter.HexStringSplit splitter = new RegionSplitter.HexStringSplit();
-                byte[][] splitKeys = splitter.split(SCHEMA_HISTORY_TABLE_DEFAULT_REGIONS);
+                // RegionSplitter.HexStringSplit splitter = new RegionSplitter.HexStringSplit();
+                // byte[][] splitKeys = splitter.split(SCHEMA_HISTORY_TABLE_DEFAULT_REGIONS);
 
-                admin.createTable(tableDescriptor, splitKeys);
+                admin.createTable(tableDescriptor); // , splitKeys);
             } else {
                 LOGGER.info("Table " + hbaseTableName + " already exists in HBase. Probably a case of replaying the binlog.");
             }

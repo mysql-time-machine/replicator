@@ -82,6 +82,8 @@ public class BinlogEventProducer {
         // disable lv2 buffer
         openReplicator.setLevel2BufferSize(-1);
 
+        openReplicator.setSocketReceiveBufferSize(4 * 1024 * 1024);
+
         openReplicator.setBinlogEventListener(event -> {
             producedEvents.mark();
 

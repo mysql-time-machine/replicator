@@ -43,10 +43,10 @@ public class UpdateRowsEventHandler implements BinlogEventV4Handler {
                     .mapDataEventToSchema(event, currentTransaction)
                     .removeRowsWithoutPrimaryKey();
 
-        eventHandlerConfiguration.getApplier().applyAugmentedRowsEvent(augmentedRowsEvent, currentTransaction);
-
-        updateEventCounter.mark();
-
+        if (!augmentedRowsEvent.getSingleRowEvents().isEmpty()) {
+            eventHandlerConfiguration.getApplier().applyAugmentedRowsEvent(augmentedRowsEvent, currentTransaction);
+            updateEventCounter.mark();
+        }
     }
 
     @Override

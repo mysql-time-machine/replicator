@@ -43,9 +43,13 @@ public class WriteRowsEventHandler implements BinlogEventV4Handler {
                 .mapDataEventToSchema(event, currentTransaction)
                 .removeRowsWithoutPrimaryKey();
 
-        eventHandlerConfiguration.getApplier().applyAugmentedRowsEvent(augmentedRowsEvent, currentTransaction);
-
-        counter.mark();
+        if (!augmentedRowsEvent.getSingleRowEvents().isEmpty()) {
+            eventHandlerConfiguration.getApplier().applyAugmentedRowsEvent(
+                augmentedRowsEvent,
+                currentTransaction
+            );
+            counter.mark();
+        }
     }
 
     @Override

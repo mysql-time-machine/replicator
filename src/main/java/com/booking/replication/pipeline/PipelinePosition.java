@@ -154,35 +154,4 @@ public class PipelinePosition {
         this.currentReplicantServerID = currentReplicantServerID;
     }
 
-    public void updatePipelineLastMapEventPosition(
-        String host,
-        int serverID,
-        TableMapEvent event,
-        long fakeMicrosecondCounter
-    ) {
-        if (this.getLastMapEventPosition() == null) {
-            this.setLastMapEventPosition(new BinlogPositionInfo(
-                    host,
-                    serverID,
-                    event.getBinlogFilename(),
-                    event.getHeader().getPosition(),
-                    fakeMicrosecondCounter
-            ));
-        } else {
-            this.getLastMapEventPosition().setHost(host);
-            this.getLastMapEventPosition().setServerID(serverID);
-            this.getLastMapEventPosition().setBinlogFilename(EventPosition.getEventBinlogFileName(event));
-            this.getLastMapEventPosition().setBinlogPosition(EventPosition.getEventBinlogPosition(event));
-            this.getLastMapEventPosition().setFakeMicrosecondsCounter(fakeMicrosecondCounter);
-        }
-    }
-
-    public void updateCurrentPipelinePosition(String host, int serverID, String binlogFilename, long binlogPosition, long fakeMicrosecondCounter) {
-        this.getCurrentPosition().setHost(host);
-        this.getCurrentPosition().setServerID(serverID);
-        this.getCurrentPosition().setBinlogFilename(binlogFilename);
-        this.getCurrentPosition().setBinlogPosition(binlogPosition);
-        this.getCurrentPosition().setFakeMicrosecondsCounter(fakeMicrosecondCounter);
-    }
-
 }

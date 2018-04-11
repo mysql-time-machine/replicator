@@ -32,11 +32,21 @@ public class UpdateRowsEventHandler implements BinlogEventV4Handler {
     }
 
     @Override
-    public void apply(BinlogEventV4 binlogEventV4, CurrentTransaction currentTransaction) throws TableMapException, ApplierException, IOException {
+    public void apply(BinlogEventV4 binlogEventV4, CurrentTransaction currentTransaction)
+            throws TableMapException, ApplierException, IOException {
+
         final AbstractRowEvent event = (AbstractRowEvent) binlogEventV4;
-        AugmentedRowsEvent augmentedRowsEvent = eventHandlerConfiguration.getEventAugmenter().mapDataEventToSchema(event, currentTransaction);
+
+        AugmentedRowsEvent augmentedRowsEvent =
+                eventHandlerConfiguration
+                    .getEventAugmenter()
+                    .mapDataEventToSchema(event, currentTransaction)
+                    .removeRowsWithoutPrimaryKey();
+
         eventHandlerConfiguration.getApplier().applyAugmentedRowsEvent(augmentedRowsEvent, currentTransaction);
+
         updateEventCounter.mark();
+
     }
 
     @Override

@@ -675,8 +675,12 @@ public class PipelineOrchestrator extends Thread {
         // set binlog pos to begin pos, start openReplicator and apply the xid data to all events
         try {
             binlogEventProducer.stopAndClearQueue(10000, TimeUnit.MILLISECONDS);
+
             binlogEventProducer.setBinlogFileName(EventPosition.getEventBinlogFileName(beginEvent));
+
+            LOGGER.info("restarting producer from beginEvent position " + EventPosition.getEventBinlogNextPosition(beginEvent));
             binlogEventProducer.setBinlogPosition(EventPosition.getEventBinlogNextPosition(beginEvent));
+
             binlogEventProducer.start();
         } catch (Exception e) {
             throw new BinlogEventProducerException("Can't stop binlogEventProducer to rewind a stream to the end of a transaction: ");
@@ -684,9 +688,15 @@ public class PipelineOrchestrator extends Thread {
 
         // apply begin event before data events
         applyTransactionBeginEvent();
+
         // apply data events
-        processQueueLoop(new BinlogPositionInfo(replicantPool.getReplicantDBActiveHostServerID(),
-                EventPosition.getEventBinlogFileName(commitEvent), EventPosition.getEventBinlogPosition(commitEvent)));
+        processQueueLoop(
+                new BinlogPositionInfo(
+                        replicantPool.getReplicantDBActiveHostServerID(),
+                        EventPosition.getEventBinlogFileName(commitEvent),
+                        EventPosition.getEventBinlogPosition(commitEvent)
+                )
+        );
 
         if (!isRunning()) return;
 

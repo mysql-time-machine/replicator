@@ -121,10 +121,6 @@ public class BinlogPositionInfo {
         return binlogPosition;
     }
 
-    public void setBinlogPosition(long binlogPosition) {
-        this.binlogPosition = binlogPosition;
-    }
-
     public long getFakeMicrosecondsCounter() {
         return fakeMicrosecondsCounter;
     }

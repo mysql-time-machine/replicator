@@ -119,7 +119,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
                 } catch (Exception exception) {
                     this.handler.accept(exception);
                 } finally {
-                    if (this.requeue != null) {
+                    if (this.requeue != null && input != null) {
                         this.requeue.accept(task, input);
                     }
                 }

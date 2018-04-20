@@ -1,4 +1,4 @@
-package com.booking.replication.augmenter.util;
+package com.booking.replication.commons.util;
 
 import java.util.Collection;
 import java.util.HashMap;

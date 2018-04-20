@@ -35,7 +35,7 @@ public class EventInvocationHandler implements InvocationHandler {
             com.github.shyiko.mysql.binlog.event.EventHeader eventHeader = this.event.getHeader();
 
             if (eventHeader != null) {
-                return EventHeaderV4.decorate(
+                return EventHeaderV4.getProxy(
                         new EventHeaderInvocationHandler(eventHeader)
                 );
             } else {
@@ -45,7 +45,7 @@ public class EventInvocationHandler implements InvocationHandler {
             com.github.shyiko.mysql.binlog.event.EventData eventData = this.event.getData();
 
             if (eventData != null) {
-                return EventData.decorate(
+                return EventData.getProxy(
                         this.getEventDataSubType(eventData.getClass()),
                         new EventDataInvocationHandler(eventData)
                 );

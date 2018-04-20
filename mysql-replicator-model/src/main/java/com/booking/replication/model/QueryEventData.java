@@ -2,6 +2,8 @@ package com.booking.replication.model;
 
 @SuppressWarnings("unused")
 public interface QueryEventData extends EventData {
+
+    // note: this is info from the binlog, not the current thread id
     long getThreadId();
 
     long getExecutionTime();

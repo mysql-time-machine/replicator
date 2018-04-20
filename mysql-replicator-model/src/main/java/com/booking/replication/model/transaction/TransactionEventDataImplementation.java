@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 
 public class TransactionEventDataImplementation implements TransactionEventData {
+
     private List<Event> events;
     private UUID uuid;
     private long xid;

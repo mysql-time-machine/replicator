@@ -54,7 +54,7 @@ public class BinaryLogSupplier implements EventSupplier {
         this.client.registerEventListener(
                 event -> {
                     try {
-                        consumer.accept(Event.decorate(new EventInvocationHandler(event)));
+                        consumer.accept(Event.getProxy(new EventInvocationHandler(event)));
                     } catch (ReflectiveOperationException exception) {
                         throw new RuntimeException(exception);
                     }

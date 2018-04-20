@@ -28,7 +28,11 @@ public class EventAugmenter implements Augmenter {
     }
 
 
-    public Event mapDataEventToSchema(Event abstractRowEvent, TransactionEventData currentTransaction) throws Exception {
+    public Event mapDataEventToSchema(
+            Event                abstractRowEvent,
+            TransactionEventData currentTransaction
+        ) throws Exception {
+
         Event au = null;
 
         switch (abstractRowEvent.getHeader().getEventType()) {

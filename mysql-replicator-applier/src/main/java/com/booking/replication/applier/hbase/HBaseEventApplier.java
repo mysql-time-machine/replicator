@@ -1,7 +1,7 @@
 package com.booking.replication.applier.hbase;
 
 import com.booking.replication.applier.EventApplier;
-import com.booking.replication.model.Event;
+import com.booking.replication.model.RawEvent;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
@@ -56,22 +56,22 @@ public class HBaseEventApplier implements EventApplier {
     }
 
     @Override
-    public void accept(Event event) {/*
+    public void accept(RawEvent rawEvent) {/*
         try {
-            switch (event.getHeader().getEventType()) {
+            switch (rawEvent.getHeader().getEventType()) {
                 case TRANSACTION:
                 case AUGMENTED_INSERT:
                 case AUGMENTED_UPDATE:
                 case AUGMENTED_DELETE:
-                    try (Table table = this.getTable(this.getTableName(event.getHeader(), event.getData()))) {
-                        table.put(this.handleAugmentedDataEvent(event));
+                    try (Table table = this.getTable(this.getTableName(rawEvent.getHeader(), rawEvent.getData()))) {
+                        table.put(this.handleAugmentedDataEvent(rawEvent));
                     }
                     break;
                 case AUGMENTED_SCHEMA:
-                    this.handleAugmentedSchemaEvent(event.getHeader(), event.getData());
+                    this.handleAugmentedSchemaEvent(rawEvent.getHeader(), rawEvent.getData());
                     break;
                 default:
-                    this.handleUnknownEvent(event.getHeader(), event.getData());
+                    this.handleUnknownEvent(rawEvent.getHeader(), rawEvent.getData());
                     break;
             }
         } catch (IOException exception) {
@@ -81,7 +81,7 @@ public class HBaseEventApplier implements EventApplier {
         }*/
     }
 /*
-    private List<Put> handleAugmentedDataEvent(Event event) throws NoSuchAlgorithmException {
+    private List<Put> handleAugmentedDataEvent(RawEvent event) throws NoSuchAlgorithmException {
         switch (event.getHeader().getEventType()) {
             case TRANSACTION:
                 return this.handleTransactionEvent(event.getHeader(), event.getData());
@@ -99,7 +99,7 @@ public class HBaseEventApplier implements EventApplier {
     private List<Put> handleTransactionEvent(EventHeader header, TransactionEventData data) throws NoSuchAlgorithmException {
         List<Put> putList = new ArrayList<>();
 
-        for (Event event : data.getEvents()) {
+        for (RawEvent event : data.getEvents()) {
             putList.addAll(this.handleAugmentedDataEvent(event));
         }
 

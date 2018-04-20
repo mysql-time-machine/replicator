@@ -1,7 +1,7 @@
 package com.booking.replication.supplier.mysql.binlog;
 
 import com.booking.replication.model.Checkpoint;
-import com.booking.replication.model.Event;
+import com.booking.replication.model.RawEvent;
 import com.booking.replication.supplier.EventSupplier;
 import com.booking.replication.supplier.mysql.binlog.handler.EventInvocationHandler;
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
@@ -50,11 +50,11 @@ public class BinaryLogSupplier implements EventSupplier {
     }
 
     @Override
-    public void onEvent(Consumer<Event> consumer) {
+    public void onEvent(Consumer<RawEvent> consumer) {
         this.client.registerEventListener(
                 event -> {
                     try {
-                        consumer.accept(Event.getProxy(new EventInvocationHandler(event)));
+                        consumer.accept(RawEvent.getProxy(new EventInvocationHandler(event)));
                     } catch (ReflectiveOperationException exception) {
                         throw new RuntimeException(exception);
                     }

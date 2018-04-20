@@ -3,7 +3,7 @@ package com.booking.replication.applier.kafka;
 import com.booking.replication.applier.EventApplier;
 import com.booking.replication.applier.EventSeeker;
 import com.booking.replication.model.Checkpoint;
-import com.booking.replication.model.Event;
+import com.booking.replication.model.RawEvent;
 import com.booking.replication.model.EventType;
 import com.booking.replication.model.PseudoGTIDEventHeaderImplementation;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,7 +18,7 @@ import java.util.Date;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
-public class KafkaEventTest {
+public class KafkaRawEventTest {
     @Before
     public void before() {
 
@@ -32,7 +32,7 @@ public class KafkaEventTest {
                 new MockProducer<>(), "test", 10, KafkaEventPartitioner.RANDOM
         );
 
-        applier.accept(Event.build(
+        applier.accept(RawEvent.build(
                 mapper,
                 new PseudoGTIDEventHeaderImplementation(
                         0,
@@ -53,7 +53,7 @@ public class KafkaEventTest {
     public void testSeeker() throws InvocationTargetException, NoSuchMethodException, InstantiationException, IOException, IllegalAccessException {
         ObjectMapper mapper = new ObjectMapper();
 
-        Event event0 = Event.build(
+        RawEvent rawEvent0 = RawEvent.build(
                 mapper,
                 new PseudoGTIDEventHeaderImplementation(
                         0,
@@ -69,7 +69,7 @@ public class KafkaEventTest {
                 "{\"binlogFilename\": \"binlog.0001\", \"binlogPosition\": 0}".getBytes()
         );
 
-        Event event1 = Event.build(
+        RawEvent rawEvent1 = RawEvent.build(
                 mapper,
                 new PseudoGTIDEventHeaderImplementation(
                         0,
@@ -85,7 +85,7 @@ public class KafkaEventTest {
                 "{\"binlogFilename\": \"binlog.0001\", \"binlogPosition\": 1}".getBytes()
         );
 
-        Event event2 = Event.build(
+        RawEvent rawEvent2 = RawEvent.build(
                 mapper,
                 new PseudoGTIDEventHeaderImplementation(
                         0,
@@ -103,8 +103,8 @@ public class KafkaEventTest {
 
         EventSeeker seeker = new KafkaEventSeeker(new Checkpoint(0, null, 0, "PSEUDO_GTID", 1));
 
-        assertNull(seeker.apply(event0));
-        assertNull(seeker.apply(event1));
-        assertNotNull(seeker.apply(event2));
+        assertNull(seeker.apply(rawEvent0));
+        assertNull(seeker.apply(rawEvent1));
+        assertNotNull(seeker.apply(rawEvent2));
     }
 }

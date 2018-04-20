@@ -73,7 +73,7 @@ public class AugmentedRowImplementation implements AugmentedRow {
      * @param rowOrdinal         Order of the row in the binlog event that contains the row
      * @param tableName          Table name of the row
      * @param tableSchemaVersion TableSchemaVersion object
-     * @param eventType          Event type identifier (INSERT/UPDATE/DELETE)
+     * @param eventType          RawEvent type identifier (INSERT/UPDATE/DELETE)
      * @throws InvalidParameterException Invalid parameter
      * @throws TableMapException         Invalid table
      */

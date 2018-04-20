@@ -2,7 +2,7 @@ package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.active.schema.ActiveSchemaVersion;
 import com.booking.replication.augmenter.exception.TableMapException;
-import com.booking.replication.model.Event;
+import com.booking.replication.model.RawEvent;
 import com.booking.replication.augmenter.transaction.TransactionEventData;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -28,14 +28,14 @@ public class EventAugmenter implements Augmenter {
     }
 
 
-    public Event mapDataEventToSchema(
-            Event                abstractRowEvent,
+    public RawEvent mapDataEventToSchema(
+            RawEvent abstractRowRawEvent,
             TransactionEventData currentTransaction
         ) throws Exception {
 
-        Event au = null;
+        RawEvent au = null;
 
-        switch (abstractRowEvent.getHeader().getEventType()) {
+        switch (abstractRowRawEvent.getHeader().getEventType()) {
             case UPDATE_ROWS:
                 break;
 
@@ -47,23 +47,23 @@ public class EventAugmenter implements Augmenter {
 
             default:
                 throw new TableMapException("RBR event type expected! Received type: " +
-                        abstractRowEvent.getHeader().getEventType().toString(), abstractRowEvent
+                        abstractRowRawEvent.getHeader().getEventType().toString(), abstractRowRawEvent
                 );
         }
 
         if (au == null) {
-            throw new TableMapException("Augmented event ended up as null - something went wrong!", abstractRowEvent);
+            throw new TableMapException("Augmented event ended up as null - something went wrong!", abstractRowRawEvent);
         }
 
         return au;
     }
 
     @Override
-    public Event apply(Event event) {
-        return event;
-//        Event augmentedEvent = null;
+    public RawEvent apply(RawEvent rawEvent) {
+        return rawEvent;
+//        RawEvent augmentedEvent = null;
 //        try {
-//            augmentedEvent = mapDataEventToSchema(event, null);
+//            augmentedEvent = mapDataEventToSchema(rawEvent, null);
 //        } catch (Exception e) {
 //            e.printStackTrace();
 //        }

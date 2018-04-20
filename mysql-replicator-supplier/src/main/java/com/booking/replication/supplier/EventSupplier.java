@@ -1,7 +1,7 @@
 package com.booking.replication.supplier;
 
 import com.booking.replication.model.Checkpoint;
-import com.booking.replication.model.Event;
+import com.booking.replication.model.RawEvent;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 
 import java.io.IOException;
@@ -24,7 +24,7 @@ public interface EventSupplier {
         String TYPE = "supplier.type";
     }
 
-    void onEvent(Consumer<Event> consumer);
+    void onEvent(Consumer<RawEvent> consumer);
 
     void start() throws IOException;
 

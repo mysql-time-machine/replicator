@@ -1,13 +1,13 @@
 package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.active.schema.ActiveSchemaVersion;
-import com.booking.replication.model.Event;
+import com.booking.replication.model.RawEvent;
 
 import java.util.Map;
 import java.util.function.Function;
 
 // TODO: change to extends Function<RawEvent, AugmentedEvent>
-public interface Augmenter extends Function<Event, Event> {
+public interface Augmenter extends Function<RawEvent, RawEvent> {
     enum Type {
         NONE {
             @Override
@@ -20,7 +20,7 @@ public interface Augmenter extends Function<Event, Event> {
             public Augmenter newInstance(Map<String, String> configuration) {
                 return new PseudoGTIDAugmenter(configuration);
             }
-        }, // TODO: add augmenter chaining: augmenter = Augmenter.with(Peudo).then(Event)
+        }, // TODO: add augmenter chaining: augmenter = Augmenter.with(Peudo).then(RawEvent)
         EVENT {
             @Override
             public Augmenter newInstance(Map<String, String> configuration) {

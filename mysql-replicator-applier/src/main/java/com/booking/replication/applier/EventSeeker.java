@@ -2,12 +2,12 @@ package com.booking.replication.applier;
 
 import com.booking.replication.applier.kafka.KafkaEventSeeker;
 import com.booking.replication.model.Checkpoint;
-import com.booking.replication.model.Event;
+import com.booking.replication.model.RawEvent;
 
 import java.util.Map;
 import java.util.function.Function;
 
-public interface EventSeeker extends Function<Event, Event> {
+public interface EventSeeker extends Function<RawEvent, RawEvent> {
     enum Type {
         NONE {
             @Override

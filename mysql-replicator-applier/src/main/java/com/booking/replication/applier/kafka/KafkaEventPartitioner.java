@@ -1,6 +1,6 @@
 package com.booking.replication.applier.kafka;
 
-import com.booking.replication.model.Event;
+import com.booking.replication.model.RawEvent;
 import com.booking.replication.model.EventData;
 import com.booking.replication.model.TableNameEventData;
 
@@ -9,22 +9,22 @@ import java.util.concurrent.ThreadLocalRandom;
 public enum KafkaEventPartitioner {
     TABLE_NAME {
         @Override
-        public int partition(Event event, int totalPartitions) {
-            EventData data = event.getData();
+        public int partition(RawEvent rawEvent, int totalPartitions) {
+            EventData data = rawEvent.getData();
 
             if (data instanceof TableNameEventData) {
                 return Math.abs(TableNameEventData.class.cast(data).getTableName().hashCode()) % totalPartitions;
             } else {
-                throw new IllegalArgumentException(String.format("illegal event data type: %s", data.getClass().getInterfaces()[0].getName()));
+                throw new IllegalArgumentException(String.format("illegal rawEvent data type: %s", data.getClass().getInterfaces()[0].getName()));
             }
         }
     },
     RANDOM {
         @Override
-        public int partition(Event event, int totalPartitions) {
+        public int partition(RawEvent rawEvent, int totalPartitions) {
             return ThreadLocalRandom.current().nextInt(totalPartitions);
         }
     };
 
-    public abstract int partition(Event event, int totalPartitions);
+    public abstract int partition(RawEvent rawEvent, int totalPartitions);
 }

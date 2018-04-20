@@ -1,13 +1,7 @@
 package com.booking.replication.augmenter;
 
-import com.booking.replication.model.Checkpoint;
-import com.booking.replication.model.Event;
-import com.booking.replication.model.EventHeaderV4;
-import com.booking.replication.model.EventImplementation;
-import com.booking.replication.model.EventType;
-import com.booking.replication.model.QueryEventData;
-import com.booking.replication.model.RotateEventData;
-import com.booking.replication.model.PseudoGTIDEventHeaderImplementation;
+import com.booking.replication.model.*;
+import com.booking.replication.model.RawEvent;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -43,18 +37,18 @@ public class PseudoGTIDAugmenter implements Augmenter {
     }
 
     @Override
-    public Event apply(Event event) {
-        EventHeaderV4 eventHeader = event.getHeader();
+    public RawEvent apply(RawEvent rawEvent) {
+        EventHeaderV4 eventHeader = rawEvent.getHeader();
 
         this.serverId.set(eventHeader.getServerId());
 
         if (eventHeader.getEventType() == EventType.ROTATE) {
-            RotateEventData eventData = RotateEventData.class.cast(event.getData());
+            RotateEventData eventData = RotateEventData.class.cast(rawEvent.getData());
 
             this.binlogFilename.set(eventData.getBinlogFilename());
             this.binlogPosition.set(eventData.getBinlogPosition());
         } else if (eventHeader.getEventType() == EventType.QUERY) {
-            QueryEventData eventData = QueryEventData.class.cast(event.getData());
+            QueryEventData eventData = QueryEventData.class.cast(rawEvent.getData());
             Matcher matcher = this.pseudoGTIDPattern.matcher(eventData.getSQL());
 
             if (matcher.find() && matcher.groupCount() == 1) {
@@ -64,7 +58,7 @@ public class PseudoGTIDAugmenter implements Augmenter {
         }
 
         try {
-            return new EventImplementation<>(
+            return new RawEventImplementation<>(
                     new PseudoGTIDEventHeaderImplementation(
                             eventHeader,
                             new Checkpoint(
@@ -75,7 +69,7 @@ public class PseudoGTIDAugmenter implements Augmenter {
                                     this.pseudoGTIDIndex.get()
                             )
                     ),
-                    event.getData()
+                    rawEvent.getData()
             );
         } finally {
             this.pseudoGTIDIndex.getAndIncrement();

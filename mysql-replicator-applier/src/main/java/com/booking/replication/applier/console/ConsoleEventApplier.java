@@ -1,7 +1,7 @@
 package com.booking.replication.applier.console;
 
 import com.booking.replication.applier.EventApplier;
-import com.booking.replication.model.Event;
+import com.booking.replication.model.RawEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
@@ -19,9 +19,9 @@ public class ConsoleEventApplier implements EventApplier {
     }
 
     @Override
-    public void accept(Event event) {
+    public void accept(RawEvent rawEvent) {
         try {
-            ConsoleEventApplier.log.info(this.mapper.writeValueAsString(event));
+            ConsoleEventApplier.log.info(this.mapper.writeValueAsString(rawEvent));
         } catch (JsonProcessingException exception) {
             ConsoleEventApplier.log.error("error converting to json", exception);
         }

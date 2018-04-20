@@ -1,13 +1,13 @@
 package com.booking.replication.checkpoint;
 
 import com.booking.replication.coordinator.Coordinator;
-import com.booking.replication.model.Event;
+import com.booking.replication.model.RawEvent;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
-public interface CheckpointStorer extends BiConsumer<Event, Map<Event, AtomicReference<Event>>> {
+public interface CheckpointStorer extends BiConsumer<RawEvent, Map<RawEvent, AtomicReference<RawEvent>>> {
     enum Type {
         NONE {
             @Override

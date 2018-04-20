@@ -1,24 +1,24 @@
 package com.booking.replication.augmenter.transaction;
 
-import com.booking.replication.model.Event;
+import com.booking.replication.model.RawEvent;
 
 import java.util.List;
 import java.util.UUID;
 
 public class TransactionEventDataImplementation implements TransactionEventData {
 
-    private List<Event> events;
+    private List<RawEvent> rawEvents;
     private UUID uuid;
     private long xid;
     private String tableName;
 
     @Override
-    public List<Event> getEvents() {
-        return this.events;
+    public List<RawEvent> getRawEvents() {
+        return this.rawEvents;
     }
 
-    public void setEvents(List<Event> events) {
-        this.events = events;
+    public void setRawEvents(List<RawEvent> rawEvents) {
+        this.rawEvents = rawEvents;
     }
 
     @Override

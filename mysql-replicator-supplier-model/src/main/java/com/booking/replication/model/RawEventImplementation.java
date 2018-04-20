@@ -5,13 +5,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.UncheckedIOException;
 
-public class EventImplementation<Header extends EventHeader, Data extends EventData> implements Event {
+public class RawEventImplementation<Header extends EventHeader, Data extends EventData> implements RawEvent {
     private static ObjectMapper MAPPER = new ObjectMapper();
 
     private final Header header;
     private final Data data;
 
-    public EventImplementation(Header header, Data data) {
+    public RawEventImplementation(Header header, Data data) {
         this.header = header;
         this.data = data;
     }
@@ -31,7 +31,7 @@ public class EventImplementation<Header extends EventHeader, Data extends EventD
     @Override
     public String toString() {
         try {
-            return EventImplementation.MAPPER.writeValueAsString(this);
+            return RawEventImplementation.MAPPER.writeValueAsString(this);
         } catch (JsonProcessingException exception) {
             throw new UncheckedIOException(exception);
         }

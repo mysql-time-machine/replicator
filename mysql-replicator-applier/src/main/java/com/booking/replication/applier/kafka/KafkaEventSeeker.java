@@ -2,7 +2,7 @@ package com.booking.replication.applier.kafka;
 
 import com.booking.replication.applier.EventSeeker;
 import com.booking.replication.model.Checkpoint;
-import com.booking.replication.model.Event;
+import com.booking.replication.model.RawEvent;
 import com.booking.replication.model.PseudoGTIDEventHeader;
 import com.booking.replication.model.PseudoGTIDEventHeaderImplementation;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -93,12 +93,12 @@ public class KafkaEventSeeker implements EventSeeker {
     }
 
     @Override
-    public Event apply(Event event) {
+    public RawEvent apply(RawEvent rawEvent) {
         if (this.seeked.get()) {
-            return event;
-        } else if (this.checkpoint == null || this.checkpoint.compareTo(PseudoGTIDEventHeader.class.cast(event.getHeader()).getCheckpoint()) < 0) {
+            return rawEvent;
+        } else if (this.checkpoint == null || this.checkpoint.compareTo(PseudoGTIDEventHeader.class.cast(rawEvent.getHeader()).getCheckpoint()) < 0) {
             this.seeked.set(true);
-            return event;
+            return rawEvent;
         } else {
             return null;
         }

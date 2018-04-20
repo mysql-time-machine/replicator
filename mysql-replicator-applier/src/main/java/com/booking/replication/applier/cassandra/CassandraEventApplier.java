@@ -1,7 +1,7 @@
 package com.booking.replication.applier.cassandra;
 
 import com.booking.replication.applier.EventApplier;
-import com.booking.replication.model.RawEvent;
+import com.booking.replication.supplier.model.RawEvent;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 

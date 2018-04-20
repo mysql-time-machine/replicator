@@ -1,7 +1,7 @@
 package com.booking.replication.supplier;
 
-import com.booking.replication.model.Checkpoint;
-import com.booking.replication.model.RawEvent;
+import com.booking.replication.supplier.model.Checkpoint;
+import com.booking.replication.supplier.model.RawEvent;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 
 import java.io.IOException;

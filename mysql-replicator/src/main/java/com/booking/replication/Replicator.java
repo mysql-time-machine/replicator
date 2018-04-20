@@ -6,8 +6,8 @@ import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.checkpoint.CheckpointStorer;
 import com.booking.replication.coordinator.Coordinator;
 
-import com.booking.replication.model.Checkpoint;
-import com.booking.replication.model.RawEvent;
+import com.booking.replication.supplier.model.Checkpoint;
+import com.booking.replication.supplier.model.RawEvent;
 
 import com.booking.replication.streams.Streams;
 import com.booking.replication.supplier.EventSupplier;

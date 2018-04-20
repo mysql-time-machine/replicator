@@ -1,6 +1,6 @@
 package com.booking.replication.augmenter.transaction;
 
-import com.booking.replication.model.RawEvent;
+import com.booking.replication.supplier.model.RawEvent;
 
 import java.util.List;
 import java.util.UUID;

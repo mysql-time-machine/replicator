@@ -1,8 +1,8 @@
 package com.booking.replication.applier;
 
 import com.booking.replication.applier.kafka.KafkaEventSeeker;
-import com.booking.replication.model.Checkpoint;
-import com.booking.replication.model.RawEvent;
+import com.booking.replication.supplier.model.Checkpoint;
+import com.booking.replication.supplier.model.RawEvent;
 
 import java.util.Map;
 import java.util.function.Function;

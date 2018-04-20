@@ -1,8 +1,8 @@
 package com.booking.replication.supplier.mysql.binlog.handler;
 
-import com.booking.replication.model.EventData;
-import com.booking.replication.model.EventHeaderV4;
-import com.booking.replication.model.EventType;
+import com.booking.replication.supplier.model.EventData;
+import com.booking.replication.supplier.model.EventHeaderV4;
+import com.booking.replication.supplier.model.RawEventType;
 import com.github.shyiko.mysql.binlog.event.Event;
 
 import java.lang.reflect.InvocationHandler;
@@ -18,8 +18,8 @@ public class EventInvocationHandler implements InvocationHandler {
     public EventInvocationHandler(Event event) {
         this.event = event;
         this.eventDataSubTypes = Stream
-                .of(EventType.values())
-                .map(EventType::getDefinition)
+                .of(RawEventType.values())
+                .map(RawEventType::getDefinition)
                 .distinct()
                 .collect(
                         Collectors.toMap(

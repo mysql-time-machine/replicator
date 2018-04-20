@@ -1,7 +1,7 @@
 package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.active.schema.ActiveSchemaVersion;
-import com.booking.replication.model.RawEvent;
+import com.booking.replication.supplier.model.RawEvent;
 
 import java.util.Map;
 import java.util.function.Function;

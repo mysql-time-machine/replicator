@@ -2,7 +2,7 @@ package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.active.schema.ActiveSchemaVersion;
 import com.booking.replication.augmenter.exception.TableMapException;
-import com.booking.replication.model.RawEvent;
+import com.booking.replication.supplier.model.RawEvent;
 import com.booking.replication.augmenter.transaction.TransactionEventData;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -35,7 +35,7 @@ public class EventAugmenter implements Augmenter {
 
         RawEvent au = null;
 
-        switch (abstractRowRawEvent.getHeader().getEventType()) {
+        switch (abstractRowRawEvent.getHeader().getRawEventType()) {
             case UPDATE_ROWS:
                 break;
 
@@ -47,7 +47,7 @@ public class EventAugmenter implements Augmenter {
 
             default:
                 throw new TableMapException("RBR event type expected! Received type: " +
-                        abstractRowRawEvent.getHeader().getEventType().toString(), abstractRowRawEvent
+                        abstractRowRawEvent.getHeader().getRawEventType().toString(), abstractRowRawEvent
                 );
         }
 

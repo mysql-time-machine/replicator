@@ -1,6 +1,6 @@
 package com.booking.replication.augmenter.exception;
 
-import com.booking.replication.model.RawEvent;
+import com.booking.replication.supplier.model.RawEvent;
 
 /**
  * Created by bosko on 11/10/15.

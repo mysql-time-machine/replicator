@@ -1,7 +1,7 @@
 package com.booking.replication.applier.hbase;
 
 import com.booking.replication.applier.EventApplier;
-import com.booking.replication.model.RawEvent;
+import com.booking.replication.supplier.model.RawEvent;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
@@ -58,7 +58,7 @@ public class HBaseEventApplier implements EventApplier {
     @Override
     public void accept(RawEvent rawEvent) {/*
         try {
-            switch (rawEvent.getHeader().getEventType()) {
+            switch (rawEvent.getHeader().getRawEventType()) {
                 case TRANSACTION:
                 case AUGMENTED_INSERT:
                 case AUGMENTED_UPDATE:
@@ -82,7 +82,7 @@ public class HBaseEventApplier implements EventApplier {
     }
 /*
     private List<Put> handleAugmentedDataEvent(RawEvent event) throws NoSuchAlgorithmException {
-        switch (event.getHeader().getEventType()) {
+        switch (event.getHeader().getRawEventType()) {
             case TRANSACTION:
                 return this.handleTransactionEvent(event.getHeader(), event.getData());
             case AUGMENTED_INSERT:
@@ -244,7 +244,7 @@ public class HBaseEventApplier implements EventApplier {
     }
 
     private void handleUnknownEvent(EventHeader header, EventData data) {
-        HBaseEventApplier.LOG.log(Level.FINE, "Unknown event type {}", header.getEventType().name());
+        HBaseEventApplier.LOG.log(Level.FINE, "Unknown event type {}", header.getRawEventType().name());
     }
 
     private TableName getTableName(EventHeader header, TableNameEventData data) {

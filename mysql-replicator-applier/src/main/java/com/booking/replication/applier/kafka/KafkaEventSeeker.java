@@ -1,10 +1,10 @@
 package com.booking.replication.applier.kafka;
 
 import com.booking.replication.applier.EventSeeker;
-import com.booking.replication.model.Checkpoint;
-import com.booking.replication.model.RawEvent;
-import com.booking.replication.model.PseudoGTIDEventHeader;
-import com.booking.replication.model.PseudoGTIDEventHeaderImplementation;
+import com.booking.replication.supplier.model.Checkpoint;
+import com.booking.replication.supplier.model.RawEvent;
+import com.booking.replication.supplier.model.PseudoGTIDEventHeader;
+import com.booking.replication.supplier.model.PseudoGTIDEventHeaderImplementation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;

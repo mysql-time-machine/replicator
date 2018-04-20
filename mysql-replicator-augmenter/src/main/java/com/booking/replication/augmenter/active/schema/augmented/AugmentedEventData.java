@@ -1,6 +1,6 @@
 package com.booking.replication.augmenter.active.schema.augmented;
 
-import com.booking.replication.model.TableNameEventData;
+import com.booking.replication.supplier.model.TableNameEventData;
 
 import java.util.List;
 

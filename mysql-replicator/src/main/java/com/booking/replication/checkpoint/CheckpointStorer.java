@@ -1,7 +1,7 @@
 package com.booking.replication.checkpoint;
 
 import com.booking.replication.coordinator.Coordinator;
-import com.booking.replication.model.RawEvent;
+import com.booking.replication.supplier.model.RawEvent;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;

@@ -1,7 +1,7 @@
 package com.booking.replication.augmenter;
 
 import com.booking.replication.model.*;
-import com.booking.replication.model.RawEvent;
+import com.booking.replication.supplier.model.*;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -42,12 +42,12 @@ public class PseudoGTIDAugmenter implements Augmenter {
 
         this.serverId.set(eventHeader.getServerId());
 
-        if (eventHeader.getEventType() == EventType.ROTATE) {
+        if (eventHeader.getRawEventType() == RawEventType.ROTATE) {
             RotateEventData eventData = RotateEventData.class.cast(rawEvent.getData());
 
             this.binlogFilename.set(eventData.getBinlogFilename());
             this.binlogPosition.set(eventData.getBinlogPosition());
-        } else if (eventHeader.getEventType() == EventType.QUERY) {
+        } else if (eventHeader.getRawEventType() == RawEventType.QUERY) {
             QueryEventData eventData = QueryEventData.class.cast(rawEvent.getData());
             Matcher matcher = this.pseudoGTIDPattern.matcher(eventData.getSQL());
 

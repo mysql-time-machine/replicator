@@ -3,7 +3,7 @@ package com.booking.replication.augmenter;
 import com.booking.replication.augmenter.active.schema.ActiveSchemaVersion;
 import com.booking.replication.augmenter.exception.TableMapException;
 import com.booking.replication.model.Event;
-import com.booking.replication.model.transaction.TransactionEventData;
+import com.booking.replication.augmenter.transaction.TransactionEventData;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 

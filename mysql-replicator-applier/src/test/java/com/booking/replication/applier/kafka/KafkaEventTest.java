@@ -5,7 +5,7 @@ import com.booking.replication.applier.EventSeeker;
 import com.booking.replication.model.Checkpoint;
 import com.booking.replication.model.Event;
 import com.booking.replication.model.EventType;
-import com.booking.replication.model.augmented.AugmentedEventHeaderImplementation;
+import com.booking.replication.augmenter.active.schema.augmented.AugmentedEventHeaderImplementation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.producer.MockProducer;
 import org.junit.Before;

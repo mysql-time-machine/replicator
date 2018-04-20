@@ -5,7 +5,7 @@ package com.booking.replication.augmenter.util;
 import com.booking.replication.augmenter.AugmentedRowImplementation;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.augmenter.active.schema.ActiveSchemaVersion;
-import com.booking.replication.model.augmented.active.schema.TableSchemaVersion;
+import com.booking.replication.augmenter.active.schema.augmented.active.schema.TableSchemaVersion;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

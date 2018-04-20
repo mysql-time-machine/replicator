@@ -28,10 +28,6 @@
             <artifactId>mysql-binlog-connector-java</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>kafka_2.12</artifactId>
-        </dependency>
-        <dependency>
             <groupId>com.booking.replication</groupId>
             <artifactId>mysql-replicator-model</artifactId>
             <version>${project.version}</version>

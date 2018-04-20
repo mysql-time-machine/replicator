@@ -1,8 +1,8 @@
 package com.booking.replication.model;
 
-import com.booking.replication.model.augmented.AugmentedEventData;
-import com.booking.replication.model.transaction.TransactionEventData;
-import com.booking.replication.model.transaction.TransactionEventDataImplementation;
+import com.booking.replication.augmenter.active.schema.augmented.AugmentedEventData;
+import com.booking.replication.augmenter.transaction.TransactionEventData;
+import com.booking.replication.augmenter.transaction.TransactionEventDataImplementation;
 
 @SuppressWarnings("unused")
 public enum EventType {

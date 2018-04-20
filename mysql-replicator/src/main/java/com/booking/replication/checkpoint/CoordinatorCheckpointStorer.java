@@ -3,7 +3,7 @@ package com.booking.replication.checkpoint;
 import com.booking.replication.coordinator.CheckpointCoordinator;
 import com.booking.replication.model.Checkpoint;
 import com.booking.replication.model.Event;
-import com.booking.replication.model.augmented.AugmentedEventHeader;
+import com.booking.replication.augmenter.active.schema.augmented.AugmentedEventHeader;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;

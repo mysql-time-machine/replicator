@@ -30,7 +30,7 @@
         <tests.skip>false</tests.skip>
     </properties>
     <modules>
-        <module>mysql-replicator-model</module>
+        <module>mysql-replicator-supplier-model</module>
         <module>mysql-replicator-commons</module>
         <module>mysql-replicator-streams</module>
         <module>mysql-replicator-coordinator</module>

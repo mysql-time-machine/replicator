@@ -6,6 +6,7 @@ import com.booking.replication.model.Event;
 import java.util.Map;
 import java.util.function.Function;
 
+// TODO: change to extends Function<RawEvent, AugmentedEvent>
 public interface Augmenter extends Function<Event, Event> {
     enum Type {
         NONE {

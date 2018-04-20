@@ -2,36 +2,16 @@ package com.booking.replication.applier.hbase;
 
 import com.booking.replication.applier.EventApplier;
 import com.booking.replication.model.Event;
-import com.booking.replication.model.EventData;
-import com.booking.replication.model.EventHeader;
-import com.booking.replication.model.TableNameEventData;
-import com.booking.replication.augmenter.active.schema.augmented.AugmentedEventData;
-import com.booking.replication.augmenter.active.schema.augmented.AugmentedRow;
-import com.booking.replication.augmenter.transaction.TransactionEventData;
 import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.HColumnDescriptor;
-import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.util.RegionSplitter;
 import org.jboss.netty.util.internal.ConcurrentHashMap;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @SuppressWarnings("unused")
@@ -76,7 +56,7 @@ public class HBaseEventApplier implements EventApplier {
     }
 
     @Override
-    public void accept(Event event) {
+    public void accept(Event event) {/*
         try {
             switch (event.getHeader().getEventType()) {
                 case TRANSACTION:
@@ -98,9 +78,9 @@ public class HBaseEventApplier implements EventApplier {
             throw new UncheckedIOException(exception);
         } catch (NoSuchAlgorithmException exception) {
             throw new RuntimeException(exception);
-        }
+        }*/
     }
-
+/*
     private List<Put> handleAugmentedDataEvent(Event event) throws NoSuchAlgorithmException {
         switch (event.getHeader().getEventType()) {
             case TRANSACTION:
@@ -307,7 +287,7 @@ public class HBaseEventApplier implements EventApplier {
         salt.append(";").append(hbaseRowID);
 
         return salt.toString();
-    }
+    }*/
 
     @Override
     public void close() throws IOException {

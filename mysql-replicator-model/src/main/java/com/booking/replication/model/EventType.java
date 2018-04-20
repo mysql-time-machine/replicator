@@ -1,9 +1,5 @@
 package com.booking.replication.model;
 
-import com.booking.replication.augmenter.active.schema.augmented.AugmentedEventData;
-import com.booking.replication.augmenter.transaction.TransactionEventData;
-import com.booking.replication.augmenter.transaction.TransactionEventDataImplementation;
-
 @SuppressWarnings("unused")
 public enum EventType {
     UNKNOWN(0, ByteArrayEventData.class),
@@ -44,12 +40,7 @@ public enum EventType {
     PREVIOUS_GTIDS(35, PreviousGTIDSetEventData.class),
     TRANSACTION_CONTEXT(36),
     VIEW_CHANGE(37),
-    XA_PREPARE(38, XAPrepareEventData.class),
-    TRANSACTION(100, TransactionEventData.class, TransactionEventDataImplementation.class),
-    AUGMENTED_INSERT(101, AugmentedEventData.class),
-    AUGMENTED_UPDATE(102, AugmentedEventData.class),
-    AUGMENTED_DELETE(103, AugmentedEventData.class),
-    AUGMENTED_SCHEMA(104);
+    XA_PREPARE(38, XAPrepareEventData.class);
 
     private final int code;
     private final Class<? extends EventData> definition;

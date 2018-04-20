@@ -5,7 +5,7 @@ import com.booking.replication.applier.EventSeeker;
 import com.booking.replication.model.Checkpoint;
 import com.booking.replication.model.Event;
 import com.booking.replication.model.EventType;
-import com.booking.replication.augmenter.active.schema.augmented.AugmentedEventHeaderImplementation;
+import com.booking.replication.model.PseudoGTIDEventHeaderImplementation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.producer.MockProducer;
 import org.junit.Before;
@@ -34,7 +34,7 @@ public class KafkaEventTest {
 
         applier.accept(Event.build(
                 mapper,
-                new AugmentedEventHeaderImplementation(
+                new PseudoGTIDEventHeaderImplementation(
                         0,
                         0,
                         0,
@@ -55,7 +55,7 @@ public class KafkaEventTest {
 
         Event event0 = Event.build(
                 mapper,
-                new AugmentedEventHeaderImplementation(
+                new PseudoGTIDEventHeaderImplementation(
                         0,
                         0,
                         0,
@@ -71,7 +71,7 @@ public class KafkaEventTest {
 
         Event event1 = Event.build(
                 mapper,
-                new AugmentedEventHeaderImplementation(
+                new PseudoGTIDEventHeaderImplementation(
                         0,
                         0,
                         0,
@@ -87,7 +87,7 @@ public class KafkaEventTest {
 
         Event event2 = Event.build(
                 mapper,
-                new AugmentedEventHeaderImplementation(
+                new PseudoGTIDEventHeaderImplementation(
                         0,
                         0,
                         0,

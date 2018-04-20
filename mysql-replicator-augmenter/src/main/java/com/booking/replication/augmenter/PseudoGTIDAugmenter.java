@@ -7,7 +7,7 @@ import com.booking.replication.model.EventImplementation;
 import com.booking.replication.model.EventType;
 import com.booking.replication.model.QueryEventData;
 import com.booking.replication.model.RotateEventData;
-import com.booking.replication.augmenter.active.schema.augmented.AugmentedEventHeaderImplementation;
+import com.booking.replication.model.PseudoGTIDEventHeaderImplementation;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -65,7 +65,7 @@ public class PseudoGTIDAugmenter implements Augmenter {
 
         try {
             return new EventImplementation<>(
-                    new AugmentedEventHeaderImplementation(
+                    new PseudoGTIDEventHeaderImplementation(
                             eventHeader,
                             new Checkpoint(
                                     this.serverId.get(),

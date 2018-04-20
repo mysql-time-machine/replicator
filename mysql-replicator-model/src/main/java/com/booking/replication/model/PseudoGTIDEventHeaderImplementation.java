@@ -1,10 +1,6 @@
-package com.booking.replication.augmenter.active.schema.augmented;
+package com.booking.replication.model;
 
-import com.booking.replication.model.Checkpoint;
-import com.booking.replication.model.EventHeaderV4;
-import com.booking.replication.model.EventType;
-
-public class AugmentedEventHeaderImplementation implements AugmentedEventHeader {
+public class PseudoGTIDEventHeaderImplementation implements PseudoGTIDEventHeader {
     private long serverId;
     private long eventLength;
     private long headerLength;
@@ -15,10 +11,10 @@ public class AugmentedEventHeaderImplementation implements AugmentedEventHeader 
     private EventType eventType;
     private Checkpoint checkpoint;
 
-    public AugmentedEventHeaderImplementation() {
+    public PseudoGTIDEventHeaderImplementation() {
     }
 
-    public AugmentedEventHeaderImplementation(long serverId, long eventLength, long headerLength, long dataLength, long nextPosition, int flags, long timestamp, EventType eventType, Checkpoint checkpoint) {
+    public PseudoGTIDEventHeaderImplementation(long serverId, long eventLength, long headerLength, long dataLength, long nextPosition, int flags, long timestamp, EventType eventType, Checkpoint checkpoint) {
         this.serverId = serverId;
         this.eventLength = eventLength;
         this.headerLength = headerLength;
@@ -30,7 +26,7 @@ public class AugmentedEventHeaderImplementation implements AugmentedEventHeader 
         this.checkpoint = checkpoint;
     }
 
-    public AugmentedEventHeaderImplementation(EventHeaderV4 eventHeader, Checkpoint checkpoint) {
+    public PseudoGTIDEventHeaderImplementation(EventHeaderV4 eventHeader, Checkpoint checkpoint) {
         this(
                 eventHeader.getServerId(),
                 eventHeader.getEventLength(),

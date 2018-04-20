@@ -24,22 +24,7 @@ public interface Event extends Serializable, EventProxyProvider {
 
     // TODO: remove due to split to RawEvent and AugmentedEvent
     static Event build(ObjectMapper mapper, EventHeader eventHeader, byte[] data) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException, IOException {
-        EventData eventData;
-
-        switch (eventHeader.getEventType()) {
-            case TRANSACTION:
-            case AUGMENTED_INSERT:
-            case AUGMENTED_UPDATE:
-            case AUGMENTED_DELETE:
-            case AUGMENTED_SCHEMA:
-                eventData = mapper.readValue(data, eventHeader.getEventType().getImplementation());
-                break;
-            default:
-                eventData = EventData.getProxy(eventHeader.getEventType().getDefinition(), new JSONInvocationHandler(mapper, data));
-                break;
-        }
-
-        return new EventImplementation<>(eventHeader, eventData);
+        return new EventImplementation<>(eventHeader, EventData.getProxy(eventHeader.getEventType().getDefinition(), new JSONInvocationHandler(mapper, data)));
     }
 
     static Event build(ObjectMapper mapper, byte[] header, byte[] data) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException, IOException {

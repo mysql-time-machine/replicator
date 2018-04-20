@@ -3,7 +3,7 @@ package com.booking.replication.checkpoint;
 import com.booking.replication.coordinator.CheckpointCoordinator;
 import com.booking.replication.model.Checkpoint;
 import com.booking.replication.model.Event;
-import com.booking.replication.augmenter.active.schema.augmented.AugmentedEventHeader;
+import com.booking.replication.model.PseudoGTIDEventHeader;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -21,11 +21,11 @@ public class CoordinatorCheckpointStorer implements CheckpointStorer {
 
     @Override
     public void accept(Event event, Map<Event, AtomicReference<Event>> executing) {
-        Checkpoint checkpoint = AugmentedEventHeader.class.cast(event.getHeader()).getCheckpoint();
+        Checkpoint checkpoint = PseudoGTIDEventHeader.class.cast(event.getHeader()).getCheckpoint();
 
         if (checkpoint.getPseudoGTID() != null && checkpoint.getPseudoGTIDIndex() == 0) {
             /*if (executing.keySet().stream().map(Event::getHeader).allMatch(
-                    eventHeader -> checkpoint.compareTo(AugmentedEventHeader.class.cast(eventHeader).getCheckpoint()) >= 0
+                    eventHeader -> checkpoint.compareTo(PseudoGTIDEventHeader.class.cast(eventHeader).getCheckpoint()) >= 0
             )) {*/
                 try {
                     this.coordinator.storeCheckpoint(this.checkpointPath, checkpoint);

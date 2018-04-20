@@ -1,5 +1,6 @@
 package com.booking.replication.augmenter;
 
+import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.model.*;
 import com.booking.replication.supplier.model.*;
 
@@ -37,7 +38,7 @@ public class PseudoGTIDAugmenter implements Augmenter {
     }
 
     @Override
-    public RawEvent apply(RawEvent rawEvent) {
+    public AugmentedEvent apply(RawEvent rawEvent) {
         EventHeaderV4 eventHeader = rawEvent.getHeader();
 
         this.serverId.set(eventHeader.getServerId());
@@ -57,6 +58,7 @@ public class PseudoGTIDAugmenter implements Augmenter {
             }
         }
 
+        // TODO: fix this - convert to AugmentedEventImplementation
         try {
             return new RawEventImplementation<>(
                     new PseudoGTIDEventHeaderImplementation(

@@ -1,7 +1,8 @@
 package com.booking.replication.applier.hbase;
 
 import com.booking.replication.applier.TaskStatus;
-import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
+import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +40,7 @@ public class HBaseApplierNotYetCommittedAccounting {
         return false;
     }
 
-    public synchronized LastCommittedPositionCheckpoint doAccountingOnTaskSuccess(
+    public synchronized PseudoGTIDCheckpoint doAccountingOnTaskSuccess(
             ConcurrentHashMap<String, ApplierTask> taskTransactionBuffer,
             String committedTaskID) throws Exception {
 
@@ -48,7 +49,7 @@ public class HBaseApplierNotYetCommittedAccounting {
         // update status in the taskTransactionBuffer
         taskTransactionBuffer.get(committedTaskID).setTaskStatus(TaskStatus.WRITE_SUCCEEDED);
 
-        LastCommittedPositionCheckpoint committedHeadPseudoGTIDCheckPoint = null;
+        PseudoGTIDCheckpoint committedHeadPseudoGTIDCheckPoint = null;
 
         if (allLowerPositionTasksHaveBeenCommitted(taskTransactionBuffer, committedTaskID)) {
 
@@ -138,30 +139,42 @@ public class HBaseApplierNotYetCommittedAccounting {
         return new ArrayList<>(notYetCommittedTaskUUIDs.subList(taskIndex + 1, notYetCommittedTaskUUIDs.size()));
     }
 
-    private LastCommittedPositionCheckpoint scanCommittedTasksForPseudoGTIDCheckpoint(
+    private PseudoGTIDCheckpoint scanCommittedTasksForPseudoGTIDCheckpoint(
             ConcurrentHashMap<String, ApplierTask> taskTransactionBuffer,
             List<String> committedHead) throws Exception {
 
-        LastCommittedPositionCheckpoint latestApplierCommittedPseudoGTIDCheckPoint = null;
+        LOGGER.debug("scanCommittedTasksForPseudoGTIDCheckpoint. Loop committedHead list");
+
+        PseudoGTIDCheckpoint latestApplierCommittedPseudoGTIDCheckPoint = null;
 
         for (String taskUUID : committedHead) {
+
+            LOGGER.debug("scanning taskUUID " + taskUUID);
 
             if (taskUUID.equals(committedHead.get(committedHead.size() - 1))) {
 
                 // reached the end
+                LOGGER.debug("reached the end of committedHead, index: " + (committedHead.size() - 1));
+
                 if (taskTransactionBuffer.get(taskUUID).getPseudoGTIDCheckPoint() != null) {
+
+                    LOGGER.debug("last task " + taskUUID + " commited head contains pGTID" + taskTransactionBuffer.get(taskUUID).getPseudoGTIDCheckPoint().getPseudoGTID());
 
                     latestApplierCommittedPseudoGTIDCheckPoint = taskTransactionBuffer.get(taskUUID).getPseudoGTIDCheckPoint();
 
+                    LOGGER.debug("set latestApplierCommittedPseudoGTIDCheckPoint to " + taskTransactionBuffer.get(taskUUID).getPseudoGTIDCheckPoint().getPseudoGTID());
                     break;
 
                 } else {
-
                     // no pGTID in this task
-
+                    LOGGER.debug("No pGTID in task " + taskUUID); // check
                 }
             } else {
+
                 if (taskTransactionBuffer.get(taskUUID) != null) {
+
+                    LOGGER.debug("not at last task in committed head");
+
                     if (taskTransactionBuffer.get(taskUUID).getTaskStatus() != TaskStatus.WRITE_SUCCEEDED) {
 
                         // the reason for throwing exception here is that this method should be called only if
@@ -170,7 +183,10 @@ public class HBaseApplierNotYetCommittedAccounting {
                                 + taskUUID);
                     } else {
                         if (taskTransactionBuffer.get(taskUUID).getPseudoGTIDCheckPoint() != null) {
+
                             latestApplierCommittedPseudoGTIDCheckPoint = taskTransactionBuffer.get(taskUUID).getPseudoGTIDCheckPoint();
+                            LOGGER.debug("set latestApplierCommittedPseudoGTIDCheckPoint to "
+                                         + taskTransactionBuffer.get(taskUUID).getPseudoGTIDCheckPoint().getPseudoGTID());
                         }
                     }
                 } else {
@@ -180,6 +196,8 @@ public class HBaseApplierNotYetCommittedAccounting {
                 }
             }
         }
+        // This should be the laster pGTID observed by the applier in the commitedHead list, which is a list
+        // tasks, in the order that corresponds to the binlog, which has been successfully committed
         return latestApplierCommittedPseudoGTIDCheckPoint;
     }
 }

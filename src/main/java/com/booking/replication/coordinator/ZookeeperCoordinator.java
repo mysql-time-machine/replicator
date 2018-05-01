@@ -1,15 +1,17 @@
 package com.booking.replication.coordinator;
 
 import com.booking.replication.Configuration;
-import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
+import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 import com.booking.replication.checkpoints.SafeCheckPoint;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.framework.recipes.leader.CancelLeadershipException;
 import org.apache.curator.framework.recipes.leader.LeaderSelector;
 import org.apache.curator.framework.recipes.leader.LeaderSelectorListenerAdapter;
+import org.apache.curator.framework.state.ConnectionState;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.data.Stat;
@@ -50,7 +52,14 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
         }
 
         @Override
-        public void takeLeadership(CuratorFramework curatorFramework) throws Exception {
+        public void stateChanged(CuratorFramework client, ConnectionState newState) {
+            LOGGER.info("Curator state changed to {}", newState.name());
+            super.stateChanged(client, newState);
+        }
+
+        @Override
+        public void takeLeadership(CuratorFramework curatorFramework)  {
+
             LOGGER.info("Acquired leadership, starting Replicator.");
 
             try {
@@ -75,6 +84,7 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
      * @param configuration Replicator configuration
      */
     public ZookeeperCoordinator(Configuration configuration)  {
+
         this.configuration = configuration;
         this.checkPointPath = String.format("%s/checkpoint", configuration.getZookeeperPath());
 
@@ -98,7 +108,7 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
     }
 
     /**
-     * Callback function on aquiring the leader lock.
+     * Callback function on acquiring the leader lock.
      * @param callback              Callback.
      * @throws InterruptedException This may happen if we lose leadership in the event of zookeeper disconnect.
      */
@@ -149,14 +159,14 @@ public class ZookeeperCoordinator implements CoordinatorInterface {
     }
 
     @Override
-    public LastCommittedPositionCheckpoint getSafeCheckPoint() {
+    public PseudoGTIDCheckpoint getSafeCheckPoint() {
         try {
             if (client.checkExists().forPath(checkPointPath) == null) {
                 LOGGER.warn("Could not find metadata in zookeeper.");
                 return null;
             }
             byte[] data = client.getData().forPath(checkPointPath);
-            return mapper.readValue(data, LastCommittedPositionCheckpoint.class);
+            return mapper.readValue(data, PseudoGTIDCheckpoint.class);
         } catch (JsonProcessingException e) {
             LOGGER.error(String.format("Failed to deserialize checkpoint data. %s", e.getMessage()));
             e.printStackTrace();

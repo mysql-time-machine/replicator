@@ -8,8 +8,6 @@ import com.booking.replication.util.JsonBuilder;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.google.code.or.binlog.BinlogEventV4Header;
-import com.google.code.or.binlog.impl.event.BinlogEventV4HeaderImpl;
 
 import java.security.InvalidParameterException;
 import java.util.*;
@@ -41,10 +39,16 @@ public class AugmentedRow {
 
     private UUID         transactionUUID;
     private Long         transactionXid;
+    private Long         commitTimestamp;
+
     private boolean      applyUuid = false;
     private boolean      applyXid = false;
 
-    private Long         rowBinlogPositionTimestamp; // TODO: replace with commit_time when feature is ready
+    public void setRowMicrosecondTimestamp(Long rowMicrosecondTimestamp) {
+        this.rowMicrosecondTimestamp = rowMicrosecondTimestamp;
+    }
+
+    private Long         rowMicrosecondTimestamp;
 
     // eventColumns: {
     //          column_name  => $name,
@@ -84,17 +88,18 @@ public class AugmentedRow {
             boolean             applyUuid,
             boolean             applyXid,
             Long                eventPosition,
-            Long                rowBinlogPositionTimestamp
+            Long rowMicrosecondTimestamp
     )  throws TableMapException {
 
         this.rowBinlogEventOrdinal = rowOrdinal;
-        this.binlogFileName = binlogFileName;
-        this.tableName = tableName;
-        this.eventType = eventType;
-        this.transactionUUID = transactionUUID;
-        this.transactionXid = transactionXid;
-        this.applyUuid = applyUuid;
-        this.applyXid = applyXid;
+        this.binlogFileName        = binlogFileName;
+        this.tableName             = tableName;
+        this.eventType             = eventType;
+        this.transactionUUID       = transactionUUID;
+        this.transactionXid        = transactionXid;
+        this.applyUuid             = applyUuid;
+        this.applyXid              = applyXid;
+        this.commitTimestamp = rowMicrosecondTimestamp;
 
         if (tableName != null && tableSchemaVersion != null) initTableSchema(tableSchemaVersion);
 
@@ -102,11 +107,11 @@ public class AugmentedRow {
         rowUUID = UUID.randomUUID().toString();
 
         // TODO: commit_timestamp!!!
-        this.rowBinlogPositionTimestamp = rowBinlogPositionTimestamp;
+        this.rowMicrosecondTimestamp = rowMicrosecondTimestamp;
     }
 
-    public Long getRowBinlogPositionTimestamp() {
-        return rowBinlogPositionTimestamp;
+    public Long getRowMicrosecondTimestamp() {
+        return rowMicrosecondTimestamp;
     }
 
     /**
@@ -272,4 +277,6 @@ public class AugmentedRow {
     public Long getTransactionXid() {
         return transactionXid;
     }
+
+    public Long getCommitTimestamp() { return commitTimestamp; }
 }

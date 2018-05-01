@@ -1,7 +1,7 @@
 package com.booking.replication.applier.hbase;
 
 import com.booking.replication.applier.TaskStatus;
-import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
+import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -127,7 +127,7 @@ public class HBaseApplierNotYetCommittedAccountingTest {
 
         // Create a dummy checkpoint
         ApplierTask checkpointTask = new ApplierTask(TaskStatus.WRITE_SUCCEEDED);
-        checkpointTask.setPseudoGTIDCheckPoint(new LastCommittedPositionCheckpoint());
+        checkpointTask.setPseudoGTIDCheckPoint(new PseudoGTIDCheckpoint());
 
 
         // Initialize task buffer
@@ -150,10 +150,10 @@ public class HBaseApplierNotYetCommittedAccountingTest {
 
         // Create a dummy checkpoint
         ApplierTask dummyCheckpointTask = new ApplierTask(TaskStatus.WRITE_SUCCEEDED);
-        dummyCheckpointTask.setPseudoGTIDCheckPoint(new LastCommittedPositionCheckpoint());
+        dummyCheckpointTask.setPseudoGTIDCheckPoint(new PseudoGTIDCheckpoint());
 
         ApplierTask expectedCheckpointTask = new ApplierTask(TaskStatus.WRITE_SUCCEEDED);
-        expectedCheckpointTask.setPseudoGTIDCheckPoint(new LastCommittedPositionCheckpoint());
+        expectedCheckpointTask.setPseudoGTIDCheckPoint(new PseudoGTIDCheckpoint());
 
         // Initialize task buffer
         taskTransactionBuffer.putIfAbsent("1", dummyCheckpointTask);

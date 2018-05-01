@@ -4,7 +4,7 @@ import com.booking.replication.Coordinator;
 import com.booking.replication.applier.ApplierException;
 import com.booking.replication.binlog.event.RawBinlogEvent;
 import com.booking.replication.binlog.event.RawBinlogEventRotate;
-import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
+import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.pipeline.PipelinePosition;
@@ -53,31 +53,10 @@ public class RotateEventHandler implements RawBinlogEventHandler {
 
         String nextBinlogFileName = event.getBinlogFileName().toString();
 
-        LOGGER.info("All rows committed, moving to next binlog " + nextBinlogFileName);
-
-        String pseudoGTID = pipelinePosition.getCurrentPseudoGTID();
-        String pseudoGTIDFullQuery = pipelinePosition.getCurrentPseudoGTIDFullQuery();
-        int currentSlaveId = pipelinePosition.getCurrentPosition().getServerID();
-
-        LastCommittedPositionCheckpoint marker = new LastCommittedPositionCheckpoint(
-                pipelinePosition.getCurrentPosition().getHost(),
-                currentSlaveId,
-                currentBinlogFileName,
-                currentBinlogPosition,
-                pseudoGTID,
-                pseudoGTIDFullQuery,
-                pipelineOrchestrator.getFakeMicrosecondCounter()
-        );
-
-        try {
-            Coordinator.saveCheckpointMarker(marker);
-        } catch (Exception e) {
-            LOGGER.error("Failed to save Checkpoint!", e);
-            pipelineOrchestrator.requestShutdown();
-        }
+        LOGGER.info("Rotate Event: moving to the processing of the next binlog file" + nextBinlogFileName);
 
         if (currentBinlogFileName.equals(lastBinlogFileName)) {
-            LOGGER.info("processed the last binlog file " + lastBinlogFileName);
+            LOGGER.info("Processed the last binlog file " + lastBinlogFileName);
             pipelineOrchestrator.requestShutdown();
         }
     }

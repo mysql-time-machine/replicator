@@ -1,11 +1,20 @@
 package com.booking.replication.schema.column.types;
 
+import com.booking.replication.Configuration;
 import com.booking.replication.binlog.common.Cell;
 import com.booking.replication.binlog.common.cell.*;
 import com.booking.replication.schema.column.ColumnSchema;
 import com.booking.replication.schema.exception.TableMapException;
+
+import com.booking.replication.schema.column.types.TypeConversionRules;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -15,8 +24,48 @@ import static org.junit.Assert.*;
 
 public class ConverterTest {
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////
     // INTEGER CELLS
+    private static TypeConversionRules typeConversionRules =
+        new TypeConversionRules(
+            getConfiguration()
+        );
+
+    private static Configuration getConfiguration() {
+        ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+        String config =
+                "replication_schema:\n" +
+                        "    name:      'test'\n" +
+                        "    username:  '__USER__'\n" +
+                        "    password:  '__PASS__'\n" +
+                        "    host_pool: ['localhost2', 'localhost']\n" +
+                        "metadata_store:\n" +
+                        "    username: '__USER__'\n" +
+                        "    password: '__PASS__'\n" +
+                        "    host:     'localhost'\n" +
+                        "    database: 'test_active_schema'\n" +
+                        "    file:\n" +
+                        "        path: '/opt/replicator/replicator_metadata'\n" +
+                        "kafka:\n" +
+                        "    broker: \"kafka-1:9092,kafka-2:9092,kafka-3:9092,kafka-4:9092\"\n" +
+                        "    topic:  test\n" +
+                        "    tables: [\"sometable\"]\n" +
+                        "converter:\n" +
+                        "    stringify_null: 1\n" +
+                        "mysql_failover:\n" +
+                        "    pgtid:\n" +
+                        "        p_gtid_pattern: '(?<=_pseudo_gtid_hint__asc\\:)(.{8}\\:.{16}\\:.{8})'\n" +
+                        "        p_gtid_prefix: \"use `pgtid_meta`;\"\n";
+
+        Configuration configuration = null;
+        try {
+            InputStream in = new ByteArrayInputStream(config.getBytes(StandardCharsets.UTF_8.name()));
+            configuration = mapper.readValue(in, Configuration.class);
+        } catch (Exception e) {
+            assertTrue(false);
+        }
+        return configuration;
+    }
 
     @Test
     public void tinyintSignedCell() throws TableMapException {
@@ -26,7 +75,7 @@ public class ConverterTest {
         s.setColumnType("tinyint");
         s.setDataType("tinyint"); // TODO : Remove
 
-        assertEquals(Integer.toString(x), Converter.cellValueToString(c, s));
+        assertEquals(Integer.toString(x), Converter.cellValueToString(c, s, typeConversionRules));
     }
 
     // TODO: Failing!!!
@@ -49,7 +98,7 @@ public class ConverterTest {
         s.setColumnType("smallint");
         s.setDataType("smallint"); // TODO: Remove
 
-        assertEquals(Integer.toString(x), Converter.cellValueToString(c, s));
+        assertEquals(Integer.toString(x), Converter.cellValueToString(c, s, typeConversionRules));
     }
 
     @Test
@@ -65,7 +114,7 @@ public class ConverterTest {
         s.setColumnType("mediumint");
         s.setDataType("mediumint"); // TODO: Remove
 
-        assertEquals(Integer.toString(x), Converter.cellValueToString(c, s));
+        assertEquals(Integer.toString(x), Converter.cellValueToString(c, s, typeConversionRules));
     }
 
     @Test
@@ -81,7 +130,7 @@ public class ConverterTest {
         s.setColumnType("int");
         s.setDataType("int");
 
-        assertEquals(Integer.toString(x), Converter.cellValueToString(c, s));
+        assertEquals(Integer.toString(x), Converter.cellValueToString(c, s, typeConversionRules));
     }
 
     @Test
@@ -97,7 +146,7 @@ public class ConverterTest {
         s.setColumnType("bigint");
         s.setDataType("bigint");
 
-        assertEquals(Long.toString(x), Converter.cellValueToString(c, s));
+        assertEquals(Long.toString(x), Converter.cellValueToString(c, s, typeConversionRules));
     }
 
     @Test
@@ -107,7 +156,7 @@ public class ConverterTest {
 
     // TODO : Add tests for overflows
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////
     // REAL NUMBERS
 
     @Test
@@ -116,7 +165,7 @@ public class ConverterTest {
         ColumnSchema s = new ColumnSchema();
         s.setColumnType("double");
 
-        assertEquals("1.5", Converter.cellValueToString(c, s));
+        assertEquals("1.5", Converter.cellValueToString(c, s, typeConversionRules));
     }
 
     @Test
@@ -125,10 +174,10 @@ public class ConverterTest {
         ColumnSchema s = new ColumnSchema();
         s.setColumnType("float");
 
-        assertEquals("1.5", Converter.cellValueToString(c, s));
+        assertEquals("1.5", Converter.cellValueToString(c, s, typeConversionRules));
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////
     // TIME AND DATE
 
     @Test
@@ -139,7 +188,7 @@ public class ConverterTest {
         ColumnSchema s = new ColumnSchema();
         s.setColumnType("datetime");
 
-        assertEquals(d.toString(), Converter.cellValueToString(c, s));
+        assertEquals(d.toString(), Converter.cellValueToString(c, s, typeConversionRules));
     }
 
     @Test
@@ -150,7 +199,7 @@ public class ConverterTest {
         ColumnSchema s = new ColumnSchema();
         s.setColumnType("datetime");
 
-        assertEquals(d.toString(), Converter.cellValueToString(c, s));
+        assertEquals(d.toString(), Converter.cellValueToString(c, s, typeConversionRules));
     }
 
     @Test
@@ -161,7 +210,7 @@ public class ConverterTest {
         ColumnSchema s = new ColumnSchema();
         s.setColumnType("date");
 
-        assertEquals(d.toString(), Converter.cellValueToString(c, s));
+        assertEquals(d.toString(), Converter.cellValueToString(c, s, typeConversionRules));
     }
 
     @Test
@@ -171,7 +220,7 @@ public class ConverterTest {
         ColumnSchema s = new ColumnSchema();
         s.setColumnType("year");
 
-        assertEquals(Integer.toString(year), Converter.cellValueToString(c, s));
+        assertEquals(Integer.toString(year), Converter.cellValueToString(c, s, typeConversionRules));
     }
 
     @Test
@@ -181,7 +230,7 @@ public class ConverterTest {
         ColumnSchema s = new ColumnSchema();
         s.setColumnType("time");
 
-        assertEquals(Long.toString(epoch), Converter.cellValueToString(new TimeCell(time), s));
+        assertEquals(Long.toString(epoch), Converter.cellValueToString(new TimeCell(time), s, typeConversionRules));
     }
 
     @Test
@@ -191,7 +240,7 @@ public class ConverterTest {
         ColumnSchema s = new ColumnSchema();
         s.setColumnType("time");
 
-        assertEquals(Long.toString(epoch), Converter.cellValueToString(new Time2Cell(time), s));
+        assertEquals(Long.toString(epoch), Converter.cellValueToString(new Time2Cell(time), s, typeConversionRules));
     }
 
     @Test
@@ -201,7 +250,10 @@ public class ConverterTest {
         ColumnSchema s = new ColumnSchema();
         s.setColumnType("timestamp");
 
-        assertEquals(Long.toString(epoch), Converter.cellValueToString(new TimestampCell(t), s));
+        assertEquals(
+                Long.toString(epoch),
+                Converter.cellValueToString(new TimestampCell(t), s, typeConversionRules)
+        );
     }
 
     @Test
@@ -211,10 +263,12 @@ public class ConverterTest {
         ColumnSchema s = new ColumnSchema();
         s.setColumnType("timestamp");
 
-        assertEquals(Long.toString(epoch), Converter.cellValueToString(new Timestamp2Cell(t), s));
+        assertEquals(
+                Long.toString(epoch),
+                Converter.cellValueToString(new Timestamp2Cell(t), s, typeConversionRules));
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////
     // BLOB VARIATIONS
 
     @Test
@@ -239,7 +293,7 @@ public class ConverterTest {
         // TODO
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////
     // STRING CELLS
 
     @Test
@@ -249,10 +303,10 @@ public class ConverterTest {
         ColumnSchema stringSchema = new ColumnSchema();
         stringSchema.setCharacterSetName("utf8");
 
-        assertEquals(testString, Converter.cellValueToString(stringCell, stringSchema));
+        assertEquals(testString, Converter.cellValueToString(stringCell, stringSchema, typeConversionRules));
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////
     // NULL
     
     @Test
@@ -260,7 +314,7 @@ public class ConverterTest {
         Cell nullCell = NullCell.valueOf(0);
         ColumnSchema emptySchema = new ColumnSchema();
 
-        assertEquals("NULL", Converter.cellValueToString(nullCell, emptySchema));
+        assertEquals("NULL", Converter.cellValueToString(nullCell, emptySchema, typeConversionRules));
     }
     
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

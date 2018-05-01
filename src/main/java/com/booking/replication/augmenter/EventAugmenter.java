@@ -13,6 +13,7 @@ import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.schema.ActiveSchemaVersion;
 import com.booking.replication.schema.column.ColumnSchema;
 import com.booking.replication.schema.column.types.Converter;
+import com.booking.replication.schema.column.types.TypeConversionRules;
 import com.booking.replication.schema.exception.SchemaTransitionException;
 import com.booking.replication.schema.exception.TableMapException;
 import com.booking.replication.schema.table.TableSchemaVersion;
@@ -46,6 +47,7 @@ public class EventAugmenter {
     private ActiveSchemaVersion activeSchemaVersion;
     private final boolean applyUuid;
     private final boolean applyXid;
+    private final TypeConversionRules typeConversionRules;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EventAugmenter.class);
 
@@ -53,16 +55,20 @@ public class EventAugmenter {
      * Event Augmenter constructor.
      *
      * @param asv Active schema version
+     * @param applyUuid Apply transaction Uuid
+     * @param applyXid  Apply transaction Xid
+     * @param typeConversionRules configurable conversion rules for different MySQL types
      */
-    public EventAugmenter(ActiveSchemaVersion asv, boolean applyUuid, boolean applyXid) throws SQLException, URISyntaxException {
-
-        if (asv == null) {
-            throw new SQLException("Active Schema can't be null!");
-        }
-
-        this.activeSchemaVersion = asv;
+    public EventAugmenter(
+            ActiveSchemaVersion asv,
+            boolean applyUuid,
+            boolean applyXid,
+            TypeConversionRules typeConversionRules
+    ) throws SQLException, URISyntaxException {
+        activeSchemaVersion = asv;
         this.applyUuid = applyUuid;
         this.applyXid = applyXid;
+        this.typeConversionRules = typeConversionRules;
     }
 
     /**
@@ -119,8 +125,11 @@ public class EventAugmenter {
      * @param replicantDbName   Database name
      * @return                  Rewritten query
      */
-    public String rewriteActiveSchemaName(String query, String replicantDbName) {
-        String dbNamePattern = "( " + replicantDbName + ".)|(`" + replicantDbName + "`.)";
+    public static String rewriteActiveSchemaName(String query, String replicantDbName) {
+        String dbNamePattern =
+                "( " + replicantDbName + "\\.)" +
+                "|" +
+                "( `" + replicantDbName + "`\\.)";
         query = query.replaceAll(dbNamePattern, " ");
 
         return query;
@@ -229,7 +238,7 @@ public class EventAugmenter {
                 // but here index goes from 0..
                 Cell columnValue = row.getRowCells().get(columnIndex - 1);
 
-                String value = Converter.cellValueToString(columnValue, columnSchema);
+                String value = Converter.cellValueToString(columnValue, columnSchema, typeConversionRules);
 
                 augEvent.addColumnDataForInsert(
                         columnSchema.getColumnName(),
@@ -300,7 +309,7 @@ public class EventAugmenter {
                 // but here index goes from 0..
                 Cell cellValue = row.getRowCells().get(columnIndex - 1);
 
-                String value = Converter.cellValueToString(cellValue, columnSchema);
+                String value = Converter.cellValueToString(cellValue, columnSchema, typeConversionRules);
 
                 augEvent.addColumnDataForInsert(columnSchema.getColumnName(), value, columnSchema.getColumnType());
             }
@@ -373,8 +382,8 @@ public class EventAugmenter {
                 Cell cellValueBefore = rowPair.getBefore().getRowCells().get(columnIndex - 1);
                 Cell cellValueAfter = rowPair.getAfter().getRowCells().get(columnIndex - 1);
 
-                String valueBefore = Converter.cellValueToString(cellValueBefore, columnSchema);
-                String valueAfter  = Converter.cellValueToString(cellValueAfter, columnSchema);
+                String valueBefore = Converter.cellValueToString(cellValueBefore, columnSchema, typeConversionRules);
+                String valueAfter  = Converter.cellValueToString(cellValueAfter, columnSchema, typeConversionRules); // add typeConversionRules
 
                 String columnType  = columnSchema.getColumnType();
 

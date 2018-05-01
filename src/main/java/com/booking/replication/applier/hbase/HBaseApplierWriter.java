@@ -5,7 +5,7 @@ import com.booking.replication.applier.ApplierException;
 import com.booking.replication.applier.TaskStatus;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
-import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
+import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 import com.booking.replication.validation.ValidationService;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Gauge;
@@ -83,7 +83,8 @@ public class HBaseApplierWriter {
     private static final
         ConcurrentHashMap<String, String> taskUUIDToPseudoGTID = new ConcurrentHashMap<>();
 
-    private static LastCommittedPositionCheckpoint latestCommittedPseudoGTIDCheckPoint;
+    private RowTimestampOrganizer timestampOrganizer;
+    private static PseudoGTIDCheckpoint latestCommittedPseudoGTIDCheckPoint;
     /**
      * Shared connection used by all tasks in applier.
      */
@@ -126,7 +127,7 @@ public class HBaseApplierWriter {
     private static final Counter
             applierTasksFailedCounter = Metrics.registry.counter(name("HBase", "applierTasksFailedCounter"));
 
-    public static LastCommittedPositionCheckpoint getLatestCommittedPseudoGTIDCheckPoint() {
+    public static PseudoGTIDCheckpoint getLatestCommittedPseudoGTIDCheckPoint() {
         return latestCommittedPseudoGTIDCheckPoint;
     }
 
@@ -171,6 +172,9 @@ public class HBaseApplierWriter {
         taskPool          = Executors.newFixedThreadPool(this.poolSize);
 
         mutationGenerator = new HBaseApplierMutationGenerator(configuration);
+        if (!configuration.isInitialSnapshotMode()) {
+            timestampOrganizer = new RowTimestampOrganizer();
+        }
 
         hbaseConf.set("hbase.zookeeper.quorum", configuration.getHBaseQuorum());
         hbaseConf.set("hbase.client.keyvalue.maxsize", "0");
@@ -238,13 +242,15 @@ public class HBaseApplierWriter {
             }
             retry--;
         }
-        LOGGER.error("Failed to create hbase connection from HBaseApplier, attempt " + retry + "/10. Giving up. Last expcetion was:" + lastException);
+        LOGGER.error("Failed to create hbase connection from HBaseApplier, attempt " + retry + "/10. Giving up. Last exception was:" + lastException);
         throw new IOException("Could not create HBase connection, all retry attempts failed. Last exception was:", lastException);
     }
 
-    public synchronized void markCurrentTaskWithPseudoGTID(LastCommittedPositionCheckpoint pseudoGTIDCheckPoint)
+    public synchronized void markCurrentTaskWithPseudoGTID(PseudoGTIDCheckpoint pseudoGTIDCheckPoint)
         throws TaskBufferInconsistencyException {
         // Verify that task uuid exists
+        LOGGER.info("\tmarking task " + currentTaskUuid + " with pgtid " + pseudoGTIDCheckPoint.getPseudoGTID());
+
         if (taskTransactionBuffer.get(currentTaskUuid) == null) {
             throw new TaskBufferInconsistencyException("ERROR: Missing task UUID ("
                     + currentTaskUuid
@@ -286,6 +292,9 @@ public class HBaseApplierWriter {
         }
 
         List<AugmentedRow> augmentedRows  = augmentedRowsEvent.getSingleRowEvents();
+        if (timestampOrganizer != null) {
+            timestampOrganizer.organizeTimestamps(augmentedRows, mySQLTableName, currentTransactionUUID);
+        }
 
         // Add to buffer
         for (AugmentedRow augmentedRow : augmentedRows) {
@@ -482,7 +491,7 @@ public class HBaseApplierWriter {
                         }
 
                         // Do the accounting needed when task is successfully committed
-                        LastCommittedPositionCheckpoint newCheckPoint =
+                        PseudoGTIDCheckpoint newCheckPoint =
                             notYetCommittedTasksAccountant.doAccountingOnTaskSuccess(
                                 taskTransactionBuffer,
                                 submittedTaskUuid
@@ -516,7 +525,7 @@ public class HBaseApplierWriter {
             } catch (ExecutionException ex) {
                 LOGGER.error(String.format("Future failed for task %s, with exception: %s",
                         submittedTaskUuid,
-                        ex.getCause()));
+                        ex.getMessage()), ex);
                 requeueTask(submittedTaskUuid);
                 applierTasksFailedCounter.inc();
             } catch (NullPointerException e) {
@@ -525,12 +534,6 @@ public class HBaseApplierWriter {
                 LOGGER.info(String.format("Task %s was canceled by interrupt. "
                         + "The task that has been canceled "
                         + "will be retired later by another future.", submittedTaskUuid), ei);
-                requeueTask(submittedTaskUuid);
-                applierTasksFailedCounter.inc();
-            } catch (CancellationException ce) {
-                LOGGER.error(String.format("Future failed for task %s, with exception: %s",
-                        submittedTaskUuid ,
-                        ce));
                 requeueTask(submittedTaskUuid);
                 applierTasksFailedCounter.inc();
             } catch (TaskAccountingException e) {

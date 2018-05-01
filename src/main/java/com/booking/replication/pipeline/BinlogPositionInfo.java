@@ -117,12 +117,12 @@ public class BinlogPositionInfo {
         this.binlogFilename = binlogFilename;
     }
 
-    public long getBinlogPosition() {
-        return binlogPosition;
-    }
-
     public void setBinlogPosition(long binlogPosition) {
         this.binlogPosition = binlogPosition;
+    }
+
+    public long getBinlogPosition() {
+        return binlogPosition;
     }
 
     public long getFakeMicrosecondsCounter() {

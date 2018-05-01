@@ -3,20 +3,20 @@ package com.booking.replication.pipeline;
 import com.booking.replication.Configuration;
 import com.booking.replication.Coordinator;
 import com.booking.replication.Metrics;
-import com.booking.replication.applier.Applier;
-import com.booking.replication.applier.ApplierException;
-import com.booking.replication.applier.HBaseApplier;
+import com.booking.replication.applier.*;
 import com.booking.replication.augmenter.EventAugmenter;
 
 
 import com.booking.replication.binlog.EventPosition;
-import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
+import com.booking.replication.binlog.event.QueryEventType;
+import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 import com.booking.replication.pipeline.event.handler.*;
 
 import com.booking.replication.binlog.event.*;
 
 import com.booking.replication.replicant.ReplicantPool;
 import com.booking.replication.schema.ActiveSchemaVersion;
+import com.booking.replication.schema.column.types.TypeConversionRules;
 import com.booking.replication.schema.exception.SchemaTransitionException;
 import com.booking.replication.schema.exception.TableMapException;
 import com.booking.replication.sql.QueryInspector;
@@ -59,18 +59,19 @@ public class PipelineOrchestrator extends Thread {
     private static final Meter eventsSkippedCounter = Metrics.registry.meter(name("events", "eventsSkippedCounter"));
     private static final Meter eventsRewindedCounter = Metrics.registry.meter(name("events", "eventsRewindedCounter"));
 
-    private static final int BUFFER_FLUSH_INTERVAL = 30000; // <- force buffer flush every 30 sec
-    private static final int DEFAULT_VERSIONS_FOR_MIRRORED_TABLES = 1000;
+    private static final int  BUFFER_FLUSH_INTERVAL = 30000; // <- force buffer flush every 30 sec
+    private static final int  DEFAULT_VERSIONS_FOR_MIRRORED_TABLES = 1000;
     private static final long QUEUE_POLL_TIMEOUT = 100L;
     private static final long QUEUE_POLL_SLEEP = 500;
 
+    private static       int numberOfForceFlushesSinceLastEvent = 0;
 
     private final  BlockingQueue<RawBinlogEvent>   rawBinlogEventQueue;
     private static EventAugmenter                  eventAugmenter;
     private static ActiveSchemaVersion             activeSchemaVersion;
+    private static PseudoGTIDCheckpoint lastVerifiedPseudoGTIDCheckPoint;
 
-    private static LastCommittedPositionCheckpoint lastVerifiedPseudoGTIDCheckPoint;
-    public final Configuration configuration;
+    public  final Configuration configuration;
     private final Configuration.OrchestratorConfiguration orchestratorConfiguration;
     private final ReplicantPool replicantPool;
     private final Applier applier;
@@ -128,7 +129,12 @@ public class PipelineOrchestrator extends Thread {
         this.binlogEventProducer = binlogEventProducer;
         activeSchemaVersion = asv;
 
-        eventAugmenter = new EventAugmenter(activeSchemaVersion, configuration.getAugmenterApplyUuid(), configuration.getAugmenterApplyXid());
+        eventAugmenter = new EventAugmenter(
+                activeSchemaVersion,
+                configuration.getAugmenterApplyUuid(),
+                configuration.getAugmenterApplyXid(),
+                new TypeConversionRules(configuration)
+        );
 
         this.applier = applier;
 
@@ -273,7 +279,25 @@ public class PipelineOrchestrator extends Thread {
         processQueueLoop(null);
     }
 
+    private BinlogPositionInfo updateCurrentPipelinePosition(RawBinlogEvent event) {
+
+        fakeMicrosecondCounter++;
+
+        BinlogPositionInfo currentPosition = new BinlogPositionInfo(
+                replicantPool.getReplicantDBActiveHost(),
+                replicantPool.getReplicantDBActiveHostServerID(),
+                EventPosition.getEventBinlogFileName(event),
+                EventPosition.getEventBinlogPosition(event),
+                fakeMicrosecondCounter
+        );
+
+        pipelinePosition.setCurrentPosition(currentPosition);
+
+        return currentPosition;
+    }
+
     private void processQueueLoop(BinlogPositionInfo exitOnBinlogPosition) throws Exception {
+
         while (isRunning()) {
 
             RawBinlogEvent event = waitForEvent(QUEUE_POLL_TIMEOUT, QUEUE_POLL_SLEEP);
@@ -293,6 +317,7 @@ public class PipelineOrchestrator extends Thread {
                     fakeMicrosecondCounter
             );
             pipelinePosition.setCurrentPosition(currentPosition);
+            // BinlogPositionInfo currentPosition = updateCurrentPipelinePosition(event);
 
             processEvent(event);
 
@@ -308,6 +333,7 @@ public class PipelineOrchestrator extends Thread {
     }
 
     private void processEvent(RawBinlogEvent event) throws Exception {
+        
         if (skipEvent(event)) {
             LOGGER.debug("Skipping event: " + event);
             eventsSkippedCounter.mark();
@@ -380,9 +406,12 @@ public class PipelineOrchestrator extends Thread {
                 Thread.sleep(sleep);
                 long currentTime = System.currentTimeMillis();
                 long timeDiff = currentTime - timeOfLastEvent;
-                boolean forceFlush = (timeDiff > BUFFER_FLUSH_INTERVAL);
-                if (forceFlush) {
+
+                // Force flush if more than 30 seconds passed since last event and there was no flush since then
+                boolean forceFlush = (timeDiff > BUFFER_FLUSH_INTERVAL) && (numberOfForceFlushesSinceLastEvent == 0);
+                if (forceFlush ) {
                     applier.forceFlush();
+                    numberOfForceFlushesSinceLastEvent++;
                 }
             }
         }
@@ -418,7 +447,7 @@ public class PipelineOrchestrator extends Thread {
      */
     private void calculateAndPropagateChanges(RawBinlogEvent event) throws Exception {
 
-        // Calculate replication delay before the event timestamp is extended with fake miscrosecond part
+        // Calculate replication delay before the event timestamp is extended with fake microsecond part
         // Note: there is a bug in open replicator which results in rotate event having timestamp value = 0.
         //       This messes up the replication delay time series. The workaround is not to calculate the
         //       replication delay at rotate event.
@@ -427,10 +456,8 @@ public class PipelineOrchestrator extends Thread {
                     && (event.getTimestamp() > 0) ) {
                 replDelay = event.getTimestampOfReceipt() - event.getTimestamp();
             } else {
-                if (event.isRotate()) {
-                    // do nothing, expected for rotate event
-                } else {
-                    // warn, not expected for other events
+                if (!event.isRotate()) {
+                    // warn, not expected for other (non-rotate) events
                     LOGGER.warn("Invalid timestamp value for event " + event.toString());
                 }
             }
@@ -439,26 +466,30 @@ public class PipelineOrchestrator extends Thread {
             requestReplicatorShutdown();
         }
 
-        // check if the applier commit stream moved to a new check point. If so,
-        // store the the new safe check point; currently only supported for hbase applier
-        if (applier instanceof HBaseApplier) {
-            LastCommittedPositionCheckpoint lastCommittedPseudoGTIDReportedByApplier =
-                ((HBaseApplier) applier).getLastCommittedPseudGTIDCheckPoint();
+        // check if the applier commit stream moved to a new check point. If so, store the the new safe check point.
+        PseudoGTIDCheckpoint lastCommittedPseudoGTIDReportedByApplier =
+            applier.getLastCommittedPseudGTIDCheckPoint();
 
-            if (lastVerifiedPseudoGTIDCheckPoint == null
-                    && lastCommittedPseudoGTIDReportedByApplier != null) {
+        if (lastVerifiedPseudoGTIDCheckPoint == null && lastCommittedPseudoGTIDReportedByApplier != null) {
+
+            lastVerifiedPseudoGTIDCheckPoint = lastCommittedPseudoGTIDReportedByApplier;
+
+            Coordinator.saveCheckpointMarker(lastVerifiedPseudoGTIDCheckPoint);
+
+            LOGGER.info("Saved new checkpoint: " + lastVerifiedPseudoGTIDCheckPoint.toJson());
+
+        } else if (lastVerifiedPseudoGTIDCheckPoint != null && lastCommittedPseudoGTIDReportedByApplier != null) {
+
+            if (lastVerifiedPseudoGTIDCheckPoint.isBeforeCheckpoint(lastCommittedPseudoGTIDReportedByApplier)) {
+
+                LOGGER.info("Reached new safe checkpoint " + lastCommittedPseudoGTIDReportedByApplier.getPseudoGTID());
+
                 lastVerifiedPseudoGTIDCheckPoint = lastCommittedPseudoGTIDReportedByApplier;
-                LOGGER.info("Save new marker: " + lastVerifiedPseudoGTIDCheckPoint.toJson());
+
                 Coordinator.saveCheckpointMarker(lastVerifiedPseudoGTIDCheckPoint);
-            } else if (lastVerifiedPseudoGTIDCheckPoint != null
-                    && lastCommittedPseudoGTIDReportedByApplier != null) {
-                if (!lastVerifiedPseudoGTIDCheckPoint.getPseudoGTID().equals(
-                        lastCommittedPseudoGTIDReportedByApplier.getPseudoGTID())) {
-                    LOGGER.info("Reached new safe checkpoint " + lastCommittedPseudoGTIDReportedByApplier.getPseudoGTID() );
-                    lastVerifiedPseudoGTIDCheckPoint = lastCommittedPseudoGTIDReportedByApplier;
-                    LOGGER.info("Save new marker: " + lastVerifiedPseudoGTIDCheckPoint.toJson());
-                    Coordinator.saveCheckpointMarker(lastVerifiedPseudoGTIDCheckPoint);
-                }
+
+                LOGGER.info("Saved new checkpoint: " + lastVerifiedPseudoGTIDCheckPoint.toJson());
+
             }
         }
 
@@ -491,7 +522,6 @@ public class PipelineOrchestrator extends Thread {
     public boolean skipEvent(RawBinlogEvent event) throws Exception {
 
         boolean eventIsTracked      = false;
-        boolean skipEvent;
 
         // if there is a last safe checkpoint, skip events that are before
         // or equal to it, so that the same events are not written multiple
@@ -525,31 +555,34 @@ public class PipelineOrchestrator extends Thread {
                     case PSEUDOGTID:
                         return false;
                     case COMMIT:
-                        // COMMIT does not always contain database name so we get it
-                        // from current transaction metadata.
-                        // There is an assumption that all tables in the transaction
-                        // are from the same database. Cross database transactions
-                        // are not supported.
                         LOGGER.debug("Got commit event: " + event);
 
                         // TODO: port currentTransaction to binlog connect
                         // RawBinlogEventTableMap firstMapEvent = currentTransactionMetadata.getFirstMapEventInTransaction();
                         RawBinlogEventTableMap firstMapEvent = currentTransaction.getFirstMapEventInTransaction();
+                        // ----------------------------------------------------------------------------------
+                        // Handle empty transactions:
+                        //
+                        // Transactions from non-replicated schemas are empty since their events are skipped.
+                        // If however we encounter an empty transaction for the replicated schema than a WARN
+                        // should be logged since this is not expected.
                         if (firstMapEvent == null) {
-                            LOGGER.warn(String.format(
-                                    "Received COMMIT event, but currentTransaction is empty! Tables in transaction are %s",
-                                    Joiner.on(", ").join(currentTransaction.getCurrentTransactionTableMapEvents().keySet())
+                            String schemaName = ((RawBinlogEventQuery) event).getDatabaseName().toString();
+                            if (isReplicant(schemaName)) {
+                                LOGGER.warn(
+                                    String.format(
+                                        "Received COMMIT event for the replicated schema, but currentTransaction is empty! Position of COMMIT %s",
+                                        ((RawBinlogEventQuery) event).getBinlogFilename() + ":" + ((RawBinlogEventQuery) event).getPosition()
                                     )
-                            );
-                            dropTransaction();
-                            return true;
-                            //throw new TransactionException("Got COMMIT while not in transaction: " + currentTransaction);
-                        }
-
-                        String currentTransactionDBName = firstMapEvent.getDatabaseName().toString();
-                        if (!isReplicant(currentTransactionDBName)) {
-                            LOGGER.warn(String.format("non-replicated database %s in current transaction.",
-                                    currentTransactionDBName));
+                                );
+                            } else {
+                                LOGGER.debug(
+                                        String.format(
+                                                "Received COMMIT event for the non-replicated schema %s and currentTransaction is empty as expected.",
+                                                schemaName
+                                        )
+                                );
+                            }
                             dropTransaction();
                             return true;
                         }
@@ -574,7 +607,7 @@ public class PipelineOrchestrator extends Thread {
                         return true;
                     default:
                         LOGGER.warn("Skipping event with unknown query type: " + ((RawBinlogEventQuery) event).getSql());
-                        return false;
+                        return true;
                 }
 
             // TableMap event:
@@ -638,10 +671,13 @@ public class PipelineOrchestrator extends Thread {
         if (!isInTransaction()) {
             throw new TransactionException("Failed to add new event into a transaction buffer while not in transaction: " + event);
         }
+
         if (isTransactionSizeLimitExceeded()) {
             throw new TransactionSizeLimitException();
         }
+
         currentTransaction.addEvent(event);
+
         if (currentTransaction.getEventsCounter() % 10 == 0) {
             LOGGER.debug("Number of events in current transaction " + currentTransaction.getUuid() + " is: " + currentTransaction.getEventsCounter());
         }
@@ -677,12 +713,21 @@ public class PipelineOrchestrator extends Thread {
                    EventPosition.getEventBinlogNextPosition(beginEvent)
            );
 
+           // binlogEventProducer.stopAndClearQueue(10000, TimeUnit.MILLISECONDS);
+
+           // binlogEventProducer.setBinlogFileName(EventPosition.getEventBinlogFileName(beginEvent));
+
+           // LOGGER.info("restarting producer from beginEvent position " + EventPosition.getEventBinlogNextPosition(beginEvent));
+           // binlogEventProducer.setBinlogPosition(EventPosition.getEventBinlogNextPosition(beginEvent));
+
+           // binlogEventProducer.start();
         } catch (Exception e) {
             throw new BinlogEventProducerException("Can't stop binlogEventProducer to rewind a stream to the end of a transaction: ");
         }
 
         // apply begin event before data events
         applyTransactionBeginEvent();
+
         // apply data events
         processQueueLoop(
                 new BinlogPositionInfo(
@@ -790,7 +835,8 @@ public class PipelineOrchestrator extends Thread {
     }
 
     private boolean isTransactionSizeLimitExceeded() {
-        return configuration.getOrchestratorConfiguration().isRewindingEnabled() && (currentTransaction.getEventsCounter() > orchestratorConfiguration.getRewindingThreshold());
+        return configuration.getOrchestratorConfiguration().isRewindingEnabled()
+                && (currentTransaction.getEventsCounter() > orchestratorConfiguration.getRewindingThreshold());
     }
 
     private void doTimestampOverride(RawBinlogEvent event) {

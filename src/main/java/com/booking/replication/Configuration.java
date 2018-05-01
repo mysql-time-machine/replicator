@@ -25,6 +25,7 @@ public class Configuration {
      */
     public Configuration() {}
 
+    private int     healthTrackerPort;
     private boolean initialSnapshotMode;
     private boolean dryRunMode;
     private long    startingBinlogPosition;
@@ -41,6 +42,16 @@ public class Configuration {
         public String       password;
         public List<String> host_pool;
         public int          port        = 3306;
+    }
+
+    @JsonDeserialize
+    @JsonProperty("payload")
+    private Payload payload = new Payload();
+
+    private static class Payload implements Serializable {
+
+        @JsonDeserialize
+        public String table_name = "";
     }
 
 
@@ -78,6 +89,14 @@ public class Configuration {
     }
 
     @JsonDeserialize
+    @JsonProperty("converter")
+    private ConverterConfiguration converterConfiguration = new ConverterConfiguration();
+
+    private static class ConverterConfiguration {
+        public boolean stringify_null = true;
+    }
+
+    @JsonDeserialize
     @JsonProperty("hbase")
     private HBaseConfiguration hbaseConfiguration;
 
@@ -86,6 +105,7 @@ public class Configuration {
         public String       namespace;
         public List<String> zookeeper_quorum;
         public boolean      writeRecentChangesToDeltaTables;
+        public boolean      apply_uuid = false;
 
         @JsonDeserialize
         public HiveImports     hive_imports = new HiveImports();
@@ -152,6 +172,8 @@ public class Configuration {
         public Boolean applyBeginEvent = false;
         @JsonProperty("apply_commit_event")
         public Boolean applyCommitEvent = false;
+        @JsonProperty("rows_per_message")
+        public Integer numberOfRowsPerMessage = 10;
     }
 
     public static final int PARTITIONING_METHOD_HASH_ROW = 0;
@@ -233,7 +255,7 @@ public class Configuration {
 
     public static class OrchestratorConfiguration {
         @JsonProperty("rewinding_threshold")
-        private long rewindingThreshold = 500;
+        private long rewindingThreshold = 1000;
         @JsonProperty("rewinding_enabled")
         private boolean rewindingEnabled = true;
 
@@ -436,6 +458,13 @@ public class Configuration {
         return replication_schema.password;
     }
 
+
+    // =========================================================================
+    // Payload config getters
+    public String getPayloadTableName() {
+        return payload.table_name;
+    }
+
     // =========================================================================
     // Orchestrator config getters
     public String getOrchestratorUserName() {
@@ -537,6 +566,10 @@ public class Configuration {
         return metadata_store.file.path;
     }
 
+    public int getHealthTrackerPort() {
+        return this.healthTrackerPort;
+    }
+
     /**
      * Get initial snapshot mode flag.
      */
@@ -578,6 +611,18 @@ public class Configuration {
             return null;
         }
     }
+
+    public boolean getHBaseApplyUuid(){
+        return hbaseConfiguration.apply_uuid;
+    }
+
+    /**
+     * Converter configuration getters.
+     */
+    public boolean getConverterStringifyNull(){
+        return converterConfiguration.stringify_null;
+    }
+
     /**
      * Augmenter configuration getters.
      */
@@ -614,6 +659,10 @@ public class Configuration {
     public boolean isKafkaApplyBeginEvent() { return kafka.applyBeginEvent; }
 
     public boolean isKafkaApplyCommitEvent() { return kafka.applyCommitEvent; }
+
+    public int getKafkaNumberOfRowsPerMessage() {
+        return kafka.numberOfRowsPerMessage;
+    }
 
     public boolean isDryRunMode() {
         return dryRunMode;

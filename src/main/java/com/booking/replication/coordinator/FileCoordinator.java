@@ -1,7 +1,7 @@
 package com.booking.replication.coordinator;
 
 import com.booking.replication.Configuration;
-import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
+import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 import com.booking.replication.checkpoints.SafeCheckPoint;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -74,9 +74,9 @@ public class FileCoordinator implements CoordinatorInterface {
     }
 
     @Override
-    public LastCommittedPositionCheckpoint getSafeCheckPoint() {
+    public PseudoGTIDCheckpoint getSafeCheckPoint() {
         try {
-            return mapper.readValue(Files.newInputStream(checkPointPath), LastCommittedPositionCheckpoint.class);
+            return mapper.readValue(Files.newInputStream(checkPointPath), PseudoGTIDCheckpoint.class);
         } catch (JsonProcessingException e) {
             LOGGER.error(String.format("Failed to deserialize checkpoint data. %s", e.getMessage()));
             e.printStackTrace();

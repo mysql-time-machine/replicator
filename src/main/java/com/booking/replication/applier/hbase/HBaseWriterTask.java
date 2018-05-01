@@ -11,6 +11,7 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Table;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,8 +88,12 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
         if (chaosMonkey.feelsLikeThrowingExceptionForTaskInProgress()) {
             throw new Exception("Chaos monkey exception for task in progress!");
         }
+
         if (chaosMonkey.feelsLikeFailingTaskInProgessWithoutException()) {
+
+            LOGGER.debug("Chaos monkey failing task in progress without exception");
             return new HBaseTaskResult(taskUuid, TaskStatus.WRITE_FAILED, false);
+
         }
 
         for (final String transactionUuid : taskTransactionBuffer.keySet()) {
@@ -98,20 +103,36 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
             int numberOfFlushedTablesInCurrentTransaction = 0;
 
             final Timer.Context timerContext = putLatencyTimer.time();
+
             for (final String bufferedMySQLTableName : taskTransactionBuffer.get(transactionUuid).keySet()) {
 
                 if (chaosMonkey.feelsLikeThrowingExceptionBeforeFlushingData()) {
+
                     throw new Exception("Chaos monkey is here to prevent call to flush!!!");
+
                 } else if (chaosMonkey.feelsLikeFailingDataFlushWithoutException()) {
+
+                    LOGGER.debug("Chaos monkey failing data flush without throwing exception");
                     return new HBaseTaskResult(taskUuid, TaskStatus.WRITE_FAILED, false);
+
                 } else {
+
+                    LOGGER.debug("Passed the chaos monkey army.");
+                    LOGGER.debug("Try to read transaction " + transactionUuid + " from taskTransactionBuffer");
+
                     List<AugmentedRow> rowOps = taskTransactionBuffer.get(transactionUuid).get(bufferedMySQLTableName);
 
-                    Map<String, List<HBaseApplierMutationGenerator.PutMutation>> mutationsByTable = mutationGenerator.generateMutations(rowOps).stream()
-                            .collect(
-                                        Collectors.groupingBy( mutation->mutation.getTable()
-                                    )
-                            );
+                    LOGGER.debug("Got rowOps from taskTransactionBuffer for table " + bufferedMySQLTableName);
+
+                    Map<String, List<HBaseApplierMutationGenerator.PutMutation>> mutationsByTable =
+                            mutationGenerator
+                                    .generateMutations(rowOps)
+                                    .stream()
+                                    .collect(
+                                        Collectors.groupingBy( mutation -> mutation.getTable() )
+                                    );
+
+                    LOGGER.debug("Generated HBase mutations for { transactionUuid => " + transactionUuid + ", table =>  " + bufferedMySQLTableName + " }");
 
                     for (Map.Entry<String, List<HBaseApplierMutationGenerator.PutMutation>> entry : mutationsByTable.entrySet()){
 
@@ -119,8 +140,13 @@ public class HBaseWriterTask implements Callable<HBaseTaskResult> {
                         List<HBaseApplierMutationGenerator.PutMutation> mutations = entry.getValue();
 
                         if (!DRY_RUN) {
+                            List<Put> putList = mutations.stream().map(mutation -> mutation.getPut() ).collect(Collectors.toList());
+
+                            LOGGER.debug("Inserting on table {} using the put list {}", tableName, putList);
+
                             Table table = hbaseConnection.getTable(TableName.valueOf(tableName));
-                            table.put( mutations.stream().map( mutation -> mutation.getPut() ).collect(Collectors.toList()) );
+
+                            table.put(putList);
                             table.close();
 
                             for (HBaseApplierMutationGenerator.PutMutation mutation : mutations){

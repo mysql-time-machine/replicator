@@ -2,21 +2,21 @@ package com.booking.replication.pipeline.event.handler;
 
 import com.booking.replication.Coordinator;
 import com.booking.replication.Metrics;
-import com.booking.replication.applier.ApplierException;
-import com.booking.replication.applier.HBaseApplier;
+import com.booking.replication.applier.*;
 import com.booking.replication.applier.hbase.TaskBufferInconsistencyException;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.binlog.EventPosition;
 import com.booking.replication.binlog.event.QueryEventType;
 import com.booking.replication.binlog.event.RawBinlogEvent;
 import com.booking.replication.binlog.event.RawBinlogEventQuery;
-import com.booking.replication.checkpoints.LastCommittedPositionCheckpoint;
+import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 import com.booking.replication.pipeline.BinlogEventProducerException;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.pipeline.PipelinePosition;
 import com.booking.replication.schema.ActiveSchemaVersion;
 import com.booking.replication.schema.exception.SchemaTransitionException;
+import com.booking.replication.applier.SupportedAppliers.ApplierName;
 import com.booking.replication.sql.QueryInspector;
 import com.booking.replication.sql.exception.QueryInspectorException;
 import com.codahale.metrics.Meter;
@@ -80,7 +80,7 @@ public class QueryEventHandler implements RawBinlogEventHandler {
                     String pseudoGTIDFullQuery = pipelinePosition.getCurrentPseudoGTIDFullQuery();
                     int currentSlaveId = pipelinePosition.getCurrentPosition().getServerID();
 
-                    LastCommittedPositionCheckpoint marker = new LastCommittedPositionCheckpoint(
+                    PseudoGTIDCheckpoint marker = new PseudoGTIDCheckpoint(
                             pipelinePosition.getCurrentPosition().getHost(),
                             currentSlaveId,
                             EventPosition.getEventBinlogFileName(event),
@@ -102,26 +102,30 @@ public class QueryEventHandler implements RawBinlogEventHandler {
                 break;
             case PSEUDOGTID:
                 pgtidCounter.mark();
-
                 try {
                     String pseudoGTID = QueryInspector.extractPseudoGTID(querySQL);
 
+                    LOGGER.debug("PGTID: " + pseudoGTID);
+
+                    // THIS IS EXECUTED
+
                     pipelinePosition.setCurrentPseudoGTID(pseudoGTID);
                     pipelinePosition.setCurrentPseudoGTIDFullQuery(querySQL);
-                    if (eventHandlerConfiguration.getApplier() instanceof HBaseApplier) {
-                        try {
-                            ((HBaseApplier) eventHandlerConfiguration.getApplier()).applyPseudoGTIDEvent(new LastCommittedPositionCheckpoint(
-                                    pipelinePosition.getCurrentPosition().getHost(),
-                                    pipelinePosition.getCurrentPosition().getServerID(),
-                                    pipelinePosition.getCurrentPosition().getBinlogFilename(),
-                                    pipelinePosition.getCurrentPosition().getBinlogPosition(),
-                                    pseudoGTID,
-                                    querySQL,
-                                    pipelineOrchestrator.getFakeMicrosecondCounter()
-                            ));
-                        } catch (TaskBufferInconsistencyException e) {
-                            e.printStackTrace();
-                        }
+
+                    try {
+                        eventHandlerConfiguration.getApplier().applyPseudoGTIDEvent(
+                            new PseudoGTIDCheckpoint(
+                                pipelinePosition.getCurrentPosition().getHost(),
+                                pipelinePosition.getCurrentPosition().getServerID(),
+                                pipelinePosition.getCurrentPosition().getBinlogFilename(),
+                                pipelinePosition.getCurrentPosition().getBinlogPosition(),
+                                pseudoGTID,
+                                querySQL,
+                                pipelineOrchestrator.getFakeMicrosecondCounter()
+                            )
+                        );
+                    } catch (Exception exception) {
+                        LOGGER.error("error: ", exception);
                     }
                 } catch (QueryInspectorException e) {
                     LOGGER.error("Failed to update pipelinePosition with new pGTID!", e);
@@ -179,13 +183,6 @@ public class QueryEventHandler implements RawBinlogEventHandler {
                 break;
             default:
                 LOGGER.warn("Unexpected query event: " + event.getSql());
-                if (pipelineOrchestrator.isInTransaction()) {
-                    pipelineOrchestrator.addEventIntoTransaction(event);
-                } else {
-                    pipelineOrchestrator.beginTransaction();
-                    pipelineOrchestrator.addEventIntoTransaction(event);
-                    pipelineOrchestrator.commitTransaction(event.getTimestamp(), CurrentTransaction.FAKEXID);
-                }
-        }
+         }
     }
 }

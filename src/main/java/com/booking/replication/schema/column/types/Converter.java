@@ -4,6 +4,8 @@ import com.booking.replication.binlog.common.cell.*;
 import com.booking.replication.schema.column.ColumnSchema;
 import com.booking.replication.schema.exception.TableMapException;
 
+import com.booking.replication.schema.column.types.TypeConversionRules;
+
 import com.booking.replication.util.MySQLUtils;
 
 import org.slf4j.Logger;
@@ -37,8 +39,11 @@ public class Converter {
     // Extracts string representation from typed column. For now just
     // calls toString. Later if needed some type specific processing
     // can be added
-    public static String cellValueToString(Cell cell, ColumnSchema columnSchema)
-        throws TableMapException {
+    public static String cellValueToString(
+            Cell cell,
+            ColumnSchema columnSchema,
+            TypeConversionRules typeConversionRules
+        ) throws TableMapException {
 
         // ================================================================
         // Workaround for type resolution loss in mysql-binlog-connector:
@@ -87,8 +92,8 @@ public class Converter {
                 String charSetName = columnSchema.getCharacterSetName();
 
                 if (charSetName == null) {
-                    // TODO: defualt to TABLE/DB charset; in the meantime return HEX-fied blob
-                    return blobToHexString(bytes);
+                    // TODO: default to TABLE/DB charset; in the meantime return HEX-fied blob
+                    return typeConversionRules.blobToHexString(bytes);
                 } else if (charSetName.contains("utf8")) {
                     String utf8Value = null;
                     try {
@@ -107,11 +112,11 @@ public class Converter {
                     return latin1Value;
                 } else {
                     // TODO: handle other encodings; in the meantime return HEX-fied blob
-                    return blobToHexString(bytes);
+                    return typeConversionRules.blobToHexString(bytes);
                 }
             } else {
                 // Ordinary Binary BLOB - convert to HEX string
-                return blobToHexString(bytes);
+                return typeConversionRules.blobToHexString(bytes);
             }
         } else if (cell instanceof StringCell) {
             // ================================================================
@@ -128,7 +133,7 @@ public class Converter {
             if (charSetName == null) {
                 // TODO: defualt to TABLE/DB charset; in the meantime return HEX-fied blob
                 byte[] bytes = sc.getValue();
-                return blobToHexString(bytes);
+                return typeConversionRules.blobToHexString(bytes);
             } else if (charSetName.contains("utf8")) {
                 byte[] bytes = sc.getValue();
                 String utf8Value = null;
@@ -150,7 +155,7 @@ public class Converter {
             } else {
                 // TODO: handle other encodings; in the meantime return HEX-fied blob
                 byte[] bytes = sc.getValue();
-                return blobToHexString(bytes);
+                return typeConversionRules.blobToHexString(bytes);
             }
         } else if (cell instanceof NullCell) {
             return "NULL";
@@ -179,7 +184,7 @@ public class Converter {
                     return ((EnumColumnSchema) columnSchema).getEnumValueFromIndex(enumIntValue);
                 } catch (Exception e) {
                     e.printStackTrace();
-                    throw new TableMapException("Probaly wrong mapping of indexes for enum array");
+                    throw new TableMapException("Probably wrong mapping of indexes for enum array");
                 }
             } else {
                 throw new TableMapException("Got enum colum, but the ColumnSchema instance is of wrong type");
@@ -334,21 +339,5 @@ public class Converter {
                 throw new TableMapException("cell object is null");
             }
         }
-    }
-
-    public static String blobToHexString( byte [] raw ) {
-        if ( raw == null ) {
-            return "NULL";
-        }
-        final StringBuilder hex = new StringBuilder( 2 * raw.length );
-        for ( final byte b : raw ) {
-            int ivalue = b & 0xFF;
-            if (ivalue < 16 ) {
-                hex.append("0").append(Integer.toHexString(ivalue).toUpperCase());
-            } else {
-                hex.append(Integer.toHexString(ivalue).toUpperCase());
-            }
-        }
-        return hex.toString();
     }
 }

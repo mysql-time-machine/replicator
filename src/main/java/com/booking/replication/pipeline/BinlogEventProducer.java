@@ -43,9 +43,9 @@ public class BinlogEventProducer {
 
     private Object           binlogEventParserProvider;
 
-    private final int              BINLOG_EVENT_PARSER_PROVIDER_CODE;
+    private final int        BINLOG_EVENT_PARSER_PROVIDER_CODE;
 
-    private final Configuration    configuration;
+    private final Configuration configuration;
     private final ReplicantPool replicantPool;
 
     private final int serverId = (new Random().nextInt() >>> 1) | (1 << 30); // a large positive random integer;

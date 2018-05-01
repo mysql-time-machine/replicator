@@ -575,7 +575,7 @@ public class PipelineOrchestrator extends Thread {
                         return true;
                     default:
                         LOGGER.warn("Skipping event with unknown query type: " + ((QueryEvent) event).getSql());
-                        return false;
+                        return true;
                 }
 
             // TableMap event:

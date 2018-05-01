@@ -179,13 +179,6 @@ public class QueryEventHandler implements BinlogEventV4Handler {
                 break;
             default:
                 LOGGER.warn("Unexpected query event: " + event.getSql());
-                if (pipelineOrchestrator.isInTransaction()) {
-                    pipelineOrchestrator.addEventIntoTransaction(event);
-                } else {
-                    pipelineOrchestrator.beginTransaction();
-                    pipelineOrchestrator.addEventIntoTransaction(event);
-                    pipelineOrchestrator.commitTransaction(event.getHeader().getTimestamp(), CurrentTransaction.FAKEXID);
-                }
         }
     }
 }

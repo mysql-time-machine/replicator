@@ -73,7 +73,10 @@ public class HBaseApplier implements Applier {
             );
 
         hbaseSchemaManager = new HBaseSchemaManager(
-                configuration.getHBaseQuorum(), configuration.isDryRunMode());
+                configuration.getHBaseQuorum(),
+                configuration.isDryRunMode(),
+                configuration
+        );
     }
 
     @Override

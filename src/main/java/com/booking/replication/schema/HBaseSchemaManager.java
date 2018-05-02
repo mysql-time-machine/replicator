@@ -29,6 +29,8 @@ public class HBaseSchemaManager {
 
     private static Connection connection;
 
+    private final com.booking.replication.Configuration configuration;
+
     private static final int DELTA_TABLE_MAX_VERSIONS = 1;
 
     private static final int INITIAL_SNAPSHOT_DEFAULT_REGIONS = 256;
@@ -45,9 +47,15 @@ public class HBaseSchemaManager {
 
     private static final byte[] CF = Bytes.toBytes("d");
 
-    public HBaseSchemaManager(String zookeeperQuorum, boolean dryRun) {
+    public HBaseSchemaManager(
+            String zookeeperQuorum,
+            boolean dryRun,
+            com.booking.replication.Configuration configuration
+    ) {
 
         DRY_RUN = dryRun;
+
+        this.configuration = configuration;
 
         hbaseConf.set("hbase.zookeeper.quorum", zookeeperQuorum);
 
@@ -82,12 +90,16 @@ public class HBaseSchemaManager {
 
                     HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);
                     HColumnDescriptor cd = new HColumnDescriptor("d");
-                    cd.setCompressionType(Compression.Algorithm.SNAPPY);
+
+                    if (configuration.useSnappyForHBaseTables()) {
+                        cd.setCompressionType(Compression.Algorithm.SNAPPY);
+                    }
+
                     cd.setMaxVersions(versions);
                     tableDescriptor.addFamily(cd);
                     tableDescriptor.setCompactionEnabled(true);
 
-                    // presplit into 16 regions
+                    // pre-split into 16 regions
                     RegionSplitter.HexStringSplit splitter = new RegionSplitter.HexStringSplit();
                     byte[][] splitKeys = splitter.split(MIRRORED_TABLE_DEFAULT_REGIONS);
 
@@ -122,7 +134,9 @@ public class HBaseSchemaManager {
 
                     HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);
                     HColumnDescriptor cd = new HColumnDescriptor("d");
-                    cd.setCompressionType(Compression.Algorithm.SNAPPY);
+
+                    // cd.setCompressionType(Compression.Algorithm.SNAPPY);
+
                     cd.setMaxVersions(DELTA_TABLE_MAX_VERSIONS);
                     tableDescriptor.addFamily(cd);
                     tableDescriptor.setCompactionEnabled(true);

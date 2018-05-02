@@ -278,4 +278,91 @@ public class ConfigurationTest {
 
         assertEquals(false, rewindingEnabled);
     }
+
+    @Test
+    public void testHBaseConfigurationUseSnappyOff() throws Exception {
+
+        ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+
+        String config =
+                "replication_schema:\n" +
+                        "    name:      'test'\n" +
+                        "    username:  '__USER__'\n" +
+                        "    password:  '__PASS__'\n" +
+                        "    host_pool: ['localhost2', 'localhost']\n" +
+
+                        "metadata_store:\n" +
+                        "    username: '__USER__'\n" +
+                        "    password: '__PASS__'\n" +
+                        "    host:     'localhost'\n" +
+                        "    database: 'test_active_schema'\n" +
+                        "    file:\n" +
+                        "        path: '/opt/replicator/replicator_metadata'\n" +
+
+                        "hbase:\n" +
+                        "    namespace: \"test\"\n" +
+                        "    zookeeper_quorum: [\"hbase\"]\n" +
+                        "    use_snappy: false\n" +
+                        "    hive_imports:\n" +
+                        "        tables: ['test1','test2','test3']\n" +
+
+                        "orchestrator:\n" +
+                        "    rewinding_enabled: false\n" +
+                        "converter:\n" +
+                        "    stringify_null: 1\n" +
+                        "mysql_failover:\n" +
+                        "    pgtid:\n" +
+                        "        p_gtid_pattern: '(?<=_pseudo_gtid_hint__asc\\:)(.{8}\\:.{16}\\:.{8})'\n" +
+                        "        p_gtid_prefix: \"use `pgtid_meta`;\"\n";
+
+        InputStream in = new ByteArrayInputStream(config.getBytes(StandardCharsets.UTF_8.name()));
+        Configuration configuration = mapper.readValue(in, Configuration.class);
+
+        boolean useSnappy = configuration.useSnappyForHBaseTables();
+
+        assertEquals(false, useSnappy);
+    }
+
+    @Test
+    public void testHBaseConfigurationUseSnappyDefault() throws Exception {
+
+        ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+
+        String config =
+                "replication_schema:\n" +
+                        "    name:      'test'\n" +
+                        "    username:  '__USER__'\n" +
+                        "    password:  '__PASS__'\n" +
+                        "    host_pool: ['localhost2', 'localhost']\n" +
+
+                        "metadata_store:\n" +
+                        "    username: '__USER__'\n" +
+                        "    password: '__PASS__'\n" +
+                        "    host:     'localhost'\n" +
+                        "    database: 'test_active_schema'\n" +
+                        "    file:\n" +
+                        "        path: '/opt/replicator/replicator_metadata'\n" +
+
+                        "hbase:\n" +
+                        "    namespace: \"test\"\n" +
+                        "    zookeeper_quorum: [\"hbase\"]\n" +
+                        "    hive_imports:\n" +
+                        "        tables: ['test1','test2','test3']\n" +
+
+                        "orchestrator:\n" +
+                        "    rewinding_enabled: false\n" +
+                        "converter:\n" +
+                        "    stringify_null: 1\n" +
+                        "mysql_failover:\n" +
+                        "    pgtid:\n" +
+                        "        p_gtid_pattern: '(?<=_pseudo_gtid_hint__asc\\:)(.{8}\\:.{16}\\:.{8})'\n" +
+                        "        p_gtid_prefix: \"use `pgtid_meta`;\"\n";
+
+        InputStream in = new ByteArrayInputStream(config.getBytes(StandardCharsets.UTF_8.name()));
+        Configuration configuration = mapper.readValue(in, Configuration.class);
+
+        boolean useSnappy = configuration.useSnappyForHBaseTables();
+
+        assertEquals(true, useSnappy);
+    }
 }

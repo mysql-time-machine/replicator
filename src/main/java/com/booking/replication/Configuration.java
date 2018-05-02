@@ -106,6 +106,7 @@ public class Configuration {
         public List<String> zookeeper_quorum;
         public boolean      writeRecentChangesToDeltaTables;
         public boolean      apply_uuid = false;
+        public boolean      use_snappy = true;
 
         @JsonDeserialize
         public HiveImports     hive_imports = new HiveImports();
@@ -591,6 +592,14 @@ public class Configuration {
     public Boolean isWriteRecentChangesToDeltaTables() {
         if (hbaseConfiguration != null) {
             return hbaseConfiguration.writeRecentChangesToDeltaTables;
+        } else {
+            return null;
+        }
+    }
+
+    public Boolean useSnappyForHBaseTables() {
+        if (hbaseConfiguration != null) {
+            return hbaseConfiguration.use_snappy;
         } else {
             return null;
         }

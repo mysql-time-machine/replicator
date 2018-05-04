@@ -1,5 +1,6 @@
 package com.booking.replication.binlog.event;
 
+import com.booking.replication.applier.HBaseApplier;
 import com.booking.replication.binlog.common.Cell;
 import com.booking.replication.binlog.common.CellExtractor;
 import com.booking.replication.binlog.common.Row;
@@ -8,6 +9,8 @@ import com.google.code.or.binlog.impl.event.WriteRowsEvent;
 import com.google.code.or.binlog.impl.event.WriteRowsEventV2;
 import com.google.code.or.common.glossary.Column;
 import com.google.code.or.common.util.MySQLConstants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.*;
@@ -16,6 +19,8 @@ import java.util.*;
  * Created by bosko on 6/1/17.
  */
 public class RawBinlogEventWriteRows extends RawBinlogEventRows {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(RawBinlogEventWriteRows.class);
 
     List<Row> extractedRows;
 
@@ -86,17 +91,17 @@ public class RawBinlogEventWriteRows extends RawBinlogEventRows {
             return rows;
         }
         else {
-
             WriteRowsEventData data = binlogConnectorEvent.getData();
 
-            Iterator rowsIterator = data.getRows().iterator();
-
-            while(rowsIterator.hasNext()) {
-                Serializable[] bcRow = (Serializable[])rowsIterator.next();
+            for (Serializable[] bcRow : data.getRows()) {
                 List<Cell> cells = new ArrayList<>();
+
                 for (Serializable column: bcRow) {
-                    Cell cell = CellExtractor.extractCellFromBinlogConnectorColumn(column);
-                    cells.add(cell);
+                    if (column == null) {
+                    } else {
+                        Cell cell = CellExtractor.extractCellFromBinlogConnectorColumn(column);
+                        cells.add(cell);
+                    }
                 }
                 rows.add(new Row(cells));
             }

@@ -6,6 +6,9 @@ import com.google.code.or.common.glossary.Column;
 import com.google.code.or.common.glossary.column.*;
 import com.google.code.or.io.ExceedLimitException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.BitSet;
@@ -15,7 +18,10 @@ import java.util.BitSet;
  */
 public class CellExtractor {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(CellExtractor.class);
+
     public static Cell extractCellFromBinlogConnectorColumn(Serializable serializable) throws Exception {
+
         Cell cell = null;
 
         // Columns can have one of the following types:
@@ -36,6 +42,10 @@ public class CellExtractor {
         // More details at: https://github.com/shyiko/mysql-binlog-connector-java/blob/3709c9668ffc732e053e0f93ca3a3610789b152c/src/main/java/com/github/shyiko/mysql/binlog/event/deserialization/AbstractRowsEventDataDeserializer.java
 
         Serializable column = serializable;
+
+        if (column == null) {
+            throw new Exception("column can not be null!");
+        }
 
         if(column instanceof Integer){
             //  This can correspond to these MySQL types
@@ -172,83 +182,78 @@ public class CellExtractor {
             cell = new BlobCell((byte[]) column);
 
         } else {
-            throw new Exception("Unknown MySQL type in the BinlogConnector event" + column.getClass() + " Object = " + column);
+            String type = column.getClass().toString();
+            throw new Exception("Unknown MySQL type in the BinlogConnector event" + type);
         }
+
         return cell;
     }
 
     public static Cell extractCellFromOpenReplicatorColumn(Column column) throws Exception {
+
         Cell cell;
-        if (column instanceof BitColumn) {
-            cell =  BitCell.valueOf(((BitColumn)column).getLength(), ((BitColumn)column).getValue());
+
+        if (column == null) {
+            throw  new Exception("column cannot be null!");
         }
-        else if (column instanceof BlobColumn) {
-            cell = new BlobCell((byte[]) ((BlobColumn)column).getValue());
-        }
-        else if (column instanceof StringColumn) {
-            cell = StringCell.valueOf((byte[])((StringColumn)column).getValue());
-        }
-        else if (column instanceof DecimalColumn) {
-            BigDecimal value = ((DecimalColumn)column).getValue();
-            int precision = ((DecimalColumn)column).getPrecision();
-            int scale = ((DecimalColumn)column).getScale();
-            cell = new DecimalCell(value,precision,scale);
-        }
-        else if (column instanceof NullColumn) {
-            cell = NullCell.valueOf(((NullColumn)column).getType());
-        }
-        else if (column instanceof SetColumn) {
-            cell = new SetCell(((SetColumn)column).getValue());
-        }
-        else  if (column instanceof  EnumColumn) {
-            cell = new EnumCell(((EnumColumn)column).getValue());
-        }
-        else if (column instanceof DoubleColumn) {
-            cell = new DoubleCell(((DoubleColumn)column).getValue());
-        }
-        else if (column instanceof FloatColumn) {
-            cell = new FloatCell(((FloatColumn)column).getValue());
-        }
-        else if (column instanceof TinyColumn) {
-            cell = TinyCell.valueOf(((TinyColumn)column).getValue());
-        }
-        else if (column instanceof  ShortColumn) {
-            cell = ShortCell.valueOf(((ShortColumn)column).getValue());
-        }
-        else if (column instanceof Int24Column) {
-            cell = Int24Cell.valueOf(((Int24Column)column).getValue());
-        }
-        else if (column instanceof LongColumn) {
-            cell = LongCell.valueOf(((LongColumn)column).getValue());
-        }
-        else if (column instanceof LongLongColumn) {
-            cell = LongLongCell.valueOf(((LongLongColumn)column).getValue());
-        }
-        else if (column instanceof YearColumn) {
-            cell = YearCell.valueOf(((YearColumn)column).getValue());
-        }
-        else if (column instanceof DateColumn) {
-            cell = new DateCell(((DateColumn)column).getValue());
-        }
-        else if (column instanceof DatetimeColumn) {
-            cell = new DatetimeCell(((DatetimeColumn)column).getValue());
-        }
-        else if (column instanceof Datetime2Column) {
-            cell = new Datetime2Cell(((Datetime2Column)column).getValue());
-        }
-        else if (column instanceof TimeColumn) {
-            cell = new TimeCell(((TimeColumn)column).getValue());
-        }
-        else if (column instanceof  Time2Column) {
-            cell = new Time2Cell(((Time2Column)column).getValue());
-        }
-        else if (column instanceof TimestampColumn) {
-            cell = new TimestampCell(((TimestampColumn)column).getValue());
-        }
-        else if (column instanceof Timestamp2Column) {
-            cell = new Timestamp2Cell(((Timestamp2Column)column).getValue());
-        } else {
-            throw new Exception("Unknown MySQL type in the Open Replicator event" + column.getClass() + " Object = " + column);
+
+        try {
+            if (column instanceof BitColumn) {
+                cell = BitCell.valueOf(((BitColumn) column).getLength(), ((BitColumn) column).getValue());
+            } else if (column instanceof BlobColumn) {
+                cell = new BlobCell((byte[]) ((BlobColumn) column).getValue());
+            } else if (column instanceof StringColumn) {
+                cell = StringCell.valueOf((byte[]) ((StringColumn) column).getValue());
+            } else if (column instanceof DecimalColumn) {
+                BigDecimal value = ((DecimalColumn) column).getValue();
+                int precision = ((DecimalColumn) column).getPrecision();
+                int scale = ((DecimalColumn) column).getScale();
+                cell = new DecimalCell(value, precision, scale);
+            } else if (column instanceof NullColumn) {
+                cell = NullCell.valueOf(((NullColumn) column).getType());
+            } else if (column instanceof SetColumn) {
+                cell = new SetCell(((SetColumn) column).getValue());
+            } else if (column instanceof EnumColumn) {
+                cell = new EnumCell(((EnumColumn) column).getValue());
+            } else if (column instanceof DoubleColumn) {
+                cell = new DoubleCell(((DoubleColumn) column).getValue());
+            } else if (column instanceof FloatColumn) {
+                cell = new FloatCell(((FloatColumn) column).getValue());
+            } else if (column instanceof TinyColumn) {
+                cell = TinyCell.valueOf(((TinyColumn) column).getValue());
+            } else if (column instanceof ShortColumn) {
+                cell = ShortCell.valueOf(((ShortColumn) column).getValue());
+            } else if (column instanceof Int24Column) {
+                cell = Int24Cell.valueOf(((Int24Column) column).getValue());
+            } else if (column instanceof LongColumn) {
+                cell = LongCell.valueOf(((LongColumn) column).getValue());
+            } else if (column instanceof LongLongColumn) {
+                cell = LongLongCell.valueOf(((LongLongColumn) column).getValue());
+            } else if (column instanceof YearColumn) {
+                cell = YearCell.valueOf(((YearColumn) column).getValue());
+            } else if (column instanceof DateColumn) {
+                cell = new DateCell(((DateColumn) column).getValue());
+            } else if (column instanceof DatetimeColumn) {
+                cell = new DatetimeCell(((DatetimeColumn) column).getValue());
+            } else if (column instanceof Datetime2Column) {
+                cell = new Datetime2Cell(((Datetime2Column) column).getValue());
+            } else if (column instanceof TimeColumn) {
+                cell = new TimeCell(((TimeColumn) column).getValue());
+            } else if (column instanceof Time2Column) {
+                cell = new Time2Cell(((Time2Column) column).getValue());
+            } else if (column instanceof TimestampColumn) {
+                cell = new TimestampCell(((TimestampColumn) column).getValue());
+            } else if (column instanceof Timestamp2Column) {
+                cell = new Timestamp2Cell(((Timestamp2Column) column).getValue());
+            } else {
+
+                LOGGER.warn("Unknown MySQL type in the Open Replicator event");
+
+                throw new Exception("Unknown MySQL type in the Open Replicator event" + column.getClass() + " Object = " + column);
+            }
+        } catch (Exception e) {
+            LOGGER.error("wtf");
+            throw new Exception("gone");
         }
         return cell;
     }

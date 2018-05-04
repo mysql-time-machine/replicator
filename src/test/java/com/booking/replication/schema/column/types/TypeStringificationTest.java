@@ -22,7 +22,7 @@ import java.util.Date;
 
 import static org.junit.Assert.*;
 
-public class ConverterTest {
+public class TypeStringificationTest {
 
     ////////////////////////////////////////////
     // INTEGER CELLS

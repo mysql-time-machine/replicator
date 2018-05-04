@@ -126,19 +126,18 @@ public class RawBinlogEventUpdateRows extends RawBinlogEventRows {
             return pairs;
         }
         else {
-            // For binlog connector we have a List<Map.Entry<Serializable[], Serializable[]>>
+            // For binlog connector update event we have a:
+            //
+            //      List<Map.Entry<Serializable[], Serializable[]>>
+            //
             // where one row is Map.Entry<Serializable[], Serializable[]>
-            // TODO: verify:
-            //      ? column ordering ?
-            //      ? value overlap ?
-
             List<RowPair> pairs = new ArrayList<>();
 
             for (Map.Entry<Serializable[], Serializable[]> bcRowUpdateEntry: ((UpdateRowsEventData) binlogConnectorEvent.getData()).getRows()) {
 
                 int numberOfColumns = getColumnCount();
 
-                // TODO: verify that before values are on the key and after on the value
+                // TODO: verify that before-update-value is on the key and after-update-value is on the value
                 Serializable[] bcRowBefore = bcRowUpdateEntry.getKey();
                 Serializable[] bcRowAfter = bcRowUpdateEntry.getValue();
 

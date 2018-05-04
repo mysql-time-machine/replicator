@@ -33,12 +33,10 @@ public class Converter {
     private static final Date ZERO_DATE = MySQLUtils.toDate(0);
 
     // --------------------------------------------------------------------
-    // This function was taken from linked-in databus and adapted to output
+    // This function was taken from linked-in Databus and adapted to output
     // strings instead of avro types.
     //
-    // Extracts string representation from typed column. For now just
-    // calls toString. Later if needed some type specific processing
-    // can be added
+    // Extracts string representation from typed column.
     public static String cellValueToString(
             Cell cell,
             ColumnSchema columnSchema,
@@ -92,7 +90,8 @@ public class Converter {
                 String charSetName = columnSchema.getCharacterSetName();
 
                 if (charSetName == null) {
-                    // TODO: default to TABLE/DB charset; in the meantime return HEX-fied blob
+                    // TODO: default to TABLE/DB charset; in the meantime return
+                    //       HEX string representation of the blob
                     return typeConversionRules.blobToHexString(bytes);
                 } else if (charSetName.contains("utf8")) {
                     String utf8Value = null;
@@ -111,7 +110,8 @@ public class Converter {
                     }
                     return latin1Value;
                 } else {
-                    // TODO: handle other encodings; in the meantime return HEX-fied blob
+                    // TODO: handle other encodings; in the meantime return
+                    //       HEX string representation of the blob
                     return typeConversionRules.blobToHexString(bytes);
                 }
             } else {
@@ -187,7 +187,7 @@ public class Converter {
                     throw new TableMapException("Probably wrong mapping of indexes for enum array");
                 }
             } else {
-                throw new TableMapException("Got enum colum, but the ColumnSchema instance is of wrong type");
+                throw new TableMapException("Got enum column, but the ColumnSchema instance is of wrong type");
             }
         } else if (cell instanceof DecimalCell) {
             // ================================================================

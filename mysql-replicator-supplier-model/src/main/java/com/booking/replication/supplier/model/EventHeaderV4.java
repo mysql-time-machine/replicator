@@ -21,7 +21,14 @@ public interface EventHeaderV4 extends EventHeader {
 
     int getFlags();
 
-    static EventHeaderV4 getProxy(InvocationHandler handler) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+    static EventHeaderV4 getProxy(
+            Class<EventHeaderV4> eventHeaderV4Class,
+            InvocationHandler handler)
+        throws
+            NoSuchMethodException,
+            IllegalAccessException,
+            InvocationTargetException,
+            InstantiationException {
         return getProxy(EventHeaderV4.class, handler);
     }
 }

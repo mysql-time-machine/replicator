@@ -36,6 +36,7 @@ public class EventInvocationHandler implements InvocationHandler {
 
             if (eventHeader != null) {
                 return EventHeaderV4.getProxy(
+                        EventHeaderV4.class,
                         new EventHeaderInvocationHandler(eventHeader)
                 );
             } else {

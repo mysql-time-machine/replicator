@@ -1,7 +1,6 @@
 package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.model.AugmentedEvent;
-import com.booking.replication.model.*;
 import com.booking.replication.supplier.model.*;
 
 import java.util.Map;

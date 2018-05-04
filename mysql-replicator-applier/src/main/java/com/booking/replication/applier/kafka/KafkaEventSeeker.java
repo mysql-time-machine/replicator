@@ -4,14 +4,16 @@ import com.booking.replication.applier.EventSeeker;
 import com.booking.replication.supplier.model.Checkpoint;
 import com.booking.replication.supplier.model.RawEvent;
 import com.booking.replication.supplier.model.PseudoGTIDEventHeader;
-import com.booking.replication.supplier.model.PseudoGTIDEventHeaderImplementation;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.booking.replication.augmenter.model.PseudoGTIDEventHeaderImplementation;
+
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;

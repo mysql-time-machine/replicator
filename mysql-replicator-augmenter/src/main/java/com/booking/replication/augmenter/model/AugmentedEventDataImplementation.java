@@ -1,7 +1,7 @@
-package com.booking.replication.augmenter;
+package com.booking.replication.augmenter.model;
 
-import com.booking.replication.augmenter.active.schema.augmented.AugmentedEventData;
-import com.booking.replication.augmenter.active.schema.augmented.AugmentedRow;
+import com.booking.replication.augmenter.model.AugmentedEventData;
+import com.booking.replication.augmenter.model.AugmentedRow;
 
 import java.util.ArrayList;
 import java.util.List;

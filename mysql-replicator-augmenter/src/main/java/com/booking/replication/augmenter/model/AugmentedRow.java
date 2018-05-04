@@ -1,4 +1,4 @@
-package com.booking.replication.augmenter.active.schema.augmented;
+package com.booking.replication.augmenter.model;
 
 import com.booking.replication.augmenter.active.schema.augmented.active.schema.TableSchemaVersion;
 

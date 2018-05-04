@@ -50,8 +50,8 @@
         </dependency>
         <dependency>
             <groupId>com.booking.replication</groupId>
-            <artifactId>mysql-replicator-augmenter-model</artifactId>
-            <version>${project.version}</version>
+            <artifactId>mysql-replicator-augmenter</artifactId>
+            <version>0.16.0-alpha-1-SNAPSHOT</version>
         </dependency>
     </dependencies>
 </project>

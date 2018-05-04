@@ -1,8 +1,9 @@
-package com.booking.replication.augmenter;
+package com.booking.replication.augmenter.model;
 
+import com.booking.replication.augmenter.EventAugmenter;
 import com.booking.replication.augmenter.exception.TableMapException;
 import com.booking.replication.augmenter.util.JsonBuilder;
-import com.booking.replication.augmenter.active.schema.augmented.AugmentedRow;
+import com.booking.replication.augmenter.model.AugmentedRow;
 import com.booking.replication.augmenter.active.schema.augmented.active.schema.ColumnSchema;
 import com.booking.replication.augmenter.active.schema.augmented.active.schema.TableSchemaVersion;
 import com.booking.replication.commons.util.CaseInsensitiveMap;

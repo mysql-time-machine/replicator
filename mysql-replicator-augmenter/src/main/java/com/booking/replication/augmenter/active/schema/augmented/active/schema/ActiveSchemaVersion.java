@@ -1,6 +1,6 @@
 package com.booking.replication.augmenter.active.schema.augmented.active.schema;
 
-import com.booking.replication.augmenter.active.schema.augmented.AugmentedSchemaChangeEventData;
+import com.booking.replication.augmenter.model.AugmentedSchemaChangeEventData;
 
 import java.sql.SQLException;
 import java.util.HashMap;

@@ -6,7 +6,7 @@
 //import com.booking.replication.supplier.model.Checkpoint;
 //import com.booking.replication.supplier.model.RawEvent;
 //import com.booking.replication.supplier.model.RawEventType;
-//import com.booking.replication.supplier.model.PseudoGTIDEventHeaderImplementation;
+//import com.booking.replication.augmenter.model.PseudoGTIDEventHeaderImplementation;
 //import com.fasterxml.jackson.databind.ObjectMapper;
 //import org.apache.kafka.clients.producer.MockProducer;
 //import org.junit.Before;

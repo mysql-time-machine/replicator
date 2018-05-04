@@ -13,12 +13,13 @@ import java.sql.SQLException;
 
 
 public class EventAugmenter implements Augmenter {
+
     public final static String UUID_FIELD_NAME = "_replicator_uuid";
     public final static String XID_FIELD_NAME = "_replicator_xid";
 
     private ActiveSchemaVersion activeSchemaVersion;
-    private final boolean applyUuid;
-    private final boolean applyXid;
+    private final boolean       applyUuid;
+    private final boolean       applyXid;
 
     private static final Logger LOGGER = LogManager.getLogger(EventAugmenter.class);
 

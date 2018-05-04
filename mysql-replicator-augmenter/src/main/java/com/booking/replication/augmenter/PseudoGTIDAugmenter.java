@@ -2,6 +2,7 @@ package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.augmenter.model.AugmentedEventImplementation;
+import com.booking.replication.augmenter.model.PseudoGTIDEventHeaderImplementation;
 import com.booking.replication.supplier.model.*;
 
 import java.util.Map;
@@ -12,6 +13,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class PseudoGTIDAugmenter implements Augmenter {
+
     private static final String DEFAULT_PSEUDO_GTID_PATTERN = "(?<=_pseudo_gtid_hint__asc\\:)(.{8}\\:.{16}\\:.{8})";
 
     private final Pattern pseudoGTIDPattern;

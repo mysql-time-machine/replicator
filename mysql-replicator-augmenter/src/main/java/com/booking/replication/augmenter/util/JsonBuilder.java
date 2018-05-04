@@ -2,8 +2,8 @@ package com.booking.replication.augmenter.util;
 
 //import com.booking.replication.applier.kafka.RowListMessage;
 
-import com.booking.replication.augmenter.AugmentedRowImplementation;
-import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
+import com.booking.replication.augmenter.model.AugmentedRowImplementation;
+import com.booking.replication.augmenter.model.AugmentedSchemaChangeEvent;
 import com.booking.replication.augmenter.active.schema.ActiveSchemaVersion;
 import com.booking.replication.augmenter.active.schema.augmented.active.schema.TableSchemaVersion;
 import com.fasterxml.jackson.databind.ObjectMapper;

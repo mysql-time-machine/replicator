@@ -1,4 +1,9 @@
-package com.booking.replication.supplier.model;
+package com.booking.replication.augmenter.model;
+
+import com.booking.replication.supplier.model.Checkpoint;
+import com.booking.replication.supplier.model.EventHeaderV4;
+import com.booking.replication.supplier.model.PseudoGTIDEventHeader;
+import com.booking.replication.supplier.model.RawEventType;
 
 public class PseudoGTIDEventHeaderImplementation implements PseudoGTIDEventHeader {
     private long serverId;

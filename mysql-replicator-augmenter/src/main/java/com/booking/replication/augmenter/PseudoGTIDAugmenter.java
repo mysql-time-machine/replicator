@@ -1,6 +1,7 @@
 package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.model.AugmentedEvent;
+import com.booking.replication.augmenter.model.AugmentedEventImplementation;
 import com.booking.replication.supplier.model.*;
 
 import java.util.Map;
@@ -57,9 +58,8 @@ public class PseudoGTIDAugmenter implements Augmenter {
             }
         }
 
-        // TODO: fix this - convert to AugmentedEventImplementation
         try {
-            return new RawEventImplementation<>(
+            return new AugmentedEventImplementation(
                     new PseudoGTIDEventHeaderImplementation(
                             eventHeader,
                             new Checkpoint(

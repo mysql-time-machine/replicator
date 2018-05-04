@@ -134,7 +134,9 @@ public final class StreamsBuilder<Input, Output> implements
     }
 
     @Override
-    public final StreamsBuilderBuild<Input, Output> post(BiConsumer<Input, Map<Input, AtomicReference<Output>>> consumer) {
+    public final StreamsBuilderBuild<Input, Output> post(
+            BiConsumer<Input, Map<Input, AtomicReference<Output>>> consumer
+    ) {
         Objects.requireNonNull(consumer);
         this.post = this.post.andThen(consumer);
         return this;
@@ -142,6 +144,16 @@ public final class StreamsBuilder<Input, Output> implements
 
     @Override
     public final Streams<Input, Output> build() {
-        return new StreamsImplementation<>(this.threads, this.tasks, this.partitioner, this.queueType, this.from, this.filter, this.process, this.to, this.post);
+        return new StreamsImplementation<>(
+                this.threads,
+                this.tasks,
+                this.partitioner,
+                this.queueType,
+                this.from,
+                this.filter,
+                this.process,
+                this.to,
+                this.post
+        );
     }
 }

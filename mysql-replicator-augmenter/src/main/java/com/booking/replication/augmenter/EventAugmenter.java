@@ -2,6 +2,7 @@ package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.active.schema.ActiveSchemaVersion;
 import com.booking.replication.augmenter.exception.TableMapException;
+import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.supplier.model.RawEvent;
 import com.booking.replication.augmenter.transaction.TransactionEventData;
 import org.apache.logging.log4j.LogManager;
@@ -21,21 +22,31 @@ public class EventAugmenter implements Augmenter {
 
     private static final Logger LOGGER = LogManager.getLogger(EventAugmenter.class);
 
-    public EventAugmenter(ActiveSchemaVersion asv, boolean applyUuid, boolean applyXid) throws SQLException, URISyntaxException {
+    public EventAugmenter(
+            ActiveSchemaVersion asv,
+            boolean             applyUuid,
+            boolean             applyXid
+
+    ) throws
+            SQLException,
+            URISyntaxException {
+
         activeSchemaVersion = asv;
-        this.applyUuid = applyUuid;
-        this.applyXid = applyXid;
+        this.applyUuid      = applyUuid;
+        this.applyXid       = applyXid;
     }
 
 
-    public RawEvent mapDataEventToSchema(
-            RawEvent abstractRowRawEvent,
+    public AugmentedEvent mapDataEventToSchema(
+            RawEvent             abstractRowRawEvent,
             TransactionEventData currentTransaction
         ) throws Exception {
 
-        RawEvent au = null;
+        AugmentedEvent au = null;
 
         switch (abstractRowRawEvent.getHeader().getRawEventType()) {
+
+            // TODO: IMPLEMENT
             case UPDATE_ROWS:
                 break;
 
@@ -52,21 +63,23 @@ public class EventAugmenter implements Augmenter {
         }
 
         if (au == null) {
-            throw new TableMapException("Augmented event ended up as null - something went wrong!", abstractRowRawEvent);
+            throw new TableMapException(
+                    "Augmented event ended up as null - something went wrong!",
+                    abstractRowRawEvent
+            );
         }
 
         return au;
     }
 
     @Override
-    public RawEvent apply(RawEvent rawEvent) {
-        return rawEvent;
-//        RawEvent augmentedEvent = null;
-//        try {
-//            augmentedEvent = mapDataEventToSchema(rawEvent, null);
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//        return augmentedEvent;
+    public AugmentedEvent apply(RawEvent rawEvent) {
+        AugmentedEvent augmentedEvent = null;
+        try {
+            augmentedEvent = mapDataEventToSchema(rawEvent, null);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return augmentedEvent;
     }
 }

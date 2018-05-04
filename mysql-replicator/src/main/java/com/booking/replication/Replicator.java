@@ -33,6 +33,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Replicator {
+
     private static final Logger LOG = Logger.getLogger(Replicator.class.getName());
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String COMMAND_LINE_SYNTAX = "java -jar mysql-replicator-<version>.jar";
@@ -79,8 +80,8 @@ public class Replicator {
             Streams<RawEvent, RawEvent> streamsApplier = Streams.<RawEvent>builder()
                     .threads(10)
                     .tasks(8)
-                    .queue()
-                    .fromPush()
+                    .queue()       // <- use queue, default: ConcurrentLinkedDeque
+                    .fromPush()    // <- this sets from to null.
                     .to(applier)
                     .post(checkpointStorer)
                     .build();

@@ -48,6 +48,7 @@ public class CellExtractor {
         }
 
         if(column instanceof Integer){
+
             //  This can correspond to these MySQL types
             //
             //      {@link ColumnType#TINY}: Integer
@@ -61,7 +62,7 @@ public class CellExtractor {
 
             // mysql-binlog-connector does not have separate classes for different mysql
             // int types, so mysql tiny_int, small_int, medium_int and int are all mapped
-            // to java int type. This is different from open replicator which gets the type
+            // to java Integer type. This is different from open replicator which gets the type
             // from table_map event and wraps the value into the corresponding class.
             // There are two ways to solve this:
             //      1. Write a custom deserializer which will return typed values instead of
@@ -71,33 +72,19 @@ public class CellExtractor {
             // wrapped in LongCell (4bytes used) but later in schema map step they
             // will be interpreted according to mysql type from active_schema. This means
             // that atm. TinyCell, ShortCell and Int24Cell are not used.
-            if (cval >= -128 && cval <=127){
-                // tiny int
+            if (cval <= 2147483647) {
                 cell = LongCell.valueOf(cval);
-            }
-            else if (cval >= -32768	&& cval <= 32767) {
-                // small int
-                cell = LongCell.valueOf(cval);
-            }
-            else if (cval >=-8388608 && cval <=	8388607) {
-                // medium int
-                cell = LongCell.valueOf(cval);
-            }
-            else if (cval >= -2147483648 && cval <= 2147483647) {
-                // int
-                cell = LongCell.valueOf(cval);
-            }
-            else {
+            } else {
                 throw new ExceedLimitException("Impossible case for:" + column);
             }
         }
         else if(column instanceof Long){
-            // This can correspond to these MySQL types
+            // This can correspond to these MySQL type classes
             //
             //      {@link ColumnType#SET}: Long
             //      {@link ColumnType#LONGLONG}: Long
             //
-            // We can not determine that based on value allone so we store
+            // We can not determine that based on value alone so we store
             // it as LongLongCell, but later during schema matching we can check
             // for this type is it mysql long or mysql set.
             //
@@ -135,7 +122,8 @@ public class CellExtractor {
             //
             // DATETIME_V2 is the storage format with support for fractional part.
             // For now we treat them both as DATETIME_V2.
-            // TODO: add a check if there is fractional seconds part to distinguish between DATETIME_V2 and DATETIME
+            // TODO: add a check if there is fractional seconds part to distinguish
+            //       between DATETIME_V2 and DATETIME
             cell = new Datetime2Cell((java.util.Date)column);
         }
         else if(column instanceof BigDecimal){
@@ -150,24 +138,19 @@ public class CellExtractor {
             // This can correspond to these MySQL types
             //      {@link ColumnType#TIMESTAMP}: java.sql.Timestamp
             //      {@link ColumnType#TIMESTAMP_V2}: java.sql.Timestamp
-
-            // TODO: add integration test for case when timezone status variable is used
             cell = new TimestampCell((java.sql.Timestamp)column);
         }
         else if(column instanceof java.sql.Date){
             cell = new DateCell((java.sql.Date)column);
         }
         else if(column instanceof java.sql.Time){
-            // TODO: add integration test for case when timezone status variable is used
             cell = new Time2Cell((java.sql.Time)column);
         }
         else if(column instanceof String){
             // This can correspond to these MySQL types
             cell = StringCell.valueOf(((String) column).getBytes());
-            // TODO: tests & explicit handling for different mysql encodings
         }
         else if(column instanceof byte[]){
-
             // This can correspond to these MySQL types
             //
             //      {@link ColumnType#BLOB}: byte[]
@@ -180,12 +163,10 @@ public class CellExtractor {
             // JSON and Geometry)
             // TODO: add support for JSON and Geometry types
             cell = new BlobCell((byte[]) column);
-
         } else {
             String type = column.getClass().toString();
             throw new Exception("Unknown MySQL type in the BinlogConnector event" + type);
         }
-
         return cell;
     }
 

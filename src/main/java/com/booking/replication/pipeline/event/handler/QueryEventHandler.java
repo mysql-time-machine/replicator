@@ -74,7 +74,7 @@ public class QueryEventHandler implements BinlogEventV4Handler {
 
                     String pseudoGTID = pipelinePosition.getCurrentPseudoGTID();
                     String pseudoGTIDFullQuery = pipelinePosition.getCurrentPseudoGTIDFullQuery();
-                    int currentSlaveId = pipelinePosition.getCurrentPosition().getServerID();
+                    long currentSlaveId = pipelinePosition.getCurrentPosition().getServerID();
 
                     PseudoGTIDCheckpoint marker = new PseudoGTIDCheckpoint(
                             pipelinePosition.getCurrentPosition().getHost(),

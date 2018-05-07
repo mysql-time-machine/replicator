@@ -10,8 +10,8 @@ public class BinlogPositionInfoTest {
     @Test
     public void testBinlogPositionComparisonIfTheyAreOnlyDifferentInOffset() throws Exception {
 
-        BinlogPositionInfo position1 = new BinlogPositionInfo("host", 1, "binlog.008720", 245);
-        BinlogPositionInfo position2 = new BinlogPositionInfo("host", 1, "binlog.008720", 2056);
+        BinlogPositionInfo position1 = new BinlogPositionInfo("host", 1L, "binlog.008720", 245);
+        BinlogPositionInfo position2 = new BinlogPositionInfo("host", 1L, "binlog.008720", 2056);
 
         assertTrue(position2.greaterThan(position1));
         assertFalse(position1.greaterThan(position2));
@@ -20,8 +20,8 @@ public class BinlogPositionInfoTest {
     @Test
     public void testBinlogPositionComparisonIfTheyAreInDifferentFiles() throws Exception {
 
-        BinlogPositionInfo position1 = new BinlogPositionInfo("host", 1, "binlog.000190", 9885745);
-        BinlogPositionInfo position2 = new BinlogPositionInfo("host", 1, "binlog.008720", 2);
+        BinlogPositionInfo position1 = new BinlogPositionInfo("host", 1L, "binlog.000190", 9885745);
+        BinlogPositionInfo position2 = new BinlogPositionInfo("host", 1L, "binlog.008720", 2);
 
         assertTrue(position2.greaterThan(position1));
         assertFalse(position1.greaterThan(position2));
@@ -30,8 +30,8 @@ public class BinlogPositionInfoTest {
     @Test(expected=Exception.class)
     public void testBinlogPositionComparisonThrowsIfWeAreComparingDifferentHostBinlogFiles() throws Exception {
 
-        BinlogPositionInfo position1 = new BinlogPositionInfo("host25", 1, "binlog.000190", 9885745);
-        BinlogPositionInfo position2 = new BinlogPositionInfo("host1", 1, "binlog.008720", 2);
+        BinlogPositionInfo position1 = new BinlogPositionInfo("host25", 1L, "binlog.000190", 9885745);
+        BinlogPositionInfo position2 = new BinlogPositionInfo("host1", 1L, "binlog.008720", 2);
 
         position2.greaterThan(position1);
     }

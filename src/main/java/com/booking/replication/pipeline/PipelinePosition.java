@@ -1,8 +1,5 @@
 package com.booking.replication.pipeline;
 
-import com.booking.replication.binlog.EventPosition;
-import com.google.code.or.binlog.impl.event.TableMapEvent;
-
 /**
  * Created by bosko on 7/25/16.
  */
@@ -17,11 +14,11 @@ public class PipelinePosition {
     private String currentPseudoGTIDFullQuery;
 
     private String currentReplicantHostName;
-    private int    currentReplicantServerID;
+    private long   currentReplicantServerID;
 
     public PipelinePosition(
         String mySQLHost,
-        int    serverID,
+        long    serverID,
         String startingBinlogFilename,
         Long   startingBinlogPosition,
         String lastVerifiedBinlogFilename,
@@ -41,7 +38,7 @@ public class PipelinePosition {
         String currentPseudoGTID,
         String currentPseudoGTIDFullQuery,
         String mySQLHost,
-        int    serverID,
+        long    serverID,
         String startingBinlogFilename,
         Long   startingBinlogPosition,
         String lastVerifiedBinlogFilename,
@@ -61,7 +58,7 @@ public class PipelinePosition {
 
     private void initPipelinePosition(
             String mySQLHost,
-            int    serverID,
+            long serverID,
             String startingBinlogFilename,
             Long   startingBinlogPosition,
             String lastVerifiedBinlogFileName,
@@ -146,7 +143,7 @@ public class PipelinePosition {
         this.currentReplicantHostName = currentReplicantHostName;
     }
 
-    public int getCurrentReplicantServerID() {
+    public long getCurrentReplicantServerID() {
         return currentReplicantServerID;
     }
 

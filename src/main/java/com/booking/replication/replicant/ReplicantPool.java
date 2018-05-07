@@ -8,7 +8,7 @@ import java.sql.SQLException;
 public interface ReplicantPool {
     String getReplicantDBActiveHost();
 
-    int getReplicantDBActiveHostServerID();
+    long getReplicantDBActiveHostServerID();
 
-    int obtainServerID(String host) throws SQLException;
+    long obtainServerID(String host) throws SQLException;
 }

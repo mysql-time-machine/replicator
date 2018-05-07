@@ -68,7 +68,7 @@ public class Replicator {
                 // specified binlog-file
 
                 String mysqlHost = configuration.getReplicantDBHostPool().get(0);
-                int serverID     = replicantPool.getReplicantDBActiveHostServerID();
+                long serverID     = replicantPool.getReplicantDBActiveHostServerID();
 
                 LOGGER.info(String.format("Starting replicator in high-availability mode with: "
                         + "mysql-host %s, server-id %s, binlog-filename %s",
@@ -99,7 +99,7 @@ public class Replicator {
                     if (pseudoGTID != null) {
 
                         String replicantActiveHost = replicantPool.getReplicantDBActiveHost();
-                        int    serverID            = replicantPool.getReplicantDBActiveHostServerID();
+                        long    serverID            = replicantPool.getReplicantDBActiveHostServerID();
                         boolean sameHost = replicantActiveHost.equals(safeCheckPoint.getHostName());
 
                         LOGGER.info("found pseudoGTID in safe checkpoint: " + pseudoGTID);
@@ -132,7 +132,7 @@ public class Replicator {
                         // safe checkpoint. If that host is not avaiable then, without pGTID,
                         // failover can not be done and the replicator will exit with SQLException.
                         String mysqlHost = safeCheckPoint.getHostName();
-                        int    serverID  = replicantPool.obtainServerID(mysqlHost);
+                        long    serverID  = replicantPool.obtainServerID(mysqlHost);
 
                         String startingBinlogFileName = safeCheckPoint.getLastVerifiedBinlogFileName();
                         Long   startingBinlogPosition = safeCheckPoint.getLastVerifiedBinlogPosition();
@@ -159,7 +159,7 @@ public class Replicator {
                 // specified binlog-file
 
                 String mysqlHost = configuration.getReplicantDBHostPool().get(0);
-                int serverID     = replicantPool.getReplicantDBActiveHostServerID();
+                long serverID     = replicantPool.getReplicantDBActiveHostServerID();
 
                 LOGGER.info(String.format("Starting replicator in single-replicant mode with: "
                     + "mysql-host %s, server-id %s, binlog-filename %s",
@@ -180,7 +180,7 @@ public class Replicator {
                 if ( safeCheckPoint != null ) {
 
                     String mysqlHost      = safeCheckPoint.getHostName();
-                    int    serverID       = safeCheckPoint.getSlaveId();
+                    long    serverID       = safeCheckPoint.getSlaveId();
                     String lastVerifiedBinlogFileName = safeCheckPoint.getLastVerifiedBinlogFileName();
                     Long   lastVerifiedBinlogPosition = safeCheckPoint.getLastVerifiedBinlogPosition();
 

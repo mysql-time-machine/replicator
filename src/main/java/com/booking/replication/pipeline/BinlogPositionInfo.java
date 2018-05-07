@@ -7,7 +7,7 @@ public class BinlogPositionInfo {
 
     private String binlogFilename;
     private long   binlogPosition;
-    private int    serverID;
+    private Long serverID;
     private String host;
 
     private long   fakeMicrosecondsCounter;
@@ -16,7 +16,7 @@ public class BinlogPositionInfo {
 
     public BinlogPositionInfo(
         String host,
-        Integer serverID,
+        Long serverID,
         String filename,
         long position
     ) {
@@ -44,7 +44,7 @@ public class BinlogPositionInfo {
      */
     public BinlogPositionInfo(
         String host,
-        Integer serverID,
+        Long serverID,
         String filename,
         long   position,
         long   fakeMsCounter
@@ -56,7 +56,7 @@ public class BinlogPositionInfo {
         this.fakeMicrosecondsCounter = fakeMsCounter;
     }
 
-    public BinlogPositionInfo(int serverID, String binlogFilename, long binlogPosition) {
+    public BinlogPositionInfo(long serverID, String binlogFilename, long binlogPosition) {
         this.serverID = serverID;
         this.binlogFilename = binlogFilename;
         this.binlogPosition = binlogPosition;
@@ -64,7 +64,7 @@ public class BinlogPositionInfo {
 
     public static int compare(BinlogPositionInfo binlogPostition1, BinlogPositionInfo binlogPostition2) throws BinlogPositionComparationException {
         if (binlogPostition1.getServerID() != null || binlogPostition2.getServerID() != null) {
-            if (Integer.compare(binlogPostition1.getServerID(), binlogPostition2.getServerID()) != 0) {
+            if (Long.compare(binlogPostition1.getServerID(), binlogPostition2.getServerID()) != 0) {
                 throw new BinlogPositionComparationException("Can't compare serverId " + binlogPostition1.getServerID() + " to serverId " + binlogPostition2.getServerID());
             }
         }
@@ -129,11 +129,11 @@ public class BinlogPositionInfo {
         this.fakeMicrosecondsCounter = fakeMicrosecondsCounter;
     }
 
-    public Integer getServerID() {
+    public Long getServerID() {
         return serverID;
     }
 
-    public void setServerID(int serverID) {
+    public void setServerID(long serverID) {
         this.serverID = serverID;
     }
 

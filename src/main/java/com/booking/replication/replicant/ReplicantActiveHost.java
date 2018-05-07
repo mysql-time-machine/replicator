@@ -6,9 +6,9 @@ package com.booking.replication.replicant;
 public class ReplicantActiveHost {
 
     private final String host;
-    private final int    serverID;
+    private final long    serverID;
 
-    public ReplicantActiveHost(String host, int serverID) {
+    public ReplicantActiveHost(String host, long serverID) {
         this.host = host;
         this.serverID = serverID;
     }
@@ -17,7 +17,7 @@ public class ReplicantActiveHost {
         return host;
     }
 
-    public int getServerID() {
+    public long getServerID() {
         return serverID;
     }
 }

@@ -12,12 +12,12 @@ public class DummyReplicantPool implements ReplicantPool {
     }
 
     @Override
-    public int getReplicantDBActiveHostServerID() {
+    public long getReplicantDBActiveHostServerID() {
         return 0;
     }
 
     @Override
-    public int obtainServerID(String host) throws SQLException {
+    public long obtainServerID(String host) throws SQLException {
         return 0;
     }
 }

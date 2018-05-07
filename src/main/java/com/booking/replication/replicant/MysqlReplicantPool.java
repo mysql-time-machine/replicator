@@ -45,7 +45,7 @@ public class MysqlReplicantPool implements ReplicantPool {
     }
 
     @Override
-    public int getReplicantDBActiveHostServerID() {
+    public long getReplicantDBActiveHostServerID() {
         return activeHost.getServerID();
     }
 
@@ -53,7 +53,7 @@ public class MysqlReplicantPool implements ReplicantPool {
 
         boolean foundGoodHost = false;
         String activeHost;
-        int serverID;
+        long serverID;
         Iterator<String> hostIterator = replicantPool.iterator();
 
         while (!foundGoodHost) {
@@ -79,7 +79,7 @@ public class MysqlReplicantPool implements ReplicantPool {
     }
 
     @Override
-    public int obtainServerID(String host) throws SQLException {
+    public long obtainServerID(String host) throws SQLException {
 
         int serverID = -1;
 

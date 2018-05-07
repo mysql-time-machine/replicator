@@ -13,7 +13,7 @@ public class PseudoGTIDCheckpoint implements SafeCheckPoint {
     private int checkpointType;
 
     private String hostName;
-    private int    slaveId;
+    private long    slaveId;
     private String lastVerifiedBinlogFileName;
     private long   lastVerifiedBinlogPosition = 4L;
 
@@ -38,7 +38,7 @@ public class PseudoGTIDCheckpoint implements SafeCheckPoint {
      */
     public PseudoGTIDCheckpoint(
         String hostName,
-        int    slaveId,
+        long    slaveId,
         String binlogFileName,
         long   binlogPosition,
         String pseudoGTID,
@@ -63,7 +63,7 @@ public class PseudoGTIDCheckpoint implements SafeCheckPoint {
         return  lastVerifiedBinlogPosition;
     }
 
-    public int getSlaveId() {
+    public long getSlaveId() {
         return slaveId;
     }
 

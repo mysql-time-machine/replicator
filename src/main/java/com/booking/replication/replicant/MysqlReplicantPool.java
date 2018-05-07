@@ -68,7 +68,7 @@ public class MysqlReplicantPool implements ReplicantPool {
                         return new ReplicantActiveHost(activeHost, serverID);
                     }
                 } catch (SQLException e) {
-                    LOGGER.error("Could not obtain server_id for host " + host + ". Moving to next host in the pool.");
+                    LOGGER.error("Could not obtain server_id for host " + host + ". Moving to next host in the pool.", e);
                 }
             } else {
                 throw new Exception("Replicant pool depleted, no available hosts found!");
@@ -81,7 +81,7 @@ public class MysqlReplicantPool implements ReplicantPool {
     @Override
     public long obtainServerID(String host) throws SQLException {
 
-        int serverID = -1;
+        long serverID = -1;
 
         BasicDataSource replicantDataSource;
 
@@ -110,7 +110,7 @@ public class MysqlReplicantPool implements ReplicantPool {
             if (columnCount != 1) {
                 throw new SQLException("SELECT @@server_id result set should have only one column!");
             }
-            serverID = getServerIDResultSet.getInt(1);
+            serverID = getServerIDResultSet.getLong(1);
         }
         getServerIDResultSet.close();
         getServerIDStatement.close();

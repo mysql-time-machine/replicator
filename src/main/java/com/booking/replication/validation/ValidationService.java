@@ -29,6 +29,7 @@ public class ValidationService {
             List<String> ignore_columns = new ArrayList<>();
             ignore_columns.add(EventAugmenter.UUID_FIELD_NAME);
             ignore_columns.add(EventAugmenter.XID_FIELD_NAME);
+            ignore_columns.add("_transaction_uuid");
             map.put("ignore_columns", ignore_columns);
             TARGET_TRANSFORMATION = Collections.unmodifiableMap(map);
         }

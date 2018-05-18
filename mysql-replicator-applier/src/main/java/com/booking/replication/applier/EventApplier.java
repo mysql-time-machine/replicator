@@ -4,13 +4,15 @@ import com.booking.replication.applier.cassandra.CassandraEventApplier;
 import com.booking.replication.applier.console.ConsoleEventApplier;
 import com.booking.replication.applier.hbase.HBaseEventApplier;
 import com.booking.replication.applier.kafka.KafkaEventApplier;
+import com.booking.replication.augmenter.Augmenter;
+import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.supplier.model.RawEvent;
 
 import java.io.Closeable;
 import java.util.Map;
 import java.util.function.Consumer;
 
-public interface EventApplier extends Consumer<RawEvent>, Closeable {
+public interface EventApplier extends Consumer<AugmentedEvent>, Closeable {
     enum Type {
         CONSOLE {
             @Override

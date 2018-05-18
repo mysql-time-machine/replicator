@@ -1,5 +1,6 @@
 package com.booking.replication.checkpoint;
 
+import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.coordinator.CheckpointCoordinator;
 import com.booking.replication.supplier.model.Checkpoint;
 import com.booking.replication.supplier.model.RawEvent;
@@ -20,19 +21,19 @@ public class CoordinatorCheckpointStorer implements CheckpointStorer {
     }
 
     @Override
-    public void accept(RawEvent rawEvent, Map<RawEvent, AtomicReference<RawEvent>> executing) {
-        Checkpoint checkpoint = PseudoGTIDEventHeader.class.cast(rawEvent.getHeader()).getCheckpoint();
-
-        if (checkpoint.getPseudoGTID() != null && checkpoint.getPseudoGTIDIndex() == 0) {
-            /*if (executing.keySet().stream().map(RawEvent::getHeader).allMatch(
-                    eventHeader -> checkpoint.compareTo(PseudoGTIDEventHeader.class.cast(eventHeader).getCheckpoint()) >= 0
-            )) {*/
-                try {
-                    this.coordinator.storeCheckpoint(this.checkpointPath, checkpoint);
-                } catch (IOException exception) {
-                    throw new UncheckedIOException(exception);
-                }
-            //}
-        }
+    public void accept(AugmentedEvent augmentedEvent, Map<AugmentedEvent, AtomicReference<AugmentedEvent>> executing) {
+//        Checkpoint checkpoint = PseudoGTIDEventHeader.class.cast(augmentedEvent.getHeader()).getCheckpoint();
+//
+//        if (checkpoint.getPseudoGTID() != null && checkpoint.getPseudoGTIDIndex() == 0) {
+//            /*if (executing.keySet().stream().map(RawEvent::getHeader).allMatch(
+//                    eventHeader -> checkpoint.compareTo(PseudoGTIDEventHeader.class.cast(eventHeader).getCheckpoint()) >= 0
+//            )) {*/
+//                try {
+//                    this.coordinator.storeCheckpoint(this.checkpointPath, checkpoint);
+//                } catch (IOException exception) {
+//                    throw new UncheckedIOException(exception);
+//                }
+//            //}
+//        }
     }
 }

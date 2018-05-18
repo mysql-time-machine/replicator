@@ -1,6 +1,7 @@
 package com.booking.replication.applier.hbase;
 
 import com.booking.replication.applier.EventApplier;
+import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.supplier.model.RawEvent;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.Connection;
@@ -56,7 +57,7 @@ public class HBaseEventApplier implements EventApplier {
     }
 
     @Override
-    public void accept(RawEvent rawEvent) {/*
+    public void accept(AugmentedEvent augmentedEvent) {/*
         try {
             switch (rawEvent.getHeader().getRawEventType()) {
                 case TRANSACTION:

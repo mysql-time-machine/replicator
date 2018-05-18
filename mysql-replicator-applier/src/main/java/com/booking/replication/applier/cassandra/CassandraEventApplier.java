@@ -1,7 +1,7 @@
 package com.booking.replication.applier.cassandra;
 
 import com.booking.replication.applier.EventApplier;
-import com.booking.replication.supplier.model.RawEvent;
+import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 
@@ -33,7 +33,7 @@ public class CassandraEventApplier implements EventApplier {
     }
 
     @Override
-    public void accept(RawEvent rawEvent) {
+    public void accept(AugmentedEvent augmentedEvent) {
     }
 
     @Override

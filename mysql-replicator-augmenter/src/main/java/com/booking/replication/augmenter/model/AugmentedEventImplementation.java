@@ -26,4 +26,9 @@ public class AugmentedEventImplementation implements AugmentedEvent {
     public <Data extends AugmentedEventData> Data getData() {
         return null;
     }
+
+    @Override
+    public String getTableName() {
+        return null; // TODO
+    }
 }

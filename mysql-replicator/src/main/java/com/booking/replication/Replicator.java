@@ -3,6 +3,7 @@ package com.booking.replication;
 import com.booking.replication.applier.EventApplier;
 import com.booking.replication.applier.EventSeeker;
 import com.booking.replication.augmenter.Augmenter;
+import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.checkpoint.CheckpointStorer;
 import com.booking.replication.coordinator.Coordinator;
 
@@ -77,7 +78,7 @@ public class Replicator {
             AtomicLong delay = new AtomicLong();
             AtomicLong count = new AtomicLong();
 
-            Streams<RawEvent, RawEvent> streamsApplier = Streams.<RawEvent>builder()
+            Streams<AugmentedEvent, AugmentedEvent> streamsApplier = Streams.<AugmentedEvent>builder()
                     .threads(10)
                     .tasks(8)
                     .queue()       // <- use queue, default: ConcurrentLinkedDeque
@@ -86,7 +87,7 @@ public class Replicator {
                     .post(checkpointStorer)
                     .build();
 
-            Streams<RawEvent, RawEvent> streamsSupplier = Streams.<RawEvent>builder()
+            Streams<RawEvent, AugmentedEvent> streamsSupplier = Streams.<RawEvent>builder()
                     .queue() // TODO: internal buffer for push - for some reason reduces performance - investigate
                     .fromPush()
                     .process(augmenter)

@@ -1,6 +1,7 @@
 package com.booking.replication.applier.kafka;
 
 import com.booking.replication.applier.EventApplier;
+import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.supplier.model.RawEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -72,16 +73,16 @@ public class KafkaEventApplier implements EventApplier {
     }
 
     @Override
-    public void accept(RawEvent rawEvent) {
+    public void accept(AugmentedEvent augmentedEvent) {
         try {
             this.producers.computeIfAbsent(
                     Thread.currentThread().getName(),
                     key -> this.getProducer(this.bootstrapServers)
             ).send(new ProducerRecord<>(
                     this.topic,
-                    this.partitioner.partition(rawEvent, this.totalPartitions),
-                    KafkaEventApplier.MAPPER.writeValueAsBytes(rawEvent.getHeader()),
-                    KafkaEventApplier.MAPPER.writeValueAsBytes(rawEvent.getData())
+                    this.partitioner.partition(augmentedEvent, this.totalPartitions),
+                    KafkaEventApplier.MAPPER.writeValueAsBytes(augmentedEvent.getHeader()),
+                    KafkaEventApplier.MAPPER.writeValueAsBytes(augmentedEvent.getData())
             ));
         } catch (JsonProcessingException exception) {
             throw new UncheckedIOException(exception);

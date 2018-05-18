@@ -7,28 +7,23 @@ import com.booking.replication.supplier.model.EventHeaderV4;
 /**
  * Created by bdevetak on 5/4/18.
  */
-public class AugmentedEventImplementation implements AugmentedEvent {
+public class AugmentedEventImplementation<Header extends AugmentedEventHeader, Data extends AugmentedEventData> implements AugmentedEvent {
 
-    EventHeader header;
-    EventData   data;
+    private Header header;
+    private Data   data;
 
-    public AugmentedEventImplementation(EventHeader header, EventData data) {
+    public AugmentedEventImplementation(Header header, Data data) {
         this.header = header;
         this.data   = data;
     }
 
     @Override
-    public <Header extends AugmentedEventHeader> Header getHeader() {
-        return null;
+    public Header getHeader() {
+        return this.header;
     }
 
     @Override
-    public <Data extends AugmentedEventData> Data getData() {
+    public Data getData() {
         return null;
-    }
-
-    @Override
-    public String getTableName() {
-        return null; // TODO
     }
 }

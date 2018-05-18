@@ -3,8 +3,12 @@ package com.booking.replication.augmenter;
 import com.booking.replication.augmenter.active.schema.ActiveSchemaVersion;
 import com.booking.replication.augmenter.exception.TableMapException;
 import com.booking.replication.augmenter.model.AugmentedEvent;
+import com.booking.replication.augmenter.model.AugmentedEventData;
+import com.booking.replication.augmenter.model.AugmentedEventHeader;
+import com.booking.replication.augmenter.model.AugmentedEventImplementation;
 import com.booking.replication.supplier.model.RawEvent;
 import com.booking.replication.augmenter.transaction.TransactionEventData;
+import com.booking.replication.supplier.model.handler.JSONInvocationHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -43,7 +47,13 @@ public class EventAugmenter implements Augmenter {
             TransactionEventData currentTransaction
         ) throws Exception {
 
-        AugmentedEvent au = null;
+        AugmentedEvent au = new AugmentedEventImplementation(
+                AugmentedEventHeader.getProxy(new JSONInvocationHandler(String.format(
+                        "{\"timestamp\": %s, \"eventType\": \"PSEUDO_GTID\", \"tableName\": \"TABLE\"}",
+                        System.currentTimeMillis()
+                ).getBytes())),
+                null
+        );
 
         switch (abstractRowRawEvent.getHeader().getRawEventType()) {
 
@@ -57,10 +67,10 @@ public class EventAugmenter implements Augmenter {
             case DELETE_ROWS:
                 break;
 
-            default:
-                throw new TableMapException("RBR event type expected! Received type: " +
-                        abstractRowRawEvent.getHeader().getRawEventType().toString(), abstractRowRawEvent
-                );
+//            default:
+//                throw new TableMapException("RBR event type expected! Received type: " +
+//                        abstractRowRawEvent.getHeader().getRawEventType().toString(), abstractRowRawEvent
+//                );
         }
 
         if (au == null) {
@@ -75,6 +85,8 @@ public class EventAugmenter implements Augmenter {
 
     @Override
     public AugmentedEvent apply(RawEvent rawEvent) {
+        EventAugmenter.LOGGER.info("transforming event");
+
         AugmentedEvent augmentedEvent = null;
         try {
             augmentedEvent = mapDataEventToSchema(rawEvent, null);

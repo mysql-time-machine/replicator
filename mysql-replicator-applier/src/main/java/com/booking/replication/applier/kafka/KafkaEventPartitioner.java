@@ -11,7 +11,7 @@ public enum KafkaEventPartitioner {
     TABLE_NAME {
         @Override
         public int partition(AugmentedEvent augmentedEvent, int totalPartitions) {
-            return Math.abs(augmentedEvent.getTableName().hashCode()) % totalPartitions;
+            return Math.abs(augmentedEvent.getHeader().getTableName().hashCode()) % totalPartitions;
         }
     },
     RANDOM {

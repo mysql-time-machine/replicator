@@ -29,6 +29,6 @@ public interface EventHeaderV4 extends EventHeader {
             IllegalAccessException,
             InvocationTargetException,
             InstantiationException {
-        return getProxy(EventHeaderV4.class, handler);
+        return EventHeader.getProxy(EventHeaderV4.class, handler);
     }
 }

@@ -24,6 +24,4 @@ public interface AugmentedEvent extends Serializable, AugmentedEventProxyProvide
     {
         return AugmentedEventProxyProvider.getProxy(AugmentedEvent.class, handler);
     }
-
-    String getTableName();
 }

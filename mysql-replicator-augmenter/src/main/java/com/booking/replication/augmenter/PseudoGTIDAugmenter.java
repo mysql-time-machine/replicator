@@ -61,19 +61,20 @@ public class PseudoGTIDAugmenter implements Augmenter {
         }
 
         try {
-            return new AugmentedEventImplementation(
-                    new PseudoGTIDEventHeaderImplementation(
-                            eventHeader,
-                            new Checkpoint(
-                                    this.serverId.get(),
-                                    this.binlogFilename.get(),
-                                    this.binlogPosition.get(),
-                                    this.pseudoGTID.get(),
-                                    this.pseudoGTIDIndex.get()
-                            )
-                    ),
-                    rawEvent.getData()
-            );
+//            return new AugmentedEventImplementation(
+//                    new PseudoGTIDEventHeaderImplementation(
+//                            eventHeader,
+//                            new Checkpoint(
+//                                    this.serverId.get(),
+//                                    this.binlogFilename.get(),
+//                                    this.binlogPosition.get(),
+//                                    this.pseudoGTID.get(),
+//                                    this.pseudoGTIDIndex.get()
+//                            )
+//                    ),
+//                    rawEvent.getData()
+//            );
+            return null;
         } finally {
             this.pseudoGTIDIndex.getAndIncrement();
         }

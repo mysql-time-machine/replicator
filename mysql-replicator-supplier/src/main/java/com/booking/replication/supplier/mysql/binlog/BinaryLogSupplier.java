@@ -10,8 +10,11 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.logging.Logger;
 
 public class BinaryLogSupplier implements EventSupplier {
+    private static final Logger LOG = Logger.getLogger(BinaryLogSupplier.class.getName());
+
     public interface Configuration {
         String MYSQL_HOSTNAME = "mysql.hostname";
         String MYSQL_PORT = "mysql.port";
@@ -35,6 +38,7 @@ public class BinaryLogSupplier implements EventSupplier {
         Objects.requireNonNull(password, String.format("Configuration required: %s", Configuration.MYSQL_PASSWORD));
 
         this.client = this.getClient(hostname, Integer.parseInt(port), schema, username, password, checkpoint);
+        BinaryLogSupplier.LOG.info(String.format("connected to mysql: %s", Boolean.toString(checkpoint == null)));
     }
 
     private BinaryLogClient getClient(String hostname, int port, String schema, String username, String password, Checkpoint checkpoint) {
@@ -54,6 +58,7 @@ public class BinaryLogSupplier implements EventSupplier {
         this.client.registerEventListener(
                 event -> {
                     try {
+                        BinaryLogSupplier.LOG.info("sending event");
                         consumer.accept(RawEvent.getRawEventProxy(new EventInvocationHandler(event)));
                     } catch (ReflectiveOperationException exception) {
                         throw new RuntimeException(exception);

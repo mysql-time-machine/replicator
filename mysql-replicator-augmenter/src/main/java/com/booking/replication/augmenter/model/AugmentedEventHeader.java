@@ -13,6 +13,8 @@ public interface AugmentedEventHeader extends Serializable, AugmentedEventProxyP
 
     AugmentedEventType getEventType();
 
+    String getTableName();
+
     static <SubAugmentedEventHeader extends AugmentedEventHeader> SubAugmentedEventHeader getProxy(
             Class<SubAugmentedEventHeader> type,
             InvocationHandler handler)

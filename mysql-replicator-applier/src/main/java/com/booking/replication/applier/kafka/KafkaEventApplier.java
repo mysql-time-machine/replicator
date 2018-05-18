@@ -18,8 +18,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Logger;
 
 public class KafkaEventApplier implements EventApplier {
+    private static final Logger LOG = Logger.getLogger(KafkaEventApplier.class.getName());
+
     public interface Configuration {
         String BOOTSTRAP_SERVERS = "kafka.bootstrap.servers";
         String TOPIC = "kafka.topic";
@@ -75,7 +78,8 @@ public class KafkaEventApplier implements EventApplier {
     @Override
     public void accept(AugmentedEvent augmentedEvent) {
         try {
-            this.producers.computeIfAbsent(
+            KafkaEventApplier.LOG.info("sending event");
+            this.producers.computeIfAbsent( // Once per thread
                     Thread.currentThread().getName(),
                     key -> this.getProducer(this.bootstrapServers)
             ).send(new ProducerRecord<>(

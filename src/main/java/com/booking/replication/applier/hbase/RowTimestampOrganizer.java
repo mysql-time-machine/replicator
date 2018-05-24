@@ -75,6 +75,7 @@ public class RowTimestampOrganizer {
                 timestampsCache.put(key, v);
             }
             ((BinlogEventV4HeaderImpl) row.getEventV4Header()).setTimestamp(v.timestamp);
+            row.setTransactionUUIDTimestamp(v.maximumTimestamp - TIMESTAMP_SPAN_MISCROSECONDS);
         }
     }
 

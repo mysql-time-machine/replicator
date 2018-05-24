@@ -152,7 +152,7 @@ public class HBaseApplierMutationGenerator {
                     put.addColumn(
                             CF,
                             TID,
-                            row.getOriginalTimestamp(),
+                            row.getTransactionUUIDTimestamp(),
                             Bytes.toBytes(uuid.toString())
                     );
                 }
@@ -201,7 +201,7 @@ public class HBaseApplierMutationGenerator {
                     put.addColumn(
                             CF,
                             TID,
-                            row.getOriginalTimestamp(),
+                            row.getTransactionUUIDTimestamp(),
                             Bytes.toBytes(uuid.toString())
                     );
                 }
@@ -238,7 +238,7 @@ public class HBaseApplierMutationGenerator {
                     put.addColumn(
                             CF,
                             TID,
-                            row.getOriginalTimestamp(),
+                            row.getTransactionUUIDTimestamp(),
                             Bytes.toBytes(uuid.toString())
                     );
                 }

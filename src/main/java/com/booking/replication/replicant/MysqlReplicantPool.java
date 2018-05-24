@@ -50,32 +50,20 @@ public class MysqlReplicantPool implements ReplicantPool {
     }
 
     private ReplicantActiveHost getReplicantActiveHost() throws Exception {
+        for (String host : this.replicantPool) {
+            try {
+                long serverID = this.obtainServerID(host);
 
-        boolean foundGoodHost = false;
-        String activeHost;
-        long serverID;
-        Iterator<String> hostIterator = replicantPool.iterator();
-
-        while (!foundGoodHost) {
-            if (hostIterator.hasNext()) {
-                String host = hostIterator.next();
-                try {
-                    serverID = obtainServerID(host);
-                    if (serverID != -1) {
-                        // got valid server_id
-                        activeHost = host;
-                        foundGoodHost = true;
-                        return new ReplicantActiveHost(activeHost, serverID);
-                    }
-                } catch (SQLException e) {
-                    LOGGER.error("Could not obtain server_id for host " + host + ". Moving to next host in the pool.", e);
+                if (serverID != -1) {
+                    // got valid server_id
+                    return new ReplicantActiveHost(host, serverID);
                 }
-            } else {
-                throw new Exception("Replicant pool depleted, no available hosts found!");
+            } catch (SQLException exception) {
+                LOGGER.error(String.format("Could not obtain server_id for host %s. Moving to next host in the pool.", host), exception);
             }
         }
 
-        return null;
+        throw new Exception("Replicant pool depleted, no available hosts found!");
     }
 
     @Override

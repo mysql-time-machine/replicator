@@ -3,9 +3,10 @@ package com.booking.replication.augmenter.model;
 import com.booking.replication.augmenter.EventAugmenter;
 import com.booking.replication.augmenter.exception.TableMapException;
 import com.booking.replication.augmenter.util.JsonBuilder;
-import com.booking.replication.augmenter.model.AugmentedRow;
-import com.booking.replication.augmenter.active.schema.augmented.active.schema.ColumnSchema;
-import com.booking.replication.augmenter.active.schema.augmented.active.schema.TableSchemaVersion;
+import com.booking.replication.augmenter.active.schema.TableSchemaVersion;
+
+import com.booking.replication.augmenter.column.ColumnSchema;
+
 import com.booking.replication.commons.util.CaseInsensitiveMap;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;

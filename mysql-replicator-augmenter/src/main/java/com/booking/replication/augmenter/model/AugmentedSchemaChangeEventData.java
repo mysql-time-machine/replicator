@@ -1,6 +1,6 @@
 package com.booking.replication.augmenter.model;
 
-import com.booking.replication.augmenter.active.schema.augmented.active.schema.SchemaVersionSnapshot;
+import com.booking.replication.augmenter.active.schema.SchemaVersionSnapshot;
 
 import java.util.HashMap;
 

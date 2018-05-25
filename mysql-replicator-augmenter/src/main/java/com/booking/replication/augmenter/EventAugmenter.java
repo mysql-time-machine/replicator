@@ -1,9 +1,8 @@
 package com.booking.replication.augmenter;
 
-import com.booking.replication.augmenter.active.schema.ActiveSchemaVersion;
+import com.booking.replication.augmenter.active.schema.MySQLActiveSchemaVersion;
 import com.booking.replication.augmenter.exception.TableMapException;
 import com.booking.replication.augmenter.model.AugmentedEvent;
-import com.booking.replication.augmenter.model.AugmentedEventData;
 import com.booking.replication.augmenter.model.AugmentedEventHeader;
 import com.booking.replication.augmenter.model.AugmentedEventImplementation;
 import com.booking.replication.supplier.model.RawEvent;
@@ -19,33 +18,41 @@ import java.sql.SQLException;
 public class EventAugmenter implements Augmenter {
 
     public final static String UUID_FIELD_NAME = "_replicator_uuid";
-    public final static String XID_FIELD_NAME = "_replicator_xid";
+    public final static String XID_FIELD_NAME  = "_replicator_xid";
 
-    private ActiveSchemaVersion activeSchemaVersion;
+    private MySQLActiveSchemaVersion mySQLActiveSchemaVersion;
     private final boolean       applyUuid;
     private final boolean       applyXid;
 
     private static final Logger LOGGER = LogManager.getLogger(EventAugmenter.class);
 
     public EventAugmenter(
-            ActiveSchemaVersion asv,
+            MySQLActiveSchemaVersion asv,
             boolean             applyUuid,
             boolean             applyXid
-
-    ) throws
-            SQLException,
-            URISyntaxException {
-
-        activeSchemaVersion = asv;
+        ) throws SQLException, URISyntaxException {
+        mySQLActiveSchemaVersion = asv;
         this.applyUuid      = applyUuid;
         this.applyXid       = applyXid;
     }
 
+    @Override
+    public AugmentedEvent apply(RawEvent rawEvent) {
+        EventAugmenter.LOGGER.info("transforming event");
+
+        AugmentedEvent augmentedEvent = null;
+        try {
+            augmentedEvent = mapDataEventToSchema(rawEvent, null);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return augmentedEvent;
+    }
 
     public AugmentedEvent mapDataEventToSchema(
             RawEvent             abstractRowRawEvent,
             TransactionEventData currentTransaction
-        ) throws Exception {
+    ) throws Exception {
 
         AugmentedEvent au = new AugmentedEventImplementation(
                 AugmentedEventHeader.getProxy(new JSONInvocationHandler(String.format(
@@ -83,16 +90,4 @@ public class EventAugmenter implements Augmenter {
         return au;
     }
 
-    @Override
-    public AugmentedEvent apply(RawEvent rawEvent) {
-        EventAugmenter.LOGGER.info("transforming event");
-
-        AugmentedEvent augmentedEvent = null;
-        try {
-            augmentedEvent = mapDataEventToSchema(rawEvent, null);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return augmentedEvent;
-    }
 }

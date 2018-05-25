@@ -1,4 +1,4 @@
-package com.booking.replication.augmenter.active.schema.augmented.active.schema;
+package com.booking.replication.augmenter.active.schema;
 
 public class SchemaVersionSnapshot {
 
@@ -6,7 +6,7 @@ public class SchemaVersionSnapshot {
     private String schemaVersionTablesJsonSnaphot;
     private String schemaVersionCreateStatementsJsonSnapshot;
 
-    public SchemaVersionSnapshot(ActiveSchemaVersion activeSchemaVersion) {
+    public SchemaVersionSnapshot(MySQLActiveSchemaVersion activeSchemaVersion) {
         schemaVersionJsonSnaphot = activeSchemaVersion.toJson();
         schemaVersionTablesJsonSnaphot = activeSchemaVersion.schemaTablesToJson();
         schemaVersionCreateStatementsJsonSnapshot = activeSchemaVersion.schemaCreateStatementsToJson();

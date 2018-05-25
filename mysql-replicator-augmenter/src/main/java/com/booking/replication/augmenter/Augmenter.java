@@ -1,6 +1,6 @@
 package com.booking.replication.augmenter;
 
-import com.booking.replication.augmenter.active.schema.ActiveSchemaVersion;
+import com.booking.replication.augmenter.active.schema.MySQLActiveSchemaVersion;
 import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.supplier.model.RawEvent;
 
@@ -32,7 +32,7 @@ public interface Augmenter extends Function<RawEvent, AugmentedEvent> {
             public Augmenter newInstance(Map<String, String> configuration) {
                 try {
                     return new EventAugmenter(
-                            new ActiveSchemaVersion(configuration),
+                            new MySQLActiveSchemaVersion(configuration),
                             Boolean.parseBoolean(configuration.get(Configuration.APPLY_UUID)),
                             Boolean.parseBoolean(configuration.get(Configuration.APPLY_XID))
                     );

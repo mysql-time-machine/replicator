@@ -1,6 +1,6 @@
 package com.booking.replication.augmenter.model;
 
-import com.booking.replication.augmenter.active.schema.augmented.active.schema.TableSchemaVersion;
+import com.booking.replication.augmenter.active.schema.TableSchemaVersion;
 
 import java.util.List;
 import java.util.Map;

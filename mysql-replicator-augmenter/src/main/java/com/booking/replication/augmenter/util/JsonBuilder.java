@@ -2,10 +2,10 @@ package com.booking.replication.augmenter.util;
 
 //import com.booking.replication.applier.kafka.RowListMessage;
 
+import com.booking.replication.augmenter.active.schema.MySQLActiveSchemaVersion;
 import com.booking.replication.augmenter.model.AugmentedRowImplementation;
 import com.booking.replication.augmenter.model.AugmentedSchemaChangeEvent;
-import com.booking.replication.augmenter.active.schema.ActiveSchemaVersion;
-import com.booking.replication.augmenter.active.schema.augmented.active.schema.TableSchemaVersion;
+import com.booking.replication.augmenter.active.schema.TableSchemaVersion;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,11 +57,11 @@ public class JsonBuilder {
 //        return rowListMessageFrom;
 //    }
 
-    public static String schemaVersionToJson(ActiveSchemaVersion activeSchemaVersion) {
+    public static String schemaVersionToJson(MySQLActiveSchemaVersion mySQLActiveSchemaVersion) {
         String json = null;
         try {
-            //json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(activeSchemaVersion);
-            json = om.writeValueAsString(activeSchemaVersion);
+            //json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(mySQLActiveSchemaVersion);
+            json = om.writeValueAsString(mySQLActiveSchemaVersion);
 
         } catch (IOException e) {
             System.out.println("ERROR: could not serialize event");

@@ -29,6 +29,21 @@ public class RawEventImplementation<Header extends EventHeader, Data extends Eve
     }
 
     @Override
+    public void overrideTimestamp(long timestamp) {
+        // TODO:
+    }
+
+    @Override
+    public void setTimestamp(long timestamp) {
+        this.overrideTimestamp(timestamp);
+    }
+
+    @Override
+    public Long getTimestamp() {
+        return this.header.getTimestamp();
+    }
+
+    @Override
     public String toString() {
         try {
             return RawEventImplementation.MAPPER.writeValueAsString(this);

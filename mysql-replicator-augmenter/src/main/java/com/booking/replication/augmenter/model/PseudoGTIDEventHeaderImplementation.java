@@ -86,6 +86,24 @@ public class PseudoGTIDEventHeaderImplementation implements PseudoGTIDEventHeade
     }
 
     @Override
+    public String getBinlogFileName() {
+        // TODO
+        return null;
+    }
+
+    @Override
+    public Long getBinlogPosition() {
+        // TODO
+        return null;
+    }
+
+    @Override
+    public Long getNextBinlogPosition() {
+        // TODO
+        return null;
+    }
+
+    @Override
     public Checkpoint getCheckpoint() {
         return this.checkpoint;
     }

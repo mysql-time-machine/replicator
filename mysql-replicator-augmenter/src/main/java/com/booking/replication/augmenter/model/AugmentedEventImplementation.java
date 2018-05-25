@@ -1,5 +1,6 @@
 package com.booking.replication.augmenter.model;
 
+import com.booking.replication.augmenter.transaction.CurrentTransaction;
 import com.booking.replication.supplier.model.EventData;
 import com.booking.replication.supplier.model.EventHeader;
 import com.booking.replication.supplier.model.EventHeaderV4;

@@ -19,6 +19,10 @@ public interface RawEvent extends Serializable, EventProxyProvider {
 
     <Data extends EventData> Data getData();
 
+    void overrideTimestamp(long timestamp);
+
+    Long getTimestamp();
+
     static RawEvent getRawEventProxy(InvocationHandler handler)
         throws
             NoSuchMethodException,
@@ -28,4 +32,6 @@ public interface RawEvent extends Serializable, EventProxyProvider {
     {
         return EventProxyProvider.getProxy(RawEvent.class, handler);
     }
+
+    void setTimestamp(long timestamp);
 }

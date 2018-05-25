@@ -25,7 +25,7 @@ import java.util.*;
  *  This class encapsulates this type of event.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonIgnoreProperties({"tableSchemaVersion"})
+@JsonIgnoreProperties({"tableSchemaVersion","originalTimestamp","transactionUUIDTimestamp"})
 public class AugmentedRow {
 
     @JsonDeserialize(as = BinlogEventV4HeaderImpl.class)

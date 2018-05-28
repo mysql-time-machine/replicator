@@ -97,7 +97,7 @@ public class KafkaApplier implements Applier {
         prop.put("batch.size", 16384); // Default value: 16384
         // prop.put("linger.ms", 20); // Default 0, Artificial delay
         // prop.put("buffer.memory", 33554432); // Default value: 33554432
-        prop.put("max.request.size", 5242880); // Default value: 1048576
+        prop.put("max.request.size", 10485760); // Default value: 1048576
         prop.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         prop.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         prop.put("metric.reporters", "com.booking.replication.applier.KafkaMetricsCollector");

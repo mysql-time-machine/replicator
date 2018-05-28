@@ -11,20 +11,19 @@ import org.apache.logging.log4j.Logger;
 import java.util.Map;
 
 public class ConsoleEventApplier implements EventApplier {
-    private static final Logger log = LogManager.getLogger(ConsoleEventApplier.class);
-    private final ObjectMapper mapper;
+    private static final Logger LOG = LogManager.getLogger(ConsoleEventApplier.class);
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @SuppressWarnings("unused")
     public ConsoleEventApplier(Map<String, String> configuration) {
-        this.mapper = new ObjectMapper();
     }
 
     @Override
     public void accept(AugmentedEvent augmentedEvent) {
         try {
-            ConsoleEventApplier.log.info(this.mapper.writeValueAsString(augmentedEvent));
+            ConsoleEventApplier.LOG.info(ConsoleEventApplier.MAPPER.writeValueAsString(augmentedEvent));
         } catch (JsonProcessingException exception) {
-            ConsoleEventApplier.log.error("error converting to json", exception);
+            ConsoleEventApplier.LOG.error("error converting to json", exception);
         }
     }
 

@@ -37,20 +37,20 @@ public class CurrentTransaction {
     private final UUID                   uuid            = UUID.randomUUID();
     private final Map<Long,String>       tableID2Name    = new HashMap<>();
     private final Map<Long, String>      tableID2DBName  = new HashMap<>();
-    private       RawEventImplementation beginEvent      = null;
-    private       RawEventImplementation finishEvent     = null;
+    private       RawEvent               beginEvent      = null;
+    private       RawEvent               finishEvent     = null;
     private       boolean                isRewinded      = false;
 
-    private RawEventImplementation firstMapEventInTransaction = null;
+    private RawEvent                     firstMapEventInTransaction = null;
 
     private Queue<RawEvent> events = new LinkedList<>();
 
-    private final Map<String, RawEventImplementation> currentTransactionTableMapEvents = new HashMap<>();
+    private final Map<String, RawEvent> currentTransactionTableMapEvents = new HashMap<>();
 
     public CurrentTransaction() {
     }
 
-    public CurrentTransaction(RawEventImplementation event) {
+    public CurrentTransaction(RawEvent event) {
         if (!QueryEventType.BEGIN.equals(QueryInspector.getQueryEventType((QueryEventData)event.getData()))) {
             throw new RuntimeException("Can't set beginEvent for transaction to a wrong event type: " + event);
         }
@@ -89,7 +89,7 @@ public class CurrentTransaction {
         return (QueryEventData) beginEvent.getData();
     }
 
-    void setFinishEvent (RawEventImplementation finishEvent)  throws TransactionException {
+    void setFinishEvent (RawEvent finishEvent)  throws TransactionException {
         if (finishEvent.getHeader().getRawEventType().equals(RawEventType.XID)) {
             setFinishEventXid(finishEvent);
         }
@@ -98,7 +98,7 @@ public class CurrentTransaction {
         }
     }
 
-    void setFinishEventXid(RawEventImplementation finishEvent) throws TransactionException {
+    void setFinishEventXid(RawEvent finishEvent) throws TransactionException {
         // xa-capable engines block (InnoDB)
         if (this.finishEvent == null) {
             setXid(((XIDEventData)finishEvent.getData()).getXID());
@@ -123,7 +123,7 @@ public class CurrentTransaction {
         }
     }
 
-    void setFinishEventQuery(RawEventImplementation finishEvent) throws TransactionException {
+    void setFinishEventQuery(RawEvent finishEvent) throws TransactionException {
         // MyIsam block
         if (!QueryEventType.COMMIT.equals(QueryInspector.getQueryEventType((QueryEventData) finishEvent.getData()))) {
             throw new TransactionException("Can't set finishEvent for transaction to a wrong event type: " + finishEvent);
@@ -154,7 +154,7 @@ public class CurrentTransaction {
         }
     }
 
-    RawEventImplementation getFinishEvent() {
+    RawEvent getFinishEvent() {
         return finishEvent;
     }
 
@@ -170,7 +170,7 @@ public class CurrentTransaction {
         return (finishEvent != null);
     }
 
-    void addEvent(RawEventImplementation event) {
+    void addEvent(RawEvent event) {
         events.add(event);
     }
 
@@ -218,7 +218,7 @@ public class CurrentTransaction {
      * Update table map cache.
      * @param event event
      */
-    public void updateCache(RawEventImplementation event) {
+    public void updateCache(RawEvent event) {
         LOGGER.debug("Updating cache. firstMapEventInTransaction: "
                 + firstMapEventInTransaction + ", event: " + event);
         if (firstMapEventInTransaction == null) {
@@ -284,11 +284,11 @@ public class CurrentTransaction {
         isRewinded = rewinded;
     }
 
-    public RawEventImplementation getTableMapEvent(String tableName) {
+    public RawEvent getTableMapEvent(String tableName) {
         return currentTransactionTableMapEvents.get(tableName);
     }
 
-    public RawEventImplementation getFirstMapEventInTransaction() {
+    public RawEvent getFirstMapEventInTransaction() {
         return firstMapEventInTransaction;
     }
 
@@ -298,7 +298,7 @@ public class CurrentTransaction {
                 && (((TableMapEventData)firstMapEventInTransaction.getData()).getTable() != null);
     }
 
-    Map<String, RawEventImplementation> getCurrentTransactionTableMapEvents() {
+    Map<String, RawEvent> getCurrentTransactionTableMapEvents() {
         return currentTransactionTableMapEvents;
     }
 

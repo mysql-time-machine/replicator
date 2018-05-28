@@ -44,16 +44,10 @@ public enum RawEventType {
 
     private final int code;
     private final Class<? extends EventData> definition;
-    private final Class<? extends EventData> implementation;
-
-    RawEventType(int code, Class<? extends EventData> definition, Class<? extends EventData> implementation) {
-        this.code = code;
-        this.definition = definition;
-        this.implementation = implementation;
-    }
 
     RawEventType(int code, Class<? extends EventData> definition) {
-        this(code, definition, null);
+        this.code = code;
+        this.definition = definition;
     }
 
     RawEventType(int code) {
@@ -66,9 +60,5 @@ public enum RawEventType {
 
     public Class<? extends EventData> getDefinition() {
         return this.definition;
-    }
-
-    public Class<? extends EventData> getImplementation() {
-        return this.implementation;
     }
 }

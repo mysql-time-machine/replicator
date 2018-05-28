@@ -38,7 +38,6 @@ public class BinaryLogSupplier implements EventSupplier {
         Objects.requireNonNull(password, String.format("Configuration required: %s", Configuration.MYSQL_PASSWORD));
 
         this.client = this.getClient(hostname, Integer.parseInt(port), schema, username, password, checkpoint);
-        BinaryLogSupplier.LOG.info(String.format("connected to mysql: %s", Boolean.toString(checkpoint == null)));
     }
 
     private BinaryLogClient getClient(String hostname, int port, String schema, String username, String password, Checkpoint checkpoint) {

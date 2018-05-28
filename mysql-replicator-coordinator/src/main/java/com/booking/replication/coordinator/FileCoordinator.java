@@ -9,16 +9,13 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class FileCoordinator implements Coordinator {
+public class FileCoordinator extends Coordinator {
     public interface Configuration {
         String LEADERSHIP_PATH = "file.leadership.path";
     }
@@ -26,19 +23,13 @@ public class FileCoordinator implements Coordinator {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final ExecutorService executor;
-    private final String path;
-    private final List<Runnable> takeRunnableList;
-    private final List<Runnable> lossRunnableList;
     private final AtomicBoolean running;
-    private final AtomicBoolean hasLeadership;
+    private final String path;
 
-    FileCoordinator(Map<String, String> configuration) {
+    public FileCoordinator(Map<String, String> configuration) {
         this.executor = Executors.newSingleThreadExecutor();
-        this.path = configuration.getOrDefault(Configuration.LEADERSHIP_PATH, "/tmp/leadership.coordinator");
-        this.takeRunnableList = new ArrayList<>();
-        this.lossRunnableList = new ArrayList<>();
         this.running = new AtomicBoolean();
-        this.hasLeadership = new AtomicBoolean();
+        this.path = configuration.getOrDefault(Configuration.LEADERSHIP_PATH, "/tmp/leadership.coordinator");
     }
 
     @Override
@@ -64,16 +55,6 @@ public class FileCoordinator implements Coordinator {
     }
 
     @Override
-    public void onLeadershipTake(Runnable runnable) {
-        this.takeRunnableList.add(runnable);
-    }
-
-    @Override
-    public void onLeadershipLoss(Runnable runnable) {
-        this.lossRunnableList.add(runnable);
-    }
-
-    @Override
     public void start() {
         if (!this.running.getAndSet(true)) {
             this.executor.execute(() -> {
@@ -81,15 +62,7 @@ public class FileCoordinator implements Coordinator {
                     try (FileChannel fileChannel = FileChannel.open(Paths.get(this.path), StandardOpenOption.WRITE, StandardOpenOption.CREATE);
                          FileLock fileLock = fileChannel.tryLock()) {
                         if (fileLock.isValid()) {
-                            try {
-                                if (!this.hasLeadership.getAndSet(true)) {
-                                    this.takeRunnableList.forEach(Runnable::run);
-                                }
-                            } finally {
-                                if (this.hasLeadership.getAndSet(false)) {
-                                    this.lossRunnableList.forEach(Runnable::run);
-                                }
-                            }
+                            this.takeLeadership();
                         }
                     } catch (Exception exception) {
                         try {
@@ -119,10 +92,7 @@ public class FileCoordinator implements Coordinator {
     public final void stop() throws InterruptedException {
         if (this.running.getAndSet(false)) {
             try {
-                if (this.hasLeadership.getAndSet(false)) {
-                    this.lossRunnableList.forEach(Runnable::run);
-                }
-
+                this.lossLeadership();
                 this.executor.shutdown();
                 this.executor.awaitTermination(5L, TimeUnit.SECONDS);
             } finally {

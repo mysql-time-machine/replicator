@@ -1,25 +1,21 @@
 package com.booking.replication.coordinator;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.imps.CuratorFrameworkState;
 import org.apache.curator.framework.recipes.leader.LeaderSelector;
-import org.apache.curator.framework.recipes.leader.LeaderSelectorListenerAdapter;
+import org.apache.curator.framework.recipes.leader.LeaderSelectorListener;
 import org.apache.curator.framework.state.ConnectionState;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.CreateMode;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
-public class ZookeeperCoordinator extends LeaderSelectorListenerAdapter implements Coordinator {
+public class ZookeeperCoordinator extends Coordinator implements LeaderSelectorListener {
     public interface Configuration {
         String LEADERSHIP_PATH = "zookeeper.leadership.path";
         String CONNECTION_STRING = "zookeeper.connection.string";
@@ -32,11 +28,8 @@ public class ZookeeperCoordinator extends LeaderSelectorListenerAdapter implemen
 
     private final CuratorFramework client;
     private final LeaderSelector selector;
-    private final List<Runnable> takeRunnableList;
-    private final List<Runnable> lossRunnableList;
-    private final AtomicBoolean hasLeadership;
 
-    ZookeeperCoordinator(Map<String, String> configuration) {
+    public ZookeeperCoordinator(Map<String, String> configuration) {
         String leadershipPath = configuration.get(Configuration.LEADERSHIP_PATH);
         String connectionString = configuration.get(Configuration.CONNECTION_STRING);
         String retryInitialSleep = configuration.getOrDefault(Configuration.RETRY_INITIAL_SLEEP, "1000");
@@ -47,9 +40,6 @@ public class ZookeeperCoordinator extends LeaderSelectorListenerAdapter implemen
 
         this.client = CuratorFrameworkFactory.newClient(connectionString, new ExponentialBackoffRetry(Integer.parseInt(retryInitialSleep), Integer.parseInt(retryMaximumAttempts)));
         this.selector = new LeaderSelector(this.client, leadershipPath, this);
-        this.takeRunnableList = new ArrayList<>();
-        this.lossRunnableList = new ArrayList<>();
-        this.hasLeadership = new AtomicBoolean();
 
         this.client.start();
     }
@@ -92,34 +82,14 @@ public class ZookeeperCoordinator extends LeaderSelectorListenerAdapter implemen
 
     @Override
     public void takeLeadership(CuratorFramework client) {
-        try {
-            if (!this.hasLeadership.getAndSet(true)) {
-                this.takeRunnableList.forEach(Runnable::run);
-            }
-        } finally {
-            if (this.hasLeadership.getAndSet(false)) {
-                this.lossRunnableList.forEach(Runnable::run);
-            }
-        }
+        this.takeLeadership();
     }
 
     @Override
     public void stateChanged(CuratorFramework client, ConnectionState newState) {
         if (client.getConnectionStateErrorPolicy().isErrorState(newState)) {
-            if (this.hasLeadership.getAndSet(false)) {
-                this.lossRunnableList.forEach(Runnable::run);
-            }
+            this.lossLeadership();
         }
-    }
-
-    @Override
-    public void onLeadershipTake(Runnable runnable) {
-        this.takeRunnableList.add(runnable);
-    }
-
-    @Override
-    public void onLeadershipLoss(Runnable runnable) {
-        this.lossRunnableList.add(runnable);
     }
 
     @Override
@@ -145,10 +115,7 @@ public class ZookeeperCoordinator extends LeaderSelectorListenerAdapter implemen
 
     @Override
     public void stop() {
-        if (this.hasLeadership.getAndSet(false)) {
-            this.lossRunnableList.forEach(Runnable::run);
-        }
-
+        this.lossLeadership();
         this.selector.close();
         this.client.close();
     }

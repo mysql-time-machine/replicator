@@ -1,5 +1,6 @@
 package com.booking.replication.coordinator;
 
+import com.booking.replication.supplier.model.checkpoint.Checkpoint;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -7,6 +8,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
@@ -56,11 +58,17 @@ public class FileCoordinatorTest {
     public void testCheckpoint() throws InterruptedException, IOException {
         Thread.sleep(2000L);
 
-        String checkpoint1 = UUID.randomUUID().toString();
+        Checkpoint checkpoint1 = new Checkpoint(
+                ThreadLocalRandom.current().nextLong(),
+                UUID.randomUUID().toString(),
+                ThreadLocalRandom.current().nextLong(),
+                UUID.randomUUID().toString(),
+                ThreadLocalRandom.current().nextInt()
+        );
 
         coordinator1.storeCheckpoint("/tmp/checkpoint", checkpoint1);
 
-        String checkpoint2 = coordinator2.loadCheckpoint("/tmp/checkpoint", String.class);
+        Checkpoint checkpoint2 = coordinator2.loadCheckpoint("/tmp/checkpoint");
 
         assertEquals(checkpoint1, checkpoint2);
     }

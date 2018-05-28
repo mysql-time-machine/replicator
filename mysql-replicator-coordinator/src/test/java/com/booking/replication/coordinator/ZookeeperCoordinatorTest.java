@@ -1,5 +1,6 @@
 package com.booking.replication.coordinator;
 
+import com.booking.replication.supplier.model.checkpoint.Checkpoint;
 import org.apache.curator.test.TestingServer;
 import org.junit.After;
 import org.junit.Before;
@@ -9,6 +10,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
@@ -64,11 +66,17 @@ public class ZookeeperCoordinatorTest {
     public void testCheckpoint() throws InterruptedException, IOException {
         Thread.sleep(2000L);
 
-        String checkpoint1 = UUID.randomUUID().toString();
+        Checkpoint checkpoint1 = new Checkpoint(
+                ThreadLocalRandom.current().nextLong(),
+                UUID.randomUUID().toString(),
+                ThreadLocalRandom.current().nextLong(),
+                UUID.randomUUID().toString(),
+                ThreadLocalRandom.current().nextInt()
+        );
 
         coordinator1.storeCheckpoint("/checkpoint.coordinator", checkpoint1);
 
-        String checkpoint2 = coordinator2.loadCheckpoint("/checkpoint.coordinator", String.class);
+        Checkpoint checkpoint2 = coordinator2.loadCheckpoint("/checkpoint.coordinator");
 
         assertEquals(checkpoint1, checkpoint2);
     }

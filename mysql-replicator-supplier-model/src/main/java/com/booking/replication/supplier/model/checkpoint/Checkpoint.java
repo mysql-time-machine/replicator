@@ -1,4 +1,4 @@
-package com.booking.replication.supplier.model;
+package com.booking.replication.supplier.model.checkpoint;
 
 @SuppressWarnings("unused")
 public class Checkpoint implements Comparable<Checkpoint> {
@@ -97,6 +97,15 @@ public class Checkpoint implements Comparable<Checkpoint> {
             }
         } else {
             return Integer.MAX_VALUE;
+        }
+    }
+
+    @Override
+    public boolean equals(Object checkpoint) {
+        if (Checkpoint.class.isInstance(checkpoint)) {
+            return this.compareTo(Checkpoint.class.cast(checkpoint)) == 0;
+        } else {
+            return false;
         }
     }
 }

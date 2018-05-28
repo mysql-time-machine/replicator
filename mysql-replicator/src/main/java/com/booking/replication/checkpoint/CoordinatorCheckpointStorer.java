@@ -1,22 +1,17 @@
 package com.booking.replication.checkpoint;
 
 import com.booking.replication.augmenter.model.AugmentedEvent;
-import com.booking.replication.coordinator.CheckpointCoordinator;
-import com.booking.replication.supplier.model.Checkpoint;
-import com.booking.replication.supplier.model.RawEvent;
-import com.booking.replication.supplier.model.PseudoGTIDEventHeader;
+import com.booking.replication.supplier.model.checkpoint.CheckpointStorage;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class CoordinatorCheckpointStorer implements CheckpointStorer {
-    private final CheckpointCoordinator coordinator;
+    private final CheckpointStorage checkpointStorage;
     private final String checkpointPath;
 
-    public CoordinatorCheckpointStorer(CheckpointCoordinator coordinator, String checkpointPath) {
-        this.coordinator = coordinator;
+    public CoordinatorCheckpointStorer( CheckpointStorage checkpointStorage, String checkpointPath) {
+        this.checkpointStorage = checkpointStorage;
         this.checkpointPath = checkpointPath;
     }
 

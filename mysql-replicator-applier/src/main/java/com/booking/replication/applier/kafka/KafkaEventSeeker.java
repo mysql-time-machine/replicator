@@ -2,7 +2,7 @@ package com.booking.replication.applier.kafka;
 
 import com.booking.replication.applier.EventSeeker;
 import com.booking.replication.augmenter.model.AugmentedEvent;
-import com.booking.replication.supplier.model.Checkpoint;
+import com.booking.replication.supplier.model.checkpoint.Checkpoint;
 import com.booking.replication.supplier.model.PseudoGTIDEventHeader;
 import com.booking.replication.augmenter.model.PseudoGTIDEventHeaderImplementation;
 

@@ -1,6 +1,6 @@
 package com.booking.replication.supplier;
 
-import com.booking.replication.supplier.model.Checkpoint;
+import com.booking.replication.supplier.model.checkpoint.Checkpoint;
 import com.booking.replication.supplier.model.RawEvent;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 

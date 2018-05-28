@@ -1,6 +1,6 @@
 package com.booking.replication.augmenter.model;
 
-import com.booking.replication.supplier.model.Checkpoint;
+import com.booking.replication.supplier.model.checkpoint.Checkpoint;
 import com.booking.replication.supplier.model.EventHeaderV4;
 import com.booking.replication.supplier.model.PseudoGTIDEventHeader;
 import com.booking.replication.supplier.model.RawEventType;

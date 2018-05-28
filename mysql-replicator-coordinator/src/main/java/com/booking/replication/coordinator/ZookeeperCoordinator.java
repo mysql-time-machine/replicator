@@ -1,5 +1,6 @@
 package com.booking.replication.coordinator;
 
+import com.booking.replication.supplier.model.checkpoint.Checkpoint;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -45,7 +46,7 @@ public class ZookeeperCoordinator extends Coordinator implements LeaderSelectorL
     }
 
     @Override
-    public <Type> void storeCheckpoint(String path, Type checkpoint) throws IOException {
+    public void storeCheckpoint(String path, Checkpoint checkpoint) throws IOException {
         try {
             if (checkpoint != null) {
                 byte[] bytes = ZookeeperCoordinator.MAPPER.writeValueAsBytes(checkpoint);
@@ -62,13 +63,13 @@ public class ZookeeperCoordinator extends Coordinator implements LeaderSelectorL
     }
 
     @Override
-    public <Type> Type loadCheckpoint(String path, Class<Type> type) throws IOException {
+    public Checkpoint loadCheckpoint(String path) throws IOException {
         try {
             if (this.client.checkExists().forPath(path) != null) {
                 byte[] bytes = this.client.getData().forPath(path);
 
                 if (bytes != null && bytes.length > 0) {
-                    return ZookeeperCoordinator.MAPPER.readValue(bytes, type);
+                    return ZookeeperCoordinator.MAPPER.readValue(bytes, Checkpoint.class);
                 } else {
                     return null;
                 }

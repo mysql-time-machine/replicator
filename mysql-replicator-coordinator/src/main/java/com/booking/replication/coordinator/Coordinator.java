@@ -1,5 +1,7 @@
 package com.booking.replication.coordinator;
 
+import com.booking.replication.supplier.model.checkpoint.CheckpointStorage;
+
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -8,7 +10,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public abstract class Coordinator implements LeaderCoordinator, CheckpointCoordinator {
+public abstract class Coordinator implements LeaderCoordinator, CheckpointStorage {
     private static final Logger LOG = Logger.getLogger(Coordinator.class.getName());
 
     enum Type {

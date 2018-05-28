@@ -1,5 +1,6 @@
 package com.booking.replication.coordinator;
 
+import com.booking.replication.supplier.model.checkpoint.Checkpoint;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -33,19 +34,19 @@ public class FileCoordinator extends Coordinator {
     }
 
     @Override
-    public <Type> void storeCheckpoint(String path, Type checkpoint) throws IOException {
+    public void storeCheckpoint(String path, Checkpoint checkpoint) throws IOException {
         if (checkpoint != null) {
             Files.write(Paths.get(path), FileCoordinator.MAPPER.writeValueAsBytes(checkpoint));
         }
     }
 
     @Override
-    public <Type> Type loadCheckpoint(String path, Class<Type> type) throws IOException {
+    public Checkpoint loadCheckpoint(String path) throws IOException {
         try {
             byte[] bytes = Files.readAllBytes(Paths.get(path));
 
             if (bytes.length > 0) {
-                return FileCoordinator.MAPPER.readValue(bytes, type);
+                return FileCoordinator.MAPPER.readValue(bytes, Checkpoint.class);
             } else {
                 return null;
             }

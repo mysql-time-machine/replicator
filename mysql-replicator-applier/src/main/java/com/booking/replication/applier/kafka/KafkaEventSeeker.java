@@ -44,7 +44,15 @@ public class KafkaEventSeeker implements EventSeeker {
 
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
 
-        this.checkpoint = this.geCheckpoint(checkpoint, configuration.entrySet().stream().filter(entry -> entry.getKey().startsWith(Configuration.CONSUMER_PREFIX)).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)), topic);
+        this.checkpoint = this.geCheckpoint(
+                checkpoint,
+                configuration.entrySet().stream().filter(
+                        entry -> entry.getKey().startsWith(Configuration.CONSUMER_PREFIX)
+                ).collect(Collectors.toMap(
+                        entry -> entry.getKey().substring(Configuration.CONSUMER_PREFIX.length()), Map.Entry::getValue
+                )),
+                topic
+        );
         this.seeked = new AtomicBoolean();
     }
 

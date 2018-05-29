@@ -47,7 +47,11 @@ public class KafkaEventApplier implements EventApplier {
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
 
         this.producers = new ConcurrentHashMap<>();
-        this.configuration = configuration.entrySet().stream().filter(entry -> entry.getKey().startsWith(Configuration.PRODUCER_PREFIX)).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        this.configuration = configuration.entrySet().stream().filter(
+                entry -> entry.getKey().startsWith(Configuration.PRODUCER_PREFIX)
+        ).collect(Collectors.toMap(
+                entry -> entry.getKey().substring(Configuration.PRODUCER_PREFIX.length()), Map.Entry::getValue
+        ));
         this.topic = topic;
         this.totalPartitions = this.getTotalPartitions();
         this.partitioner = KafkaEventPartitioner.valueOf(partitioner);

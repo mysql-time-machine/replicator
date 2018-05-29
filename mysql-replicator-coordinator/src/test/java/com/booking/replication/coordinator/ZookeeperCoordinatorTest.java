@@ -1,10 +1,10 @@
 package com.booking.replication.coordinator;
 
 import com.booking.replication.supplier.model.checkpoint.Checkpoint;
-import org.apache.curator.test.TestingServer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.testcontainers.containers.GenericContainer;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -17,14 +17,15 @@ import static org.junit.Assert.assertEquals;
 
 public class ZookeeperCoordinatorTest {
     private AtomicInteger count;
+    private GenericContainer zookeeper;
     private Coordinator coordinator1;
     private Coordinator coordinator2;
 
     @Before
     public void before() throws Exception {
         this.count = new AtomicInteger();
-
-        TestingServer server = new TestingServer();
+        this.zookeeper = new GenericContainer("zookeeper:latest").withExposedPorts(2181);
+        this.zookeeper.start();
 
         Runnable leadershipTake = () -> {
             this.count.getAndIncrement();
@@ -34,6 +35,7 @@ public class ZookeeperCoordinatorTest {
                 throw new RuntimeException(exception);
             }
         };
+
         Runnable leaderShipLoss = () -> {
             assertEquals(1, this.count.get());
 
@@ -43,7 +45,7 @@ public class ZookeeperCoordinatorTest {
         Map<String, String> configuration = new HashMap<>();
 
         configuration.put(Coordinator.Configuration.TYPE, Coordinator.Type.ZOOKEEPER.name());
-        configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, server.getConnectString());
+        configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, String.format("%s:%s", this.zookeeper.getContainerIpAddress(), this.zookeeper.getMappedPort(2181)));
         configuration.put(ZookeeperCoordinator.Configuration.LEADERSHIP_PATH, "/leadership.coordinator");
 
         this.coordinator1 = Coordinator.build(configuration);
@@ -82,9 +84,10 @@ public class ZookeeperCoordinatorTest {
     }
 
     @After
-    public void after() throws InterruptedException {
+    public void after() throws Exception {
         this.coordinator1.stop();
         this.coordinator2.stop();
+        this.zookeeper.stop();
 
         assertEquals(0, this.count.get());
     }

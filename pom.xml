@@ -17,13 +17,14 @@
         <maven.compiler.testSource>1.8</maven.compiler.testSource>
         <maven.compiler.testTarget>1.8</maven.compiler.testTarget>
         <junit.version>4.12</junit.version>
-        <testcontainers.version>1.6.0</testcontainers.version>
+        <testcontainers.version>1.7.3</testcontainers.version>
         <log4j1.version>1.2.17</log4j1.version>
         <log4j2.version>2.10.0</log4j2.version>
         <slf4j.version>1.7.25</slf4j.version>
         <commons-cli.version>1.4</commons-cli.version>
         <jackson.version>2.9.4</jackson.version>
-        <curator.version>4.0.0</curator.version>
+        <zookeeper.version>3.4.12</zookeeper.version>
+        <curator.version>4.0.1</curator.version>
         <hbase.version>1.4.0</hbase.version>
         <kafka.version>1.0.0</kafka.version>
         <mysql-binlog-connector.version>0.13.0</mysql-binlog-connector.version>
@@ -147,6 +148,11 @@
                 <version>3.4.0</version>
             </dependency>
             <dependency>
+                <groupId>org.apache.zookeeper</groupId>
+                <artifactId>zookeeper</artifactId>
+                <version>${zookeeper.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.apache.curator</groupId>
                 <artifactId>curator-client</artifactId>
                 <version>${curator.version}</version>
@@ -160,12 +166,6 @@
                 <groupId>org.apache.curator</groupId>
                 <artifactId>curator-recipes</artifactId>
                 <version>${curator.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.curator</groupId>
-                <artifactId>curator-test</artifactId>
-                <version>${curator.version}</version>
-                <scope>test</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>

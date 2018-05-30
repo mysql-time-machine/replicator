@@ -1,6 +1,6 @@
 package com.booking.replication.augmenter;
 
-import com.booking.replication.augmenter.active.schema.MySQLActiveSchemaVersion;
+import com.booking.replication.augmenter.active.schema.ActiveSchemaAugmenter;
 import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.supplier.model.RawEvent;
 
@@ -8,9 +8,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 public interface Augmenter extends Function<RawEvent, AugmentedEvent> {
-
     enum Type {
-
         NONE {
             @Override
             public Augmenter newInstance(Map<String, String> configuration)
@@ -18,40 +16,18 @@ public interface Augmenter extends Function<RawEvent, AugmentedEvent> {
                 return event -> null;
             }
         },
-
-        PSEUDO_GTID {
+        ACTIVE_SCHEMA {
             @Override
             public Augmenter newInstance(Map<String, String> configuration) {
-                return new PseudoGTIDAugmenter(configuration);
-            }
-        }, // TODO: add augmenter chaining: augmenter = Augmenter.with(Pseudo).then(Other)
-
-        EVENT {
-
-            @Override
-            public Augmenter newInstance(Map<String, String> configuration) {
-                try {
-                    return new EventAugmenter(
-                            new MySQLActiveSchemaVersion(configuration),
-                            Boolean.parseBoolean(configuration.get(Configuration.APPLY_UUID)),
-                            Boolean.parseBoolean(configuration.get(Configuration.APPLY_XID))
-                    );
-                } catch (Exception exception) {
-                    throw new RuntimeException(exception);
-                }
+                return new ActiveSchemaAugmenter(configuration);
             }
         };
 
         public abstract Augmenter newInstance(Map<String, String> configuration);
-
     }
 
     interface Configuration {
-        String TYPE                = "augmenter.type";
-        String PSEUDO_GTID_PATTERN = "augmenter.pseudogtid.pattern";
-        String ACTIVE_SCHEMA       = "augmenter.active.schema";
-        String APPLY_UUID          = "augmenter.apply.uuid";
-        String APPLY_XID           = "augmenter.apply.xid";
+        String TYPE = "augmenter.type";
     }
 
     static Augmenter build(Map<String, String> configuration) {

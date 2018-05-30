@@ -1,6 +1,6 @@
 package com.booking.replication.coordinator;
 
-import com.booking.replication.supplier.model.checkpoint.Checkpoint;
+import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;

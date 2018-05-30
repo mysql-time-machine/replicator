@@ -1,27 +1,20 @@
 package com.booking.replication.supplier.model;
 
-import com.booking.replication.supplier.model.handler.JSONInvocationHandler;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import java.io.IOException;
 import java.io.Serializable;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 
 /**
- * RawEvent extends EventProxyProvider so it has a method to get the
+ * RawEvent extends RawEventProxyProvider so it has a method to get the
  * proxy which contains the implementation
  */
 @SuppressWarnings("unused")
-public interface RawEvent extends Serializable, EventProxyProvider {
+public interface RawEvent extends Serializable, RawEventProxyProvider {
+    <Header extends RawEventHeader> Header getHeader();
 
-    <Header extends EventHeader> Header getHeader();
+    <Data extends RawEventData> Data getData();
 
-    <Data extends EventData> Data getData();
-
-    void overrideTimestamp(long timestamp);
-
-    Long getTimestamp();
+    long getTimestamp();
 
     static RawEvent getRawEventProxy(InvocationHandler handler)
         throws
@@ -30,8 +23,6 @@ public interface RawEvent extends Serializable, EventProxyProvider {
             InvocationTargetException,
             InstantiationException
     {
-        return EventProxyProvider.getProxy(RawEvent.class, handler);
+        return RawEventProxyProvider.getProxy(RawEvent.class, handler);
     }
-
-    void setTimestamp(long timestamp);
 }

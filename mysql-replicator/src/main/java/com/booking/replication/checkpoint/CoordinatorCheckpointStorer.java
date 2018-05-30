@@ -1,7 +1,7 @@
 package com.booking.replication.checkpoint;
 
 import com.booking.replication.augmenter.model.AugmentedEvent;
-import com.booking.replication.supplier.model.checkpoint.CheckpointStorage;
+import com.booking.replication.commons.checkpoint.CheckpointStorage;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;

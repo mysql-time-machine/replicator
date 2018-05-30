@@ -1,7 +1,7 @@
 package com.booking.replication.supplier.mysql.binlog.handler;
 
-import com.booking.replication.supplier.model.EventData;
-import com.booking.replication.supplier.model.EventHeaderV4;
+import com.booking.replication.supplier.model.RawEventData;
+import com.booking.replication.supplier.model.RawEventHeaderV4;
 import com.booking.replication.supplier.model.RawEventType;
 import com.github.shyiko.mysql.binlog.event.Event;
 
@@ -13,7 +13,7 @@ import java.util.stream.Stream;
 
 public class EventInvocationHandler implements InvocationHandler {
     private final Event event;
-    private final Map<String, Class<? extends EventData>> eventDataSubTypes;
+    private final Map<String, Class<? extends RawEventData>> eventDataSubTypes;
 
     public EventInvocationHandler(Event event) {
         this.event = event;
@@ -35,8 +35,8 @@ public class EventInvocationHandler implements InvocationHandler {
             com.github.shyiko.mysql.binlog.event.EventHeader eventHeader = this.event.getHeader();
 
             if (eventHeader != null) {
-                return EventHeaderV4.getProxy(
-                        EventHeaderV4.class,
+                return RawEventHeaderV4.getProxy(
+                        RawEventHeaderV4.class,
                         new EventHeaderInvocationHandler(eventHeader)
                 );
             } else {
@@ -46,7 +46,7 @@ public class EventInvocationHandler implements InvocationHandler {
             com.github.shyiko.mysql.binlog.event.EventData eventData = this.event.getData();
 
             if (eventData != null) {
-                return EventData.getProxy(
+                return RawEventData.getProxy(
                         this.getEventDataSubType(eventData.getClass()),
                         new EventDataInvocationHandler(eventData)
                 );
@@ -58,7 +58,7 @@ public class EventInvocationHandler implements InvocationHandler {
         }
     }
 
-    private Class<? extends EventData> getEventDataSubType(Class<?> eventDataType) {
+    private Class<? extends RawEventData> getEventDataSubType(Class<?> eventDataType) {
         return this.eventDataSubTypes.get(eventDataType.getSimpleName().toLowerCase());
     }
 }

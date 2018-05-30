@@ -1,6 +1,6 @@
 package com.booking.replication.coordinator;
 
-import com.booking.replication.supplier.model.checkpoint.CheckpointStorage;
+import com.booking.replication.commons.checkpoint.CheckpointStorage;
 
 import java.util.Map;
 import java.util.Objects;

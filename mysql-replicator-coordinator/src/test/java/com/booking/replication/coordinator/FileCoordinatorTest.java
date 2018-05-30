@@ -1,6 +1,6 @@
 package com.booking.replication.coordinator;
 
-import com.booking.replication.supplier.model.checkpoint.Checkpoint;
+import com.booking.replication.commons.checkpoint.Checkpoint;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

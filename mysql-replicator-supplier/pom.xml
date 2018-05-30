@@ -29,6 +29,11 @@
         </dependency>
         <dependency>
             <groupId>com.booking.replication</groupId>
+            <artifactId>mysql-replicator-commons</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.booking.replication</groupId>
             <artifactId>mysql-replicator-supplier-model</artifactId>
             <version>${project.version}</version>
         </dependency>

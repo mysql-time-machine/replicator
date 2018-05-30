@@ -2,9 +2,8 @@ package com.booking.replication.applier.kafka;
 
 import com.booking.replication.applier.EventSeeker;
 import com.booking.replication.augmenter.model.AugmentedEvent;
-import com.booking.replication.supplier.model.checkpoint.Checkpoint;
-import com.booking.replication.supplier.model.PseudoGTIDEventHeader;
-import com.booking.replication.augmenter.model.PseudoGTIDEventHeaderImplementation;
+import com.booking.replication.augmenter.model.AugmentedEventHeader;
+import com.booking.replication.commons.checkpoint.Checkpoint;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -74,7 +73,7 @@ public class KafkaEventSeeker implements EventSeeker {
 
                     for (ConsumerRecord<byte[], byte[]> consumerRecord : consumerRecords) {
                         Checkpoint currentCheckpoint = KafkaEventSeeker.MAPPER.readValue(
-                                consumerRecord.key(), PseudoGTIDEventHeaderImplementation.class
+                                consumerRecord.key(), AugmentedEventHeader.class
                         ).getCheckpoint();
 
                         if (lastCheckpoint != null && lastCheckpoint.compareTo(currentCheckpoint) < 0) {
@@ -91,12 +90,12 @@ public class KafkaEventSeeker implements EventSeeker {
     }
 
     @Override
-    public AugmentedEvent apply(AugmentedEvent rawEvent) {
+    public AugmentedEvent apply(AugmentedEvent augmentedEvent) {
         if (this.seeked.get()) {
-            return rawEvent;
-        } else if (this.checkpoint == null || this.checkpoint.compareTo(PseudoGTIDEventHeader.class.cast(rawEvent.getHeader()).getCheckpoint()) < 0) {
+            return augmentedEvent;
+        } else if (this.checkpoint == null || this.checkpoint.compareTo(augmentedEvent.getHeader().getCheckpoint()) < 0) {
             this.seeked.set(true);
-            return rawEvent;
+            return augmentedEvent;
         } else {
             return null;
         }

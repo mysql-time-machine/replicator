@@ -1,9 +1,6 @@
 package com.booking.replication.applier.kafka;
 
 import com.booking.replication.augmenter.model.AugmentedEvent;
-import com.booking.replication.supplier.model.RawEvent;
-import com.booking.replication.supplier.model.EventData;
-import com.booking.replication.supplier.model.TableNameEventData;
 
 import java.util.concurrent.ThreadLocalRandom;
 

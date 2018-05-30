@@ -12,46 +12,18 @@
     <name>mysql-replicator-applier</name>
     <dependencies>
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-annotations</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.hbase</groupId>
-            <artifactId>hbase-client</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.hbase</groupId>
-            <artifactId>hbase-common</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.hbase</groupId>
-            <artifactId>hbase-it</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka_2.12</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.datastax.cassandra</groupId>
-            <artifactId>cassandra-driver-core</artifactId>
-        </dependency>
-        <dependency>
             <groupId>com.booking.replication</groupId>
-            <artifactId>mysql-replicator-supplier-model</artifactId>
+            <artifactId>mysql-replicator-commons</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.booking.replication</groupId>
-            <artifactId>mysql-replicator-augmenter</artifactId>
-            <version>0.16.0-alpha-1-SNAPSHOT</version>
+            <artifactId>mysql-replicator-augmenter-model</artifactId>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 </project>

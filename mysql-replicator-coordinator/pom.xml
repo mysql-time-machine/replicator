@@ -27,7 +27,12 @@
         <dependency>
             <groupId>com.booking.replication</groupId>
             <artifactId>mysql-replicator-commons</artifactId>
-            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.booking.replication</groupId>
+            <artifactId>mysql-replicator-commons</artifactId>
         </dependency>
     </dependencies>
 </project>

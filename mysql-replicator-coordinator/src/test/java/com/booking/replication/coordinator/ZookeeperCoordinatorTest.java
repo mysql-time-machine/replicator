@@ -1,10 +1,11 @@
 package com.booking.replication.coordinator;
 
 import com.booking.replication.commons.checkpoint.Checkpoint;
-import org.junit.After;
-import org.junit.Before;
+import com.booking.replication.commons.containers.ContainersControl;
+import com.booking.replication.commons.containers.ContainersTest;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
-import org.testcontainers.containers.GenericContainer;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -16,19 +17,18 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.assertEquals;
 
 public class ZookeeperCoordinatorTest {
-    private GenericContainer zookeeper;
-    private AtomicInteger count;
-    private Coordinator coordinator1;
-    private Coordinator coordinator2;
+    private static ContainersControl containersControl;
+    private static AtomicInteger count;
+    private static Coordinator coordinator1;
+    private static Coordinator coordinator2;
 
-    @Before
-    public void before() throws Exception {
-        this.zookeeper = new GenericContainer("zookeeper:latest").withExposedPorts(2181);
-        this.zookeeper.start();
-        this.count = new AtomicInteger();
+    @BeforeClass
+    public static void before() throws Exception {
+        ZookeeperCoordinatorTest.containersControl = ContainersTest.startZookeeper();
+        ZookeeperCoordinatorTest.count = new AtomicInteger();
 
         Runnable leadershipTake = () -> {
-            this.count.getAndIncrement();
+            ZookeeperCoordinatorTest.count.getAndIncrement();
             try {
                 Thread.sleep(500L);
             } catch (InterruptedException exception) {
@@ -37,26 +37,26 @@ public class ZookeeperCoordinatorTest {
         };
 
         Runnable leaderShipLoss = () -> {
-            assertEquals(1, this.count.get());
+            assertEquals(1, ZookeeperCoordinatorTest.count.get());
 
-            this.count.getAndDecrement();
+            ZookeeperCoordinatorTest.count.getAndDecrement();
         };
 
         Map<String, String> configuration = new HashMap<>();
 
         configuration.put(Coordinator.Configuration.TYPE, Coordinator.Type.ZOOKEEPER.name());
-        configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, String.format("%s:%s", this.zookeeper.getContainerIpAddress(), this.zookeeper.getMappedPort(2181)));
+        configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, ZookeeperCoordinatorTest.containersControl.getURL());
         configuration.put(ZookeeperCoordinator.Configuration.LEADERSHIP_PATH, "/leadership.coordinator");
 
-        this.coordinator1 = Coordinator.build(configuration);
-        this.coordinator1.onLeadershipTake(leadershipTake);
-        this.coordinator1.onLeadershipLoss(leaderShipLoss);
-        this.coordinator1.start();
+        ZookeeperCoordinatorTest.coordinator1 = Coordinator.build(configuration);
+        ZookeeperCoordinatorTest.coordinator1.onLeadershipTake(leadershipTake);
+        ZookeeperCoordinatorTest.coordinator1.onLeadershipLoss(leaderShipLoss);
+        ZookeeperCoordinatorTest.coordinator1.start();
 
-        this.coordinator2 = Coordinator.build(configuration);
-        this.coordinator2.onLeadershipTake(leadershipTake);
-        this.coordinator2.onLeadershipLoss(leaderShipLoss);
-        this.coordinator2.start();
+        ZookeeperCoordinatorTest.coordinator2 = Coordinator.build(configuration);
+        ZookeeperCoordinatorTest.coordinator2.onLeadershipTake(leadershipTake);
+        ZookeeperCoordinatorTest.coordinator2.onLeadershipLoss(leaderShipLoss);
+        ZookeeperCoordinatorTest.coordinator2.start();
     }
 
     @Test
@@ -76,20 +76,20 @@ public class ZookeeperCoordinatorTest {
                 ThreadLocalRandom.current().nextInt()
         );
 
-        coordinator1.saveCheckpoint("/checkpoint.coordinator", checkpoint1);
+        ZookeeperCoordinatorTest.coordinator1.saveCheckpoint("/checkpoint.coordinator", checkpoint1);
 
-        Checkpoint checkpoint2 = coordinator2.loadCheckpoint("/checkpoint.coordinator");
+        Checkpoint checkpoint2 = ZookeeperCoordinatorTest.coordinator2.loadCheckpoint("/checkpoint.coordinator");
 
         assertEquals(checkpoint1, checkpoint2);
     }
 
-    @After
-    public void after() throws Exception {
-        this.coordinator1.stop();
-        this.coordinator2.stop();
-        this.zookeeper.stop();
+    @AfterClass
+    public static void after() throws Exception {
+        ZookeeperCoordinatorTest.coordinator1.stop();
+        ZookeeperCoordinatorTest.coordinator2.stop();
+        ZookeeperCoordinatorTest.containersControl.close();
 
-        assertEquals(0, this.count.get());
+        assertEquals(0, ZookeeperCoordinatorTest.count.get());
     }
 }
 

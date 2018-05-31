@@ -22,28 +22,29 @@
         </dependency>
         <dependency>
             <groupId>com.booking.replication</groupId>
+            <artifactId>mysql-replicator-commons</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.booking.replication</groupId>
             <artifactId>mysql-replicator-streams</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.booking.replication</groupId>
             <artifactId>mysql-replicator-coordinator</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.booking.replication</groupId>
             <artifactId>mysql-replicator-supplier</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.booking.replication</groupId>
             <artifactId>mysql-replicator-augmenter</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.booking.replication</groupId>
             <artifactId>mysql-replicator-applier</artifactId>
-            <version>${project.version}</version>
         </dependency>
     </dependencies>
     <build>

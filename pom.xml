@@ -11,6 +11,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <tests.arguments>-Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager</tests.arguments>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <maven.compiler.testSource>1.8</maven.compiler.testSource>
@@ -27,7 +28,6 @@
         <hbase.version>1.4.0</hbase.version>
         <kafka.version>1.1.0</kafka.version>
         <mysql-binlog-connector.version>0.13.0</mysql-binlog-connector.version>
-        <tests.skip>false</tests.skip>
     </properties>
     <modules>
         <module>mysql-replicator-commons</module>
@@ -167,6 +167,53 @@
                 <artifactId>curator-recipes</artifactId>
                 <version>${curator.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.booking.replication</groupId>
+                <artifactId>mysql-replicator-commons</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.booking.replication</groupId>
+                <artifactId>mysql-replicator-commons</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.booking.replication</groupId>
+                <artifactId>mysql-replicator-streams</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.booking.replication</groupId>
+                <artifactId>mysql-replicator-coordinator</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.booking.replication</groupId>
+                <artifactId>mysql-replicator-supplier-model</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.booking.replication</groupId>
+                <artifactId>mysql-replicator-supplier</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.booking.replication</groupId>
+                <artifactId>mysql-replicator-augmenter-model</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.booking.replication</groupId>
+                <artifactId>mysql-replicator-augmenter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.booking.replication</groupId>
+                <artifactId>mysql-replicator-applier</artifactId>
+                <version>${project.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
     <dependencies>
@@ -286,37 +333,9 @@
     </repositories>
     <profiles>
         <profile>
-            <id>uberjar</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-shade-plugin</artifactId>
-                        <version>3.1.0</version>
-                        <configuration>
-                            <createDependencyReducedPom>false</createDependencyReducedPom>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>shade</goal>
-                                </goals>
-                                <configuration>
-                                    <transformers>
-                                        <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                            <mainClass>com.booking.replication.Replicator</mainClass>
-                                        </transformer>
-                                    </transformers>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
+            <id>development</id>
         </profile>
         <profile>
-            <!-- Profile to release to OSSRH -->
             <id>release</id>
             <build>
                 <plugins>
@@ -442,10 +461,21 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>2.20.1</version>
                 <configuration>
-                    <!-- Sets the VM argument line used when unit tests are run. -->
                     <argLine>${tests.arguments}</argLine>
-                    <!-- Skips unit tests if the value of skip.unit.tests property is true -->
-                    <skipTests>${tests.skip}</skipTests>
+                    <systemProperties>
+                        <property>
+                            <name>zookeeper.docker.image</name>
+                            <value>zookeeper:latest</value>
+                        </property>
+                        <property>
+                            <name>kafka.docker.image</name>
+                            <value>wurstmeister/kafka:latest</value>
+                        </property>
+                        <property>
+                            <name>mysql.docker.image</name>
+                            <value>mysql:5.6.38</value>
+                        </property>
+                    </systemProperties>
                 </configuration>
             </plugin>
         </plugins>

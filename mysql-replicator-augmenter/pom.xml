@@ -10,6 +10,7 @@
     </parent>
     <artifactId>mysql-replicator-augmenter</artifactId>
     <name>mysql-replicator-augmenter</name>
+    <packaging>jar</packaging>
     <dependencies>
         <dependency>
             <groupId>com.booking.replication</groupId>

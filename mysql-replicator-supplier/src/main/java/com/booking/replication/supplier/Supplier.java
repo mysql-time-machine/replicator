@@ -8,16 +8,16 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.function.Consumer;
 
-public interface EventSupplier {
+public interface Supplier {
     enum Type {
         BINLOG {
             @Override
-            public EventSupplier newInstance(Map<String, String> configuration, Checkpoint checkpoint) {
+            public Supplier newInstance(Map<String, String> configuration, Checkpoint checkpoint) {
                 return new BinaryLogSupplier(configuration, checkpoint);
             }
         };
 
-        public abstract EventSupplier newInstance(Map<String, String> configuration, Checkpoint checkpoint);
+        public abstract Supplier newInstance(Map<String, String> configuration, Checkpoint checkpoint);
     }
 
     interface Configuration {
@@ -31,7 +31,7 @@ public interface EventSupplier {
     void stop() throws IOException;
 
     @SuppressWarnings("unchecked")
-    static EventSupplier build(Map<String, String> configuration, Checkpoint checkpoint) {
+    static Supplier build(Map<String, String> configuration, Checkpoint checkpoint) {
         return Type.valueOf(
                 configuration.getOrDefault(Configuration.TYPE, Type.BINLOG.name())
         ).newInstance(configuration, checkpoint);

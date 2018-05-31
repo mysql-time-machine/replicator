@@ -1,8 +1,8 @@
 package com.booking.replication.coordinator;
 
 import com.booking.replication.commons.checkpoint.Checkpoint;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -14,37 +14,39 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.assertEquals;
 
 public class FileCoordinatorTest {
-    private AtomicInteger count;
-    private Coordinator coordinator1;
-    private Coordinator coordinator2;
+    private static AtomicInteger count;
+    private static Coordinator coordinator1;
+    private static Coordinator coordinator2;
 
-    @Before
-    public void before() throws InterruptedException {
-        this.count = new AtomicInteger();
+    @BeforeClass
+    public static void before() throws InterruptedException {
+        FileCoordinatorTest.count = new AtomicInteger();
 
         Runnable leadershipTake = () -> {
-            this.count.getAndIncrement();
+            FileCoordinatorTest.count.getAndIncrement();
+
             try {
                 Thread.sleep(500L);
             } catch (InterruptedException exception) {
                 throw new RuntimeException(exception);
             }
         };
-        Runnable leaderShipLoss = () -> {
-            assertEquals(1, this.count.get());
 
-            this.count.getAndDecrement();
+        Runnable leaderShipLoss = () -> {
+            assertEquals(1, FileCoordinatorTest.count.get());
+
+            FileCoordinatorTest.count.getAndDecrement();
         };
 
-        this.coordinator1 = new FileCoordinator(Collections.singletonMap(Coordinator.Configuration.TYPE, Coordinator.Type.FILE.name()));
-        this.coordinator1.onLeadershipTake(leadershipTake);
-        this.coordinator1.onLeadershipLoss(leaderShipLoss);
-        this.coordinator1.start();
+        FileCoordinatorTest.coordinator1 = new FileCoordinator(Collections.singletonMap(Coordinator.Configuration.TYPE, Coordinator.Type.FILE.name()));
+        FileCoordinatorTest.coordinator1.onLeadershipTake(leadershipTake);
+        FileCoordinatorTest.coordinator1.onLeadershipLoss(leaderShipLoss);
+        FileCoordinatorTest.coordinator1.start();
 
-        this.coordinator2 = new FileCoordinator(Collections.singletonMap(Coordinator.Configuration.TYPE, Coordinator.Type.FILE.name()));
-        this.coordinator2.onLeadershipTake(leadershipTake);
-        this.coordinator2.onLeadershipLoss(leaderShipLoss);
-        this.coordinator2.start();
+        FileCoordinatorTest.coordinator2 = new FileCoordinator(Collections.singletonMap(Coordinator.Configuration.TYPE, Coordinator.Type.FILE.name()));
+        FileCoordinatorTest.coordinator2.onLeadershipTake(leadershipTake);
+        FileCoordinatorTest.coordinator2.onLeadershipLoss(leaderShipLoss);
+        FileCoordinatorTest.coordinator2.start();
     }
 
     @Test
@@ -66,18 +68,18 @@ public class FileCoordinatorTest {
                 ThreadLocalRandom.current().nextInt()
         );
 
-        coordinator1.storeCheckpoint("/tmp/checkpoint", checkpoint1);
+        FileCoordinatorTest.coordinator1.saveCheckpoint("/tmp/checkpoint", checkpoint1);
 
-        Checkpoint checkpoint2 = coordinator2.loadCheckpoint("/tmp/checkpoint");
+        Checkpoint checkpoint2 = FileCoordinatorTest.coordinator1.loadCheckpoint("/tmp/checkpoint");
 
         assertEquals(checkpoint1, checkpoint2);
     }
 
-    @After
-    public void after() throws InterruptedException {
-        this.coordinator1.stop();
-        this.coordinator2.stop();
+    @AfterClass
+    public static void after() throws InterruptedException {
+        FileCoordinatorTest.coordinator1.stop();
+        FileCoordinatorTest.coordinator2.stop();
 
-        assertEquals(0, this.count.get());
+        assertEquals(0, FileCoordinatorTest.count.get());
     }
 }

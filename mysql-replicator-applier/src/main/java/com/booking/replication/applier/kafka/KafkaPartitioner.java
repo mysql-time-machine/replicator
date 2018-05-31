@@ -4,11 +4,15 @@ import com.booking.replication.augmenter.model.AugmentedEvent;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-public enum KafkaEventPartitioner {
+public enum KafkaPartitioner {
     TABLE_NAME {
         @Override
         public int partition(AugmentedEvent augmentedEvent, int totalPartitions) {
-            return Math.abs(augmentedEvent.getHeader().getTableName().hashCode()) % totalPartitions;
+            if (augmentedEvent.getHeader().getTable() != null) {
+                return Math.abs(augmentedEvent.getHeader().getTable().getName().hashCode()) % totalPartitions;
+            } else {
+                return KafkaPartitioner.RANDOM.partition(augmentedEvent, totalPartitions);
+            }
         }
     },
     RANDOM {

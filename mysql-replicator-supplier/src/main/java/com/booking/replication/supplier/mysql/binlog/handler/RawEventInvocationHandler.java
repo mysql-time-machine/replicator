@@ -11,11 +11,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class EventInvocationHandler implements InvocationHandler {
+public class RawEventInvocationHandler implements InvocationHandler {
     private final Event event;
     private final Map<String, Class<? extends RawEventData>> eventDataSubTypes;
 
-    public EventInvocationHandler(Event event) {
+    public RawEventInvocationHandler(Event event) {
         this.event = event;
         this.eventDataSubTypes = Stream
                 .of(RawEventType.values())
@@ -37,7 +37,7 @@ public class EventInvocationHandler implements InvocationHandler {
             if (eventHeader != null) {
                 return RawEventHeaderV4.getProxy(
                         RawEventHeaderV4.class,
-                        new EventHeaderInvocationHandler(eventHeader)
+                        new RawEventHeaderInvocationHandler(eventHeader)
                 );
             } else {
                 return null;
@@ -48,7 +48,7 @@ public class EventInvocationHandler implements InvocationHandler {
             if (eventData != null) {
                 return RawEventData.getProxy(
                         this.getEventDataSubType(eventData.getClass()),
-                        new EventDataInvocationHandler(eventData)
+                        new RawEventDataInvocationHandler(eventData)
                 );
             } else {
                 return null;

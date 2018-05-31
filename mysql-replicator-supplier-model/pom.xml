@@ -10,4 +10,5 @@
     </parent>
     <artifactId>mysql-replicator-supplier-model</artifactId>
     <name>mysql-replicator-supplier-model</name>
+    <packaging>jar</packaging>
 </project>

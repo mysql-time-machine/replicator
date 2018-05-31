@@ -34,7 +34,7 @@ public class FileCoordinator extends Coordinator {
     }
 
     @Override
-    public void storeCheckpoint(String path, Checkpoint checkpoint) throws IOException {
+    public void saveCheckpoint(String path, Checkpoint checkpoint) throws IOException {
         if (checkpoint != null) {
             Files.write(Paths.get(path), FileCoordinator.MAPPER.writeValueAsBytes(checkpoint));
         }

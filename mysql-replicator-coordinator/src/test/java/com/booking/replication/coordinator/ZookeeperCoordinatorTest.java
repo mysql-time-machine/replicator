@@ -16,16 +16,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.assertEquals;
 
 public class ZookeeperCoordinatorTest {
-    private AtomicInteger count;
     private GenericContainer zookeeper;
+    private AtomicInteger count;
     private Coordinator coordinator1;
     private Coordinator coordinator2;
 
     @Before
     public void before() throws Exception {
-        this.count = new AtomicInteger();
         this.zookeeper = new GenericContainer("zookeeper:latest").withExposedPorts(2181);
         this.zookeeper.start();
+        this.count = new AtomicInteger();
 
         Runnable leadershipTake = () -> {
             this.count.getAndIncrement();
@@ -76,7 +76,7 @@ public class ZookeeperCoordinatorTest {
                 ThreadLocalRandom.current().nextInt()
         );
 
-        coordinator1.storeCheckpoint("/checkpoint.coordinator", checkpoint1);
+        coordinator1.saveCheckpoint("/checkpoint.coordinator", checkpoint1);
 
         Checkpoint checkpoint2 = coordinator2.loadCheckpoint("/checkpoint.coordinator");
 
@@ -92,3 +92,4 @@ public class ZookeeperCoordinatorTest {
         assertEquals(0, this.count.get());
     }
 }
+

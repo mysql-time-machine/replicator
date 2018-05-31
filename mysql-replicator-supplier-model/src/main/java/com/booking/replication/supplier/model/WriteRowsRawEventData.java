@@ -5,9 +5,7 @@ import java.util.BitSet;
 import java.util.List;
 
 @SuppressWarnings("unused")
-public interface WriteRowsRawEventData extends RawEventData {
-    long getTableId();
-
+public interface WriteRowsRawEventData extends TableIdRawEventData {
     BitSet getIncludedColumns();
 
     List<Serializable[]> getRows();

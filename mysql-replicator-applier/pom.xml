@@ -10,6 +10,7 @@
     </parent>
     <artifactId>mysql-replicator-applier</artifactId>
     <name>mysql-replicator-applier</name>
+    <packaging>jar</packaging>
     <dependencies>
         <dependency>
             <groupId>org.apache.kafka</groupId>

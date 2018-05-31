@@ -2,7 +2,7 @@ package com.booking.replication.augmenter.model;
 
 @SuppressWarnings("unused")
 public enum AugmentedEventType {
-    ;
+    BYTE_ARRAY(0, ByteArrayAugmentedEventData.class);
 
     private final int code;
     private final Class<? extends AugmentedEventData> definition;

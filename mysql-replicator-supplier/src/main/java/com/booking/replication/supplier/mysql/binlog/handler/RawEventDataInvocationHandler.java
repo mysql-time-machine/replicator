@@ -8,11 +8,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class EventDataInvocationHandler implements InvocationHandler {
+public class RawEventDataInvocationHandler implements InvocationHandler {
     private EventData eventData;
     private Map<String, Method> methodMap;
 
-    public EventDataInvocationHandler(EventData eventData) {
+    public RawEventDataInvocationHandler(EventData eventData) {
         this.eventData = eventData;
         this.methodMap = Stream.of(
                 eventData.getClass().getDeclaredMethods()

@@ -8,7 +8,7 @@ import java.lang.reflect.InvocationTargetException;
 public interface RawEventHeader extends Serializable, RawEventProxyProvider {
     long getTimestamp();
 
-    RawEventType getRawEventType();
+    RawEventType getEventType();
 
     String getBinlogFileName();
 

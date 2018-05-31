@@ -2,8 +2,8 @@ package com.booking.replication.supplier.mysql.binlog;
 
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.supplier.model.RawEvent;
-import com.booking.replication.supplier.EventSupplier;
-import com.booking.replication.supplier.mysql.binlog.handler.EventInvocationHandler;
+import com.booking.replication.supplier.Supplier;
+import com.booking.replication.supplier.mysql.binlog.handler.RawEventInvocationHandler;
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 
 import java.io.IOException;
@@ -12,7 +12,7 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
 
-public class BinaryLogSupplier implements EventSupplier {
+public class BinaryLogSupplier implements Supplier {
     private static final Logger LOG = Logger.getLogger(BinaryLogSupplier.class.getName());
 
     public interface Configuration {
@@ -58,7 +58,7 @@ public class BinaryLogSupplier implements EventSupplier {
                 event -> {
                     try {
                         BinaryLogSupplier.LOG.info("sending event");
-                        consumer.accept(RawEvent.getRawEventProxy(new EventInvocationHandler(event)));
+                        consumer.accept(RawEvent.getRawEventProxy(new RawEventInvocationHandler(event)));
                     } catch (ReflectiveOperationException exception) {
                         throw new RuntimeException(exception);
                     }

@@ -10,6 +10,7 @@
     </parent>
     <artifactId>mysql-replicator-supplier</artifactId>
     <name>mysql-replicator-supplier</name>
+    <packaging>jar</packaging>
     <dependencies>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

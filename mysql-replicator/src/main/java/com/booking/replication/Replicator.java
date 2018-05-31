@@ -1,17 +1,19 @@
 package com.booking.replication;
 
-import com.booking.replication.applier.EventApplier;
-import com.booking.replication.applier.EventSeeker;
+import com.booking.replication.applier.Seeker;
+import com.booking.replication.applier.Applier;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.model.AugmentedEvent;
-import com.booking.replication.checkpoint.CheckpointStorer;
+import com.booking.replication.checkpoint.CheckpointApplier;
+import com.booking.replication.commons.checkpoint.ForceRewindException;
+import com.booking.replication.commons.map.MapFlatter;
 import com.booking.replication.coordinator.Coordinator;
 
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.supplier.model.RawEvent;
 
 import com.booking.replication.streams.Streams;
-import com.booking.replication.supplier.EventSupplier;
+import com.booking.replication.supplier.Supplier;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -34,41 +36,45 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Replicator {
-
     private static final Logger LOG = Logger.getLogger(Replicator.class.getName());
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String COMMAND_LINE_SYNTAX = "java -jar mysql-replicator-<version>.jar";
 
-    private void start(Map<String, String> configuration) {
+    private final Map<String, String> configuration;
+
+    public Replicator(Map<String, String> configuration) {
+        this.configuration = configuration;
+    }
+
+    public void start() {
         try {
             Coordinator coordinator = Coordinator.build(
-                    configuration
+                    this.configuration
             );
 
             Checkpoint checkpoint = coordinator.loadCheckpoint(
-                    configuration.get(CheckpointStorer.Configuration.PATH)
+                    this.configuration.get(CheckpointApplier.Configuration.PATH)
             );
 
-            EventSupplier supplier = EventSupplier.build(
-                    configuration,
+            Supplier supplier = Supplier.build(
+                    this.configuration,
                     checkpoint
             );
 
             Augmenter augmenter = Augmenter.build(
-                    configuration
+                    this.configuration
             );
 
-            EventSeeker seeker = EventSeeker.build(
-                    configuration,
+            Seeker seeker = Seeker.build(
+                    this.configuration,
                     checkpoint
             );
 
-            EventApplier applier = EventApplier.build(
-                    configuration
+            Applier applier = Applier.build(
+                    this.configuration
             );
 
-            CheckpointStorer checkpointStorer = CheckpointStorer.build(
-                    configuration,
+            CheckpointApplier checkpointApplier = CheckpointApplier.build(
+                    this.configuration,
                     coordinator
             );
 
@@ -83,7 +89,7 @@ public class Replicator {
                     .queue()       // <- use queue, default: ConcurrentLinkedDeque
                     .fromPush()    // <- this sets from to null.
                     .to(applier)
-                    .post(checkpointStorer)
+                    .post(checkpointApplier)
                     .build();
 
             Streams<RawEvent, AugmentedEvent> streamsSupplier = Streams.<RawEvent>builder()
@@ -127,6 +133,12 @@ public class Replicator {
             Consumer<Exception> exceptionHandle = (externalException) -> {
                 Replicator.LOG.log(Level.SEVERE, "error", externalException);
 
+                if (ForceRewindException.class.isInstance(externalException)) {
+                    ForceRewindException forceRewindException = ForceRewindException.class.cast(externalException);
+
+
+                }
+
                 shutdown.run();
             };
 
@@ -142,6 +154,8 @@ public class Replicator {
                     streamsApplier.start();
                     streamsSupplier.start();
                     supplier.start();
+
+                    // wait
                 } catch (IOException | InterruptedException exception) {
                     exceptionHandle.accept(exception);
                 }
@@ -205,7 +219,7 @@ public class Replicator {
                 }
 
                 if (line.hasOption("config-file")) {
-                    configuration.putAll(Replicator.flattenMap(new ObjectMapper(new YAMLFactory()).readValue(
+                    configuration.putAll(new MapFlatter(".").flattenMap(new ObjectMapper(new YAMLFactory()).readValue(
                             new File(line.getOptionValue("config-file")),
                             new TypeReference<Map<String, Object>>() {
                             }
@@ -213,38 +227,17 @@ public class Replicator {
                 }
 
                 if (line.hasOption("supplier")) {
-                    configuration.put(EventSupplier.Configuration.TYPE, line.getOptionValue("supplier").toUpperCase());
+                    configuration.put(Supplier.Configuration.TYPE, line.getOptionValue("supplier").toUpperCase());
                 }
 
                 if (line.hasOption("applier")) {
-                    configuration.put(EventApplier.Configuration.TYPE, line.getOptionValue("applier").toUpperCase());
+                    configuration.put(Applier.Configuration.TYPE, line.getOptionValue("applier").toUpperCase());
                 }
 
-                new Replicator().start(configuration);
+                new Replicator(configuration).start();
             }
         } catch (Exception exception) {
             new HelpFormatter().printHelp(Replicator.COMMAND_LINE_SYNTAX, null, options, exception.getMessage());
-        }
-    }
-
-    private static Map<String, String> flattenMap(Map<String, Object> map) {
-        Map<String, String> flattenMap = new HashMap<>();
-
-        Replicator.flattenMap(null, map, flattenMap);
-
-        return flattenMap;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static void flattenMap(String path, Map<String, Object> map, Map<String, String> flattenMap) {
-        for (Map.Entry<String, Object> entry : map.entrySet()) {
-            String flattenPath = (path != null) ? String.format("%s.%s", path, entry.getKey()) : entry.getKey();
-
-            if (Map.class.isInstance(entry.getValue())) {
-                Replicator.flattenMap(flattenPath, Map.class.cast(entry.getValue()), flattenMap);
-            } else {
-                flattenMap.put(flattenPath, entry.getValue().toString());
-            }
         }
     }
 }

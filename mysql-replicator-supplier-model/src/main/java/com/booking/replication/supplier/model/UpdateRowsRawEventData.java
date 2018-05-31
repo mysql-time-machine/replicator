@@ -6,9 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 @SuppressWarnings("unused")
-public interface UpdateRowsRawEventData extends RawEventData {
-    long getTableId();
-
+public interface UpdateRowsRawEventData extends TableIdRawEventData {
     BitSet getIncludedColumnsBeforeUpdate();
 
     BitSet getIncludedColumns();

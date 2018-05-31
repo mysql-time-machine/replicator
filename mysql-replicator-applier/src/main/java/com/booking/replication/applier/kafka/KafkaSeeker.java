@@ -1,10 +1,11 @@
 package com.booking.replication.applier.kafka;
 
-import com.booking.replication.applier.EventSeeker;
+import com.booking.replication.applier.Seeker;
 import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.augmenter.model.AugmentedEventHeader;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 
+import com.booking.replication.commons.map.MapFilter;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -16,16 +17,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.Collections;
-import java.util.List;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 
-public class KafkaEventSeeker implements EventSeeker {
-    public interface Configuration extends KafkaEventApplier.Configuration {
-        String CONSUMER_PREFIX = "kafka.consumer";
+public class KafkaSeeker implements Seeker {
+    public interface Configuration {
+        String TOPIC = "kafka.topic";
+        String CONSUMER_PREFIX = "kafka.consumer.";
     }
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -33,23 +33,14 @@ public class KafkaEventSeeker implements EventSeeker {
     private final Checkpoint checkpoint;
     private final AtomicBoolean seeked;
 
-    public KafkaEventSeeker(Checkpoint checkpoint) {
-        this.checkpoint = checkpoint;
-        this.seeked = new AtomicBoolean();
-    }
-
-    public KafkaEventSeeker(Map<String, String> configuration, Checkpoint checkpoint) {
+    public KafkaSeeker(Map<String, String> configuration, Checkpoint checkpoint) {
         String topic = configuration.get(Configuration.TOPIC);
 
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
 
         this.checkpoint = this.geCheckpoint(
                 checkpoint,
-                configuration.entrySet().stream().filter(
-                        entry -> entry.getKey().startsWith(Configuration.CONSUMER_PREFIX)
-                ).collect(Collectors.toMap(
-                        entry -> entry.getKey().substring(Configuration.CONSUMER_PREFIX.length()), Map.Entry::getValue
-                )),
+                new MapFilter(configuration).filter(Configuration.CONSUMER_PREFIX),
                 topic
         );
         this.seeked = new AtomicBoolean();
@@ -59,20 +50,21 @@ public class KafkaEventSeeker implements EventSeeker {
         try (Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(configuration, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
             Checkpoint lastCheckpoint = checkpoint;
 
-            List<TopicPartition> topicPartitions = consumer.partitionsFor(topic).stream().map(partitionInfo -> new TopicPartition(partitionInfo.topic(), partitionInfo.partition())).collect(Collectors.toList());
+            consumer.subscribe(Arrays.asList(topic));
+            consumer.poll(100L);
 
-            for (TopicPartition topicPartition : topicPartitions) {
-                consumer.assign(Collections.singletonList(topicPartition));
+            Map<TopicPartition, Long>  endOffsetMap = consumer.endOffsets(consumer.assignment());
 
-                long endOffset = consumer.endOffsets(Collections.singletonList(topicPartition)).get(topicPartition);
+            for (Map.Entry<TopicPartition, Long> endOffsetEntry : endOffsetMap.entrySet()) {
+                long endOffset = endOffsetEntry.getValue();
 
                 if (endOffset > 0) {
-                    consumer.seek(topicPartition, endOffset - 1);
+                    consumer.seek(endOffsetEntry.getKey(), endOffset - 1);
 
                     ConsumerRecords<byte[], byte[]> consumerRecords = consumer.poll(100);
 
                     for (ConsumerRecord<byte[], byte[]> consumerRecord : consumerRecords) {
-                        Checkpoint currentCheckpoint = KafkaEventSeeker.MAPPER.readValue(
+                        Checkpoint currentCheckpoint = KafkaSeeker.MAPPER.readValue(
                                 consumerRecord.key(), AugmentedEventHeader.class
                         ).getCheckpoint();
 

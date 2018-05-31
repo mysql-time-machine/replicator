@@ -1,7 +1,8 @@
 package com.booking.replication.applier.kafka;
 
-import com.booking.replication.applier.EventApplier;
+import com.booking.replication.applier.Applier;
 import com.booking.replication.augmenter.model.AugmentedEvent;
+import com.booking.replication.commons.map.MapFilter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -12,17 +13,15 @@ import org.apache.kafka.common.errors.InvalidPartitionsException;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 
 import java.io.UncheckedIOException;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
-public class KafkaEventApplier implements EventApplier {
+public class KafkaApplier implements Applier {
     public interface Configuration {
         String TOPIC = "kafka.topic";
         String PARTITIONER = "kafka.partitioner";
-        String PRODUCER_PREFIX = "kafka.producer";
+        String PRODUCER_PREFIX = "kafka.producer.";
     }
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -30,31 +29,19 @@ public class KafkaEventApplier implements EventApplier {
     private final Map<String, Object> configuration;
     private final String topic;
     private final int totalPartitions;
-    private final KafkaEventPartitioner partitioner;
+    private final KafkaPartitioner partitioner;
 
-    public KafkaEventApplier(Producer<byte[], byte[]> producer, String topic, int totalPartitions, KafkaEventPartitioner partitioner) {
-        this.producers = new ConcurrentHashMap<>(Collections.singletonMap(Thread.currentThread().getName(), producer));
-        this.configuration = null;
-        this.topic = topic;
-        this.totalPartitions = totalPartitions;
-        this.partitioner = partitioner;
-    }
-
-    public KafkaEventApplier(Map<String, String> configuration) {
+    public KafkaApplier(Map<String, String> configuration) {
         String topic = configuration.get(Configuration.TOPIC);
-        String partitioner = configuration.getOrDefault(Configuration.PARTITIONER, KafkaEventPartitioner.RANDOM.name());
+        String partitioner = configuration.getOrDefault(Configuration.PARTITIONER, KafkaPartitioner.RANDOM.name());
 
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
 
         this.producers = new ConcurrentHashMap<>();
-        this.configuration = configuration.entrySet().stream().filter(
-                entry -> entry.getKey().startsWith(Configuration.PRODUCER_PREFIX)
-        ).collect(Collectors.toMap(
-                entry -> entry.getKey().substring(Configuration.PRODUCER_PREFIX.length()), Map.Entry::getValue
-        ));
+        this.configuration = new MapFilter(configuration).filter(Configuration.PRODUCER_PREFIX);
         this.topic = topic;
         this.totalPartitions = this.getTotalPartitions();
-        this.partitioner = KafkaEventPartitioner.valueOf(partitioner);
+        this.partitioner = KafkaPartitioner.valueOf(partitioner);
     }
 
     private Producer<byte[], byte[]> getProducer() {
@@ -76,8 +63,8 @@ public class KafkaEventApplier implements EventApplier {
             ).send(new ProducerRecord<>(
                     this.topic,
                     this.partitioner.partition(augmentedEvent, this.totalPartitions),
-                    KafkaEventApplier.MAPPER.writeValueAsBytes(augmentedEvent.getHeader()),
-                    KafkaEventApplier.MAPPER.writeValueAsBytes(augmentedEvent.getData())
+                    KafkaApplier.MAPPER.writeValueAsBytes(augmentedEvent.getHeader()),
+                    KafkaApplier.MAPPER.writeValueAsBytes(augmentedEvent.getData())
             ));
         } catch (JsonProcessingException exception) {
             throw new UncheckedIOException(exception);

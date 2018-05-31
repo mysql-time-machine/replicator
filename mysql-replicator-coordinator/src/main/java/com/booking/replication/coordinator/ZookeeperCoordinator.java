@@ -46,7 +46,7 @@ public class ZookeeperCoordinator extends Coordinator implements LeaderSelectorL
     }
 
     @Override
-    public void storeCheckpoint(String path, Checkpoint checkpoint) throws IOException {
+    public void saveCheckpoint(String path, Checkpoint checkpoint) throws IOException {
         try {
             if (checkpoint != null) {
                 byte[] bytes = ZookeeperCoordinator.MAPPER.writeValueAsBytes(checkpoint);

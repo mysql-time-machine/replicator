@@ -25,7 +25,7 @@
         <zookeeper.version>3.4.12</zookeeper.version>
         <curator.version>4.0.1</curator.version>
         <hbase.version>1.4.0</hbase.version>
-        <kafka.version>1.0.0</kafka.version>
+        <kafka.version>1.1.0</kafka.version>
         <mysql-binlog-connector.version>0.13.0</mysql-binlog-connector.version>
         <tests.skip>false</tests.skip>
     </properties>

@@ -5,10 +5,13 @@ import com.booking.replication.commons.checkpoint.Checkpoint;
 import java.io.Serializable;
 
 public class AugmentedEventHeader implements Serializable {
-    private final long timestamp;
-    private final Checkpoint checkpoint;
-    private final AugmentedEventType eventType;
-    private final AugmentedEventTable table;
+    private long timestamp;
+    private Checkpoint checkpoint;
+    private AugmentedEventType eventType;
+    private AugmentedEventTable table;
+
+    public AugmentedEventHeader() {
+    }
 
     public AugmentedEventHeader(long timestamp, Checkpoint checkpoint, AugmentedEventType eventType, AugmentedEventTable table) {
         this.timestamp = timestamp;

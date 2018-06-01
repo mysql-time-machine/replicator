@@ -3,8 +3,11 @@ package com.booking.replication.augmenter.model;
 import java.io.Serializable;
 
 public class AugmentedEvent implements Serializable {
-    private final AugmentedEventHeader header;
-    private final AugmentedEventData data;
+    private AugmentedEventHeader header;
+    private AugmentedEventData data;
+
+    public AugmentedEvent() {
+    }
 
     public AugmentedEvent(AugmentedEventHeader header, AugmentedEventData data) {
         this.header = header;

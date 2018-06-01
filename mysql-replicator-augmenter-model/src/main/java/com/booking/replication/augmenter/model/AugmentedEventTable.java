@@ -1,8 +1,11 @@
 package com.booking.replication.augmenter.model;
 
 public class AugmentedEventTable {
-    private final String database;
-    private final String name;
+    private String database;
+    private String name;
+
+    public AugmentedEventTable() {
+    }
 
     public AugmentedEventTable(String database, String name) {
         this.database = database;

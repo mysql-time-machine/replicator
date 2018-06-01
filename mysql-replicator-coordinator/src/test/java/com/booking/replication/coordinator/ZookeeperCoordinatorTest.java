@@ -30,11 +30,6 @@ public class ZookeeperCoordinatorTest {
 
         Runnable leadershipTake = () -> {
             ZookeeperCoordinatorTest.count.getAndIncrement();
-            try {
-                Thread.sleep(500L);
-            } catch (InterruptedException exception) {
-                throw new RuntimeException(exception);
-            }
         };
 
         Runnable leaderShipLoss = () -> {

@@ -36,11 +36,13 @@ public abstract class Coordinator implements LeaderCoordinator, CheckpointStorag
     private final AtomicReference<Runnable> takeRunnable;
     private final AtomicReference<Runnable> lossRunnable;
     private final AtomicBoolean hasLeadership;
+    private final AtomicBoolean lostLeaderhip;
 
     protected Coordinator() {
         this.takeRunnable = new AtomicReference<>(() -> {});
         this.lossRunnable = new AtomicReference<>(() -> {});
         this.hasLeadership = new AtomicBoolean();
+        this.lostLeaderhip = new AtomicBoolean(true);
     }
 
     @Override
@@ -60,23 +62,34 @@ public abstract class Coordinator implements LeaderCoordinator, CheckpointStorag
     protected void takeLeadership() {
         try {
             if (!this.hasLeadership.getAndSet(true)) {
-                this.takeRunnable.get().run();
-            }
+                this.lostLeaderhip.set(false);
 
-            while (this.hasLeadership.get()) {
-                Thread.sleep(5000L);
+                this.takeRunnable.get().run();
+
+                while (this.hasLeadership.get()) {
+                    Thread.sleep(5000L);
+                }
+
+                this.lossRunnable.get().run();
             }
         } catch (Exception exception) {
             Coordinator.LOG.log(Level.SEVERE, "error taking leadership", exception);
         } finally {
-            if (this.hasLeadership.getAndSet(false)) {
-                this.lossRunnable.get().run();
-            }
+            this.hasLeadership.set(false);
+            this.lostLeaderhip.set(true);
         }
     }
 
     protected void lossLeadership() {
-        this.hasLeadership.set(false);
+        try {
+            this.hasLeadership.set(false);
+
+            while (!this.lostLeaderhip.get()) {
+                Thread.sleep(5000L);
+            }
+        } catch (InterruptedException exception) {
+            Coordinator.LOG.log(Level.SEVERE, "error taking leadership", exception);
+        }
     }
 
     public abstract void start() throws InterruptedException;

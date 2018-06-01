@@ -15,7 +15,6 @@ import com.booking.replication.pipeline.PipelinePosition;
 
 import com.booking.replication.replicant.MysqlReplicantPool;
 import com.booking.replication.replicant.ReplicantPool;
-import com.booking.replication.schema.MysqlActiveSchemaVersion;
 import com.booking.replication.util.BinlogCoordinatesFinder;
 import com.booking.replication.validation.ValidationService;
 
@@ -33,6 +32,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import static com.codahale.metrics.MetricRegistry.name;
+import static spark.Spark.get;
+import static spark.Spark.port;
 
 /**
  * Booking replicator. Has two main objects (producer and consumer)
@@ -50,28 +51,29 @@ import static com.codahale.metrics.MetricRegistry.name;
 public class Replicator {
 
     private final LinkedBlockingQueue<RawBinlogEvent> rawBinlogEventQueue;
-    private final BinlogEventProducer                 binlogEventProducer;
+    private final BinlogEventProducer                 binlogEventSupplier;
     private final PipelineOrchestrator                pipelineOrchestrator;
-    private final Overseer                            overseer;
     private final ReplicantPool                       replicantPool;
     private final PipelinePosition                    pipelinePosition;
     private final ReplicatorHealthTrackerProxy        healthTracker;
-
-    private final boolean metricsEnabled = true; // TODO: move to configuration
 
     private static final int MAX_RAW_QUEUE_SIZE = Constants.MAX_RAW_QUEUE_SIZE;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Replicator.class);
 
-    // Replicator()
-    public Replicator(
-          Configuration configuration,
-          ReplicatorHealthTrackerProxy healthTracker,
-          Counter interestingEventsObservedCounter,
-          int binlogParserProviderCode
-        ) throws Exception {
+    /////////////
+    // Replicator
+    public Replicator(Configuration configuration, int binlogParserProviderCode)
+            throws Exception {
 
-        this.healthTracker = healthTracker;
+        Counter interestingEventsObservedCounter =
+                Metrics.registry.counter(name("events", "applierEventsObserved"));
+
+        this.healthTracker = new ReplicatorHealthTrackerProxy();
+        if (configuration.getHealthTrackerPort() > 0) {
+            startServerForHealthInquiries(configuration.getHealthTrackerPort(), healthTracker);
+        }
+
         long fakeMicrosecondCounter = 0;
 
         boolean mysqlFailoverActive = false;
@@ -255,7 +257,7 @@ public class Replicator {
         rawBinlogEventQueue = new LinkedBlockingQueue<>(MAX_RAW_QUEUE_SIZE);
 
         // Producer
-        binlogEventProducer = new BinlogEventProducer(
+        binlogEventSupplier = new BinlogEventProducer(
             rawBinlogEventQueue,
             pipelinePosition,
             configuration,
@@ -305,89 +307,119 @@ public class Replicator {
             new MysqlActiveSchemaVersion(configuration),
             applier,
             replicantPool,
-            binlogEventProducer,
-            fakeMicrosecondCounter,
-            metricsEnabled
+            binlogEventSupplier,
+            fakeMicrosecondCounter
         );
 
-        // Overseer
-        // TODO: remove, obsolete since healthchecks have been added we relay
-        //       on container orchestration to do the restarts
-        overseer = new Overseer(
-                binlogEventProducer,
-                pipelineOrchestrator,
-                pipelinePosition
-        );
+    }
+
+    private static void startServerForHealthInquiries(int port, IReplicatorHealthTracker healthTracker) {
+
+        port(port);
+
+        get("/is_healthy",
+                (req, response) ->
+                {
+                    try
+                    {
+                        ReplicatorHealthAssessment healthAssessment = healthTracker.getLastHealthAssessment();
+
+                        if (healthAssessment.isOk())
+                        {
+                            //For Marathon any HTTP code between 200 and 399 indicates we're healthy
+
+                            response.status(200);
+                            // don't really need the response body
+                            return "";
+                        }
+                        else
+                        {
+                            response.status(503);
+                            return healthAssessment.getDiagnosis();
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        response.status(503);
+
+                        String errorMessage = "Failed to assess the health status of the Replicator";
+
+                        LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME).warn(errorMessage, e);
+
+                        return errorMessage;
+                    }
+                });
     }
 
     // start()
     public void start() throws Exception {
 
         // Shutdown hook
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            @Override
-            public void run() {
-                LOGGER.info("Executing replicator shutdown hook...");
-                // Overseer
-                try {
-                    LOGGER.info("Stopping Overseer...");
-                    overseer.stopMonitoring();
-                    overseer.join();
-                    healthTracker.stop();
-                    LOGGER.info("Overseer thread successfully stopped");
-                } catch (InterruptedException e) {
-                    LOGGER.error("Interrupted.", e);
-                } catch (Exception e) {
-                    LOGGER.error("Failed to stop Overseer", e);
-                }
-                // Producer
-                try {
-                    // let open replicator stop its own threads
-                    if (binlogEventProducer.isRunning()) {
-                        LOGGER.info("Stopping Producer...");
-                        binlogEventProducer.stop(10000, TimeUnit.MILLISECONDS);
-                        if (!binlogEventProducer.isRunning()) {
-                            LOGGER.info("Successfully stopped Producer thread");
-                        } else {
-                            throw new Exception("Failed to stop Producer thread");
-                        }
-                    } else {
-                        LOGGER.info("Producer was allready stopped.");
-                    }
-                } catch (InterruptedException ie) {
-                    LOGGER.error("Interrupted.", ie);
-                } catch (Exception e) {
-                    LOGGER.error("Failed to stop Producer thread", e);
-                }
-                // Consumer
-                try {
-                    LOGGER.info("Stopping Pipeline Orchestrator...");
-                    pipelineOrchestrator.setRunning(false);
-                    pipelineOrchestrator.join();
-                    LOGGER.info("Pipeline Orchestrator successfully stopped");
-                } catch (InterruptedException e) {
-                    LOGGER.error("Interrupted.", e);
-                } catch (Exception e) {
-                    LOGGER.error("Failed to stop Pipeline Orchestrator", e);
-                }
+        Runtime.getRuntime().addShutdownHook(
 
-                // Spark Web Server
-                try {
-                    LOGGER.info("Stopping the Spark web server...");
-                    Spark.stop(); // TODO: static stuff? Do we want to test this class?
-                    LOGGER.info("Stopped the Spark web server...");
-                }
-                catch (Exception e) {
-                    LOGGER.error("Failed to stop the Spark web server", e);
-                }
-            }
-        });
+                new Thread(
+
+                        () -> {
+
+                            LOGGER.info("Executing replicator shutdown hook...");
+
+                            // HealthTracker
+                            try {
+                                LOGGER.info("Stopping HealthTracker...");
+                                healthTracker.stop();
+                                LOGGER.info("HealthTracker thread successfully stopped");
+                            } catch (Exception e) {
+                                LOGGER.error("Failed to stop HealthTracker", e);
+                            }
+
+                            // Binlog Event Supplier
+                            try {
+                                // let open replicator stop its own threads
+                                if (binlogEventSupplier.isRunning()) {
+                                    LOGGER.info("Stopping Producer...");
+                                    binlogEventSupplier.stop(10000, TimeUnit.MILLISECONDS);
+                                    if (!binlogEventSupplier.isRunning()) {
+                                        LOGGER.info("Successfully stopped Producer thread");
+                                    } else {
+                                        throw new Exception("Failed to stop Producer thread");
+                                    }
+                                } else {
+                                    LOGGER.info("Producer was allready stopped.");
+                                }
+                            } catch (InterruptedException ie) {
+                                LOGGER.error("Interrupted.", ie);
+                            } catch (Exception e) {
+                                LOGGER.error("Failed to stop Producer thread", e);
+                            }
+
+                            // Consumer
+                            try {
+                                LOGGER.info("Stopping Pipeline Orchestrator...");
+                                pipelineOrchestrator.setRunning(false);
+                                pipelineOrchestrator.join();
+                                LOGGER.info("Pipeline Orchestrator successfully stopped");
+                            } catch (InterruptedException e) {
+                                LOGGER.error("Interrupted.", e);
+                            } catch (Exception e) {
+                                LOGGER.error("Failed to stop Pipeline Orchestrator", e);
+                            }
+
+                            // Spark Web Server
+                            try {
+                                LOGGER.info("Stopping the Spark web server...");
+                                Spark.stop(); // TODO: static stuff? Do we want to test this class?
+                                LOGGER.info("Stopped the Spark web server...");
+                            }
+                            catch (Exception e) {
+                                LOGGER.error("Failed to stop the Spark web server", e);
+                            }
+                         }
+                )
+        );
 
         // Start up
-        binlogEventProducer.start();
+        binlogEventSupplier.start();
         pipelineOrchestrator.start();
-        overseer.start();
-
         healthTracker.start();
 
         while (!pipelineOrchestrator.isReplicatorShutdownRequested()) {
@@ -398,7 +430,5 @@ public class Replicator {
                 pipelineOrchestrator.requestReplicatorShutdown();
             }
         }
-
-        System.exit(0);
     }
 }

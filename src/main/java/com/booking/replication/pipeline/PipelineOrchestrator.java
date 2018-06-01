@@ -116,8 +116,7 @@ public class PipelineOrchestrator extends Thread {
             Applier applier,
             ReplicantPool replicantPool,
             BinlogEventProducer binlogEventProducer,
-            long fakeMicrosecondCounter,
-            boolean metricsEnabled
+            long fakeMicrosecondCounter
     ) throws SQLException, URISyntaxException {
 
         this.rawBinlogEventQueue = rawBinlogEventQueue;
@@ -146,34 +145,11 @@ public class PipelineOrchestrator extends Thread {
                 + " }"
         );
 
-        if (metricsEnabled) registerMetrics();
+        registerMetrics();
 
         this.pipelinePosition = pipelinePosition;
 
         initEventDispatcher();
-    }
-
-    public PipelineOrchestrator(
-            LinkedBlockingQueue<RawBinlogEvent> rawBinlogEventQueue,
-            PipelinePosition pipelinePosition,
-            Configuration repcfg,
-            ActiveSchemaVersion asv,
-            Applier applier,
-            ReplicantPool replicantPool,
-            BinlogEventProducer binlogEventProducer,
-            long fakeMicrosecondCounter
-    ) throws SQLException, URISyntaxException {
-        this(
-            rawBinlogEventQueue,
-            pipelinePosition,
-            repcfg,
-            asv,
-            applier,
-            replicantPool,
-            binlogEventProducer,
-            fakeMicrosecondCounter,
-            true
-        );
     }
 
     private void registerMetrics() {

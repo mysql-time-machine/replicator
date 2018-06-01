@@ -6,7 +6,6 @@ import java.util.TimerTask;
 /**
  * Makes periodic health assessments for the Replicator.
  *
- * TODO: just noticed the Overseer, figure out how they should live together
  */
 public class ReplicatorHealthTracker implements IReplicatorHealthTracker {
 

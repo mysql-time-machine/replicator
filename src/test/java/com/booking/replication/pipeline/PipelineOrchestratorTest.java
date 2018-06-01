@@ -100,8 +100,7 @@ public class PipelineOrchestratorTest {
                 applier,
                 replicantPool,
                 binlogEventProducer,
-                0L,
-                false
+                0L
         );
 
         assertFalse(pipelineOrchestrator.isInTransaction());
@@ -128,8 +127,7 @@ public class PipelineOrchestratorTest {
                 applier,
                 replicantPool,
                 binlogEventProducer,
-                0L,
-                false
+                0L
         );
 
         assertFalse(pipelineOrchestrator.isInTransaction());
@@ -155,8 +153,7 @@ public class PipelineOrchestratorTest {
                 applier,
                 replicantPool,
                 binlogEventProducer,
-                0L,
-                false
+                0L
         );
 
         pipelineOrchestrator.beginTransaction();
@@ -180,8 +177,7 @@ public class PipelineOrchestratorTest {
                 applier,
                 replicantPool,
                 binlogEventProducer,
-                0L,
-                false
+                0L
         );
 
         Field orchestratorConfigurationField= pipelineOrchestrator.getClass().getDeclaredField("orchestratorConfiguration");
@@ -210,8 +206,7 @@ public class PipelineOrchestratorTest {
                 applier,
                 replicantPool,
                 binlogEventProducer,
-                0L,
-                false
+                0L
         );
         assertFalse(pipelineOrchestrator.isInTransaction());
         pipelineOrchestrator.beginTransaction();
@@ -228,8 +223,7 @@ public class PipelineOrchestratorTest {
                 applier,
                 replicantPool,
                 binlogEventProducer,
-                0L,
-                false
+                0L
         );
         assertFalse(pipelineOrchestrator.isInTransaction());
         pipelineOrchestrator.beginTransaction();
@@ -259,8 +253,7 @@ public class PipelineOrchestratorTest {
                 applier,
                 replicantPool,
                 binlogEventProducer,
-                0L,
-                false
+                0L
         );
 
         assertFalse(pipelineOrchestrator.isInTransaction());
@@ -290,8 +283,7 @@ public class PipelineOrchestratorTest {
                 applier,
                 replicantPool,
                 binlogEventProducer,
-                0L,
-                false
+                0L
         );
 
         assertFalse(pipelineOrchestrator.isInTransaction());
@@ -315,8 +307,7 @@ public class PipelineOrchestratorTest {
                 applier,
                 replicantPool,
                 binlogEventProducer,
-                0L,
-                false
+                0L
         );
 
         pipelineOrchestrator.setRunning(true);
@@ -358,8 +349,7 @@ public class PipelineOrchestratorTest {
                 applier,
                 replicantPool,
                 binlogEventProducer,
-                0L,
-                false
+                0L
         );
 
         pipelineOrchestrator.setRunning(true);
@@ -410,8 +400,7 @@ public class PipelineOrchestratorTest {
                 applier,
                 replicantPool,
                 binlogEventProducer,
-                0L,
-                false
+                0L
         );
         pipelineOrchestrator.setRunning(true);
         Method method = pipelineOrchestrator.getClass().getDeclaredMethod("rewindToCommitEvent", long.class, long.class);

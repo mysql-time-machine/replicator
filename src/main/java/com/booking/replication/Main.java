@@ -1,9 +1,9 @@
 package com.booking.replication;
 
-import com.booking.replication.binlog.event.BinlogEventParserProviderCode;
 import com.booking.replication.coordinator.CoordinatorInterface;
 import com.booking.replication.coordinator.FileCoordinator;
 import com.booking.replication.coordinator.ZookeeperCoordinator;
+import com.booking.replication.exceptions.ReplicatorStartException;
 import com.booking.replication.monitor.IReplicatorHealthTracker;
 import com.booking.replication.monitor.ReplicatorHealthAssessment;
 import com.booking.replication.monitor.ReplicatorHealthTrackerProxy;
@@ -16,9 +16,12 @@ import joptsimple.OptionSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.function.Consumer;
+import java.util.logging.Level;
 
 import static com.codahale.metrics.MetricRegistry.name;
 import static spark.Spark.get;
@@ -28,122 +31,90 @@ public class Main {
 
     private static int BINLOG_PARSER_PROVIDER_CODE;
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
+
     /**
-     * Main.
+     * Main entry point
      */
     public static void main(String[] args) throws Exception {
+
+        try {
+
+            final Configuration configuration = initConfiguration(args);
+
+            initCoordinator(configuration);
+
+            Runnable replicatorStart = () -> {
+                try {
+                    Metrics.startReporters(configuration);
+                    Replicator replicator = new Replicator(
+                        configuration,
+                        BINLOG_PARSER_PROVIDER_CODE
+                    );
+                    replicator.start();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            };
+
+            Coordinator.onLeaderElection(
+                replicatorStart
+            );
+
+        } catch (Exception e) {
+            throw new Exception("Replicator exception", e);
+        }
+    }
+
+    private static void initCoordinator(Configuration configuration) {
+
+        CoordinatorInterface coordinator;
+
+        switch (configuration.getMetadataStoreType()) {
+
+            case Configuration.METADATASTORE_ZOOKEEPER:
+                coordinator = new ZookeeperCoordinator(configuration);
+                break;
+            case Configuration.METADATASTORE_FILE:
+                coordinator = new FileCoordinator(configuration);
+                break;
+            default:
+                throw new RuntimeException(String.format(
+                        "Metadata store type not implemented: %s",
+                        configuration.getMetadataStoreType()));
+        }
+
+        Coordinator.setImplementation(coordinator);
+    }
+
+    private static Configuration initConfiguration(String[] args) throws IOException {
+
         OptionSet optionSet = Cmd.parseArgs(args);
 
         StartupParameters startupParameters = new StartupParameters(optionSet);
 
         BINLOG_PARSER_PROVIDER_CODE = startupParameters.getParser();
 
-        ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
         String  configPath = startupParameters.getConfigPath();
 
-        final Configuration configuration;
+        ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
 
-        try {
-            InputStream in = Files.newInputStream(Paths.get(configPath));
-            configuration = mapper.readValue(in, Configuration.class);
+        InputStream in = Files.newInputStream(Paths.get(configPath));
 
-            if (configuration == null) {
-                throw new RuntimeException(String.format("Unable to load configuration from file: %s", configPath));
-            }
+        Configuration configuration = mapper.readValue(in, Configuration.class);
 
-            configuration.loadStartupParameters(startupParameters);
-            configuration.validate();
-
-            try {
-                System.out.println("loaded configuration: \n" + configuration.toString());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-            QueryInspector.setIsPseudoGTIDPattern(configuration.getpGTIDPattern());
-
-            CoordinatorInterface coordinator;
-            switch (configuration.getMetadataStoreType()) {
-                case Configuration.METADATASTORE_ZOOKEEPER:
-                    coordinator = new ZookeeperCoordinator(configuration);
-                    break;
-                case Configuration.METADATASTORE_FILE:
-                    coordinator = new FileCoordinator(configuration);
-                    break;
-                default:
-                    throw new RuntimeException(String.format(
-                            "Metadata store type not implemented: %s",
-                            configuration.getMetadataStoreType()));
-            }
-
-            Coordinator.setImplementation(coordinator);
-
-            ReplicatorHealthTrackerProxy healthTracker = new ReplicatorHealthTrackerProxy();
-
-            if (configuration.getHealthTrackerPort() > 0) {
-                startServerForHealthInquiries(configuration.getHealthTrackerPort(), healthTracker);
-            }
-
-            Coordinator.onLeaderElection(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            Metrics.startReporters(configuration);
-                            new Replicator(
-                                    configuration,
-                                    healthTracker,
-                                    Metrics.registry.counter(name("events", "applierEventsObserved")),
-                                    BINLOG_PARSER_PROVIDER_CODE
-                            ).start();
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            System.exit(1);
-                        }
-                    }
-                }
-            );
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.exit(1);
+        if (configuration == null) {
+            throw new RuntimeException(String.format("Unable to load configuration from file: %s", configPath));
         }
-    }
 
-    private static void startServerForHealthInquiries(int port, IReplicatorHealthTracker healthTracker) {
-        port(port);
+        configuration.loadStartupParameters(startupParameters);
 
-        get("/is_healthy",
-                (req, response) ->
-                {
-                    try
-                    {
-                        ReplicatorHealthAssessment healthAssessment = healthTracker.getLastHealthAssessment();
+        configuration.validate();
 
-                        if (healthAssessment.isOk())
-                        {
-                            //For Marathon any HTTP code between 200 and 399 indicates we're healthy
+        LOGGER.info("loaded configuration: \n" + configuration.toString());
 
-                            response.status(200);
-                            // don't really need the response body
-                            return "";
-                        }
-                        else
-                        {
-                            response.status(503);
-                            return healthAssessment.getDiagnosis();
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        response.status(503);
+        QueryInspector.setIsPseudoGTIDPattern(configuration.getpGTIDPattern());
 
-                        String errorMessage = "Failed to assess the health status of the Replicator";
-
-                        LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME).warn(errorMessage, e);
-
-                        return errorMessage;
-                    }
-                });
+        return configuration;
     }
 }

@@ -23,7 +23,7 @@ public class RawEventInvocationHandler implements InvocationHandler {
                 .distinct()
                 .collect(
                         Collectors.toMap(
-                                (value) -> value.getSimpleName().toLowerCase(),
+                                (value) -> value.getSimpleName().replace("Raw", "").toLowerCase(),
                                 (value) -> value
                         )
                 );

@@ -464,15 +464,15 @@
                     <argLine>${tests.arguments}</argLine>
                     <systemProperties>
                         <property>
-                            <name>zookeeper.docker.image</name>
+                            <name>docker.image.zookeeper</name>
                             <value>zookeeper:latest</value>
                         </property>
                         <property>
-                            <name>kafka.docker.image</name>
+                            <name>docker.image.kafka</name>
                             <value>wurstmeister/kafka:latest</value>
                         </property>
                         <property>
-                            <name>mysql.docker.image</name>
+                            <name>docker.image.mysql</name>
                             <value>mysql:5.6.38</value>
                         </property>
                     </systemProperties>

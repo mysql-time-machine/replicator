@@ -25,12 +25,9 @@ import org.apache.commons.cli.Options;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -39,96 +36,31 @@ public class Replicator {
     private static final Logger LOG = Logger.getLogger(Replicator.class.getName());
     private static final String COMMAND_LINE_SYNTAX = "java -jar mysql-replicator-<version>.jar";
 
-    private final Map<String, String> configuration;
+    private final Coordinator coordinator;
+    private final Supplier supplier;
+    private final Augmenter augmenter;
+    private final Seeker seeker;
+    private final Applier applier;
+    private final CheckpointApplier checkpointApplier;
+    private final Streams<AugmentedEvent, AugmentedEvent> streamsApplier;
+    private final Streams<RawEvent, AugmentedEvent> streamsSupplier;
 
     public Replicator(Map<String, String> configuration) {
-        this.configuration = configuration;
-    }
-
-    public void start() {
         try {
-            Coordinator coordinator = Coordinator.build(
-                    this.configuration
-            );
+            this.coordinator = Coordinator.build(configuration);
 
-            Checkpoint checkpoint = coordinator.loadCheckpoint(
-                    this.configuration.get(CheckpointApplier.Configuration.PATH)
-            );
+            Checkpoint checkpoint = this.coordinator.loadCheckpoint(configuration.get(CheckpointApplier.Configuration.PATH));
 
-            Supplier supplier = Supplier.build(
-                    this.configuration,
-                    checkpoint
-            );
+            this.supplier = Supplier.build(configuration, checkpoint);
+            this.augmenter = Augmenter.build(configuration);
+            this.seeker = Seeker.build(configuration, checkpoint);
+            this.applier = Applier.build(configuration);
+            this.checkpointApplier = CheckpointApplier.build(configuration, this.coordinator);
 
-            Augmenter augmenter = Augmenter.build(
-                    this.configuration
-            );
+            this.streamsApplier = Streams.<AugmentedEvent>builder().threads(10).tasks(8).queue().fromPush().to(this.applier).post(this.checkpointApplier).build();
+            this.streamsSupplier = Streams.<RawEvent>builder().queue().fromPush().process(this.augmenter).process(this.seeker).to(streamsApplier::push).build();
 
-            Seeker seeker = Seeker.build(
-                    this.configuration,
-                    checkpoint
-            );
-
-            Applier applier = Applier.build(
-                    this.configuration
-            );
-
-            CheckpointApplier checkpointApplier = CheckpointApplier.build(
-                    this.configuration,
-                    coordinator
-            );
-
-            ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
-
-            AtomicLong delay = new AtomicLong();
-            AtomicLong count = new AtomicLong();
-
-            Streams<AugmentedEvent, AugmentedEvent> streamsApplier = Streams.<AugmentedEvent>builder()
-                    .threads(10)
-                    .tasks(8)
-                    .queue()       // <- use queue, default: ConcurrentLinkedDeque
-                    .fromPush()    // <- this sets from to null.
-                    .to(applier)
-                    .post(checkpointApplier)
-                    .build();
-
-            Streams<RawEvent, AugmentedEvent> streamsSupplier = Streams.<RawEvent>builder()
-                    .queue() // TODO: internal buffer for push - for some reason reduces performance - investigate
-                    .fromPush()
-                    .process(augmenter)
-                    .process(seeker)
-                    .to(streamsApplier::push)
-                    .post(event -> {
-                        delay.set(System.currentTimeMillis() - event.getHeader().getTimestamp());
-                        count.incrementAndGet();
-                    })
-                    .build();
-
-            executor.scheduleAtFixedRate(() -> {
-                long timestamp = delay.get();
-                long quantity = count.getAndSet(0);
-
-                Replicator.LOG.info(
-                    String.format("Delay: %03d hours %02d minutes %02d seconds, Quantity: %d",
-                            TimeUnit.MILLISECONDS.toHours(timestamp),
-                            TimeUnit.MILLISECONDS.toMinutes(timestamp) - TimeUnit.HOURS.toMinutes(TimeUnit.MILLISECONDS.toHours(timestamp)),
-                            TimeUnit.MILLISECONDS.toSeconds(timestamp) - TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(timestamp)),
-                            quantity
-                    )
-                );
-            }, 10, 10, TimeUnit.SECONDS);
-
-            supplier.onEvent(streamsSupplier::push);
-
-            Runnable shutdown = () -> {
-                try {
-                    Replicator.LOG.log(Level.INFO, "stopping coordinator");
-
-                    coordinator.stop();
-                } catch (InterruptedException exception) {
-                    Replicator.LOG.log(Level.SEVERE, "error stopping", exception);
-                }
-            };
+            this.supplier.onEvent(this.streamsSupplier::push);
 
             Consumer<Exception> exceptionHandle = (externalException) -> {
                 Replicator.LOG.log(Level.SEVERE, "error", externalException);
@@ -139,48 +71,68 @@ public class Replicator {
 
                 }
 
-                shutdown.run();
+                this.stop();
             };
 
-            streamsSupplier.onException(exceptionHandle);
-            streamsApplier.onException(exceptionHandle);
+            this.streamsSupplier.onException(exceptionHandle);
+            this.streamsApplier.onException(exceptionHandle);
 
-            Runtime.getRuntime().addShutdownHook(new Thread(shutdown));
-
-            coordinator.onLeadershipTake(() -> {
+            this.coordinator.onLeadershipTake(() -> {
                 try {
                     Replicator.LOG.log(Level.INFO, "starting replicator");
 
-                    streamsApplier.start();
-                    streamsSupplier.start();
-                    supplier.start();
-
-                    // wait
+                    this.streamsApplier.start();
+                    this.streamsSupplier.start();
+                    this.supplier.start();
                 } catch (IOException | InterruptedException exception) {
                     exceptionHandle.accept(exception);
                 }
             });
 
-            coordinator.onLeadershipLoss(() -> {
+            this.coordinator.onLeadershipLoss(() -> {
                 try {
                     Replicator.LOG.log(Level.INFO, "stopping replicator");
 
-                    supplier.stop();
-                    streamsSupplier.stop();
-                    streamsApplier.stop();
-                    applier.close();
-                    executor.shutdown();
+                    this.supplier.stop();
+                    this.streamsSupplier.stop();
+                    this.streamsApplier.stop();
+                    this.applier.close();
                 } catch (IOException | InterruptedException exception) {
                     exceptionHandle.accept(exception);
                 }
             });
+        } catch (IOException exception) {
+            throw new UncheckedIOException(exception);
+        }
+    }
 
+    public void start() {
+        try {
             Replicator.LOG.log(Level.INFO, "starting coordinator");
 
-            coordinator.start();
-            coordinator.join();
-        } catch (Exception exception) {
-            Replicator.LOG.log(Level.SEVERE, "error executing replicator", exception);
+            this.coordinator.start();
+        } catch (InterruptedException exception) {
+            Replicator.LOG.log(Level.SEVERE, "error starting coordinator", exception);
+        }
+    }
+
+    public void join() {
+        try {
+            Replicator.LOG.log(Level.INFO, "running coordinator");
+
+            this.coordinator.join();
+        } catch (InterruptedException exception) {
+            Replicator.LOG.log(Level.SEVERE, "error starting coordinator", exception);
+        }
+    }
+
+    public void stop() {
+        try {
+            Replicator.LOG.log(Level.INFO, "stopping coordinator");
+
+            this.coordinator.stop();
+        } catch (InterruptedException exception) {
+            Replicator.LOG.log(Level.SEVERE, "error stopping coordinator", exception);
         }
     }
 
@@ -234,7 +186,12 @@ public class Replicator {
                     configuration.put(Applier.Configuration.TYPE, line.getOptionValue("applier").toUpperCase());
                 }
 
-                new Replicator(configuration).start();
+                Replicator replicator = new Replicator(configuration);
+
+                Runtime.getRuntime().addShutdownHook(new Thread(replicator::stop));
+
+                replicator.start();
+                replicator.join();
             }
         } catch (Exception exception) {
             new HelpFormatter().printHelp(Replicator.COMMAND_LINE_SYNTAX, null, options, exception.getMessage());

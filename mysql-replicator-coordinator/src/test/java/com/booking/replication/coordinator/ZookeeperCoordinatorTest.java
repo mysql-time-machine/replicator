@@ -1,8 +1,9 @@
 package com.booking.replication.coordinator;
 
 import com.booking.replication.commons.checkpoint.Checkpoint;
-import com.booking.replication.commons.containers.ContainersControl;
-import com.booking.replication.commons.containers.ContainersTest;
+import com.booking.replication.commons.services.ServicesControl;
+import com.booking.replication.commons.services.ContainersProvider;
+import com.booking.replication.commons.services.ServicesProvider;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -17,14 +18,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.assertEquals;
 
 public class ZookeeperCoordinatorTest {
-    private static ContainersControl containersControl;
+    private static ServicesControl servicesControl;
     private static AtomicInteger count;
     private static Coordinator coordinator1;
     private static Coordinator coordinator2;
 
     @BeforeClass
     public static void before() throws Exception {
-        ZookeeperCoordinatorTest.containersControl = ContainersTest.startZookeeper();
+        ZookeeperCoordinatorTest.servicesControl = ServicesProvider.build(ServicesProvider.Type.CONTAINERS).startZookeeper();
         ZookeeperCoordinatorTest.count = new AtomicInteger();
 
         Runnable leadershipTake = () -> {
@@ -45,7 +46,7 @@ public class ZookeeperCoordinatorTest {
         Map<String, String> configuration = new HashMap<>();
 
         configuration.put(Coordinator.Configuration.TYPE, Coordinator.Type.ZOOKEEPER.name());
-        configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, ZookeeperCoordinatorTest.containersControl.getURL());
+        configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, ZookeeperCoordinatorTest.servicesControl.getURL());
         configuration.put(ZookeeperCoordinator.Configuration.LEADERSHIP_PATH, "/leadership.coordinator");
 
         ZookeeperCoordinatorTest.coordinator1 = Coordinator.build(configuration);
@@ -87,7 +88,7 @@ public class ZookeeperCoordinatorTest {
     public static void after() throws Exception {
         ZookeeperCoordinatorTest.coordinator1.stop();
         ZookeeperCoordinatorTest.coordinator2.stop();
-        ZookeeperCoordinatorTest.containersControl.close();
+        ZookeeperCoordinatorTest.servicesControl.close();
 
         assertEquals(0, ZookeeperCoordinatorTest.count.get());
     }

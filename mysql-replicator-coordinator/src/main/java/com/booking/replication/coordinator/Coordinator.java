@@ -13,7 +13,7 @@ import java.util.logging.Logger;
 public abstract class Coordinator implements LeaderCoordinator, CheckpointStorage {
     private static final Logger LOG = Logger.getLogger(Coordinator.class.getName());
 
-    enum Type {
+    public enum Type {
         ZOOKEEPER {
             @Override
             public Coordinator newInstance(Map<String, String> configuration) {
@@ -30,7 +30,7 @@ public abstract class Coordinator implements LeaderCoordinator, CheckpointStorag
         public abstract Coordinator newInstance(Map<String, String> configuration);
     }
 
-    interface Configuration {
+    public interface Configuration {
         String TYPE = "coordinator.type";
     }
     private final AtomicReference<Runnable> takeRunnable;
@@ -62,19 +62,22 @@ public abstract class Coordinator implements LeaderCoordinator, CheckpointStorag
             if (!this.hasLeadership.getAndSet(true)) {
                 this.takeRunnable.get().run();
             }
+
+            while (this.hasLeadership.get()) {
+                Thread.sleep(5000L);
+            }
         } catch (Exception exception) {
             Coordinator.LOG.log(Level.SEVERE, "error taking leadership", exception);
         } finally {
-            this.lossLeadership();
+            if (this.hasLeadership.getAndSet(false)) {
+                this.lossRunnable.get().run();
+            }
         }
     }
 
     protected void lossLeadership() {
-        if (this.hasLeadership.getAndSet(false)) {
-            this.lossRunnable.get().run();
-        }
+        this.hasLeadership.set(false);
     }
-
 
     public abstract void start() throws InterruptedException;
 

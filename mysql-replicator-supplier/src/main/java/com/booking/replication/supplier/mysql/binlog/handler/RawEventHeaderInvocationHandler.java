@@ -15,7 +15,7 @@ public class RawEventHeaderInvocationHandler implements InvocationHandler {
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-        if (method.getName().equals("getRawEventType")) {
+        if (method.getName().equals("getEventType")) {
             return RawEventType.valueOf(eventHeader.getEventType().name());
         } else {
             return this.eventHeader.getClass().getMethod(method.getName()).invoke(this.eventHeader);

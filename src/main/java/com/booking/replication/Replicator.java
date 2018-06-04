@@ -28,6 +28,7 @@ import spark.Spark;
 
 import static com.codahale.metrics.MetricRegistry.name;
 
+import java.sql.SQLException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -57,7 +58,7 @@ public class Replicator {
     private final LinkedBlockingQueue<RawBinlogEvent> rawBinlogEventQueue;
     private final BinlogEventProducer                 binlogEventSupplier;
     private final PipelineOrchestrator                pipelineOrchestrator;
-    private final PipelinePosition                    pipelinePosition;
+    private       PipelinePosition                    pipelinePosition;
     private final ReplicatorHealthTrackerProxy        healthTracker;
 
     private static final int MAX_RAW_QUEUE_SIZE = Constants.MAX_RAW_QUEUE_SIZE;
@@ -85,99 +86,10 @@ public class Replicator {
         // Replicant Pool
         replicantPool = new MysqlReplicantPool(configuration.getReplicantDBHostPool(), configuration);
 
-        // 1. init pipelinePosition -> move to separate method
+        // init pipelinePosition
         if (mysqlFailoverActive) {
-
-            // mysql high-availability mode
-            if (configuration.getStartingBinlogFileName() != null) {
-
-                // TODO: make mandatory to specify host name when starting from specific binlog file
-                // At the moment the first host in the pool list is assumed when starting with
-                // specified binlog-file
-
-                String mysqlHost = configuration.getReplicantDBHostPool().get(0);
-                int serverID     = replicantPool.getReplicantDBActiveHostServerID();
-
-                LOGGER.info(String.format("Starting replicator in high-availability mode with: "
-                        + "mysql-host %s, server-id %s, binlog-filename %s",
-                        mysqlHost, serverID, configuration.getStartingBinlogFileName()));
-
-                pipelinePosition = new PipelinePosition(
-                        mysqlHost,
-                        serverID,
-                        configuration.getStartingBinlogFileName(),
-                        configuration.getStartingBinlogPosition(),
-                        configuration.getStartingBinlogFileName(),
-                        4L
-                );
-
-            } else {
-                // failover:
-                //  1. get Pseudo GTID from safe checkpoint
-                //  2. get active host from the pool
-                //  3. get binlog-filename and binlog-position that correspond to
-                //     Pseudo GTID on the active host (this is done by calling the
-                //     MySQL Orchestrator http API (https://github.com/outbrain/orchestrator).
-                PseudoGTIDCheckpoint safeCheckPoint = Coordinator.getSafeCheckpoint();
-                if ( safeCheckPoint != null ) {
-
-                    String pseudoGTID = safeCheckPoint.getPseudoGTID();
-                    fakeMicrosecondCounter = safeCheckPoint.getFakeMicrosecondCounter();
-
-                    if (pseudoGTID != null) {
-
-                        String replicantActiveHost = replicantPool.getReplicantDBActiveHost();
-                        int    serverID            = replicantPool.getReplicantDBActiveHostServerID();
-                        boolean sameHost = replicantActiveHost.equals(safeCheckPoint.getHostName());
-
-                        LOGGER.info("found pseudoGTID in safe checkpoint: " + pseudoGTID);
-
-                        BinlogCoordinatesFinder coordinatesFinder = new BinlogCoordinatesFinder(replicantActiveHost,3306,configuration.getReplicantDBUserName(),configuration.getReplicantDBPassword());
-
-                        BinlogCoordinatesFinder.BinlogCoordinates coordinates = coordinatesFinder.findCoordinates(pseudoGTID);
-
-                        String startingBinlogFileName = coordinates.getFileName();
-                        Long   startingBinlogPosition = coordinates.getPosition();
-
-                        LOGGER.info("PseudoGTID resolved to: " + startingBinlogFileName + ":" + startingBinlogPosition);
-
-                        pipelinePosition = new PipelinePosition(
-                            replicantActiveHost,
-                            serverID,
-                            startingBinlogFileName,
-                            startingBinlogPosition,
-                            // positions are not comparable between different hosts
-                            (sameHost ? safeCheckPoint.getLastVerifiedBinlogFileName() : startingBinlogFileName),
-                            (sameHost ? safeCheckPoint.getLastVerifiedBinlogPosition() : startingBinlogPosition)
-                        );
-
-                    } else {
-                        LOGGER.warn("PsuedoGTID not available in safe checkpoint. "
-                            + "Defaulting back to host-specific binlog coordinates.");
-
-                        // the binlog file name and position are host specific which means that
-                        // we can't get mysql host from the pool. We must use the host from the
-                        // safe checkpoint. If that host is not avaiable then, without pGTID,
-                        // failover can not be done and the replicator will exit with SQLException.
-                        String mysqlHost = safeCheckPoint.getHostName();
-                        int    serverID  = replicantPool.obtainServerID(mysqlHost);
-
-                        String startingBinlogFileName = safeCheckPoint.getLastVerifiedBinlogFileName();
-                        Long   startingBinlogPosition = safeCheckPoint.getLastVerifiedBinlogPosition();
-
-                        pipelinePosition = new PipelinePosition(
-                            mysqlHost,
-                            serverID,
-                            startingBinlogFileName,
-                            startingBinlogPosition,
-                            safeCheckPoint.getLastVerifiedBinlogFileName(),
-                            safeCheckPoint.getLastVerifiedBinlogPosition()
-                        );
-                    }
-                } else {
-                    throw new RuntimeException("Could not load safe check point.");
-                }
-            }
+            // failover mode
+            initPipelinePositionInFailoverMode(configuration, fakeMicrosecondCounter);
         } else {
             // single replicant mode
             if (configuration.getStartingBinlogFileName() != null) {
@@ -313,6 +225,98 @@ public class Replicator {
         );
         PipelineOrchestrator.registerMetrics();
 
+    }
+
+    private void initPipelinePositionInFailoverMode(Configuration configuration, Long fakeMicrosecondCounter) throws SQLException {
+
+        if (configuration.getStartingBinlogFileName() != null) { // <- No previous PseudoGTID
+
+            // TODO: make mandatory to specify host name when starting from specific binlog file
+            // At the moment the first host in the pool list is assumed when starting with
+            // specified binlog-file
+
+            String mysqlHost = configuration.getReplicantDBHostPool().get(0);
+            int serverID     = replicantPool.getReplicantDBActiveHostServerID();
+
+            LOGGER.info(String.format("Starting replicator in high-availability mode with: "
+                            + "mysql-host %s, server-id %s, binlog-filename %s",
+                    mysqlHost, serverID, configuration.getStartingBinlogFileName()));
+
+            pipelinePosition = new PipelinePosition(
+                    mysqlHost,
+                    serverID,
+                    configuration.getStartingBinlogFileName(),
+                    configuration.getStartingBinlogPosition(),
+                    configuration.getStartingBinlogFileName(),
+                    4L
+            );
+
+        } else { // <- previous pseudoGTID available
+
+            //  1. get PseudoGTID from safe checkpoint
+            PseudoGTIDCheckpoint safeCheckPoint = Coordinator.getSafeCheckpoint();
+            if ( safeCheckPoint != null ) {
+
+                String pseudoGTID = safeCheckPoint.getPseudoGTID();
+                fakeMicrosecondCounter = safeCheckPoint.getFakeMicrosecondCounter();
+
+                if (pseudoGTID != null) {
+
+                    //  2. get active host from the pool
+                    String replicantActiveHost = replicantPool.getReplicantDBActiveHost();
+                    int    serverID            = replicantPool.getReplicantDBActiveHostServerID();
+                    boolean sameHost = replicantActiveHost.equals(safeCheckPoint.getHostName());
+
+                    LOGGER.info("found pseudoGTID in safe checkpoint: " + pseudoGTID);
+
+                    //  3. get binlog-filename and binlog-position that correspond to
+                    //     Pseudo GTID on the active host.
+                    BinlogCoordinatesFinder coordinatesFinder = new BinlogCoordinatesFinder(replicantActiveHost,3306,configuration.getReplicantDBUserName(),configuration.getReplicantDBPassword());
+
+                    BinlogCoordinatesFinder.BinlogCoordinates coordinates = coordinatesFinder.findCoordinates(pseudoGTID);
+
+                    String startingBinlogFileName = coordinates.getFileName();
+                    Long   startingBinlogPosition = coordinates.getPosition();
+
+                    LOGGER.info("PseudoGTID resolved to: " + startingBinlogFileName + ":" + startingBinlogPosition);
+
+                    pipelinePosition = new PipelinePosition(
+                            replicantActiveHost,
+                            serverID,
+                            startingBinlogFileName,
+                            startingBinlogPosition,
+                            // positions are not comparable between different hosts
+                            (sameHost ? safeCheckPoint.getLastVerifiedBinlogFileName() : startingBinlogFileName),
+                            (sameHost ? safeCheckPoint.getLastVerifiedBinlogPosition() : startingBinlogPosition)
+                    );
+
+                } else {
+                    LOGGER.warn("PseudoGTID not available in safe checkpoint. "
+                            + "Defaulting back to host-specific binlog coordinates.");
+
+                    // the binlog file name and position are host specific which means that
+                    // we can't get mysql host from the pool. We must use the host from the
+                    // safe checkpoint. If that host is not available then, without pseudoGTID,
+                    // failover can not be done and the replicator will exit with SQLException.
+                    String mysqlHost = safeCheckPoint.getHostName();
+                    int    serverID  = replicantPool.obtainServerID(mysqlHost);
+
+                    String startingBinlogFileName = safeCheckPoint.getLastVerifiedBinlogFileName();
+                    Long   startingBinlogPosition = safeCheckPoint.getLastVerifiedBinlogPosition();
+
+                    pipelinePosition = new PipelinePosition(
+                            mysqlHost,
+                            serverID,
+                            startingBinlogFileName,
+                            startingBinlogPosition,
+                            safeCheckPoint.getLastVerifiedBinlogFileName(),
+                            safeCheckPoint.getLastVerifiedBinlogPosition()
+                    );
+                }
+            } else {
+                throw new RuntimeException("Could not load safe check point.");
+            }
+        }
     }
 
     private static void startServerForHealthInquiries(int port, IReplicatorHealthTracker healthTracker) {

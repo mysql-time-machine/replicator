@@ -1,5 +1,6 @@
 package com.booking.replication.augmenter.model;
 
+@SuppressWarnings("unused")
 public class ByteArrayAugmentedEventData implements AugmentedEventData {
     private byte[] data;
 

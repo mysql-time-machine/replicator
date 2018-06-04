@@ -4,6 +4,7 @@ import com.booking.replication.commons.checkpoint.Checkpoint;
 
 import java.io.Serializable;
 
+@SuppressWarnings("unused")
 public class AugmentedEventHeader implements Serializable {
     private long timestamp;
     private Checkpoint checkpoint;

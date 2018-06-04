@@ -1,6 +1,7 @@
 package com.booking.replication.augmenter.active.schema;
 
 import com.booking.replication.augmenter.model.AugmentedEventTable;
+import com.booking.replication.augmenter.model.QueryAugmentedEventDataType;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.supplier.model.QueryRawEventData;
 import com.booking.replication.supplier.model.RawEventData;
@@ -21,6 +22,8 @@ import java.util.regex.Pattern;
 
 public class ActiveSchemaContext {
     public interface Configuration {
+        String APPLY_UUID = "augmenter.context.apply.uuid";
+        String APPLY_XID = "augmenter.context.apply.xid";
         String TRANSACTION_LIMIT = "agumenter.context.transaction.limit";
         String BEGIN_PATTERN = "augmenter.context.pattern.begin";
         String COMMIT_PATTERN = "augmenter.context.pattern.commit";
@@ -30,6 +33,8 @@ public class ActiveSchemaContext {
         String DDL_VIEW_PATTERN = "augmenter.context.pattern.ddl.view";
         String DDL_ANALYZE_PATTERN = "augmenter.context.pattern.ddl.analyze";
         String PSEUDO_GTID_PATTERN = "augmenter.context.pattern.pseudogtid";
+        String UUID_FIELD_NAME = "_replicator_uuid";
+        String XID_FIELD_NAME = "_replicator_xid";
     }
 
     private static final Logger LOG = Logger.getLogger(ActiveSchemaContext.class.getName());
@@ -56,14 +61,8 @@ public class ActiveSchemaContext {
     private final Pattern pseudoGTIDPattern;
 
     private final AtomicBoolean dataFlag;
-    private final AtomicBoolean beginFlag;
-    private final AtomicBoolean commitFlag;
-    private final AtomicBoolean ddlDefinerFlag;
-    private final AtomicBoolean ddlTableFlag;
-    private final AtomicBoolean ddlTemporaryTableFlag;
-    private final AtomicBoolean ddlViewFlag;
-    private final AtomicBoolean ddlAnalyzeFlag;
-    private final AtomicBoolean pseudoGTIDFlag;
+    private final AtomicBoolean queryFlag;
+    private final AtomicReference<QueryAugmentedEventDataType> queryType;
 
     private final AtomicLong serverId;
     private final AtomicReference<String> binlogFilename;
@@ -84,14 +83,8 @@ public class ActiveSchemaContext {
         this.pseudoGTIDPattern = this.getPattern(configuration, Configuration.PSEUDO_GTID_PATTERN, ActiveSchemaContext.DEFAULT_PSEUDO_GTID_PATTERN);
 
         this.dataFlag = new AtomicBoolean();
-        this.beginFlag = new AtomicBoolean();
-        this.commitFlag = new AtomicBoolean();
-        this.ddlDefinerFlag = new AtomicBoolean();
-        this.ddlTableFlag = new AtomicBoolean();
-        this.ddlTemporaryTableFlag = new AtomicBoolean();
-        this.ddlViewFlag = new AtomicBoolean();
-        this.ddlAnalyzeFlag = new AtomicBoolean();
-        this.pseudoGTIDFlag = new AtomicBoolean();
+        this.queryFlag = new AtomicBoolean();
+        this.queryType = new AtomicReference<>(QueryAugmentedEventDataType.UNKNOWN);
 
         this.serverId = new AtomicLong();
         this.binlogFilename = new AtomicReference<>();
@@ -112,7 +105,9 @@ public class ActiveSchemaContext {
     }
 
     public void updateContext(RawEventHeaderV4 eventHeader, RawEventData eventData) {
-        this.cleanFlags();
+        this.dataFlag.set(false);
+        this.queryFlag.set(false);
+        this.queryType.set(QueryAugmentedEventDataType.UNKNOWN);
 
         this.serverId.set(eventHeader.getServerId());
 
@@ -128,7 +123,9 @@ public class ActiveSchemaContext {
                 String query = QueryRawEventData.class.cast(eventData).getSQL();
 
                 if (this.beginPattern.matcher(query).find()) {
-                    this.beginFlag.set(true);
+                    this.dataFlag.set(false);
+                    this.queryFlag.set(true);
+                    this.queryType.set(QueryAugmentedEventDataType.BEGIN);
 
                     if (!this.transaction.begin()) {
                         ActiveSchemaContext.LOG.log(Level.WARNING, "transaction already started");
@@ -138,7 +135,9 @@ public class ActiveSchemaContext {
                 }
 
                 if (this.commitPattern.matcher(query).find()) {
-                    this.commitFlag.set(true);
+                    this.dataFlag.set(false);
+                    this.queryFlag.set(true);
+                    this.queryType.set(QueryAugmentedEventDataType.COMMIT);
 
                     if (!this.transaction.commit(eventHeader.getTimestamp())) {
                         ActiveSchemaContext.LOG.log(Level.WARNING, "transaction already committed");
@@ -148,31 +147,41 @@ public class ActiveSchemaContext {
                 }
 
                 if (this.ddlDefinerPattern.matcher(query).find()) {
-                    this.ddlDefinerFlag.set(true);
+                    this.dataFlag.set(true);
+                    this.queryFlag.set(true);
+                    this.queryType.set(QueryAugmentedEventDataType.DDL_DEFINER);
 
                     break;
                 }
 
                 if (this.ddlTablePattern.matcher(query).find()) {
-                    this.ddlTableFlag.set(true);
+                    this.dataFlag.set(true);
+                    this.queryFlag.set(true);
+                    this.queryType.set(QueryAugmentedEventDataType.DDL_TABLE);
 
                     break;
                 }
 
                 if (this.ddlTemporaryTablePattern.matcher(query).find()) {
-                    this.ddlTemporaryTableFlag.set(true);
+                    this.dataFlag.set(true);
+                    this.queryFlag.set(true);
+                    this.queryType.set(QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE);
 
                     break;
                 }
 
                 if (this.ddlViewPattern.matcher(query).find()) {
-                    this.ddlViewFlag.set(true);
+                    this.dataFlag.set(true);
+                    this.queryFlag.set(true);
+                    this.queryType.set(QueryAugmentedEventDataType.DDL_VIEW);
 
                     break;
                 }
 
                 if (this.ddlAnalyzePattern.matcher(query).find()) {
-                    this.ddlAnalyzeFlag.set(true);
+                    this.dataFlag.set(true);
+                    this.queryFlag.set(true);
+                    this.queryType.set(QueryAugmentedEventDataType.DDL_ANALYZE);
 
                     break;
                 }
@@ -180,7 +189,9 @@ public class ActiveSchemaContext {
                 Matcher pseudoGTIDMatcher = this.pseudoGTIDPattern.matcher(query);
 
                 if (pseudoGTIDMatcher.find() && pseudoGTIDMatcher.groupCount() == 1) {
-                    this.pseudoGTIDFlag.set(true);
+                    this.dataFlag.set(false);
+                    this.queryFlag.set(true);
+                    this.queryType.set(QueryAugmentedEventDataType.PSEUDO_GTID);
 
                     this.pseudoGTID.set(pseudoGTIDMatcher.group(0));
                     this.pseudoGTIDIndex.set(0);
@@ -215,18 +226,6 @@ public class ActiveSchemaContext {
         }
     }
 
-    private void cleanFlags() {
-        this.dataFlag.set(false);
-        this.beginFlag.set(false);
-        this.commitFlag.set(false);
-        this.ddlDefinerFlag.set(false);
-        this.ddlTableFlag.set(false);
-        this.ddlTemporaryTableFlag.set(false);
-        this.ddlViewFlag.set(false);
-        this.ddlAnalyzeFlag.set(false);
-        this.pseudoGTIDFlag.set(false);
-    }
-
     public ActiveSchemaTransaction getTransaction() {
         return this.transaction;
     }
@@ -235,40 +234,12 @@ public class ActiveSchemaContext {
         return this.dataFlag.get();
     }
 
-    public boolean hasBegin() {
-        return this.beginFlag.get();
+    public boolean hasQuery() {
+        return this.queryFlag.get();
     }
 
-    public boolean hasCommit() {
-        return this.commitFlag.get();
-    }
-
-    public boolean hasDDL() {
-        return this.hasDDLDefiner() || this.hasDDLTable() || this.hasDDLTemporaryTable() || this.hasDDLView() || this.hasDDLAnalyze();
-    }
-
-    public boolean hasDDLDefiner() {
-        return this.ddlDefinerFlag.get();
-    }
-
-    public boolean hasDDLTable() {
-        return this.ddlTableFlag.get();
-    }
-
-    public boolean hasDDLTemporaryTable() {
-        return this.ddlTemporaryTableFlag.get();
-    }
-
-    public boolean hasDDLView() {
-        return this.ddlViewFlag.get();
-    }
-
-    public boolean hasDDLAnalyze() {
-        return this.ddlAnalyzeFlag.get();
-    }
-
-    public boolean hasPseudoGTID() {
-        return this.pseudoGTIDFlag.get();
+    public QueryAugmentedEventDataType getQueryType() {
+        return this.queryType.get();
     }
 
     public Checkpoint getCheckpoint() {

@@ -31,7 +31,7 @@ public class ActiveSchemaHeaderAugmenter implements Function<RawEvent, Augmented
 
         this.context.updateContext(eventHeader, eventData);
 
-        if (this.context.hasData() || this.context.hasDDL()) {
+        if (this.context.hasData()) {
             AugmentedEventType type = this.getAugmentedEventType(eventHeader);
 
             if (type == null) {

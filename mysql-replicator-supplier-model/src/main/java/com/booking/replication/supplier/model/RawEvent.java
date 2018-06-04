@@ -14,8 +14,6 @@ public interface RawEvent extends Serializable, RawEventProxyProvider {
 
     <Data extends RawEventData> Data getData();
 
-    long getTimestamp();
-
     static RawEvent getRawEventProxy(InvocationHandler handler)
         throws
             NoSuchMethodException,

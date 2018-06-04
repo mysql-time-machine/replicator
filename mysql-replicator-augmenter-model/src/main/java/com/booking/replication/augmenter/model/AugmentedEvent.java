@@ -2,6 +2,7 @@ package com.booking.replication.augmenter.model;
 
 import java.io.Serializable;
 
+@SuppressWarnings("unused")
 public class AugmentedEvent implements Serializable {
     private AugmentedEventHeader header;
     private AugmentedEventData data;

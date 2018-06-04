@@ -18,7 +18,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.logging.Logger;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -68,7 +67,6 @@ public class KafkaTest {
         }
 
         KafkaTest.lastEvent = KafkaTest.getAugmentedEvent(KafkaTest.events.length);
-
         KafkaTest.servicesControl = ServicesProvider.build(ServicesProvider.Type.CONTAINERS).startKafka(KafkaTest.TOPIC_NAME, KafkaTest.TOPIC_PARTITIONS, KafkaTest.TOPIC_REPLICAS);
     }
 
@@ -85,8 +83,6 @@ public class KafkaTest {
             for (AugmentedEvent event : KafkaTest.events) {
                 applier.accept(event);
             }
-
-            applier.accept(KafkaTest.lastEvent);
         }
     }
 

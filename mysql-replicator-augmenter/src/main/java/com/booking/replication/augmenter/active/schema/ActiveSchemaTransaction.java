@@ -40,20 +40,14 @@ public class ActiveSchemaTransaction {
         }
     }
 
-    public int size() {
-        if (this.queue.get() != null) {
-            return this.queue.get().size();
+    public boolean drop() {
+        if (this.started.getAndSet(false)) {
+            this.queue.set(null);
+            this.timestamp.set(0L);
+            return true;
         } else {
-            return 0;
+            return false;
         }
-    }
-
-    public boolean started() {
-        return this.started.get();
-    }
-
-    public boolean committed() {
-        return !this.started.get() && this.queue.get() != null;
     }
 
     public boolean commit(long timestamp) {
@@ -63,6 +57,14 @@ public class ActiveSchemaTransaction {
         } else {
             return false;
         }
+    }
+
+    public boolean started() {
+        return this.started.get();
+    }
+
+    public boolean committed() {
+        return !this.started.get() && this.queue.get() != null;
     }
 
     public long getTimestamp() {

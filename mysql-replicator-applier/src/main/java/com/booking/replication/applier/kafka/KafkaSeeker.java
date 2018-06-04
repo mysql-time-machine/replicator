@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class KafkaSeeker implements Seeker {
     public interface Configuration {
@@ -30,7 +31,9 @@ public class KafkaSeeker implements Seeker {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private final Checkpoint checkpoint;
+    private final String topic;
+    private final Map<String, Object> configuration;
+    private final AtomicReference<Checkpoint> checkpoint;
     private final AtomicBoolean seeked;
 
     public KafkaSeeker(Map<String, String> configuration, Checkpoint checkpoint) {
@@ -38,19 +41,17 @@ public class KafkaSeeker implements Seeker {
 
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
 
-        this.checkpoint = this.geCheckpoint(
-                checkpoint,
-                new MapFilter(configuration).filter(Configuration.CONSUMER_PREFIX),
-                topic
-        );
+        this.topic = topic;
+        this.configuration = new MapFilter(configuration).filter(Configuration.CONSUMER_PREFIX);
+        this.checkpoint = new AtomicReference<>(this.geCheckpoint(checkpoint));
         this.seeked = new AtomicBoolean();
     }
 
-    private Checkpoint geCheckpoint(Checkpoint checkpoint, Map<String, Object> configuration, String topic) {
-        try (Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(configuration, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
+    private Checkpoint geCheckpoint(Checkpoint checkpoint) {
+        try (Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(this.configuration, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
             Checkpoint lastCheckpoint = checkpoint;
 
-            consumer.subscribe(Arrays.asList(topic));
+            consumer.subscribe(Arrays.asList(this.topic));
             consumer.poll(100L);
 
             Map<TopicPartition, Long>  endOffsetMap = consumer.endOffsets(consumer.assignment());
@@ -82,10 +83,16 @@ public class KafkaSeeker implements Seeker {
     }
 
     @Override
+    public void seek(Checkpoint checkpoint) {
+        this.checkpoint.set(this.geCheckpoint(checkpoint));
+        this.seeked.set(false);
+    }
+
+    @Override
     public AugmentedEvent apply(AugmentedEvent augmentedEvent) {
         if (this.seeked.get()) {
             return augmentedEvent;
-        } else if (this.checkpoint == null || this.checkpoint.compareTo(augmentedEvent.getHeader().getCheckpoint()) < 0) {
+        } else if (this.checkpoint.get() == null || this.checkpoint.get().compareTo(augmentedEvent.getHeader().getCheckpoint()) < 0) {
             this.seeked.set(true);
             return augmentedEvent;
         } else {

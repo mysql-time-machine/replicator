@@ -12,18 +12,18 @@ public interface Applier extends Consumer<AugmentedEvent>, Closeable {
     enum Type {
         CONSOLE {
             @Override
-            public Applier newInstance(Map<String, String> configuration) {
+            protected Applier newInstance(Map<String, String> configuration) {
                 return new ConsoleApplier(configuration);
             }
         },
         KAFKA {
             @Override
-            public Applier newInstance(Map<String, String> configuration) {
+            protected Applier newInstance(Map<String, String> configuration) {
                 return new KafkaApplier(configuration);
             }
         };
 
-        public abstract Applier newInstance(Map<String, String> configuration);
+        protected abstract Applier newInstance(Map<String, String> configuration);
     }
 
     interface Configuration {

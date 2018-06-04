@@ -1,6 +1,6 @@
 package com.booking.replication.commons.checkpoint;
 
-public class ForceRewindException extends Exception {
+public class ForceRewindException extends RuntimeException {
     private Checkpoint checkpoint;
 
     public ForceRewindException(String message, Throwable cause, Checkpoint checkpoint) {

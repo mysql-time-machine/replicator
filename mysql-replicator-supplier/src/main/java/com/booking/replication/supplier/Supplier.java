@@ -12,12 +12,12 @@ public interface Supplier {
     enum Type {
         BINLOG {
             @Override
-            public Supplier newInstance(Map<String, String> configuration, Checkpoint checkpoint) {
+            protected Supplier newInstance(Map<String, String> configuration, Checkpoint checkpoint) {
                 return new BinaryLogSupplier(configuration, checkpoint);
             }
         };
 
-        public abstract Supplier newInstance(Map<String, String> configuration, Checkpoint checkpoint);
+        protected abstract Supplier newInstance(Map<String, String> configuration, Checkpoint checkpoint);
     }
 
     interface Configuration {

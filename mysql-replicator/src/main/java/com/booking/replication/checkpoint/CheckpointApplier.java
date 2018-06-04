@@ -11,32 +11,28 @@ public interface CheckpointApplier extends BiConsumer<AugmentedEvent, Map<Augmen
     enum Type {
         NONE {
             @Override
-            public CheckpointApplier newInstance(Map<String, String> configuration, CheckpointStorage checkpointStorage) {
+            protected CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath) {
                 return (event, map) -> {
                 };
             }
         },
         COORDINATOR {
             @Override
-            public CheckpointApplier newInstance(Map<String, String> configuration, CheckpointStorage checkpointStorage) {
-                return new CoordinatorCheckpointApplier(
-                        checkpointStorage,
-                        configuration.get(CheckpointApplier.Configuration.PATH)
-                );
+            protected CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath) {
+                return new CoordinatorCheckpointApplier(checkpointStorage, checkpointPath);
             }
         };
 
-        public abstract CheckpointApplier newInstance(Map<String, String> configuration, CheckpointStorage checkpointStorage);
+        protected abstract CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath);
     }
 
     interface Configuration {
         String TYPE = "checkpoint.applier.type";
-        String PATH = "checkpoint.applier.path";
     }
 
-    static CheckpointApplier build(Map<String, String> configuration, CheckpointStorage checkpointStorage) {
+    static CheckpointApplier build(Map<String, String> configuration, CheckpointStorage checkpointStorage, String checkpointPath) {
         return CheckpointApplier.Type.valueOf(
                 configuration.getOrDefault(Configuration.TYPE, Type.NONE.name())
-        ).newInstance(configuration, checkpointStorage);
+        ).newInstance(checkpointStorage, checkpointPath);
     }
 }

@@ -11,19 +11,19 @@ public interface Augmenter extends Function<RawEvent, AugmentedEvent> {
     enum Type {
         NONE {
             @Override
-            public Augmenter newInstance(Map<String, String> configuration)
+            protected Augmenter newInstance(Map<String, String> configuration)
             {
                 return event -> null;
             }
         },
         ACTIVE_SCHEMA {
             @Override
-            public Augmenter newInstance(Map<String, String> configuration) {
+            protected Augmenter newInstance(Map<String, String> configuration) {
                 return new ActiveSchemaAugmenter(configuration);
             }
         };
 
-        public abstract Augmenter newInstance(Map<String, String> configuration);
+        protected abstract Augmenter newInstance(Map<String, String> configuration);
     }
 
     interface Configuration {
@@ -32,10 +32,7 @@ public interface Augmenter extends Function<RawEvent, AugmentedEvent> {
 
     static Augmenter build(Map<String, String> configuration) {
         return Augmenter.Type.valueOf(
-                configuration.getOrDefault(
-                        Configuration.TYPE,
-                        Type.NONE.name()
-                )
+                configuration.getOrDefault(Configuration.TYPE, Type.NONE.name())
         ).newInstance(configuration);
     }
 }

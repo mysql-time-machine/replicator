@@ -29,6 +29,8 @@ public interface Seeker extends Function<AugmentedEvent, AugmentedEvent> {
         String TYPE = "seeker.type";
     }
 
+    default void seek(Checkpoint checkpoint) {}
+
     static Seeker build(Map<String, String> configuration, Checkpoint checkpoint) {
         return Seeker.Type.valueOf(
                 configuration.getOrDefault(Configuration.TYPE, Type.NONE.name())

@@ -72,7 +72,7 @@ public class ReplicatorIT {
         configuration.put(Seeker.Configuration.TYPE, Seeker.Type.KAFKA.name());
         configuration.put(Applier.Configuration.TYPE, Applier.Type.KAFKA.name());
         configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name());
-        configuration.put(CheckpointApplier.Configuration.PATH, ReplicatorIT.ZOOKEEPER_CHECKPOINT_PATH);
+        configuration.put(Replicator.Configuration.CHECKPOINT_PATH, ReplicatorIT.ZOOKEEPER_CHECKPOINT_PATH);
 
         Replicator replicator = new Replicator(configuration);
 

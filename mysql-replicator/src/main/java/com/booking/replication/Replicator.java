@@ -33,9 +33,14 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Replicator {
+    interface Configuration {
+        String CHECKPOINT_PATH = "checkpoint.path";
+    }
+
     private static final Logger LOG = Logger.getLogger(Replicator.class.getName());
     private static final String COMMAND_LINE_SYNTAX = "java -jar mysql-replicator-<version>.jar";
 
+    private final String checkpointPath;
     private final Coordinator coordinator;
     private final Supplier supplier;
     private final Augmenter augmenter;
@@ -45,17 +50,18 @@ public class Replicator {
     private final Streams<AugmentedEvent, AugmentedEvent> streamsApplier;
     private final Streams<RawEvent, AugmentedEvent> streamsSupplier;
 
-    public Replicator(Map<String, String> configuration) {
+    public Replicator(final Map<String, String> configuration) {
         try {
+            this.checkpointPath = configuration.get(Configuration.CHECKPOINT_PATH);
             this.coordinator = Coordinator.build(configuration);
 
-            Checkpoint checkpoint = this.coordinator.loadCheckpoint(configuration.get(CheckpointApplier.Configuration.PATH));
+            Checkpoint checkpoint = this.coordinator.loadCheckpoint(this.checkpointPath);
 
             this.supplier = Supplier.build(configuration, checkpoint);
             this.augmenter = Augmenter.build(configuration);
             this.seeker = Seeker.build(configuration, checkpoint);
             this.applier = Applier.build(configuration);
-            this.checkpointApplier = CheckpointApplier.build(configuration, this.coordinator);
+            this.checkpointApplier = CheckpointApplier.build(configuration, this.coordinator, this.checkpointPath);
 
             this.streamsApplier = Streams.<AugmentedEvent>builder().threads(10).tasks(8).queue().fromPush().to(this.applier).post(this.checkpointApplier).build();
             this.streamsSupplier = Streams.<RawEvent>builder().queue().fromPush().process(this.augmenter).process(this.seeker).to(streamsApplier::push).build();
@@ -63,15 +69,15 @@ public class Replicator {
             this.supplier.onEvent(this.streamsSupplier::push);
 
             Consumer<Exception> exceptionHandle = (externalException) -> {
-                Replicator.LOG.log(Level.SEVERE, "error", externalException);
-
                 if (ForceRewindException.class.isInstance(externalException)) {
-                    ForceRewindException forceRewindException = ForceRewindException.class.cast(externalException);
+                    Replicator.LOG.log(Level.WARNING, "", externalException);
 
+                    this.rewind();
+                } else {
+                    Replicator.LOG.log(Level.SEVERE, "error", externalException);
 
+                    this.stop();
                 }
-
-                this.stop();
             };
 
             this.streamsSupplier.onException(exceptionHandle);
@@ -133,6 +139,18 @@ public class Replicator {
             this.coordinator.stop();
         } catch (InterruptedException exception) {
             Replicator.LOG.log(Level.SEVERE, "error stopping coordinator", exception);
+        }
+    }
+
+    public void rewind() {
+        try {
+            Replicator.LOG.log(Level.INFO, "rewinding supplier");
+
+            this.supplier.stop();
+            this.seeker.seek(this.coordinator.loadCheckpoint(this.checkpointPath));
+            this.supplier.start();
+        } catch (IOException exception) {
+            Replicator.LOG.log(Level.SEVERE, "error rewinding supplier", exception);
         }
     }
 

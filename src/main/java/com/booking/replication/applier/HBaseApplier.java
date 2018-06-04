@@ -174,9 +174,6 @@ public class HBaseApplier implements Applier {
 
         if (currentTransactionDB.equals(mySqlDbName)) {
             hbaseNamespace = mySqlDbName.toLowerCase();
-        } else if (currentTransactionDB.equals(Constants.BLACKLISTED_DB)) {
-            return null;
-        } else {
             LOGGER.error("Invalid database name: " + currentTransactionDB);
         }
 

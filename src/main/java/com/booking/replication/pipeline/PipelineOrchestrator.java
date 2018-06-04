@@ -106,7 +106,7 @@ public class PipelineOrchestrator extends Thread {
     private long timeOfLastEvent = 0L;
     private boolean isRewinding = false;
 
-    private Long replDelay = 0L;
+    private static Long replDelay = 0L;
 
     public PipelineOrchestrator(
             LinkedBlockingQueue<RawBinlogEvent> rawBinlogEventQueue,
@@ -145,14 +145,12 @@ public class PipelineOrchestrator extends Thread {
                 + " }"
         );
 
-        registerMetrics();
-
         this.pipelinePosition = pipelinePosition;
 
         initEventDispatcher();
     }
 
-    private void registerMetrics() {
+    public static void registerMetrics() {
         Metrics.registry.register(MetricRegistry.name("events", "replicatorReplicationDelay"),
                 (Gauge<Long>) () -> replDelay);
     }

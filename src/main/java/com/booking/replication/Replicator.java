@@ -38,10 +38,13 @@ import static spark.Spark.port;
 /**
  * Booking replicator. Has two main objects (producer and consumer)
  * that reference the same thread-safe queue.
+ *
  * Producer pushes binlog events to the queue and consumer
  * reads them.
+ *
  * Producer is basically a wrapper for open replicator
  * and/or binlog connector.
+ *
  * Consumer is entry point for the event processing pipeline,
  * which includes:
  *      - schema version control,
@@ -50,10 +53,10 @@ import static spark.Spark.port;
  */
 public class Replicator {
 
+    private final ReplicantPool                       replicantPool;
     private final LinkedBlockingQueue<RawBinlogEvent> rawBinlogEventQueue;
     private final BinlogEventProducer                 binlogEventSupplier;
     private final PipelineOrchestrator                pipelineOrchestrator;
-    private final ReplicantPool                       replicantPool;
     private final PipelinePosition                    pipelinePosition;
     private final ReplicatorHealthTrackerProxy        healthTracker;
 
@@ -61,8 +64,6 @@ public class Replicator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Replicator.class);
 
-    /////////////
-    // Replicator
     public Replicator(Configuration configuration, int binlogParserProviderCode)
             throws Exception {
 
@@ -310,6 +311,7 @@ public class Replicator {
             binlogEventSupplier,
             fakeMicrosecondCounter
         );
+        PipelineOrchestrator.registerMetrics();
 
     }
 

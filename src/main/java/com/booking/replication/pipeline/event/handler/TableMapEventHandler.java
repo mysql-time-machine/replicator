@@ -40,7 +40,7 @@ public class TableMapEventHandler implements RawBinlogEventHandler {
     @Override
     public void apply(RawBinlogEvent rawBinlogEvent, CurrentTransaction currentTransaction) throws EventHandlerApplyException, TableMapException {
         final RawBinlogEventTableMap event = (RawBinlogEventTableMap) rawBinlogEvent;
-        String tableName = event.getTableName().toString();
+        String tableName = event.getTableName();
 
         if (tableName.equals(Constants.HEART_BEAT_TABLE)) {
             heartBeatCounter.mark();

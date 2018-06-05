@@ -12,12 +12,12 @@ public interface Supplier {
     enum Type {
         BINLOG {
             @Override
-            protected Supplier newInstance(Map<String, String> configuration, Checkpoint checkpoint) {
-                return new BinaryLogSupplier(configuration, checkpoint);
+            protected Supplier newInstance(Map<String, String> configuration) {
+                return new BinaryLogSupplier(configuration);
             }
         };
 
-        protected abstract Supplier newInstance(Map<String, String> configuration, Checkpoint checkpoint);
+        protected abstract Supplier newInstance(Map<String, String> configuration);
     }
 
     interface Configuration {
@@ -26,14 +26,14 @@ public interface Supplier {
 
     void onEvent(Consumer<RawEvent> consumer);
 
-    void start() throws IOException;
+    void start(Checkpoint checkpoint) throws IOException;
 
     void stop() throws IOException;
 
     @SuppressWarnings("unchecked")
-    static Supplier build(Map<String, String> configuration, Checkpoint checkpoint) {
+    static Supplier build(Map<String, String> configuration) {
         return Type.valueOf(
                 configuration.getOrDefault(Configuration.TYPE, Type.BINLOG.name())
-        ).newInstance(configuration, checkpoint);
+        ).newInstance(configuration);
     }
 }

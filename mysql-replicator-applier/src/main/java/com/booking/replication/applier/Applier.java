@@ -5,6 +5,7 @@ import com.booking.replication.applier.kafka.KafkaApplier;
 import com.booking.replication.augmenter.model.AugmentedEvent;
 
 import java.io.Closeable;
+import java.io.IOException;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -28,6 +29,10 @@ public interface Applier extends Consumer<AugmentedEvent>, Closeable {
 
     interface Configuration {
         String TYPE = "applier.type";
+    }
+
+    @Override
+    default void close() throws IOException {
     }
 
     static Applier build(Map<String, String> configuration) {

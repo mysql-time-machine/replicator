@@ -17,35 +17,26 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class ActiveSchemaHeaderAugmenter implements Function<RawEvent, AugmentedEventHeader> {
+public class ActiveSchemaHeaderAugmenter {
     private final ActiveSchemaContext context;
 
     public ActiveSchemaHeaderAugmenter(ActiveSchemaContext context) {
         this.context = context;
     }
 
-    @Override
-    public AugmentedEventHeader apply(RawEvent rawEvent) {
-        RawEventHeaderV4 eventHeader = rawEvent.getHeader();
-        RawEventData eventData = rawEvent.getData();
+    public AugmentedEventHeader apply(RawEventHeaderV4 eventHeader, RawEventData eventData) {
+        AugmentedEventType type = this.getAugmentedEventType(eventHeader);
 
-        this.context.updateContext(eventHeader, eventData);
-
-        if (this.context.hasData()) {
-            AugmentedEventType type = this.getAugmentedEventType(eventHeader);
-
-            if (type == null) {
-                return null;
-            }
-
-            long timestamp = this.context.getTransaction().committed()?this.context.getTransaction().getTimestamp():rawEvent.getHeader().getTimestamp();
-            Checkpoint checkpoint = this.context.getCheckpoint();
-            AugmentedEventTable eventTable = this.getAugmentedEventTable(eventHeader, eventData);
-
-            return new AugmentedEventHeader(timestamp, checkpoint, type, eventTable);
-        } else {
+        if (type == null) {
             return null;
         }
+
+        long timestamp = this.context.getTransaction().committed()?this.context.getTransaction().getTimestamp():eventHeader.getTimestamp();
+
+        Checkpoint checkpoint = this.context.getCheckpoint();
+        AugmentedEventTable eventTable = this.getAugmentedEventTable(eventHeader, eventData);
+
+        return new AugmentedEventHeader(timestamp, checkpoint, type, eventTable);
     }
 
     private AugmentedEventType getAugmentedEventType(RawEventHeaderV4 eventHeader) {
@@ -73,9 +64,14 @@ public class ActiveSchemaHeaderAugmenter implements Function<RawEvent, Augmented
     private AugmentedEventTable getAugmentedEventTable(RawEventHeaderV4 eventHeader, RawEventData eventData) {
         switch (eventHeader.getEventType()) {
             case WRITE_ROWS:
+            case EXT_WRITE_ROWS:
             case UPDATE_ROWS:
+            case EXT_UPDATE_ROWS:
             case DELETE_ROWS:
-                return this.context.getTableName(TableIdRawEventData.class.cast(eventData).getTableId());
+            case EXT_DELETE_ROWS:
+                return this.context.getTable(TableIdRawEventData.class.cast(eventData).getTableId());
+            case QUERY:
+                return this.context.getTable();
             default:
                 return null;
         }

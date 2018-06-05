@@ -21,7 +21,7 @@ public interface ServicesProvider {
 
     ServicesControl startZookeeper();
 
-    ServicesControl startMySQL(String schema, String username, String password, String ... commands);
+    ServicesControl startMySQL(String schema, String username, String password, String initScript);
 
     ServicesControl startKafka(String topic, int partitions, int replicas);
 

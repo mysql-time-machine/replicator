@@ -4,36 +4,44 @@ import com.booking.replication.applier.kafka.KafkaSeeker;
 import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.Map;
 import java.util.function.Function;
 
-public interface Seeker extends Function<AugmentedEvent, AugmentedEvent> {
+public interface Seeker extends Function<AugmentedEvent, AugmentedEvent>, Closeable {
     enum Type {
         NONE {
             @Override
-            public Seeker newInstance(Map<String, String> configuration, Checkpoint checkpoint) {
+            public Seeker newInstance(Map<String, String> configuration) {
                 return event -> event;
             }
         },
         KAFKA {
             @Override
-            public Seeker newInstance(Map<String, String> configuration, Checkpoint checkpoint) {
-                return new KafkaSeeker(configuration, checkpoint);
+            public Seeker newInstance(Map<String, String> configuration) {
+                return new KafkaSeeker(configuration);
             }
         };
 
-        public abstract Seeker newInstance(Map<String, String> configuration, Checkpoint checkpoint);
+        public abstract Seeker newInstance(Map<String, String> configuration);
     }
 
     interface Configuration {
         String TYPE = "seeker.type";
     }
 
-    default void seek(Checkpoint checkpoint) {}
+    default Checkpoint seek(Checkpoint checkpoint) {
+        return checkpoint;
+    }
 
-    static Seeker build(Map<String, String> configuration, Checkpoint checkpoint) {
+    @Override
+    default void close() throws IOException {
+    }
+
+    static Seeker build(Map<String, String> configuration) {
         return Seeker.Type.valueOf(
                 configuration.getOrDefault(Configuration.TYPE, Type.NONE.name())
-        ).newInstance(configuration, checkpoint);
+        ).newInstance(configuration);
     }
 }

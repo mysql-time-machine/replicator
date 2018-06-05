@@ -1,36 +1,37 @@
 package com.booking.replication.augmenter.active.schema;
 
+import com.booking.replication.augmenter.model.AugmentedEventColumn;
 import com.booking.replication.augmenter.model.AugmentedEventData;
 import com.booking.replication.augmenter.model.DeleteRowsAugmentedEventData;
 import com.booking.replication.augmenter.model.QueryAugmentedEventData;
 import com.booking.replication.augmenter.model.UpdateRowsAugmentedEventData;
 import com.booking.replication.augmenter.model.WriteRowsAugmentedEventData;
+import com.booking.replication.commons.checkpoint.ForceRewindException;
 import com.booking.replication.supplier.model.DeleteRowsRawEventData;
 import com.booking.replication.supplier.model.QueryRawEventData;
-import com.booking.replication.supplier.model.RawEvent;
 import com.booking.replication.supplier.model.RawEventData;
 import com.booking.replication.supplier.model.RawEventHeaderV4;
 import com.booking.replication.supplier.model.UpdateRowsRawEventData;
 import com.booking.replication.supplier.model.WriteRowsRawEventData;
 
-import java.util.function.Function;
+import java.util.BitSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class ActiveSchemaDataAugmenter  implements Function<RawEvent, AugmentedEventData> {
+public class ActiveSchemaDataAugmenter {
     private static final Logger LOG = Logger.getLogger(ActiveSchemaDataAugmenter.class.getName());
 
     private final ActiveSchemaContext context;
+    private final ActiveSchemaLoader loader;
 
-    public ActiveSchemaDataAugmenter(ActiveSchemaContext context) {
+    public ActiveSchemaDataAugmenter(ActiveSchemaContext context, ActiveSchemaLoader loader) {
         this.context = context;
+        this.loader = loader;
     }
 
-    @Override
-    public AugmentedEventData apply(RawEvent rawEvent) {
-        RawEventHeaderV4 eventHeader = rawEvent.getHeader();
-        RawEventData eventData = rawEvent.getData();
-
+    public AugmentedEventData apply(RawEventHeaderV4 eventHeader, RawEventData eventData) {
         if (this.context.getTransaction().started()) {
             if (!this.context.getTransaction().add(this.getAugmentedEventData(eventHeader, eventData))) {
                 ActiveSchemaDataAugmenter.LOG.log(Level.WARNING, "cannot add to transaction");
@@ -42,7 +43,13 @@ public class ActiveSchemaDataAugmenter  implements Function<RawEvent, AugmentedE
                 ActiveSchemaDataAugmenter.LOG.log(Level.WARNING, "cannot add to transaction");
             }
 
-            return this.context.getTransaction().getData();
+            if (this.context.getTransaction().overloaded()) {
+                this.context.getTransaction().clean();
+
+                throw new ForceRewindException("transaction overloaded");
+            }
+
+            return this.context.getTransaction().clean();
         } else {
             return this.getAugmentedEventData(eventHeader, eventData);
         }
@@ -55,7 +62,7 @@ public class ActiveSchemaDataAugmenter  implements Function<RawEvent, AugmentedE
                 WriteRowsRawEventData writeRowsRawEventData = WriteRowsRawEventData.class.cast(eventData);
 
                 return new WriteRowsAugmentedEventData(
-                        writeRowsRawEventData.getIncludedColumns(),
+                        this.getColumns(writeRowsRawEventData.getTableId(), writeRowsRawEventData.getIncludedColumns()),
                         writeRowsRawEventData.getRows()
                 );
             case UPDATE_ROWS:
@@ -63,8 +70,8 @@ public class ActiveSchemaDataAugmenter  implements Function<RawEvent, AugmentedE
                 UpdateRowsRawEventData updateRowsRawEventData = UpdateRowsRawEventData.class.cast(eventData);
 
                 return new UpdateRowsAugmentedEventData(
-                        updateRowsRawEventData.getIncludedColumnsBeforeUpdate(),
-                        updateRowsRawEventData.getIncludedColumns(),
+                        this.getColumns(updateRowsRawEventData.getTableId(), updateRowsRawEventData.getIncludedColumnsBeforeUpdate()),
+                        this.getColumns(updateRowsRawEventData.getTableId(), updateRowsRawEventData.getIncludedColumns()),
                         updateRowsRawEventData.getRows()
                 );
             case DELETE_ROWS:
@@ -72,7 +79,7 @@ public class ActiveSchemaDataAugmenter  implements Function<RawEvent, AugmentedE
                 DeleteRowsRawEventData deleteRowsRawEventData = DeleteRowsRawEventData.class.cast(eventData);
 
                 return new DeleteRowsAugmentedEventData(
-                        deleteRowsRawEventData.getIncludedColumns(),
+                        this.getColumns(deleteRowsRawEventData.getTableId(), deleteRowsRawEventData.getIncludedColumns()),
                         deleteRowsRawEventData.getRows()
                 );
             case QUERY:
@@ -80,7 +87,7 @@ public class ActiveSchemaDataAugmenter  implements Function<RawEvent, AugmentedE
 
                 return new QueryAugmentedEventData(
                         this.context.getQueryType(),
-                        this.context.getOperationType(),
+                        this.context.getQueryOperationType(),
                         queryRawEventData.getThreadId(),
                         queryRawEventData.getExecutionTime(),
                         queryRawEventData.getErrorCode(),
@@ -90,5 +97,18 @@ public class ActiveSchemaDataAugmenter  implements Function<RawEvent, AugmentedE
             default:
                 return null;
         }
+    }
+
+    private List<AugmentedEventColumn> getColumns(long tableId, BitSet includedColumns) {
+        List<AugmentedEventColumn> columnList = this.loader.listColumns(this.context.getTable(tableId).getName());
+        List<AugmentedEventColumn> includedColumnList = new LinkedList<>();
+
+        for (int columnIndex = 0; columnIndex < columnList.size(); columnIndex++) {
+            if (includedColumns.get(columnIndex)) {
+                includedColumnList.add(columnList.get(columnIndex));
+            }
+        }
+
+        return includedColumnList;
     }
 }

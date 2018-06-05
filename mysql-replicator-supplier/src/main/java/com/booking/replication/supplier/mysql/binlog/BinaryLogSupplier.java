@@ -25,7 +25,7 @@ public class BinaryLogSupplier implements Supplier {
 
     private final BinaryLogClient client;
 
-    public BinaryLogSupplier(Map<String, String> configuration, Checkpoint checkpoint) {
+    public BinaryLogSupplier(Map<String, String> configuration) {
         String hostname = configuration.get(Configuration.MYSQL_HOSTNAME);
         String port = configuration.getOrDefault(Configuration.MYSQL_PORT, "3306");
         String schema = configuration.get(Configuration.MYSQL_SCHEMA);
@@ -37,19 +37,11 @@ public class BinaryLogSupplier implements Supplier {
         Objects.requireNonNull(username, String.format("Configuration required: %s", Configuration.MYSQL_USERNAME));
         Objects.requireNonNull(password, String.format("Configuration required: %s", Configuration.MYSQL_PASSWORD));
 
-        this.client = this.getClient(hostname, Integer.parseInt(port), schema, username, password, checkpoint);
+        this.client = this.getClient(hostname, Integer.parseInt(port), schema, username, password);
     }
 
-    private BinaryLogClient getClient(String hostname, int port, String schema, String username, String password, Checkpoint checkpoint) {
-        BinaryLogClient client = new BinaryLogClient(hostname, port, schema, username, password);
-
-        if (checkpoint != null) {
-            client.setServerId(checkpoint.getServerId());
-            client.setBinlogFilename(checkpoint.getBinlogFilename());
-            client.setBinlogPosition(checkpoint.getBinlogPosition());
-        }
-
-        return client;
+    private BinaryLogClient getClient(String hostname, int port, String schema, String username, String password) {
+        return new BinaryLogClient(hostname, port, schema, username, password);
     }
 
     @Override
@@ -66,8 +58,14 @@ public class BinaryLogSupplier implements Supplier {
     }
 
     @Override
-    public void start() throws IOException {
+    public void start(Checkpoint checkpoint) throws IOException {
         if (!this.client.isConnected()) {
+            if (checkpoint != null) {
+                this.client.setServerId(checkpoint.getServerId());
+                this.client.setBinlogFilename(checkpoint.getBinlogFilename());
+                this.client.setBinlogPosition(checkpoint.getBinlogPosition());
+            }
+
             this.client.connect();
         }
     }

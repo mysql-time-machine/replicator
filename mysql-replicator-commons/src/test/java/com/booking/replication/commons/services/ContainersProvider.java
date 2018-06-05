@@ -2,13 +2,18 @@ package com.booking.replication.commons.services;
 
 import com.github.dockerjava.api.model.PortBinding;
 import org.testcontainers.containers.BindMode;
+import org.testcontainers.containers.Container;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
 
 import java.time.Duration;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class ContainersProvider implements ServicesProvider {
+    private static final Logger LOG = Logger.getLogger(ContainersProvider.class.getName());
+
     private static final String ZOOKEEPER_DOCKER_IMAGE_KEY = "docker.image.zookeeper";
     private static final String ZOOKEEPER_DOCKER_IMAGE_DEFAULT = "zookeeper:latest";
     private static final String ZOOKEEPER_STARTUP_WAIT_REGEX = ".*binding to port.*\\n";
@@ -23,6 +28,7 @@ public final class ContainersProvider implements ServicesProvider {
     private static final String MYSQL_PASSWORD_KEY = "MYSQL_PASSWORD";
     private static final String MYSQL_CONFIGURATION_FILE = "my.cnf";
     private static final String MYSQL_CONFIGURATION_PATH = "/etc/mysql/conf.d/my.cnf";
+    private static final String MYSQL_INIT_SCRIPT_PATH = "/docker-entrypoint-initdb.d/init.sql";
     private static final String MYSQL_STARTUP_WAIT_REGEX = ".*mysqld: ready for connections.*\\n";
     private static final int MYSQL_STARTUP_WAIT_TIMES = 1;
     private static final int MYSQL_PORT = 3306;
@@ -69,36 +75,23 @@ public final class ContainersProvider implements ServicesProvider {
         );
     }
 
-    public ServicesControl startMySQL(String schema, String username, String password, String ... commands) {
+    public ServicesControl startMySQL(String schema, String username, String password, String initScript) {
         GenericContainer<?> mysql = this.getContainer(
                 System.getProperty(ContainersProvider.MYSQL_DOCKER_IMAGE_KEY, ContainersProvider.MYSQL_DOCKER_IMAGE_DEFAULT),
                 ContainersProvider.MYSQL_PORT,
                 null,
                 ContainersProvider.MYSQL_STARTUP_WAIT_REGEX,
                 ContainersProvider.MYSQL_STARTUP_WAIT_TIMES,
-                true
+                false
         ).withEnv(ContainersProvider.MYSQL_ROOT_PASSWORD_KEY, password
         ).withEnv(ContainersProvider.MYSQL_DATABASE_KEY, schema
         ).withEnv(ContainersProvider.MYSQL_USER_KEY, username
         ).withEnv(ContainersProvider.MYSQL_PASSWORD_KEY, password
-        ).withClasspathResourceMapping(ContainersProvider.MYSQL_CONFIGURATION_FILE, ContainersProvider.MYSQL_CONFIGURATION_PATH, BindMode.READ_ONLY);
+        ).withClasspathResourceMapping(ContainersProvider.MYSQL_CONFIGURATION_FILE, ContainersProvider.MYSQL_CONFIGURATION_PATH, BindMode.READ_ONLY
+        ).withClasspathResourceMapping(initScript, ContainersProvider.MYSQL_INIT_SCRIPT_PATH, BindMode.READ_ONLY
+        );
 
         mysql.start();
-
-        try {
-            for (String command : commands) {
-                mysql.execInContainer(
-                        "mysql",
-                        "-uroot",
-                        String.format("-p%s", password),
-                        "-e",
-                        String.format("\"%s\"", command),
-                        schema
-                );
-            }
-        } catch (Exception excepion) {
-            throw new RuntimeException(excepion);
-        }
 
         return new ServicesControl() {
             @Override

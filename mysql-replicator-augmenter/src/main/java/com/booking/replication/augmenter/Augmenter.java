@@ -4,10 +4,12 @@ import com.booking.replication.augmenter.active.schema.ActiveSchemaAugmenter;
 import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.supplier.model.RawEvent;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.Map;
 import java.util.function.Function;
 
-public interface Augmenter extends Function<RawEvent, AugmentedEvent> {
+public interface Augmenter extends Function<RawEvent, AugmentedEvent>, Closeable {
     enum Type {
         NONE {
             @Override
@@ -28,6 +30,10 @@ public interface Augmenter extends Function<RawEvent, AugmentedEvent> {
 
     interface Configuration {
         String TYPE = "augmenter.type";
+    }
+
+    @Override
+    default void close() throws IOException {
     }
 
     static Augmenter build(Map<String, String> configuration) {

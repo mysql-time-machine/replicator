@@ -36,18 +36,19 @@ public class KafkaSeeker implements Seeker {
     private final AtomicReference<Checkpoint> checkpoint;
     private final AtomicBoolean seeked;
 
-    public KafkaSeeker(Map<String, String> configuration, Checkpoint checkpoint) {
+    public KafkaSeeker(Map<String, String> configuration) {
         String topic = configuration.get(Configuration.TOPIC);
 
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
 
         this.topic = topic;
         this.configuration = new MapFilter(configuration).filter(Configuration.CONSUMER_PREFIX);
-        this.checkpoint = new AtomicReference<>(this.geCheckpoint(checkpoint));
+        this.checkpoint = new AtomicReference<>();
         this.seeked = new AtomicBoolean();
     }
 
-    private Checkpoint geCheckpoint(Checkpoint checkpoint) {
+    @Override
+    public Checkpoint seek(Checkpoint checkpoint) {
         try (Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(this.configuration, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
             Checkpoint lastCheckpoint = checkpoint;
 
@@ -76,16 +77,13 @@ public class KafkaSeeker implements Seeker {
                 }
             }
 
+            this.checkpoint.set(lastCheckpoint);
+            this.seeked.set(false);
+
             return lastCheckpoint;
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }
-    }
-
-    @Override
-    public void seek(Checkpoint checkpoint) {
-        this.checkpoint.set(this.geCheckpoint(checkpoint));
-        this.seeked.set(false);
     }
 
     @Override

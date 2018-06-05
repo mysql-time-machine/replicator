@@ -33,20 +33,18 @@ public class ActiveSchemaTransaction {
     }
 
     public boolean add(AugmentedEventData data) {
-        if (this.started.get() && this.queue.get().size() <= this.limit) {
+        if (this.started.get() && !this.overloaded()) {
             return this.queue.get().offer(data);
         } else {
             return false;
         }
     }
 
-    public boolean drop() {
-        if (this.started.getAndSet(false)) {
-            this.queue.set(null);
-            this.timestamp.set(0L);
-            return true;
+    public TransactionAugmentedEventData clean() {
+        if (!this.started.get() && this.queue.get() != null) {
+            return new TransactionAugmentedEventData(this.queue.getAndSet(null).toArray(new AugmentedEventData[0]));
         } else {
-            return false;
+            return null;
         }
     }
 
@@ -67,15 +65,11 @@ public class ActiveSchemaTransaction {
         return !this.started.get() && this.queue.get() != null;
     }
 
-    public long getTimestamp() {
-        return this.timestamp.get();
+    public boolean overloaded() {
+        return this.queue.get().size() > this.limit;
     }
 
-    public TransactionAugmentedEventData getData() {
-        if (!this.started.get() && this.queue.get() != null) {
-            return new TransactionAugmentedEventData(this.queue.getAndSet(null).toArray(new AugmentedEventData[0]));
-        } else {
-            return null;
-        }
+    public long getTimestamp() {
+        return this.timestamp.get();
     }
 }

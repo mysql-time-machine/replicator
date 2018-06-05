@@ -8,10 +8,7 @@ import com.booking.replication.checkpoint.CheckpointApplier;
 import com.booking.replication.commons.checkpoint.ForceRewindException;
 import com.booking.replication.commons.map.MapFlatter;
 import com.booking.replication.coordinator.Coordinator;
-
-import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.supplier.model.RawEvent;
-
 import com.booking.replication.streams.Streams;
 import com.booking.replication.supplier.Supplier;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -25,7 +22,6 @@ import org.apache.commons.cli.Options;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -51,65 +47,60 @@ public class Replicator {
     private final Streams<RawEvent, AugmentedEvent> streamsSupplier;
 
     public Replicator(final Map<String, String> configuration) {
-        try {
-            this.checkpointPath = configuration.get(Configuration.CHECKPOINT_PATH);
-            this.coordinator = Coordinator.build(configuration);
+        this.checkpointPath = configuration.get(Configuration.CHECKPOINT_PATH);
+        this.coordinator = Coordinator.build(configuration);
+        this.supplier = Supplier.build(configuration);
+        this.augmenter = Augmenter.build(configuration);
+        this.seeker = Seeker.build(configuration);
+        this.applier = Applier.build(configuration);
+        this.checkpointApplier = CheckpointApplier.build(configuration, this.coordinator, this.checkpointPath);
+        this.streamsApplier = Streams.<AugmentedEvent>builder().threads(10).tasks(8).queue().fromPush().to(this.applier).post(this.checkpointApplier).build();
+        this.streamsSupplier = Streams.<RawEvent>builder().queue().fromPush().process(this.augmenter).process(this.seeker).to(streamsApplier::push).build();
 
-            Checkpoint checkpoint = this.coordinator.loadCheckpoint(this.checkpointPath);
+        this.supplier.onEvent(this.streamsSupplier::push);
 
-            this.supplier = Supplier.build(configuration, checkpoint);
-            this.augmenter = Augmenter.build(configuration);
-            this.seeker = Seeker.build(configuration, checkpoint);
-            this.applier = Applier.build(configuration);
-            this.checkpointApplier = CheckpointApplier.build(configuration, this.coordinator, this.checkpointPath);
+        Consumer<Exception> exceptionHandle = (externalException) -> {
+            if (ForceRewindException.class.isInstance(externalException)) {
+                Replicator.LOG.log(Level.WARNING, "", externalException);
 
-            this.streamsApplier = Streams.<AugmentedEvent>builder().threads(10).tasks(8).queue().fromPush().to(this.applier).post(this.checkpointApplier).build();
-            this.streamsSupplier = Streams.<RawEvent>builder().queue().fromPush().process(this.augmenter).process(this.seeker).to(streamsApplier::push).build();
+                this.rewind();
+            } else {
+                Replicator.LOG.log(Level.SEVERE, "error", externalException);
 
-            this.supplier.onEvent(this.streamsSupplier::push);
+                this.stop();
+            }
+        };
 
-            Consumer<Exception> exceptionHandle = (externalException) -> {
-                if (ForceRewindException.class.isInstance(externalException)) {
-                    Replicator.LOG.log(Level.WARNING, "", externalException);
+        this.streamsSupplier.onException(exceptionHandle);
+        this.streamsApplier.onException(exceptionHandle);
 
-                    this.rewind();
-                } else {
-                    Replicator.LOG.log(Level.SEVERE, "error", externalException);
+        this.coordinator.onLeadershipTake(() -> {
+            try {
+                Replicator.LOG.log(Level.INFO, "starting replicator");
 
-                    this.stop();
-                }
-            };
+                this.streamsApplier.start();
+                this.streamsSupplier.start();
+                this.supplier.start(this.seeker.seek(this.coordinator.loadCheckpoint(this.checkpointPath)));
+            } catch (IOException | InterruptedException exception) {
+                exceptionHandle.accept(exception);
+            }
+        });
 
-            this.streamsSupplier.onException(exceptionHandle);
-            this.streamsApplier.onException(exceptionHandle);
+        this.coordinator.onLeadershipLoss(() -> {
+            try {
+                Replicator.LOG.log(Level.INFO, "stopping replicator");
 
-            this.coordinator.onLeadershipTake(() -> {
-                try {
-                    Replicator.LOG.log(Level.INFO, "starting replicator");
-
-                    this.streamsApplier.start();
-                    this.streamsSupplier.start();
-                    this.supplier.start();
-                } catch (IOException | InterruptedException exception) {
-                    exceptionHandle.accept(exception);
-                }
-            });
-
-            this.coordinator.onLeadershipLoss(() -> {
-                try {
-                    Replicator.LOG.log(Level.INFO, "stopping replicator");
-
-                    this.supplier.stop();
-                    this.streamsSupplier.stop();
-                    this.streamsApplier.stop();
-                    this.applier.close();
-                } catch (IOException | InterruptedException exception) {
-                    exceptionHandle.accept(exception);
-                }
-            });
-        } catch (IOException exception) {
-            throw new UncheckedIOException(exception);
-        }
+                this.supplier.stop();
+                this.augmenter.close();
+                this.seeker.close();
+                this.applier.close();
+                this.checkpointApplier.close();
+                this.streamsSupplier.stop();
+                this.streamsApplier.stop();
+            } catch (IOException | InterruptedException exception) {
+                exceptionHandle.accept(exception);
+            }
+        });
     }
 
     public void start() {
@@ -136,8 +127,9 @@ public class Replicator {
         try {
             Replicator.LOG.log(Level.INFO, "stopping coordinator");
 
+            this.supplier.stop();
             this.coordinator.stop();
-        } catch (InterruptedException exception) {
+        } catch (IOException | InterruptedException exception) {
             Replicator.LOG.log(Level.SEVERE, "error stopping coordinator", exception);
         }
     }
@@ -147,8 +139,7 @@ public class Replicator {
             Replicator.LOG.log(Level.INFO, "rewinding supplier");
 
             this.supplier.stop();
-            this.seeker.seek(this.coordinator.loadCheckpoint(this.checkpointPath));
-            this.supplier.start();
+            this.supplier.start(this.seeker.seek(this.coordinator.loadCheckpoint(this.checkpointPath)));
         } catch (IOException exception) {
             Replicator.LOG.log(Level.SEVERE, "error rewinding supplier", exception);
         }

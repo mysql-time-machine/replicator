@@ -11,8 +11,6 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.errors.InvalidPartitionsException;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.io.UncheckedIOException;
 import java.util.Map;
@@ -20,7 +18,6 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class KafkaApplier implements Applier {
-    private static final Logger LOG = LogManager.getLogger(KafkaApplier.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     public interface Configuration {
@@ -69,8 +66,6 @@ public class KafkaApplier implements Applier {
             ).send(new ProducerRecord<>(
                     this.topic, this.partitioner.partition(augmentedEvent, this.totalPartitions), header, data
             ));
-
-            KafkaApplier.LOG.debug(String.format("{\"header\":%s,\"data\":%s}", new String(header), new String(data)));
         } catch (JsonProcessingException exception) {
             throw new UncheckedIOException(exception);
         }

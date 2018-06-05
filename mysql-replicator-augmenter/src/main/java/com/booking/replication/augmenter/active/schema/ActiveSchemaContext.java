@@ -44,10 +44,10 @@ public class ActiveSchemaContext {
     private static final String DEFAULT_BEGIN_PATTERN = "^(/\\*.*?\\*/\\s*)?(begin)";
     private static final String DEFAULT_COMMIT_PATTERN = "^(/\\*.*?\\*/\\s*)?(commit)";
     private static final String DEFAULT_DDL_DEFINER_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(definer)\\s*=";
-    private static final String DEFAULT_DDL_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(table)";
-    private static final String DEFAULT_DDL_TEMPORARY_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(temporary)\\s+(table)";
-    private static final String DEFAULT_DDL_VIEW_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(view)";
-    private static final String DEFAULT_DDL_ANALYZE_PATTERN = "^(/\\*.*?\\*/\\s*)?(analyze)\\s+(table)";
+    private static final String DEFAULT_DDL_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(table)\\s+(\\S+)";
+    private static final String DEFAULT_DDL_TEMPORARY_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(temporary)\\s+(table)\\s+(\\S+)";
+    private static final String DEFAULT_DDL_VIEW_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(view)\\s+(\\S+)";
+    private static final String DEFAULT_DDL_ANALYZE_PATTERN = "^(/\\*.*?\\*/\\s*)?(analyze)\\s+(table)\\s+(\\S+)";
     private static final String DEFAULT_PSEUDO_GTID_PATTERN = "(?<=_pseudo_gtid_hint__asc\\:)(.{8}\\:.{16}\\:.{8})";
 
     private final ActiveSchemaTransaction transaction;
@@ -63,15 +63,17 @@ public class ActiveSchemaContext {
 
     private final AtomicBoolean dataFlag;
     private final AtomicBoolean queryFlag;
+    private final AtomicReference<String> queryContent;
     private final AtomicReference<QueryAugmentedEventDataType> queryType;
-    private final AtomicReference<QueryAugmentedEventDataOperationType> operationType;
+    private final AtomicReference<QueryAugmentedEventDataOperationType> queryOperationType;
+    private final AtomicReference<AugmentedEventTable> table;
+    private final Map<Long, AugmentedEventTable> tableIdTableMap;
 
     private final AtomicLong serverId;
     private final AtomicReference<String> binlogFilename;
     private final AtomicLong binlogPosition;
     private final AtomicReference<String> pseudoGTID;
     private final AtomicInteger pseudoGTIDIndex;
-    private final Map<Long, AugmentedEventTable> tableIdTableMap;
 
     public ActiveSchemaContext(Map<String, String> configuration) {
         this.transaction = new ActiveSchemaTransaction(Integer.parseInt(configuration.getOrDefault(Configuration.TRANSACTION_LIMIT, String.valueOf(ActiveSchemaContext.DEFAULT_TRANSACTION_LIMIT))));
@@ -86,15 +88,18 @@ public class ActiveSchemaContext {
 
         this.dataFlag = new AtomicBoolean();
         this.queryFlag = new AtomicBoolean();
+        this.queryContent = new AtomicReference<>();
         this.queryType = new AtomicReference<>(QueryAugmentedEventDataType.UNKNOWN);
-        this.operationType = new AtomicReference<>(QueryAugmentedEventDataOperationType.UNKNOWN);
+        this.queryOperationType = new AtomicReference<>(QueryAugmentedEventDataOperationType.UNKNOWN);
+        this.table = new AtomicReference<>();
+
+        this.tableIdTableMap = new ConcurrentHashMap<>();
 
         this.serverId = new AtomicLong();
         this.binlogFilename = new AtomicReference<>();
         this.binlogPosition = new AtomicLong();
         this.pseudoGTID = new AtomicReference<>();
         this.pseudoGTIDIndex = new AtomicInteger();
-        this.tableIdTableMap = new ConcurrentHashMap<>();
     }
 
     private Pattern getPattern(Map<String, String> configuration, String configurationPath, String configurationDefault) {
@@ -107,15 +112,28 @@ public class ActiveSchemaContext {
         );
     }
 
+    private void updateContex(boolean dataFlag, boolean queryFlag, String queryContent, QueryAugmentedEventDataType queryType, QueryAugmentedEventDataOperationType queryOperationType, AugmentedEventTable table) {
+        this.dataFlag.set(dataFlag);
+        this.queryFlag.set(queryFlag);
+        this.queryContent.set(queryContent);
+        this.queryType.set(queryType);
+        this.queryOperationType.set(queryOperationType);
+        this.table.set(table);
+    }
+
     public void updateContext(RawEventHeaderV4 eventHeader, RawEventData eventData) {
         this.serverId.set(eventHeader.getServerId());
 
         switch (eventHeader.getEventType()) {
             case ROTATE:
-                this.dataFlag.set(false);
-                this.queryFlag.set(false);
-                this.queryType.set(QueryAugmentedEventDataType.UNKNOWN);
-                this.operationType.set(QueryAugmentedEventDataOperationType.UNKNOWN);
+                this.updateContex(
+                        false,
+                        false,
+                        null,
+                        QueryAugmentedEventDataType.UNKNOWN,
+                        QueryAugmentedEventDataOperationType.UNKNOWN,
+                        null
+                );
 
                 RotateRawEventData rotateRawEventData = RotateRawEventData.class.cast(eventData);
 
@@ -124,13 +142,18 @@ public class ActiveSchemaContext {
 
                 break;
             case QUERY:
-                String query = QueryRawEventData.class.cast(eventData).getSQL();
+                QueryRawEventData queryRawEventData = QueryRawEventData.class.cast(eventData);
+                String query = queryRawEventData.getSQL();
 
                 if (this.beginPattern.matcher(query).find()) {
-                    this.dataFlag.set(false);
-                    this.queryFlag.set(true);
-                    this.queryType.set(QueryAugmentedEventDataType.BEGIN);
-                    this.operationType.set(QueryAugmentedEventDataOperationType.UNKNOWN);
+                    this.updateContex(
+                            false,
+                            true,
+                            query,
+                            QueryAugmentedEventDataType.BEGIN,
+                            QueryAugmentedEventDataOperationType.UNKNOWN,
+                            null
+                    );
 
                     if (!this.transaction.begin()) {
                         ActiveSchemaContext.LOG.log(Level.WARNING, "transaction already started");
@@ -140,10 +163,14 @@ public class ActiveSchemaContext {
                 }
 
                 if (this.commitPattern.matcher(query).find()) {
-                    this.dataFlag.set(false);
-                    this.queryFlag.set(true);
-                    this.queryType.set(QueryAugmentedEventDataType.COMMIT);
-                    this.operationType.set(QueryAugmentedEventDataOperationType.UNKNOWN);
+                    this.updateContex(
+                            false,
+                            true,
+                            query,
+                            QueryAugmentedEventDataType.COMMIT,
+                            QueryAugmentedEventDataOperationType.UNKNOWN,
+                            null
+                    );
 
                     if (!this.transaction.commit(eventHeader.getTimestamp())) {
                         ActiveSchemaContext.LOG.log(Level.WARNING, "transaction already committed");
@@ -155,10 +182,14 @@ public class ActiveSchemaContext {
                 Matcher ddlDefinerMatcher = this.ddlDefinerPattern.matcher(query);
 
                 if (ddlDefinerMatcher.find()) {
-                    this.dataFlag.set(true);
-                    this.queryFlag.set(true);
-                    this.queryType.set(QueryAugmentedEventDataType.DDL_DEFINER);
-                    this.operationType.set(QueryAugmentedEventDataOperationType.valueOf(ddlDefinerMatcher.group(2).toUpperCase()));
+                    this.updateContex(
+                            true,
+                            true,
+                            query,
+                            QueryAugmentedEventDataType.DDL_DEFINER,
+                            QueryAugmentedEventDataOperationType.valueOf(ddlDefinerMatcher.group(2).toUpperCase()),
+                            null
+                    );
 
                     break;
                 }
@@ -166,10 +197,14 @@ public class ActiveSchemaContext {
                 Matcher ddlTableMatcher = this.ddlTablePattern.matcher(query);
 
                 if (ddlTableMatcher.find()) {
-                    this.dataFlag.set(true);
-                    this.queryFlag.set(true);
-                    this.queryType.set(QueryAugmentedEventDataType.DDL_TABLE);
-                    this.operationType.set(QueryAugmentedEventDataOperationType.valueOf(ddlTableMatcher.group(2).toUpperCase()));
+                    this.updateContex(
+                            true,
+                            true,
+                            query,
+                            QueryAugmentedEventDataType.DDL_TABLE,
+                            QueryAugmentedEventDataOperationType.valueOf(ddlTableMatcher.group(2).toUpperCase()),
+                            new AugmentedEventTable(queryRawEventData.getDatabase(), ddlTableMatcher.group(4))
+                    );
 
                     break;
                 }
@@ -177,10 +212,14 @@ public class ActiveSchemaContext {
                 Matcher ddlTemporaryTableMatcher = this.ddlTemporaryTablePattern.matcher(query);
 
                 if (ddlTemporaryTableMatcher.find()) {
-                    this.dataFlag.set(true);
-                    this.queryFlag.set(true);
-                    this.queryType.set(QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE);
-                    this.operationType.set(QueryAugmentedEventDataOperationType.valueOf(ddlTemporaryTableMatcher.group(2).toUpperCase()));
+                    this.updateContex(
+                            true,
+                            true,
+                            query,
+                            QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE,
+                            QueryAugmentedEventDataOperationType.valueOf(ddlTemporaryTableMatcher.group(2).toUpperCase()),
+                            new AugmentedEventTable(queryRawEventData.getDatabase(), ddlTemporaryTableMatcher.group(4))
+                    );
 
                     break;
                 }
@@ -188,10 +227,14 @@ public class ActiveSchemaContext {
                 Matcher ddlViewMatcher = this.ddlViewPattern.matcher(query);
 
                 if (ddlViewMatcher.find()) {
-                    this.dataFlag.set(true);
-                    this.queryFlag.set(true);
-                    this.queryType.set(QueryAugmentedEventDataType.DDL_VIEW);
-                    this.operationType.set(QueryAugmentedEventDataOperationType.valueOf(ddlViewMatcher.group(2).toUpperCase()));
+                    this.updateContex(
+                            true,
+                            true,
+                            query,
+                            QueryAugmentedEventDataType.DDL_VIEW,
+                            QueryAugmentedEventDataOperationType.valueOf(ddlViewMatcher.group(2).toUpperCase()),
+                            null
+                    );
 
                     break;
                 }
@@ -199,10 +242,14 @@ public class ActiveSchemaContext {
                 Matcher ddlAnalyze = this.ddlAnalyzePattern.matcher(query);
 
                 if (ddlAnalyze.find()) {
-                    this.dataFlag.set(true);
-                    this.queryFlag.set(true);
-                    this.queryType.set(QueryAugmentedEventDataType.DDL_ANALYZE);
-                    this.operationType.set(QueryAugmentedEventDataOperationType.valueOf(ddlAnalyze.group(2).toUpperCase()));
+                    this.updateContex(
+                            true,
+                            true,
+                            query,
+                            QueryAugmentedEventDataType.DDL_ANALYZE,
+                            QueryAugmentedEventDataOperationType.valueOf(ddlAnalyze.group(2).toUpperCase()),
+                            null
+                    );
 
                     break;
                 }
@@ -210,9 +257,14 @@ public class ActiveSchemaContext {
                 Matcher pseudoGTIDMatcher = this.pseudoGTIDPattern.matcher(query);
 
                 if (pseudoGTIDMatcher.find()) {
-                    this.dataFlag.set(false);
-                    this.queryFlag.set(true);
-                    this.queryType.set(QueryAugmentedEventDataType.PSEUDO_GTID);
+                    this.updateContex(
+                            false,
+                            true,
+                            query,
+                            QueryAugmentedEventDataType.PSEUDO_GTID,
+                            QueryAugmentedEventDataOperationType.UNKNOWN,
+                            null
+                    );
 
                     this.pseudoGTID.set(pseudoGTIDMatcher.group(0));
                     this.pseudoGTIDIndex.set(0);
@@ -220,15 +272,25 @@ public class ActiveSchemaContext {
                     break;
                 }
 
-                this.dataFlag.set(true);
-                this.queryFlag.set(false);
-                this.queryType.set(QueryAugmentedEventDataType.UNKNOWN);
+                this.updateContex(
+                        true,
+                        true,
+                        query,
+                        QueryAugmentedEventDataType.UNKNOWN,
+                        QueryAugmentedEventDataOperationType.UNKNOWN,
+                        null
+                );
 
                 break;
             case XID:
-                this.dataFlag.set(false);
-                this.queryFlag.set(true);
-                this.queryType.set(QueryAugmentedEventDataType.COMMIT);
+                this.updateContex(
+                        false,
+                        true,
+                        null,
+                        QueryAugmentedEventDataType.COMMIT,
+                        QueryAugmentedEventDataOperationType.UNKNOWN,
+                        null
+                );
 
                 if (!this.transaction.commit(eventHeader.getTimestamp())) {
                     ActiveSchemaContext.LOG.log(Level.WARNING, "transaction already committed");
@@ -236,9 +298,14 @@ public class ActiveSchemaContext {
 
                 break;
             case TABLE_MAP:
-                this.dataFlag.set(false);
-                this.queryFlag.set(false);
-                this.queryType.set(QueryAugmentedEventDataType.UNKNOWN);
+                this.updateContex(
+                        false,
+                        false,
+                        null,
+                        QueryAugmentedEventDataType.COMMIT,
+                        QueryAugmentedEventDataOperationType.UNKNOWN,
+                        null
+                );
 
                 TableMapRawEventData tableMapRawEventData = TableMapRawEventData.class.cast(eventData);
 
@@ -257,15 +324,25 @@ public class ActiveSchemaContext {
             case EXT_UPDATE_ROWS:
             case DELETE_ROWS:
             case EXT_DELETE_ROWS:
-                this.dataFlag.set(true);
-                this.queryFlag.set(false);
-                this.queryType.set(QueryAugmentedEventDataType.UNKNOWN);
+                this.updateContex(
+                        true,
+                        false,
+                        null,
+                        QueryAugmentedEventDataType.UNKNOWN,
+                        QueryAugmentedEventDataOperationType.UNKNOWN,
+                        null
+                );
 
                 break;
             default:
-                this.dataFlag.set(false);
-                this.queryFlag.set(false);
-                this.queryType.set(QueryAugmentedEventDataType.UNKNOWN);
+                this.updateContex(
+                        false,
+                        false,
+                        null,
+                        QueryAugmentedEventDataType.UNKNOWN,
+                        QueryAugmentedEventDataOperationType.UNKNOWN,
+                        null
+                );
 
                 break;
         }
@@ -283,12 +360,16 @@ public class ActiveSchemaContext {
         return this.queryFlag.get();
     }
 
+    public String getQueryContent() {
+        return this.queryContent.get();
+    }
+
     public QueryAugmentedEventDataType getQueryType() {
         return this.queryType.get();
     }
 
-    public QueryAugmentedEventDataOperationType getOperationType() {
-        return this.operationType.get();
+    public QueryAugmentedEventDataOperationType getQueryOperationType() {
+        return this.queryOperationType.get();
     }
 
     public Checkpoint getCheckpoint() {
@@ -301,7 +382,11 @@ public class ActiveSchemaContext {
         );
     }
 
-    public AugmentedEventTable getTableName(long tableId) {
+    public AugmentedEventTable getTable() {
+        return this.table.get();
+    }
+
+    public AugmentedEventTable getTable(long tableId) {
         return this.tableIdTableMap.get(tableId);
     }
 }

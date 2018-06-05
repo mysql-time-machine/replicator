@@ -8,8 +8,8 @@ public enum KafkaPartitioner {
     TABLE_NAME {
         @Override
         public int partition(AugmentedEvent augmentedEvent, int totalPartitions) {
-            if (augmentedEvent.getHeader().getTable() != null) {
-                return Math.abs(augmentedEvent.getHeader().getTable().getName().hashCode()) % totalPartitions;
+            if (augmentedEvent.getHeader().getEventTable() != null) {
+                return Math.abs(augmentedEvent.getHeader().getEventTable().getName().hashCode()) % totalPartitions;
             } else {
                 return KafkaPartitioner.RANDOM.partition(augmentedEvent, totalPartitions);
             }

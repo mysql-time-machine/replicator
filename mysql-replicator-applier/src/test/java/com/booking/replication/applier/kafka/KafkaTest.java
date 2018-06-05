@@ -95,7 +95,9 @@ public class KafkaTest {
         configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, "bootstrap.servers"), KafkaTest.servicesControl.getURL());
         configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, "group.id"), KafkaTest.GROUP_ID);
 
-        Seeker seeker = Seeker.build(configuration, KafkaTest.events[KafkaTest.events.length - 1].getHeader().getCheckpoint());
+        Seeker seeker = Seeker.build(configuration);
+
+        seeker.seek(KafkaTest.events[KafkaTest.events.length - 1].getHeader().getCheckpoint());
 
         for (AugmentedEvent event : KafkaTest.events) {
             assertNull(seeker.apply(event));

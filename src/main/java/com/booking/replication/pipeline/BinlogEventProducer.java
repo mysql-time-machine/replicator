@@ -4,7 +4,10 @@ import com.booking.replication.Configuration;
 import com.booking.replication.Constants;
 import com.booking.replication.Metrics;
 
+import com.booking.replication.binlog.BinlogEventParserProviderCode;
+import com.booking.replication.binlog.BinlogEventParserProviderFactory;
 import com.booking.replication.binlog.event.*;
+import com.booking.replication.binlog.event.impl.*;
 import com.booking.replication.replicant.ReplicantPool;
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.BinaryLogClient.EventListener;
@@ -37,7 +40,7 @@ public class BinlogEventProducer {
     // queue is private, but it will reference the same queue
     // as the consumer object
 
-    private final BlockingQueue<RawBinlogEvent> rawBinlogEventQueue;
+    private final BlockingQueue<IBinlogEvent> binlogEventQueue;
 
     private PipelinePosition pipelinePosition;
 
@@ -59,14 +62,14 @@ public class BinlogEventProducer {
 
     /**
      * Set up and manage the binlog provider instance instance.
-     * @param rawBinlogEventQueue
+     * @param binlogEventQueue
      * @param pipelinePosition  Binlog position information
      * @param configuration     Replicator configuration
      * @param binlogParserProviderCode
      */
     public BinlogEventProducer(
 
-        LinkedBlockingQueue<RawBinlogEvent> rawBinlogEventQueue,
+        LinkedBlockingQueue<IBinlogEvent> binlogEventQueue,
         PipelinePosition                    pipelinePosition,
         Configuration                       configuration,
         ReplicantPool                       replicantPool,
@@ -74,7 +77,7 @@ public class BinlogEventProducer {
 
     ) throws Exception {
 
-        this.rawBinlogEventQueue = rawBinlogEventQueue;
+        this.binlogEventQueue = binlogEventQueue;
         this.pipelinePosition = pipelinePosition;
         this.configuration = configuration;
         this.replicantPool = replicantPool;
@@ -115,60 +118,60 @@ public class BinlogEventProducer {
                             backPressureSleep();
                             boolean added = false;
                             try {
-                                RawBinlogEvent rawBinlogEvent;
+                                IBinlogEvent binlogEvent;
                                 switch (event.getHeader().getEventType()) {
                                     case QUERY:
-                                        rawBinlogEvent = new RawBinlogEventQuery(event);
+                                        binlogEvent = new BinlogEventQuery(event);
                                         break;
                                     case PRE_GA_WRITE_ROWS:
                                     case WRITE_ROWS:
                                     case EXT_WRITE_ROWS:
-                                        rawBinlogEvent = new RawBinlogEventWriteRows(event);
+                                        binlogEvent = new BinlogEventWriteRows(event);
                                         break;
                                     case PRE_GA_UPDATE_ROWS:
                                     case UPDATE_ROWS:
                                     case EXT_UPDATE_ROWS:
-                                        rawBinlogEvent = new RawBinlogEventUpdateRows(event);
+                                        binlogEvent = new BinlogEventUpdateRows(event);
                                         break;
                                     case PRE_GA_DELETE_ROWS:
                                     case DELETE_ROWS:
                                     case EXT_DELETE_ROWS:
-                                        rawBinlogEvent = new RawBinlogEventDeleteRows(event);
+                                        binlogEvent = new BinlogEventDeleteRows(event);
                                         break;
                                     case TABLE_MAP:
-                                        rawBinlogEvent = new RawBinlogEventTableMap(event);
+                                        binlogEvent = new BinlogEventTableMap(event);
                                         break;
                                     case FORMAT_DESCRIPTION:
-                                        rawBinlogEvent = new RawBinlogEventFormatDescription(event);
+                                        binlogEvent = new BinlogEventFormatDescription(event);
                                         break;
                                     case ROTATE:
-                                        rawBinlogEvent = new RawBinlogEventRotate(event);
+                                        binlogEvent = new BinlogEventRotate(event);
                                         break;
                                     case STOP:
-                                        rawBinlogEvent = new RawBinlogEventStop(event);
+                                        binlogEvent = new BinlogEventStop(event);
                                         break;
                                     case XID:
-                                        rawBinlogEvent = new RawBinlogEventXid(event);
+                                        binlogEvent = new BinlogEventXid(event);
                                         break;
                                     default:
-                                        rawBinlogEvent = new RawBinlogEvent(event);
+                                        binlogEvent = new BinlogEvent(event);
                                         LOGGER.warn("Unsupported event type: " + event.getHeader().getEventType());
                                         break;
                                 }
                                 // there is no binlog file name in the binlog connector event, so need to
                                 // inject the binlog file name of the last red event (which is maintained
                                 // by the binlog client)
-                                rawBinlogEvent.setBinlogFilename(binaryLogClient.getBinlogFilename());
+                                binlogEvent.setBinlogFilename(binaryLogClient.getBinlogFilename());
 
-//                                if (rawBinlogEvent.getEventType() == RawEventType.WRITE_ROWS_EVENT) {
+//                                if (binlogEvent.getEventType() == BinlogEventType.WRITE_ROWS_EVENT) {
 //                                    LOGGER.info("=====>" + event.getData().toString());
-//                                    RawBinlogEventWriteRows rows = (RawBinlogEventWriteRows) rawBinlogEvent;
+//                                    BinlogEventWriteRows rows = (BinlogEventWriteRows) binlogEvent;
 //                                    for (Row row : rows.getExtractedRows()) {
 //                                        LOGGER.info("------> " + row.toString());
 //                                    }
 //                                }
 
-                                added = rawBinlogEventQueue.offer(rawBinlogEvent, 100, TimeUnit.MILLISECONDS);
+                                added = binlogEventQueue.offer(binlogEvent, 100, TimeUnit.MILLISECONDS);
                             } catch (Exception e) {
                                 LOGGER.error("rawBinlogEventsQueue.offer failed.", e);
                             }
@@ -176,7 +179,7 @@ public class BinlogEventProducer {
                                 opCounter++;
                                 eventQueued = true;
                                 if (opCounter % 10000 == 0) {
-                                    LOGGER.info("Producer reporting queue size => " + rawBinlogEventQueue.size());
+                                    LOGGER.info("Producer reporting queue size => " + binlogEventQueue.size());
                                 }
                             } else {
                                 LOGGER.error("queue.offer timed out. Will sleep for 100ms and try again");
@@ -223,44 +226,44 @@ public class BinlogEventProducer {
                                       backPressureSleep();
                                       boolean added = false;
                                       try {
-                                          RawBinlogEvent rawBinlogEvent;
+                                          IBinlogEvent binlogEvent;
                                           switch (event.getHeader().getEventType()) {
                                               // Check for DDL and pGTID:
                                               case MySQLConstants.QUERY_EVENT:
-                                                  rawBinlogEvent = new RawBinlogEventQuery(event);
+                                                  binlogEvent = new BinlogEventQuery(event);
                                                   break;
                                               case MySQLConstants.TABLE_MAP_EVENT:
-                                                  rawBinlogEvent = new RawBinlogEventTableMap(event);
+                                                  binlogEvent = new BinlogEventTableMap(event);
                                                   break;
                                               case MySQLConstants.UPDATE_ROWS_EVENT:
                                               case MySQLConstants.UPDATE_ROWS_EVENT_V2:
-                                                  rawBinlogEvent = new RawBinlogEventUpdateRows(event);
+                                                  binlogEvent = new BinlogEventUpdateRows(event);
                                                   break;
                                               case MySQLConstants.WRITE_ROWS_EVENT:
                                               case MySQLConstants.WRITE_ROWS_EVENT_V2:
-                                                  rawBinlogEvent = new RawBinlogEventWriteRows(event);
+                                                  binlogEvent = new BinlogEventWriteRows(event);
                                                   break;
                                               case MySQLConstants.DELETE_ROWS_EVENT:
                                               case MySQLConstants.DELETE_ROWS_EVENT_V2:
-                                                  rawBinlogEvent = new RawBinlogEventDeleteRows(event);
+                                                  binlogEvent = new BinlogEventDeleteRows(event);
                                                   break;
                                               case MySQLConstants.XID_EVENT:
-                                                  rawBinlogEvent = new RawBinlogEventXid(event);
+                                                  binlogEvent = new BinlogEventXid(event);
                                                   break;
                                               case MySQLConstants.FORMAT_DESCRIPTION_EVENT:
-                                                  rawBinlogEvent = new RawBinlogEventFormatDescription(event);
+                                                  binlogEvent = new BinlogEventFormatDescription(event);
                                                   break;
                                               case MySQLConstants.ROTATE_EVENT:
-                                                  rawBinlogEvent = new RawBinlogEventRotate(event);
+                                                  binlogEvent = new BinlogEventRotate(event);
                                                   break;
                                               case MySQLConstants.STOP_EVENT:
-                                                  rawBinlogEvent = new RawBinlogEventStop(event);
+                                                  binlogEvent = new BinlogEventStop(event);
                                                   break;
                                               default:
-                                                  rawBinlogEvent = new RawBinlogEvent(event);
+                                                  binlogEvent = new BinlogEvent(event);
                                                   break;
                                           }
-                                          added = rawBinlogEventQueue.offer(rawBinlogEvent, 100, TimeUnit.MILLISECONDS);
+                                          added = binlogEventQueue.offer(binlogEvent, 100, TimeUnit.MILLISECONDS);
                                       } catch (Exception e) {
                                           LOGGER.error("rawBinlogEventsQueue.offer failed ", e);
                                       }
@@ -269,7 +272,7 @@ public class BinlogEventProducer {
                                           opCounter++;
                                           eventQueued = true;
                                           if (opCounter % 100000 == 0) {
-                                              LOGGER.info("Producer reporting queue size => " + rawBinlogEventQueue.size());
+                                              LOGGER.info("Producer reporting queue size => " + binlogEventQueue.size());
                                           }
                                       } else {
                                           LOGGER.error("queue.offer timed out. Will sleep for 100ms and try again");
@@ -296,7 +299,7 @@ public class BinlogEventProducer {
 
     public void clearQueue() {
         LOGGER.debug("Clearing queue");
-        rawBinlogEventQueue.clear();
+        binlogEventQueue.clear();
     }
 
     public void stopAndClearQueue(long timeout, TimeUnit unit) throws Exception {
@@ -305,7 +308,7 @@ public class BinlogEventProducer {
     }
 
     private void backPressureSleep() {
-        int queueSize = rawBinlogEventQueue.size();
+        int queueSize = binlogEventQueue.size();
 
         // For an explanation please plug "max(0, 20*(10000/(10000+1-x)-10)) x from 6000 to 10000" into WolframAlpha
         backPressureSleep = Math.max(

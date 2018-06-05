@@ -7,24 +7,16 @@ import com.booking.replication.applier.kafka.RowListMessage;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
-import com.booking.replication.binlog.event.*;
+import com.booking.replication.binlog.event.impl.*;
 import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.schema.exception.TableMapException;
 import com.booking.replication.util.CaseInsensitiveMap;
 
-import com.google.code.or.binlog.BinlogEventV4;
-import com.google.code.or.binlog.impl.event.FormatDescriptionEvent;
-import com.google.code.or.binlog.impl.event.QueryEvent;
-import com.google.code.or.binlog.impl.event.RotateEvent;
-import com.google.code.or.binlog.impl.event.TableMapEvent;
-import com.google.code.or.binlog.impl.event.XidEvent;
-
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
-import com.google.code.or.binlog.impl.event.*;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -201,7 +193,7 @@ public class KafkaApplier implements Applier {
     }
 
     @Override
-    public void applyBeginQueryEvent(RawBinlogEventQuery event, CurrentTransaction currentTransaction) {
+    public void applyBeginQueryEvent(BinlogEventQuery event, CurrentTransaction currentTransaction) {
         if (!apply_begin_event) {
             LOGGER.debug("Dropping BEGIN event because applyBeginEvent is off");
             return;
@@ -230,7 +222,7 @@ public class KafkaApplier implements Applier {
     }
 
     @Override
-    public void applyCommitQueryEvent(RawBinlogEventQuery event, CurrentTransaction currentTransaction) {
+    public void applyCommitQueryEvent(BinlogEventQuery event, CurrentTransaction currentTransaction) {
         if (!apply_commit_event) {
             LOGGER.debug("Dropping COMMIT event because applyCommitEvent is off");
             return;
@@ -258,7 +250,7 @@ public class KafkaApplier implements Applier {
     }
 
     @Override
-    public void applyXidEvent(RawBinlogEventXid event, CurrentTransaction currentTransaction) {
+    public void applyXidEvent(BinlogEventXid event, CurrentTransaction currentTransaction) {
         if (!apply_commit_event) {
             LOGGER.debug("Dropping XID event because applyBeginEvent is off");
             return;
@@ -287,7 +279,7 @@ public class KafkaApplier implements Applier {
     }
 
     @Override
-    public void applyRotateEvent(RawBinlogEventRotate event) {
+    public void applyRotateEvent(BinlogEventRotate event) {
 
     }
 
@@ -297,12 +289,12 @@ public class KafkaApplier implements Applier {
     }
 
     @Override
-    public void applyFormatDescriptionEvent(RawBinlogEventFormatDescription event) {
+    public void applyFormatDescriptionEvent(BinlogEventFormatDescription event) {
 
     }
 
     @Override
-    public void applyTableMapEvent(RawBinlogEventTableMap event) {
+    public void applyTableMapEvent(BinlogEventTableMap event) {
 
     }
 

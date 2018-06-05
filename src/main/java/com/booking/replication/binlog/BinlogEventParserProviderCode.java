@@ -1,4 +1,4 @@
-package com.booking.replication.binlog.event;
+package com.booking.replication.binlog;
 
 /**
  * Created by bosko on 5/13/17.

@@ -2,7 +2,7 @@ package com.booking.replication.applier;
 
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
-import com.booking.replication.binlog.event.*;
+import com.booking.replication.binlog.event.impl.*;
 import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 import com.booking.replication.pipeline.CurrentTransaction;
 
@@ -17,13 +17,13 @@ public interface Applier {
     void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedSingleRowEvent, CurrentTransaction currentTransaction)
             throws ApplierException, IOException;
 
-    void applyBeginQueryEvent(RawBinlogEventQuery event, CurrentTransaction currentTransaction);
+    void applyBeginQueryEvent(BinlogEventQuery event, CurrentTransaction currentTransaction);
 
-    void applyCommitQueryEvent(RawBinlogEventQuery event, CurrentTransaction currentTransaction);
+    void applyCommitQueryEvent(BinlogEventQuery event, CurrentTransaction currentTransaction);
 
-    void applyXidEvent(RawBinlogEventXid event, CurrentTransaction currentTransaction);
+    void applyXidEvent(BinlogEventXid event, CurrentTransaction currentTransaction);
 
-    void applyRotateEvent(RawBinlogEventRotate event) throws ApplierException, IOException;
+    void applyRotateEvent(BinlogEventRotate event) throws ApplierException, IOException;
 
     void applyAugmentedSchemaChangeEvent(
             AugmentedSchemaChangeEvent augmentedSchemaChangeEvent,
@@ -31,9 +31,9 @@ public interface Applier {
 
     void forceFlush() throws ApplierException, IOException;
 
-    void applyFormatDescriptionEvent(RawBinlogEventFormatDescription event);
+    void applyFormatDescriptionEvent(BinlogEventFormatDescription event);
 
-    void applyTableMapEvent(RawBinlogEventTableMap event);
+    void applyTableMapEvent(BinlogEventTableMap event);
 
     void waitUntilAllRowsAreCommitted() throws IOException, ApplierException;
 

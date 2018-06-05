@@ -1,14 +1,13 @@
-package com.booking.replication.binlog.event;
+package com.booking.replication.binlog.event.impl;
 
 import com.booking.replication.binlog.common.Cell;
 import com.booking.replication.binlog.common.CellExtractor;
 import com.booking.replication.binlog.common.Row;
 import com.booking.replication.binlog.common.RowPair;
+import com.booking.replication.binlog.event.impl.BinlogEventRows;
 import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
-import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
 import com.google.code.or.binlog.impl.event.UpdateRowsEvent;
 import com.google.code.or.binlog.impl.event.UpdateRowsEventV2;
-import com.google.code.or.binlog.impl.event.WriteRowsEvent;
 import com.google.code.or.common.glossary.Column;
 import com.google.code.or.common.util.MySQLConstants;
 
@@ -21,11 +20,11 @@ import java.util.Map;
 /**
  * Created by bosko on 6/1/17.
  */
-public class RawBinlogEventUpdateRows extends RawBinlogEventRows {
+public class BinlogEventUpdateRows extends BinlogEventRows {
 
     List<RowPair> extractedRows;
 
-    public RawBinlogEventUpdateRows(Object event) throws Exception {
+    public BinlogEventUpdateRows(Object event) throws Exception {
         super(event);
         this.extractedRows = this.extractRowsFromEvent();
     }

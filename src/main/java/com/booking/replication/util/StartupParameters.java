@@ -1,6 +1,6 @@
 package com.booking.replication.util;
 
-import com.booking.replication.binlog.event.BinlogEventParserProviderCode;
+import com.booking.replication.binlog.BinlogEventParserProviderCode;
 import joptsimple.OptionSet;
 import org.slf4j.LoggerFactory;
 

@@ -2,7 +2,7 @@ package com.booking.replication;
 
 import com.booking.replication.applier.*;
 
-import com.booking.replication.binlog.event.RawBinlogEvent;
+import com.booking.replication.binlog.event.IBinlogEvent;
 import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 
 import com.booking.replication.monitor.*;
@@ -55,7 +55,7 @@ import static spark.Spark.port;
 public class Replicator {
 
     private final ReplicantPool                       replicantPool;
-    private final LinkedBlockingQueue<RawBinlogEvent> rawBinlogEventQueue;
+    private final LinkedBlockingQueue<IBinlogEvent> binlogEventQueue;
     private final BinlogEventProducer                 binlogEventSupplier;
     private final PipelineOrchestrator                pipelineOrchestrator;
     private       PipelinePosition                    pipelinePosition;
@@ -167,11 +167,11 @@ public class Replicator {
                 pipelinePosition.getStartPosition().getBinlogFilename(),
                 pipelinePosition.getStartPosition().getBinlogPosition()));
 
-        rawBinlogEventQueue = new LinkedBlockingQueue<>(MAX_RAW_QUEUE_SIZE);
+        binlogEventQueue = new LinkedBlockingQueue<>(MAX_RAW_QUEUE_SIZE);
 
         // Producer
         binlogEventSupplier = new BinlogEventProducer(
-            rawBinlogEventQueue,
+                binlogEventQueue,
             pipelinePosition,
             configuration,
             replicantPool,
@@ -214,7 +214,7 @@ public class Replicator {
 
         // Pipeline
         pipelineOrchestrator = new PipelineOrchestrator(
-            rawBinlogEventQueue,
+                binlogEventQueue,
             pipelinePosition,
             configuration,
             new MysqlActiveSchemaVersion(configuration),

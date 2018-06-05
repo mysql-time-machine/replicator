@@ -2,12 +2,10 @@ package com.booking.replication.applier;
 
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
-import com.booking.replication.binlog.event.*;
+import com.booking.replication.binlog.event.impl.*;
 import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
-import com.google.code.or.binlog.BinlogEventV4;
-import com.google.code.or.binlog.impl.event.*;
 
 import java.io.IOException;
 
@@ -26,22 +24,22 @@ public class DummyApplier implements Applier {
     }
 
     @Override
-    public void applyBeginQueryEvent(RawBinlogEventQuery event, CurrentTransaction currentTransaction) {
+    public void applyBeginQueryEvent(BinlogEventQuery event, CurrentTransaction currentTransaction) {
 
     }
 
     @Override
-    public void applyCommitQueryEvent(RawBinlogEventQuery event, CurrentTransaction currentTransaction) {
+    public void applyCommitQueryEvent(BinlogEventQuery event, CurrentTransaction currentTransaction) {
 
     }
 
     @Override
-    public void applyXidEvent(RawBinlogEventXid event, CurrentTransaction currentTransaction) {
+    public void applyXidEvent(BinlogEventXid event, CurrentTransaction currentTransaction) {
 
     }
 
     @Override
-    public void applyRotateEvent(RawBinlogEventRotate event) throws ApplierException, IOException {
+    public void applyRotateEvent(BinlogEventRotate event) throws ApplierException, IOException {
 
     }
 
@@ -56,12 +54,12 @@ public class DummyApplier implements Applier {
     }
 
     @Override
-    public void applyFormatDescriptionEvent(RawBinlogEventFormatDescription event) {
+    public void applyFormatDescriptionEvent(BinlogEventFormatDescription event) {
 
     }
 
     @Override
-    public void applyTableMapEvent(RawBinlogEventTableMap event) {
+    public void applyTableMapEvent(BinlogEventTableMap event) {
 
     }
 

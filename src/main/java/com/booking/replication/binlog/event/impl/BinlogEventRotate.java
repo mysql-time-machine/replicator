@@ -1,13 +1,14 @@
-package com.booking.replication.binlog.event;
+package com.booking.replication.binlog.event.impl;
 
+import com.booking.replication.binlog.event.impl.BinlogEvent;
 import com.github.shyiko.mysql.binlog.event.RotateEventData;
 import com.google.code.or.binlog.impl.event.RotateEvent;
 
 /**
  * Created by bosko on 5/22/17.
  */
-public class RawBinlogEventRotate extends RawBinlogEvent {
-    public RawBinlogEventRotate(Object event) throws Exception {
+public class BinlogEventRotate extends BinlogEvent {
+    public BinlogEventRotate(Object event) throws Exception {
         super(event);
     }
 

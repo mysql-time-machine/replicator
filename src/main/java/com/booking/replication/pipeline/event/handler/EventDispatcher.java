@@ -1,8 +1,8 @@
 package com.booking.replication.pipeline.event.handler;
 
 
-import com.booking.replication.binlog.event.RawBinlogEvent;
-import com.booking.replication.binlog.event.RawEventType;
+import com.booking.replication.binlog.event.BinlogEventType;
+import com.booking.replication.binlog.event.IBinlogEvent;
 import com.booking.replication.pipeline.BinlogEventProducerException;
 import com.booking.replication.pipeline.CurrentTransaction;
 import org.slf4j.Logger;
@@ -19,27 +19,27 @@ public class EventDispatcher implements RawBinlogEventHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EventDispatcher.class);
 
-    private final Map<RawEventType, RawBinlogEventHandler> handlers = new HashMap<>();
+    private final Map<BinlogEventType, RawBinlogEventHandler> handlers = new HashMap<>();
 
     private final UnknownEventHandler unknownEventHandler = new UnknownEventHandler();
 
 
-    public void registerHandler(RawEventType type, RawBinlogEventHandler handler) {
+    public void registerHandler(BinlogEventType type, RawBinlogEventHandler handler) {
         handlers.put(type, handler);
     }
 
-    public void registerHandler(List<RawEventType> types, RawBinlogEventHandler handler) {
-        for (RawEventType type : types) {
+    public void registerHandler(List<BinlogEventType> types, RawBinlogEventHandler handler) {
+        for (BinlogEventType type : types) {
             handlers.put(type, handler);
         }
     }
 
-    private RawBinlogEventHandler getHandler(RawEventType type) {
+    private RawBinlogEventHandler getHandler(BinlogEventType type) {
         return handlers.getOrDefault(type, unknownEventHandler);
     }
 
     @Override
-    public void apply(RawBinlogEvent event, CurrentTransaction currentTransaction)
+    public void apply(IBinlogEvent event, CurrentTransaction currentTransaction)
             throws EventHandlerApplyException {
         try {
             RawBinlogEventHandler eventHandler = getHandler(event.getEventType());
@@ -53,7 +53,7 @@ public class EventDispatcher implements RawBinlogEventHandler {
     }
 
     @Override
-    public void handle(RawBinlogEvent event) throws TransactionException, TransactionSizeLimitException {
+    public void handle(IBinlogEvent event) throws TransactionException, TransactionSizeLimitException {
         LOGGER.debug("Handling event: " + event);
 
         try {

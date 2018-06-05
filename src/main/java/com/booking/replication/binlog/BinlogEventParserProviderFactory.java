@@ -1,7 +1,7 @@
-package com.booking.replication.binlog.event;
+package com.booking.replication.binlog;
 
 import com.booking.replication.Configuration;
-import com.booking.replication.binlog.event.BinlogEventParserProviderCode;
+import com.booking.replication.binlog.BinlogEventParserProviderCode;
 import com.booking.replication.pipeline.PipelinePosition;
 import com.google.code.or.OpenReplicator;
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
@@ -57,9 +57,7 @@ public class BinlogEventParserProviderFactory {
             return client;
         }
         else {
-
             throw new Exception("Unsupported parser exception");
-
         }
     }
 }

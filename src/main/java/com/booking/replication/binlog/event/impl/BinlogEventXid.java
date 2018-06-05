@@ -1,13 +1,14 @@
-package com.booking.replication.binlog.event;
+package com.booking.replication.binlog.event.impl;
 
+import com.booking.replication.binlog.event.impl.BinlogEvent;
 import com.github.shyiko.mysql.binlog.event.XidEventData;
 import com.google.code.or.binlog.impl.event.XidEvent;
 
 /**
  * Created by bosko on 5/22/17.
  */
-public class RawBinlogEventXid extends RawBinlogEvent {
-    public RawBinlogEventXid(Object event) throws Exception {
+public class BinlogEventXid extends BinlogEvent {
+    public BinlogEventXid(Object event) throws Exception {
         super(event);
     }
 

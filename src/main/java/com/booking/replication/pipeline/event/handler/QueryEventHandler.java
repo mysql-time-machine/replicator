@@ -3,12 +3,11 @@ package com.booking.replication.pipeline.event.handler;
 import com.booking.replication.Coordinator;
 import com.booking.replication.Metrics;
 import com.booking.replication.applier.*;
-import com.booking.replication.applier.hbase.TaskBufferInconsistencyException;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.binlog.EventPosition;
+import com.booking.replication.binlog.event.impl.BinlogEventQuery;
+import com.booking.replication.binlog.event.IBinlogEvent;
 import com.booking.replication.binlog.event.QueryEventType;
-import com.booking.replication.binlog.event.RawBinlogEvent;
-import com.booking.replication.binlog.event.RawBinlogEventQuery;
 import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 import com.booking.replication.pipeline.BinlogEventProducerException;
 import com.booking.replication.pipeline.CurrentTransaction;
@@ -16,11 +15,9 @@ import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.pipeline.PipelinePosition;
 import com.booking.replication.schema.ActiveSchemaVersion;
 import com.booking.replication.schema.exception.SchemaTransitionException;
-import com.booking.replication.applier.SupportedAppliers.ApplierName;
 import com.booking.replication.sql.QueryInspector;
 import com.booking.replication.sql.exception.QueryInspectorException;
 import com.codahale.metrics.Meter;
-import com.google.code.or.binlog.impl.event.QueryEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,8 +48,8 @@ public class QueryEventHandler implements RawBinlogEventHandler {
     }
 
     @Override
-    public void apply(RawBinlogEvent rawBinlogEvent, CurrentTransaction currentTransaction) throws EventHandlerApplyException, ApplierException, IOException {
-        final RawBinlogEventQuery event = (RawBinlogEventQuery) rawBinlogEvent;
+    public void apply(IBinlogEvent binlogEvent, CurrentTransaction currentTransaction) throws EventHandlerApplyException, ApplierException, IOException {
+        final BinlogEventQuery event = (BinlogEventQuery) binlogEvent;
         String querySQL = event.getSql().toString();
         QueryEventType queryEventType = QueryInspector.getQueryEventType(event);
         LOGGER.debug("Applying event: " + event + ", type: " + queryEventType);
@@ -146,8 +143,8 @@ public class QueryEventHandler implements RawBinlogEventHandler {
     }
 
     @Override
-    public void handle(RawBinlogEvent rawBinlogEvent) throws TransactionException, BinlogEventProducerException, TransactionSizeLimitException {
-        final RawBinlogEventQuery event = (RawBinlogEventQuery) rawBinlogEvent;
+    public void handle(IBinlogEvent binlogEvent) throws TransactionException, BinlogEventProducerException, TransactionSizeLimitException {
+        final BinlogEventQuery event = (BinlogEventQuery) binlogEvent;
         QueryEventType queryEventType = QueryInspector.getQueryEventType(event);
         switch (queryEventType) {
             case COMMIT:

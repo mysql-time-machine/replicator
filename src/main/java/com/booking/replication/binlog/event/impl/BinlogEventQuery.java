@@ -1,8 +1,8 @@
-package com.booking.replication.binlog.event;
+package com.booking.replication.binlog.event.impl;
 
+import com.booking.replication.binlog.event.impl.BinlogEvent;
 import com.github.shyiko.mysql.binlog.event.QueryEventData;
 import com.google.code.or.binlog.StatusVariable;
-import com.google.code.or.binlog.impl.event.BinlogEventV4HeaderImpl;
 import com.google.code.or.binlog.impl.event.QueryEvent;
 import com.google.code.or.binlog.impl.variable.status.QTimeZoneCode;
 import com.google.code.or.common.glossary.column.StringColumn;
@@ -12,8 +12,8 @@ import java.util.HashMap;
 /**
  * Created by bosko on 5/22/17.
  */
-public class RawBinlogEventQuery extends RawBinlogEvent {
-    public RawBinlogEventQuery(Object event) throws Exception {
+public class BinlogEventQuery extends BinlogEvent {
+    public BinlogEventQuery(Object event) throws Exception {
         super(event);
     }
 

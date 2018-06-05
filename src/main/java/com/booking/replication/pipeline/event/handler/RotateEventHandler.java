@@ -1,14 +1,11 @@
 package com.booking.replication.pipeline.event.handler;
 
-import com.booking.replication.Coordinator;
 import com.booking.replication.applier.ApplierException;
-import com.booking.replication.binlog.event.RawBinlogEvent;
-import com.booking.replication.binlog.event.RawBinlogEventRotate;
-import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
+import com.booking.replication.binlog.event.impl.BinlogEventRotate;
+import com.booking.replication.binlog.event.IBinlogEvent;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.pipeline.PipelinePosition;
-import com.google.code.or.binlog.impl.event.RotateEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,8 +31,8 @@ public class RotateEventHandler implements RawBinlogEventHandler {
     }
 
     @Override
-    public void apply(RawBinlogEvent rawBinlogEvent, CurrentTransaction currentTransaction) throws EventHandlerApplyException, ApplierException, IOException {
-        final RawBinlogEventRotate event = (RawBinlogEventRotate) rawBinlogEvent;
+    public void apply(IBinlogEvent binlogEvent, CurrentTransaction currentTransaction) throws EventHandlerApplyException, ApplierException, IOException {
+        final BinlogEventRotate event = (BinlogEventRotate) binlogEvent;
         try {
             eventHandlerConfiguration.getApplier().applyRotateEvent(event);
         } catch (IOException e) {
@@ -62,8 +59,8 @@ public class RotateEventHandler implements RawBinlogEventHandler {
     }
 
     @Override
-    public void handle(RawBinlogEvent rawBinlogEvent) throws TransactionException, TransactionSizeLimitException {
-        final RawBinlogEventRotate event = (RawBinlogEventRotate) rawBinlogEvent;
+    public void handle(IBinlogEvent binlogEvent) throws TransactionException, TransactionSizeLimitException {
+        final BinlogEventRotate event = (BinlogEventRotate) binlogEvent;
         if (pipelineOrchestrator.isInTransaction()) {
             pipelineOrchestrator.addEventIntoTransaction(event);
         } else {

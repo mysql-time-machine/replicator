@@ -3,13 +3,12 @@ package com.booking.replication.pipeline.event.handler;
 import com.booking.replication.Metrics;
 import com.booking.replication.applier.ApplierException;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
-import com.booking.replication.binlog.event.RawBinlogEvent;
-import com.booking.replication.binlog.event.RawBinlogEventRows;
+import com.booking.replication.binlog.event.impl.BinlogEventRows;
+import com.booking.replication.binlog.event.IBinlogEvent;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.schema.exception.TableMapException;
 import com.codahale.metrics.Meter;
-import com.google.code.or.binlog.impl.event.AbstractRowEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,8 +32,8 @@ public class WriteRowsEventHandler implements RawBinlogEventHandler {
     }
 
     @Override
-    public void apply(RawBinlogEvent rawBinlogEvent, CurrentTransaction currentTransaction) throws TableMapException, ApplierException, IOException {
-        final RawBinlogEventRows event = (RawBinlogEventRows) rawBinlogEvent;
+    public void apply(IBinlogEvent binlogEvent, CurrentTransaction currentTransaction) throws TableMapException, ApplierException, IOException {
+        final BinlogEventRows event = (BinlogEventRows) binlogEvent;
         AugmentedRowsEvent augmentedRowsEvent =
                 eventHandlerConfiguration.getEventAugmenter().mapDataEventToSchema(
                         event,
@@ -45,8 +44,8 @@ public class WriteRowsEventHandler implements RawBinlogEventHandler {
     }
 
     @Override
-    public void handle(RawBinlogEvent rawBinlogEvent) throws TransactionException, TransactionSizeLimitException {
-        final RawBinlogEventRows event = (RawBinlogEventRows) rawBinlogEvent;
+    public void handle(IBinlogEvent binlogEvent) throws TransactionException, TransactionSizeLimitException {
+        final BinlogEventRows event = (BinlogEventRows) binlogEvent;
         pipelineOrchestrator.addEventIntoTransaction(event);
     }
 }

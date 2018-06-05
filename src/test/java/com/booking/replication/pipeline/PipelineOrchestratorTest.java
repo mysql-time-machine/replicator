@@ -3,7 +3,12 @@ package com.booking.replication.pipeline;
 import com.booking.replication.Configuration;
 import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.DummyApplier;
+import com.booking.replication.binlog.BinlogEventParserProviderCode;
 import com.booking.replication.binlog.event.*;
+import com.booking.replication.binlog.event.impl.BinlogEvent;
+import com.booking.replication.binlog.event.impl.BinlogEventQuery;
+import com.booking.replication.binlog.event.impl.BinlogEventRows;
+import com.booking.replication.binlog.event.impl.BinlogEventXid;
 import com.booking.replication.pipeline.event.handler.TransactionSizeLimitException;
 import com.booking.replication.replicant.DummyReplicantPool;
 import com.booking.replication.replicant.ReplicantPool;
@@ -12,12 +17,10 @@ import com.booking.replication.util.Cmd;
 import com.booking.replication.util.StartupParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.impl.event.BinlogEventV4HeaderImpl;
 import com.google.code.or.binlog.impl.event.QueryEvent;
 import com.google.code.or.binlog.impl.event.WriteRowsEventV2;
 import com.google.code.or.binlog.impl.event.XidEvent;
-import com.google.code.or.common.glossary.column.StringColumn;
 import com.google.code.or.common.util.MySQLConstants;
 import joptsimple.OptionSet;
 import org.junit.Before;
@@ -25,7 +28,6 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -40,11 +42,11 @@ import static org.junit.Assert.*;
 public class PipelineOrchestratorTest {
     private static String[] args = new String[1];
 
-    private static LinkedBlockingQueue<RawBinlogEvent>
-            rawBinlogEventLinkedBlockingQueue = new LinkedBlockingQueue<>();
+    private static LinkedBlockingQueue<IBinlogEvent>
+            binlogEventLinkedBlockingQueue = new LinkedBlockingQueue<>();
 
-    private static LinkedBlockingQueue<RawBinlogEvent>
-            rawBinlogEventLinkedBlockingQueue2 = new  LinkedBlockingQueue<>();
+    private static LinkedBlockingQueue<IBinlogEvent>
+            binlogEventLinkedBlockingQueue2 = new  LinkedBlockingQueue<>();
 
     private static PipelinePosition pipelinePosition = new PipelinePosition(
             "localhost",
@@ -81,7 +83,7 @@ public class PipelineOrchestratorTest {
         if (configuration != null) return;
         configure();
         binlogEventProducer = new BinlogEventProducer(
-                rawBinlogEventLinkedBlockingQueue2,
+                binlogEventLinkedBlockingQueue2,
                 pipelinePosition,
                 configuration,
                 replicantPool,
@@ -93,7 +95,7 @@ public class PipelineOrchestratorTest {
     public void beginTransactionManual() throws Exception {
 
         PipelineOrchestrator pipelineOrchestrator = new PipelineOrchestrator(
-                rawBinlogEventLinkedBlockingQueue,
+                binlogEventLinkedBlockingQueue,
                 pipelinePosition,
                 configuration,
                 new DummyActiveSchemaVersion(),
@@ -113,14 +115,14 @@ public class PipelineOrchestratorTest {
     @Test
     public void beginTransactionQueryEvent() throws Exception {
 
-        RawBinlogEventQuery queryEvent = new RawBinlogEventQuery(
+        BinlogEventQuery queryEvent = new BinlogEventQuery(
                 new QueryEvent(new BinlogEventV4HeaderImpl())
         );
 
         queryEvent.setSql("BEGIN");
 
         PipelineOrchestrator pipelineOrchestrator = new PipelineOrchestrator(
-                rawBinlogEventLinkedBlockingQueue,
+                binlogEventLinkedBlockingQueue,
                 pipelinePosition,
                 configuration,
                 new DummyActiveSchemaVersion(),
@@ -141,12 +143,12 @@ public class PipelineOrchestratorTest {
     @Test
     public void addEventIntoTransaction() throws Exception {
 
-        RawBinlogEventRows queryEvent = new RawBinlogEventRows(
+        BinlogEventRows queryEvent = new BinlogEventRows(
                 new WriteRowsEventV2(new BinlogEventV4HeaderImpl())
         );
 
         PipelineOrchestrator pipelineOrchestrator = new PipelineOrchestrator(
-                rawBinlogEventLinkedBlockingQueue,
+                binlogEventLinkedBlockingQueue,
                 pipelinePosition,
                 configuration,
                 new DummyActiveSchemaVersion(),
@@ -170,7 +172,7 @@ public class PipelineOrchestratorTest {
     public void TransactionSizeLimitExceeded() throws Exception {
 
         PipelineOrchestrator pipelineOrchestrator = new PipelineOrchestrator(
-                rawBinlogEventLinkedBlockingQueue,
+                binlogEventLinkedBlockingQueue,
                 pipelinePosition,
                 configuration,
                 new DummyActiveSchemaVersion(),
@@ -189,7 +191,7 @@ public class PipelineOrchestratorTest {
         assertFalse(pipelineOrchestrator.getCurrentTransaction().hasEvents());
 
         for (int i = 0; i < orchestratorConfiguration.getRewindingThreshold() + 2; i++) {
-            RawBinlogEventRows queryEvent = new RawBinlogEventRows(
+            BinlogEventRows queryEvent = new BinlogEventRows(
                     new WriteRowsEventV2(new BinlogEventV4HeaderImpl())
             );
             pipelineOrchestrator.addEventIntoTransaction(queryEvent);
@@ -199,7 +201,7 @@ public class PipelineOrchestratorTest {
     @Test
     public void isInTransaction() throws Exception {
         PipelineOrchestrator pipelineOrchestrator = new PipelineOrchestrator(
-                rawBinlogEventLinkedBlockingQueue,
+                binlogEventLinkedBlockingQueue,
                 pipelinePosition,
                 configuration,
                 new DummyActiveSchemaVersion(),
@@ -216,7 +218,7 @@ public class PipelineOrchestratorTest {
     @Test
     public void commitTransactionManual() throws Exception {
         PipelineOrchestrator pipelineOrchestrator = new PipelineOrchestrator(
-                rawBinlogEventLinkedBlockingQueue,
+                binlogEventLinkedBlockingQueue,
                 pipelinePosition,
                 configuration,
                 new DummyActiveSchemaVersion(),
@@ -239,14 +241,14 @@ public class PipelineOrchestratorTest {
         BinlogEventV4HeaderImpl commitEventHeader = new BinlogEventV4HeaderImpl();
         commitEventHeader.setEventType(MySQLConstants.QUERY_EVENT);
 
-        RawBinlogEventQuery queryEvent = new RawBinlogEventQuery(
+        BinlogEventQuery queryEvent = new BinlogEventQuery(
                 new QueryEvent(commitEventHeader)
         );
 
         queryEvent.setSql("COMMIT");
 
         PipelineOrchestrator pipelineOrchestrator = new PipelineOrchestrator(
-                rawBinlogEventLinkedBlockingQueue,
+                binlogEventLinkedBlockingQueue,
                 pipelinePosition,
                 configuration,
                 new DummyActiveSchemaVersion(),
@@ -271,12 +273,12 @@ public class PipelineOrchestratorTest {
 
         BinlogEventV4HeaderImpl xidEventHeader = new BinlogEventV4HeaderImpl();
         xidEventHeader.setEventType(MySQLConstants.XID_EVENT);
-        RawBinlogEventXid xidEvent = new RawBinlogEventXid(
+        BinlogEventXid xidEvent = new BinlogEventXid(
                 new XidEvent(xidEventHeader)
         );
 
         PipelineOrchestrator pipelineOrchestrator = new PipelineOrchestrator(
-                rawBinlogEventLinkedBlockingQueue,
+                binlogEventLinkedBlockingQueue,
                 pipelinePosition,
                 configuration,
                 new DummyActiveSchemaVersion(),
@@ -300,7 +302,7 @@ public class PipelineOrchestratorTest {
     public void waitForEvent() throws Exception {
 
         PipelineOrchestrator pipelineOrchestrator = new PipelineOrchestrator(
-                rawBinlogEventLinkedBlockingQueue,
+                binlogEventLinkedBlockingQueue,
                 pipelinePosition,
                 configuration,
                 new DummyActiveSchemaVersion(),
@@ -314,14 +316,14 @@ public class PipelineOrchestratorTest {
 
         Method method = pipelineOrchestrator.getClass().getDeclaredMethod("waitForEvent", long.class, long.class);
         method.setAccessible(true);
-        final RawBinlogEvent[] events = new RawBinlogEvent[1];
-        RawBinlogEvent queryEvent = new RawBinlogEvent(
+        final IBinlogEvent[] events = new IBinlogEvent[1];
+        IBinlogEvent queryEvent = new BinlogEvent(
                 new QueryEvent(new BinlogEventV4HeaderImpl())
         );
 
         Thread pipelineThread = new Thread(() -> {
             try {
-                events[0] = (RawBinlogEvent) method.invoke(pipelineOrchestrator, 0,0);
+                events[0] = (IBinlogEvent) method.invoke(pipelineOrchestrator, 0,0);
             } catch (IllegalAccessException | InvocationTargetException e) {
                 e.printStackTrace();
             }
@@ -329,7 +331,7 @@ public class PipelineOrchestratorTest {
 
         pipelineThread.start();
         assertNull(events[0]);
-        rawBinlogEventLinkedBlockingQueue.add(queryEvent);
+        binlogEventLinkedBlockingQueue.add(queryEvent);
         while (events[0] == null) {
             Thread.sleep(20);
         }
@@ -342,7 +344,7 @@ public class PipelineOrchestratorTest {
     public void rewindToCommitEventQueryEvent() throws Exception {
 
         PipelineOrchestrator pipelineOrchestrator = new PipelineOrchestrator(
-                rawBinlogEventLinkedBlockingQueue,
+                binlogEventLinkedBlockingQueue,
                 pipelinePosition,
                 configuration,
                 new DummyActiveSchemaVersion(),
@@ -355,11 +357,11 @@ public class PipelineOrchestratorTest {
         pipelineOrchestrator.setRunning(true);
         Method method = pipelineOrchestrator.getClass().getDeclaredMethod("rewindToCommitEvent", long.class, long.class);
         method.setAccessible(true);
-        final RawBinlogEvent[] events = new RawBinlogEvent[1];
+        final IBinlogEvent[] events = new IBinlogEvent[1];
 
         BinlogEventV4HeaderImpl commitEventHeader = new BinlogEventV4HeaderImpl();
         commitEventHeader.setEventType(MySQLConstants.QUERY_EVENT);
-        RawBinlogEventQuery commitEvent = new RawBinlogEventQuery(
+        BinlogEventQuery commitEvent = new BinlogEventQuery(
                 new QueryEvent(commitEventHeader)
         );
 
@@ -367,7 +369,7 @@ public class PipelineOrchestratorTest {
 
         Thread pipelineThread = new Thread(() -> {
             try {
-                events[0] = (RawBinlogEvent) method.invoke(pipelineOrchestrator, 0, 0);
+                events[0] = (IBinlogEvent) method.invoke(pipelineOrchestrator, 0, 0);
             } catch (IllegalAccessException | InvocationTargetException e) {
                 e.printStackTrace();
             }
@@ -377,11 +379,11 @@ public class PipelineOrchestratorTest {
         pipelineThread.start();
         assertNull(events[0]);
         for (int i = 0; i < 20; i++) {
-            rawBinlogEventLinkedBlockingQueue.add(new RawBinlogEventRows(
+            binlogEventLinkedBlockingQueue.add(new BinlogEventRows(
                     new WriteRowsEventV2(new BinlogEventV4HeaderImpl()))
             );
         }
-        rawBinlogEventLinkedBlockingQueue.add(commitEvent);
+        binlogEventLinkedBlockingQueue.add(commitEvent);
         while (events[0] == null) {
             Thread.sleep(5);
         }
@@ -393,7 +395,7 @@ public class PipelineOrchestratorTest {
     @Test
     public void rewindToCommitEventXidEvent() throws Exception {
         PipelineOrchestrator pipelineOrchestrator = new PipelineOrchestrator(
-                rawBinlogEventLinkedBlockingQueue,
+                binlogEventLinkedBlockingQueue,
                 pipelinePosition,
                 configuration,
                 new DummyActiveSchemaVersion(),
@@ -405,17 +407,17 @@ public class PipelineOrchestratorTest {
         pipelineOrchestrator.setRunning(true);
         Method method = pipelineOrchestrator.getClass().getDeclaredMethod("rewindToCommitEvent", long.class, long.class);
         method.setAccessible(true);
-        final RawBinlogEvent[] events = new RawBinlogEvent[1];
+        final IBinlogEvent[] events = new IBinlogEvent[1];
 
         BinlogEventV4HeaderImpl xidEventHeader = new BinlogEventV4HeaderImpl();
         xidEventHeader.setEventType(MySQLConstants.XID_EVENT);
-        RawBinlogEventXid commitEvent = new RawBinlogEventXid(
+        BinlogEventXid commitEvent = new BinlogEventXid(
                 new XidEvent(xidEventHeader)
         );
 
         Thread pipelineThread = new Thread(() -> {
             try {
-                events[0] = (RawBinlogEvent) method.invoke(pipelineOrchestrator, 0, 0);
+                events[0] = (IBinlogEvent) method.invoke(pipelineOrchestrator, 0, 0);
             } catch (IllegalAccessException | InvocationTargetException e) {
                 e.printStackTrace();
             }
@@ -425,12 +427,12 @@ public class PipelineOrchestratorTest {
         assertNull(events[0]);
 
         for (int i = 0; i < 20; i++) {
-            rawBinlogEventLinkedBlockingQueue.add(new RawBinlogEventRows(
+            binlogEventLinkedBlockingQueue.add(new BinlogEventRows(
                     new WriteRowsEventV2(new BinlogEventV4HeaderImpl()))
             );
         }
 
-        rawBinlogEventLinkedBlockingQueue.add(commitEvent);
+        binlogEventLinkedBlockingQueue.add(commitEvent);
         while (events[0] == null) {
             Thread.sleep(5);
         }

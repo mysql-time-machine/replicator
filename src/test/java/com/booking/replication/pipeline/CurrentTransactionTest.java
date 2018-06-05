@@ -1,18 +1,14 @@
 package com.booking.replication.pipeline;
 
-import com.booking.replication.binlog.event.RawBinlogEvent;
-import com.booking.replication.binlog.event.RawBinlogEventQuery;
-import com.booking.replication.binlog.event.RawBinlogEventTableMap;
-import com.booking.replication.binlog.event.RawBinlogEventXid;
-import com.google.code.or.binlog.BinlogEventV4;
+import com.booking.replication.binlog.event.*;
+import com.booking.replication.binlog.event.impl.BinlogEventQuery;
+import com.booking.replication.binlog.event.impl.BinlogEventXid;
+import com.booking.replication.binlog.event.impl.BinlogEventTableMap;
 import com.google.code.or.binlog.impl.event.BinlogEventV4HeaderImpl;
 import com.google.code.or.binlog.impl.event.QueryEvent;
 import com.google.code.or.binlog.impl.event.TableMapEvent;
 import com.google.code.or.binlog.impl.event.XidEvent;
-import com.google.code.or.common.glossary.column.StringColumn;
 import org.junit.Test;
-
-import java.lang.reflect.Constructor;
 
 import static org.junit.Assert.*;
 
@@ -39,7 +35,7 @@ public class CurrentTransactionTest {
     @Test
     public void createCurrentTransactionWithBeginEvent() throws Exception {
 
-        RawBinlogEventQuery queryEvent = new RawBinlogEventQuery(
+        BinlogEventQuery queryEvent = new BinlogEventQuery(
                 new QueryEvent(new BinlogEventV4HeaderImpl())
         );
         queryEvent.setSql("BEGIN");
@@ -51,7 +47,7 @@ public class CurrentTransactionTest {
     @Test
     public void setFinishEvent() throws Exception {
         XidEvent xidEvent = new XidEvent(new BinlogEventV4HeaderImpl());
-        RawBinlogEventXid rawBinlogEventXid = new RawBinlogEventXid(xidEvent);
+        BinlogEventXid rawBinlogEventXid = new BinlogEventXid(xidEvent);
 
         CurrentTransaction currentTransaction = new CurrentTransaction();
         currentTransaction.setFinishEvent(rawBinlogEventXid);
@@ -64,7 +60,7 @@ public class CurrentTransactionTest {
     public void setFinishEvent1() throws Exception {
 
         QueryEvent queryEvent = new QueryEvent(new BinlogEventV4HeaderImpl());
-        RawBinlogEventQuery rawBinlogEventQuery = new RawBinlogEventQuery(queryEvent);
+        BinlogEventQuery rawBinlogEventQuery = new BinlogEventQuery(queryEvent);
 
         rawBinlogEventQuery.setSql("COMMIT");
 
@@ -83,7 +79,7 @@ public class CurrentTransactionTest {
 
         for (int i=0; i<5; i++) {
             QueryEvent queryEvent = new QueryEvent(new BinlogEventV4HeaderImpl());
-            RawBinlogEventQuery rawBinlogEventQuery = new RawBinlogEventQuery(queryEvent);
+            BinlogEventQuery rawBinlogEventQuery = new BinlogEventQuery(queryEvent);
             currentTransaction.addEvent(rawBinlogEventQuery);
         }
         assertEquals(5, currentTransaction.getEventsCounter());
@@ -95,7 +91,7 @@ public class CurrentTransactionTest {
         assertEquals(0, currentTransaction.getEventsCounter());
         for (int i=0; i<5; i++) {
             QueryEvent queryEvent = new QueryEvent(new BinlogEventV4HeaderImpl());
-            RawBinlogEventQuery rawBinlogEventQuery = new RawBinlogEventQuery(queryEvent);
+            BinlogEventQuery rawBinlogEventQuery = new BinlogEventQuery(queryEvent);
             currentTransaction.addEvent(rawBinlogEventQuery);
         }
         assertEquals(5, currentTransaction.getEventsCounter());
@@ -111,18 +107,18 @@ public class CurrentTransactionTest {
         CurrentTransaction currentTransaction = new CurrentTransaction();
 
         for (int i = 0; i < 5; i++) {
-            RawBinlogEventQuery queryEvent = new RawBinlogEventQuery(
+            BinlogEventQuery queryEvent = new BinlogEventQuery(
                     new QueryEvent(new BinlogEventV4HeaderImpl())
             );
             currentTransaction.addEvent(queryEvent);
         }
-        for (RawBinlogEvent event: currentTransaction.getEvents()) {
+        for (IBinlogEvent event: currentTransaction.getEvents()) {
             assertEquals(0, event.getTimestamp());
         }
 
         currentTransaction.setEventsTimestamp(Long.MAX_VALUE);
 
-        for (RawBinlogEvent event: currentTransaction.getEvents()) {
+        for (IBinlogEvent event: currentTransaction.getEvents()) {
             assertEquals(Long.MAX_VALUE, event.getTimestamp());
         }
 
@@ -139,7 +135,7 @@ public class CurrentTransactionTest {
     @Test
     public void hasMappingInTransaction() throws Exception {
 
-        RawBinlogEventTableMap tableMapEvent = new RawBinlogEventTableMap(
+        BinlogEventTableMap tableMapEvent = new BinlogEventTableMap(
                 new TableMapEvent(new BinlogEventV4HeaderImpl())
         );
 

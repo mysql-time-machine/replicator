@@ -5,7 +5,7 @@ import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 
 import com.booking.replication.applier.SupportedAppliers.ApplierName;
 
-import com.booking.replication.binlog.event.*;
+import com.booking.replication.binlog.event.impl.*;
 import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
@@ -62,25 +62,25 @@ public class EventCountingApplier implements Applier {
     }
 
     @Override
-    public void applyBeginQueryEvent(RawBinlogEventQuery event, CurrentTransaction currentTransaction) {
+    public void applyBeginQueryEvent(BinlogEventQuery event, CurrentTransaction currentTransaction) {
         wrapped.applyBeginQueryEvent(event, currentTransaction);
         counter.inc();
     }
 
     @Override
-    public void applyCommitQueryEvent(RawBinlogEventQuery event, CurrentTransaction currentTransaction) {
+    public void applyCommitQueryEvent(BinlogEventQuery event, CurrentTransaction currentTransaction) {
         wrapped.applyCommitQueryEvent(event, currentTransaction);
         counter.inc();
     }
 
     @Override
-    public void applyXidEvent(RawBinlogEventXid event, CurrentTransaction currentTransaction) {
+    public void applyXidEvent(BinlogEventXid event, CurrentTransaction currentTransaction) {
         wrapped.applyXidEvent(event, currentTransaction);
         counter.inc();
     }
 
     @Override
-    public void applyRotateEvent(RawBinlogEventRotate event) throws ApplierException, IOException {
+    public void applyRotateEvent(BinlogEventRotate event) throws ApplierException, IOException {
         wrapped.applyRotateEvent(event);
     }
 
@@ -96,13 +96,13 @@ public class EventCountingApplier implements Applier {
     }
 
     @Override
-    public void applyFormatDescriptionEvent(RawBinlogEventFormatDescription event) {
+    public void applyFormatDescriptionEvent(BinlogEventFormatDescription event) {
         wrapped.applyFormatDescriptionEvent(event);
         counter.inc();
     }
 
     @Override
-    public void applyTableMapEvent(RawBinlogEventTableMap event) {
+    public void applyTableMapEvent(BinlogEventTableMap event) {
         wrapped.applyTableMapEvent(event);
         counter.inc();
     }

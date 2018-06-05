@@ -1,5 +1,8 @@
-package com.booking.replication.binlog.event;
+package com.booking.replication.binlog.event.impl;
 
+import com.booking.replication.binlog.BinlogEventParserProviderCode;
+import com.booking.replication.binlog.event.BinlogEventType;
+import com.booking.replication.binlog.event.IBinlogEvent;
 import com.github.shyiko.mysql.binlog.event.*;
 import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.impl.event.*;
@@ -8,9 +11,7 @@ import com.google.code.or.common.util.MySQLConstants;
 /**
  * Generic class for working with binlog events from different parser providers
  */
-public class RawBinlogEvent {
-
-    protected RawBinlogEventHeader rawEventHeader; // TODO: use this
+public class BinlogEvent implements IBinlogEvent {
 
     protected final int     BINLOG_PARSER_PROVIDER;
     protected final boolean USING_DEPRECATED_PARSER;
@@ -22,13 +23,14 @@ public class RawBinlogEvent {
     protected long          timestampOfBinlogEvent;
 
 
+    @Override
     public void setBinlogFilename(String binlogFilename) {
         this.binlogFilename = binlogFilename;
     }
 
     private String binlogFilename;
 
-    public RawBinlogEvent(Object event) throws Exception {
+    public BinlogEvent(Object event) throws Exception {
 
         // timeOfReceipt in OpenReplicator is set as:
         //
@@ -69,6 +71,7 @@ public class RawBinlogEvent {
         }
     }
 
+    @Override
     public boolean hasHeader() {
         if (binlogEventV4 != null) {
             return (binlogEventV4.getHeader() != null);
@@ -78,17 +81,21 @@ public class RawBinlogEvent {
         }
     }
 
+    @Override
     public long getTimestampOfReceipt() {
        return timestampOfReceipt;
     }
 
-    // timestamp received from OpenReplicator is in millisecond form,
-    // but the millisecond part is actually 000 (for example 1447755881000)
-    // TODO: verify that this is the same in Binlog Connector
+    // TODO:
+    //   timestamp received from OpenReplicator is in millisecond form,
+    //   but the millisecond part is actually 000 (for example 1447755881000)
+    //      => verify that this is the same in Binlog Connector
+    @Override
     public long getTimestamp() {
         return this.timestampOfBinlogEvent;
     }
 
+    @Override
     public String getBinlogFilename() {
         if (USING_DEPRECATED_PARSER) {
             return getOpenReplicatorEventBinlogFileName(binlogEventV4);
@@ -98,10 +105,12 @@ public class RawBinlogEvent {
         }
     }
 
+    @Override
     public void overrideTimestamp(long newTimestampValue) {
         this.timestampOfBinlogEvent = newTimestampValue;
     }
 
+    @Override
     public boolean isQuery() {
         // All constants from OR are Enums in BinlogConnector so need to check for both
         if (binlogEventV4 != null) {
@@ -112,6 +121,7 @@ public class RawBinlogEvent {
         }
     }
 
+    @Override
     public String getQuerySQL() {
         if (USING_DEPRECATED_PARSER) {
             return    ((QueryEvent) binlogEventV4).getSql().toString();
@@ -121,6 +131,7 @@ public class RawBinlogEvent {
         }
     }
 
+    @Override
     public boolean isTableMap() {
         // All constants from OR are Enums in BinlogConnector so need to check for both
         if (binlogEventV4 != null) {
@@ -131,6 +142,7 @@ public class RawBinlogEvent {
         }
     }
 
+    @Override
     public boolean isUpdateRows() {
         // All constants from OR are Enums in BinlogConnector so need to check for both
         if (binlogEventV4 != null) {
@@ -145,6 +157,7 @@ public class RawBinlogEvent {
         }
     }
 
+    @Override
     public boolean isWriteRows() {
         if (binlogEventV4 != null) {
             return (
@@ -158,6 +171,7 @@ public class RawBinlogEvent {
         }
     }
 
+    @Override
     public boolean isDeleteRows() {
         // All constants from OR are Enums in BinlogConnector so need to check for both
         if (binlogEventV4 != null) {
@@ -172,6 +186,7 @@ public class RawBinlogEvent {
         }
     }
 
+    @Override
     public boolean  isXid() {
         // All constants from OR are Enums in BinlogConnector so need to check for both
         if (binlogEventV4 != null) {
@@ -182,6 +197,7 @@ public class RawBinlogEvent {
         }
     }
 
+    @Override
     public boolean isFormatDescription() {
         // All constants from OR are Enums in BinlogConnector so need to check for both
         if (binlogEventV4 != null) {
@@ -192,6 +208,7 @@ public class RawBinlogEvent {
         }
     }
 
+    @Override
     public boolean isRotate() {
         // All constants from OR are Enums in BinlogConnector so need to check for both
         if (binlogEventV4 != null) {
@@ -202,6 +219,7 @@ public class RawBinlogEvent {
         }
     }
 
+    @Override
     public boolean isStop() {
         // All constants from OR are Enums in BinlogConnector so need to check for both
         if (binlogEventV4 != null) {
@@ -212,92 +230,91 @@ public class RawBinlogEvent {
         }
     }
 
-    // TYPE
-    public RawEventType getEventType() {
+    @Override
+    public BinlogEventType getEventType() {
 
-        RawEventType t = RawEventType.UNKNOWN;
+        BinlogEventType t = BinlogEventType.UNKNOWN;
 
         if (binlogEventV4 != null) {
             switch (binlogEventV4.getHeader().getEventType()) {
                 case MySQLConstants.QUERY_EVENT:
-                    t = RawEventType.QUERY_EVENT;
+                    t = BinlogEventType.QUERY_EVENT;
                     break;
                 case MySQLConstants.TABLE_MAP_EVENT:
-                    t = RawEventType.TABLE_MAP_EVENT;
+                    t = BinlogEventType.TABLE_MAP_EVENT;
                     break;
                 case MySQLConstants.UPDATE_ROWS_EVENT:
                 case MySQLConstants.UPDATE_ROWS_EVENT_V2:
-                    t = RawEventType.UPDATE_ROWS_EVENT;
+                    t = BinlogEventType.UPDATE_ROWS_EVENT;
                     break;
                 case MySQLConstants.WRITE_ROWS_EVENT:
                 case MySQLConstants.WRITE_ROWS_EVENT_V2:
-                    t = RawEventType.WRITE_ROWS_EVENT;
+                    t = BinlogEventType.WRITE_ROWS_EVENT;
                     break;
                 case MySQLConstants.DELETE_ROWS_EVENT:
                 case MySQLConstants.DELETE_ROWS_EVENT_V2:
-                    t = RawEventType.DELETE_ROWS_EVENT;
+                    t = BinlogEventType.DELETE_ROWS_EVENT;
                     break;
                 case MySQLConstants.XID_EVENT:
-                    t = RawEventType.XID_EVENT;
+                    t = BinlogEventType.XID_EVENT;
                     break;
                 case MySQLConstants.FORMAT_DESCRIPTION_EVENT:
-                    t = RawEventType.FORMAT_DESCRIPTION_EVENT;
+                    t = BinlogEventType.FORMAT_DESCRIPTION_EVENT;
                     break;
                 case MySQLConstants.ROTATE_EVENT:
-                    t = RawEventType.ROTATE_EVENT;
+                    t = BinlogEventType.ROTATE_EVENT;
                     break;
                 case MySQLConstants.STOP_EVENT:
                     break;
                 default:
-                    t = RawEventType.UNKNOWN;
+                    t = BinlogEventType.UNKNOWN;
                     break;
             }
         }
         else {
             switch (binlogConnectorEvent.getHeader().getEventType()) {
                 case QUERY:
-                    t = RawEventType.QUERY_EVENT;
+                    t = BinlogEventType.QUERY_EVENT;
                     break;
                 case TABLE_MAP:
-                    t = RawEventType.TABLE_MAP_EVENT;
+                    t = BinlogEventType.TABLE_MAP_EVENT;
                     break;
                 case PRE_GA_UPDATE_ROWS:
                 case UPDATE_ROWS:
                 case EXT_UPDATE_ROWS:
-                    t = RawEventType.UPDATE_ROWS_EVENT;
+                    t = BinlogEventType.UPDATE_ROWS_EVENT;
                     break;
                 case PRE_GA_WRITE_ROWS:
                 case WRITE_ROWS:
                 case EXT_WRITE_ROWS:
-                    t = RawEventType.WRITE_ROWS_EVENT;
+                    t = BinlogEventType.WRITE_ROWS_EVENT;
                     break;
                 case PRE_GA_DELETE_ROWS:
                 case DELETE_ROWS:
                 case EXT_DELETE_ROWS:
-                    t = RawEventType.DELETE_ROWS_EVENT;
+                    t = BinlogEventType.DELETE_ROWS_EVENT;
                     break;
                 case XID:
-                    t = RawEventType.XID_EVENT;
+                    t = BinlogEventType.XID_EVENT;
                     break;
                 case FORMAT_DESCRIPTION:
-                    t = RawEventType.FORMAT_DESCRIPTION_EVENT;
+                    t = BinlogEventType.FORMAT_DESCRIPTION_EVENT;
                     break;
                 case ROTATE:
-                    t = RawEventType.ROTATE_EVENT;
+                    t = BinlogEventType.ROTATE_EVENT;
                     break;
                 case STOP:
-                    t = RawEventType.STOP_EVENT;
+                    t = BinlogEventType.STOP_EVENT;
                     break;
                 default:
-                    t = RawEventType.UNKNOWN;
+                    t = BinlogEventType.UNKNOWN;
                     break;
             }
         }
         return  t;
     }
 
-    // #####################################################
-    // FILE NAME
+    @Override
     public String getFilename() {
         if (this.USING_DEPRECATED_PARSER) {
             return getOpenReplicatorEventBinlogFileName(this.binlogEventV4);
@@ -347,7 +364,7 @@ public class RawBinlogEvent {
         }
     }
 
-    // POSITION
+    @Override
     public long getPosition() {
         if (this.USING_DEPRECATED_PARSER) {
             return this.binlogEventV4.getHeader().getPosition();
@@ -363,6 +380,7 @@ public class RawBinlogEvent {
         }
     }
 
+    @Override
     public long getNextPosition() {
         if (this.USING_DEPRECATED_PARSER) {
             return this.binlogEventV4.getHeader().getNextPosition();
@@ -379,10 +397,12 @@ public class RawBinlogEvent {
         }
     }
 
+    @Override
     public BinlogEventV4 getBinlogEventV4() {
         return binlogEventV4;
     }
 
+    @Override
     public Event getBinlogConnectorEvent() {
         return binlogConnectorEvent;
     }

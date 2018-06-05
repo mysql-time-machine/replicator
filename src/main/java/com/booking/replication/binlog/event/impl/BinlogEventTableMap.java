@@ -1,5 +1,6 @@
-package com.booking.replication.binlog.event;
+package com.booking.replication.binlog.event.impl;
 
+import com.booking.replication.binlog.event.impl.BinlogEvent;
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.google.code.or.binlog.impl.event.TableMapEvent;
 import com.google.code.or.common.glossary.column.StringColumn;
@@ -7,9 +8,9 @@ import com.google.code.or.common.glossary.column.StringColumn;
 /**
  * Created by bosko on 5/22/17.
  */
-public class RawBinlogEventTableMap extends RawBinlogEvent {
+public class BinlogEventTableMap extends BinlogEvent {
 
-    public RawBinlogEventTableMap(Object event) throws Exception {
+    public BinlogEventTableMap(Object event) throws Exception {
         super(event);
     }
 

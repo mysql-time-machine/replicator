@@ -1,9 +1,8 @@
 package com.booking.replication.sql;
 
 import com.booking.replication.binlog.event.QueryEventType;
-import com.booking.replication.binlog.event.RawBinlogEventQuery;
+import com.booking.replication.binlog.event.impl.BinlogEventQuery;
 import com.booking.replication.sql.exception.QueryInspectorException;
-import com.google.code.or.binlog.impl.event.QueryEvent;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -151,7 +150,7 @@ public class QueryInspector {
         }
     }
 
-    public static QueryEventType getQueryEventType(RawBinlogEventQuery event) {
+    public static QueryEventType getQueryEventType(BinlogEventQuery event) {
         String querySQL = event.getSql().toString();
         boolean isDDLTable = isDDLTable(querySQL);
         boolean isDDLView = isDDLView(querySQL);

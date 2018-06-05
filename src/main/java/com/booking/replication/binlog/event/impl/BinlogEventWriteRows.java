@@ -1,6 +1,5 @@
-package com.booking.replication.binlog.event;
+package com.booking.replication.binlog.event.impl;
 
-import com.booking.replication.applier.HBaseApplier;
 import com.booking.replication.binlog.common.Cell;
 import com.booking.replication.binlog.common.CellExtractor;
 import com.booking.replication.binlog.common.Row;
@@ -18,13 +17,13 @@ import java.util.*;
 /**
  * Created by bosko on 6/1/17.
  */
-public class RawBinlogEventWriteRows extends RawBinlogEventRows {
+public class BinlogEventWriteRows extends BinlogEventRows {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(RawBinlogEventWriteRows.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(BinlogEventWriteRows.class);
 
     List<Row> extractedRows;
 
-    public RawBinlogEventWriteRows(Object event) throws Exception {
+    public BinlogEventWriteRows(Object event) throws Exception {
         super(event);
         extractedRows = this.extractRowsFromEvent();
     }

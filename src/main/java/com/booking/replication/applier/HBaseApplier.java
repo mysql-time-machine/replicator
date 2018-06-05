@@ -1,11 +1,10 @@
 package com.booking.replication.applier;
 
-import com.booking.replication.Constants;
 import com.booking.replication.applier.hbase.HBaseApplierWriter;
 import com.booking.replication.applier.hbase.TaskBufferInconsistencyException;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
-import com.booking.replication.binlog.event.*;
+import com.booking.replication.binlog.event.impl.*;
 import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
@@ -80,17 +79,17 @@ public class HBaseApplier implements Applier {
     }
 
     @Override
-    public void applyBeginQueryEvent(RawBinlogEventQuery event, CurrentTransaction currentTransaction) {
+    public void applyBeginQueryEvent(BinlogEventQuery event, CurrentTransaction currentTransaction) {
     }
 
     @Override
-    public void applyCommitQueryEvent(RawBinlogEventQuery event, CurrentTransaction currentTransaction) {
+    public void applyCommitQueryEvent(BinlogEventQuery event, CurrentTransaction currentTransaction) {
         // TODO: remove unnecessary params
         markCurrentTransactionForCommit();
     }
 
     @Override
-    public void applyXidEvent(RawBinlogEventXid event, CurrentTransaction currentTransaction) {
+    public void applyXidEvent(BinlogEventXid event, CurrentTransaction currentTransaction) {
         // TODO: add transactionID to storage
         // long transactionID = event.getXid();
         // TODO: add transaction UUID to storage
@@ -98,7 +97,7 @@ public class HBaseApplier implements Applier {
     }
 
     @Override
-    public void applyRotateEvent(RawBinlogEventRotate event) throws ApplierException, IOException {
+    public void applyRotateEvent(BinlogEventRotate event) throws ApplierException, IOException {
         LOGGER.info("binlog rotate ["
                 + event.getBinlogFilename()
                 + "], flushing buffer of "
@@ -216,12 +215,12 @@ public class HBaseApplier implements Applier {
     }
 
     @Override
-    public void applyFormatDescriptionEvent(RawBinlogEventFormatDescription event) {
+    public void applyFormatDescriptionEvent(BinlogEventFormatDescription event) {
         LOGGER.info("Processing file " + event.getBinlogFilename());
     }
 
     @Override
-    public void applyTableMapEvent(RawBinlogEventTableMap event) {
+    public void applyTableMapEvent(BinlogEventTableMap event) {
 
         String tableName = event.getTableName().toString();
 

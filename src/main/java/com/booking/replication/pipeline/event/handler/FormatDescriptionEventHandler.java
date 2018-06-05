@@ -1,7 +1,7 @@
 package com.booking.replication.pipeline.event.handler;
 
-import com.booking.replication.binlog.event.RawBinlogEvent;
-import com.booking.replication.binlog.event.RawBinlogEventFormatDescription;
+import com.booking.replication.binlog.event.impl.BinlogEventFormatDescription;
+import com.booking.replication.binlog.event.IBinlogEvent;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import org.slf4j.Logger;
@@ -23,14 +23,14 @@ public class FormatDescriptionEventHandler implements RawBinlogEventHandler {
 
 
     @Override
-    public void apply(RawBinlogEvent rawBinlogEvent, CurrentTransaction currentTransaction) {
-        final RawBinlogEventFormatDescription event = (RawBinlogEventFormatDescription) rawBinlogEvent;
+    public void apply(IBinlogEvent binlogEvent, CurrentTransaction currentTransaction) {
+        final BinlogEventFormatDescription event = (BinlogEventFormatDescription) binlogEvent;
         eventHandlerConfiguration.getApplier().applyFormatDescriptionEvent(event);
     }
 
     @Override
-    public void handle(RawBinlogEvent rawBinlogEvent) throws TransactionException, TransactionSizeLimitException {
-        final RawBinlogEventFormatDescription event = (RawBinlogEventFormatDescription) rawBinlogEvent;
+    public void handle(IBinlogEvent binlogEvent) throws TransactionException, TransactionSizeLimitException {
+        final BinlogEventFormatDescription event = (BinlogEventFormatDescription) binlogEvent;
         if (pipelineOrchestrator.isInTransaction()) {
             pipelineOrchestrator.addEventIntoTransaction(event);
         } else {

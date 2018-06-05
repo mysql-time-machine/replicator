@@ -1,7 +1,6 @@
 package com.booking.replication.augmenter;
 
-import com.booking.replication.binlog.event.RawBinlogEventRows;
-import com.booking.replication.applier.hbase.HBaseWriterTask;
+import com.booking.replication.binlog.event.impl.BinlogEventRows;
 import com.google.code.or.binlog.impl.event.AbstractRowEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +24,7 @@ public class AugmentedRowsEvent {
     private String binlogFileName;
     private List<AugmentedRow> singleRowEvents = new ArrayList<>();
 
-    AugmentedRowsEvent(RawBinlogEventRows ev) {
+    AugmentedRowsEvent(BinlogEventRows ev) {
         binlogFileName = ev.getBinlogFilename();
     }
 

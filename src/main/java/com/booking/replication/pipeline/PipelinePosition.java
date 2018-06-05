@@ -1,15 +1,8 @@
 package com.booking.replication.pipeline;
 
 import com.booking.replication.binlog.EventPosition;
-import com.google.code.or.binlog.impl.event.TableMapEvent;
-import com.google.code.or.binlog.impl.event.XidEvent;
-import com.google.code.or.common.util.MySQLConstants;
-
-import com.booking.replication.binlog.event.RawBinlogEvent;
-import com.booking.replication.binlog.event.RawBinlogEventTableMap;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.booking.replication.binlog.event.impl.BinlogEventTableMap;
+import com.booking.replication.binlog.event.IBinlogEvent;
 
 /**
  * Created by bosko on 7/25/16.
@@ -166,7 +159,7 @@ public class PipelinePosition {
     public void updatePipelineLastMapEventPosition(
             String host,
             int serverID,
-            RawBinlogEventTableMap event,
+            BinlogEventTableMap event,
             long fakeMicrosecondCounter
     ) {
         if (this.getLastMapEventPosition() == null) {
@@ -205,7 +198,7 @@ public class PipelinePosition {
     public void updatCurrentPipelinePosition(
         String host,
         int serverID,
-        RawBinlogEvent event,
+        IBinlogEvent event,
         long fakeMicrosecondCounter
     ) {
         this.getCurrentPosition().setHost(host);

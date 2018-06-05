@@ -2,15 +2,14 @@ package com.booking.replication.pipeline.event.handler;
 
 import com.booking.replication.Constants;
 import com.booking.replication.Metrics;
-import com.booking.replication.binlog.event.RawBinlogEvent;
-import com.booking.replication.binlog.event.RawBinlogEventTableMap;
+import com.booking.replication.binlog.event.impl.BinlogEventTableMap;
+import com.booking.replication.binlog.event.IBinlogEvent;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.pipeline.PipelinePosition;
 import com.booking.replication.replicant.ReplicantPool;
 import com.booking.replication.schema.exception.TableMapException;
 import com.codahale.metrics.Meter;
-import com.google.code.or.binlog.impl.event.TableMapEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,8 +37,8 @@ public class TableMapEventHandler implements RawBinlogEventHandler {
     }
 
     @Override
-    public void apply(RawBinlogEvent rawBinlogEvent, CurrentTransaction currentTransaction) throws EventHandlerApplyException, TableMapException {
-        final RawBinlogEventTableMap event = (RawBinlogEventTableMap) rawBinlogEvent;
+    public void apply(IBinlogEvent binlogEvent, CurrentTransaction currentTransaction) throws EventHandlerApplyException, TableMapException {
+        final BinlogEventTableMap event = (BinlogEventTableMap) binlogEvent;
         String tableName = event.getTableName();
 
         if (tableName.equals(Constants.HEART_BEAT_TABLE)) {
@@ -56,8 +55,8 @@ public class TableMapEventHandler implements RawBinlogEventHandler {
     }
 
     @Override
-    public void handle(RawBinlogEvent rawBinlogEvent) throws TransactionException, TransactionSizeLimitException {
-        final RawBinlogEventTableMap event = (RawBinlogEventTableMap) rawBinlogEvent;
+    public void handle(IBinlogEvent binlogEvent) throws TransactionException, TransactionSizeLimitException {
+        final BinlogEventTableMap event = (BinlogEventTableMap) binlogEvent;
         pipelineOrchestrator.currentTransaction.updateCache(event);
         pipelineOrchestrator.addEventIntoTransaction(event);
     }

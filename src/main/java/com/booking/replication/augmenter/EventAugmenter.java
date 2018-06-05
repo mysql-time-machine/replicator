@@ -4,6 +4,7 @@ import static com.codahale.metrics.MetricRegistry.name;
 
 import com.booking.replication.binlog.common.Cell;
 import com.booking.replication.binlog.event.*;
+import com.booking.replication.binlog.event.impl.*;
 import com.codahale.metrics.Counter;
 
 import com.booking.replication.Metrics;
@@ -80,28 +81,28 @@ public class EventAugmenter {
         return activeSchemaVersion;
     }
 
-    public HashMap<String, String> getSchemaTransitionSequence(RawBinlogEvent event) throws SchemaTransitionException {
+    public HashMap<String, String> getSchemaTransitionSequence(IBinlogEvent event) throws SchemaTransitionException {
 
         if (event.isQuery()) {
 
-            String ddl = ((RawBinlogEventQuery) event).getSql();
+            String ddl = ((BinlogEventQuery) event).getSql();
 
             // query
             HashMap<String, String> sqlCommands = new HashMap<>();
-            sqlCommands.put("databaseName", ((RawBinlogEventQuery) event).getDatabaseName());
+            sqlCommands.put("databaseName", ((BinlogEventQuery) event).getDatabaseName());
             sqlCommands.put("originalDDL", ddl);
 
             sqlCommands.put(
                     "ddl",
                     rewriteActiveSchemaName( // since active schema has a postfix, we need to make sure that queires that
                             ddl,             // specify schema explicitly are rewritten so they work properly on active schema
-                            ((RawBinlogEventQuery) event).getDatabaseName().toString()
+                            ((BinlogEventQuery) event).getDatabaseName().toString()
                     ));
 
                 // handle timezone overrides during schema changes
-                if (((RawBinlogEventQuery) event).hasTimezoneOverride()) {
+                if (((BinlogEventQuery) event).hasTimezoneOverride()) {
 
-                    HashMap<String,String> timezoneOverrideCommands = ((RawBinlogEventQuery) event).getTimezoneOverrideCommands();
+                    HashMap<String,String> timezoneOverrideCommands = ((BinlogEventQuery) event).getTimezoneOverrideCommands();
 
                     if (timezoneOverrideCommands.containsKey("timezonePre")) {
                         sqlCommands.put("timezonePre", timezoneOverrideCommands.get("timezonePre"));
@@ -144,23 +145,23 @@ public class EventAugmenter {
      * @param currentTransaction   CurrentTransaction
      * @return AugmentedRowsEvent  AugmentedRow
      */
-    public AugmentedRowsEvent mapDataEventToSchema(RawBinlogEventRows event, CurrentTransaction currentTransaction) throws TableMapException {
+    public AugmentedRowsEvent mapDataEventToSchema(BinlogEventRows event, CurrentTransaction currentTransaction) throws TableMapException {
 
         AugmentedRowsEvent au;
 
         switch (event.getEventType()) {
             case UPDATE_ROWS_EVENT:
-                RawBinlogEventUpdateRows updateRowsEvent = ((RawBinlogEventUpdateRows) event);
+                BinlogEventUpdateRows updateRowsEvent = ((BinlogEventUpdateRows) event);
                 au = augmentUpdateRowsEvent(updateRowsEvent, currentTransaction);
                 break;
 
             case WRITE_ROWS_EVENT:
-                RawBinlogEventWriteRows writeRowsEvent = ((RawBinlogEventWriteRows) event);
+                BinlogEventWriteRows writeRowsEvent = ((BinlogEventWriteRows) event);
                 au = augmentWriteRowsEvent(writeRowsEvent, currentTransaction);
                 break;
 
             case DELETE_ROWS_EVENT:
-                RawBinlogEventDeleteRows deleteRowsEvent = ((RawBinlogEventDeleteRows) event);
+                BinlogEventDeleteRows deleteRowsEvent = ((BinlogEventDeleteRows) event);
                 au = augmentDeleteRowsEvent(deleteRowsEvent, currentTransaction);
                 break;
 
@@ -177,7 +178,7 @@ public class EventAugmenter {
         return au;
     }
 
-    private AugmentedRowsEvent augmentWriteRowsEvent(RawBinlogEventWriteRows writeRowsEvent, CurrentTransaction currentTransaction) throws TableMapException {
+    private AugmentedRowsEvent augmentWriteRowsEvent(BinlogEventWriteRows writeRowsEvent, CurrentTransaction currentTransaction) throws TableMapException {
 
         // table name
         String tableName =  currentTransaction.getTableNameFromID(writeRowsEvent.getTableId());
@@ -253,7 +254,7 @@ public class EventAugmenter {
     }
 
 
-    private AugmentedRowsEvent augmentDeleteRowsEvent(RawBinlogEventDeleteRows deleteRowsEvent, CurrentTransaction currentTransaction)
+    private AugmentedRowsEvent augmentDeleteRowsEvent(BinlogEventDeleteRows deleteRowsEvent, CurrentTransaction currentTransaction)
             throws TableMapException {
 
         // table name
@@ -322,7 +323,7 @@ public class EventAugmenter {
         return augEventGroup;
     }
 
-    private AugmentedRowsEvent augmentUpdateRowsEvent(RawBinlogEventUpdateRows upEvent, CurrentTransaction currentTransaction) throws TableMapException {
+    private AugmentedRowsEvent augmentUpdateRowsEvent(BinlogEventUpdateRows upEvent, CurrentTransaction currentTransaction) throws TableMapException {
 
         // table name
         String tableName = currentTransaction.getTableNameFromID(upEvent.getTableId());

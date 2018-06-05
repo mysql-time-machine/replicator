@@ -1,13 +1,11 @@
-package com.booking.replication.binlog.event;
+package com.booking.replication.binlog.event.impl;
 
 import com.booking.replication.binlog.common.Cell;
 import com.booking.replication.binlog.common.CellExtractor;
 import com.booking.replication.binlog.common.Row;
 import com.github.shyiko.mysql.binlog.event.DeleteRowsEventData;
-import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
 import com.google.code.or.binlog.impl.event.DeleteRowsEvent;
 import com.google.code.or.binlog.impl.event.DeleteRowsEventV2;
-import com.google.code.or.binlog.impl.event.WriteRowsEvent;
 import com.google.code.or.common.glossary.Column;
 import com.google.code.or.common.util.MySQLConstants;
 
@@ -16,14 +14,11 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
-/**
- * Created by bosko on 6/1/17.
- */
-public class RawBinlogEventDeleteRows extends RawBinlogEventRows {
+public class BinlogEventDeleteRows extends BinlogEventRows {
 
     List<Row> extractedRows;
 
-    public RawBinlogEventDeleteRows(Object event) throws Exception {
+    public BinlogEventDeleteRows(Object event) throws Exception {
         super(event);
         extractedRows = this.extractRowsFromEvent();
     }

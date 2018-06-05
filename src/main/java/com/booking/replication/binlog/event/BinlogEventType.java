@@ -3,7 +3,7 @@ package com.booking.replication.binlog.event;
 /**
  * Created by bosko on 5/17/17.
  */
-public enum RawEventType {
+public enum BinlogEventType {
 
     QUERY_EVENT,
 

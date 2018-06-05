@@ -58,13 +58,13 @@ public class KafkaApplier implements Applier {
     @Override
     public void accept(AugmentedEvent augmentedEvent) {
         try {
-            byte[] header = KafkaApplier.MAPPER.writeValueAsBytes(augmentedEvent.getHeader());
-            byte[] data = KafkaApplier.MAPPER.writeValueAsBytes(augmentedEvent.getData());
-
             this.producers.computeIfAbsent(
                     Thread.currentThread().getName(), key -> this.getProducer()
             ).send(new ProducerRecord<>(
-                    this.topic, this.partitioner.partition(augmentedEvent, this.totalPartitions), header, data
+                    this.topic,
+                    this.partitioner.partition(augmentedEvent, this.totalPartitions),
+                    KafkaApplier.MAPPER.writeValueAsBytes(augmentedEvent.getHeader()),
+                    KafkaApplier.MAPPER.writeValueAsBytes(augmentedEvent.getData())
             ));
         } catch (JsonProcessingException exception) {
             throw new UncheckedIOException(exception);

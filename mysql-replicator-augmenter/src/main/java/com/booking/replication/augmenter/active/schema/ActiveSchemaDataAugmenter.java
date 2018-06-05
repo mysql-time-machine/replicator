@@ -24,11 +24,11 @@ public class ActiveSchemaDataAugmenter {
     private static final Logger LOG = Logger.getLogger(ActiveSchemaDataAugmenter.class.getName());
 
     private final ActiveSchemaContext context;
-    private final ActiveSchemaLoader loader;
+    private final ActiveSchemaManager manager;
 
-    public ActiveSchemaDataAugmenter(ActiveSchemaContext context, ActiveSchemaLoader loader) {
+    public ActiveSchemaDataAugmenter(ActiveSchemaContext context, ActiveSchemaManager manager) {
         this.context = context;
-        this.loader = loader;
+        this.manager = manager;
     }
 
     public AugmentedEventData apply(RawEventHeaderV4 eventHeader, RawEventData eventData) {
@@ -100,7 +100,7 @@ public class ActiveSchemaDataAugmenter {
     }
 
     private List<AugmentedEventColumn> getColumns(long tableId, BitSet includedColumns) {
-        List<AugmentedEventColumn> columnList = this.loader.listColumns(this.context.getTable(tableId).getName());
+        List<AugmentedEventColumn> columnList = this.manager.listColumns(this.context.getTable(tableId).getName());
         List<AugmentedEventColumn> includedColumnList = new LinkedList<>();
 
         for (int columnIndex = 0; columnIndex < columnList.size(); columnIndex++) {

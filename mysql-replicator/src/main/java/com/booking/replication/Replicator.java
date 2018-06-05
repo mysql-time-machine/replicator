@@ -59,13 +59,13 @@ public class Replicator {
 
         this.supplier.onEvent(this.streamsSupplier::push);
 
-        Consumer<Exception> exceptionHandle = (externalException) -> {
-            if (ForceRewindException.class.isInstance(externalException)) {
-                Replicator.LOG.log(Level.WARNING, "", externalException);
+        Consumer<Exception> exceptionHandle = (exception) -> {
+            if (ForceRewindException.class.isInstance(exception)) {
+                Replicator.LOG.log(Level.WARNING, "", exception);
 
                 this.rewind();
             } else {
-                Replicator.LOG.log(Level.SEVERE, "error", externalException);
+                Replicator.LOG.log(Level.SEVERE, "error", exception);
 
                 this.stop();
             }
@@ -86,7 +86,7 @@ public class Replicator {
             }
         });
 
-        this.coordinator.onLeadershipLoss(() -> {
+        this.coordinator.onLeadershipLose(() -> {
             try {
                 Replicator.LOG.log(Level.INFO, "stopping replicator");
 
@@ -104,13 +104,9 @@ public class Replicator {
     }
 
     public void start() {
-        try {
-            Replicator.LOG.log(Level.INFO, "starting coordinator");
+        Replicator.LOG.log(Level.INFO, "starting coordinator");
 
-            this.coordinator.start();
-        } catch (InterruptedException exception) {
-            Replicator.LOG.log(Level.SEVERE, "error starting coordinator", exception);
-        }
+        this.coordinator.start();
     }
 
     public void join() {
@@ -124,14 +120,9 @@ public class Replicator {
     }
 
     public void stop() {
-        try {
-            Replicator.LOG.log(Level.INFO, "stopping coordinator");
+        Replicator.LOG.log(Level.INFO, "stopping coordinator");
 
-            this.supplier.stop();
-            this.coordinator.stop();
-        } catch (IOException | InterruptedException exception) {
-            Replicator.LOG.log(Level.SEVERE, "error stopping coordinator", exception);
-        }
+        this.coordinator.stop();
     }
 
     public void rewind() {

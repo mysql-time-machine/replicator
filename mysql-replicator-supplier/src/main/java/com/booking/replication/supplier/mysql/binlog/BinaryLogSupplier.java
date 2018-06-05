@@ -9,7 +9,12 @@ import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class BinaryLogSupplier implements Supplier {
@@ -23,6 +28,8 @@ public class BinaryLogSupplier implements Supplier {
         String MYSQL_PASSWORD = "mysql.password";
     }
 
+    private final ExecutorService executor;
+    private final AtomicBoolean running;
     private final BinaryLogClient client;
 
     public BinaryLogSupplier(Map<String, String> configuration) {
@@ -37,6 +44,8 @@ public class BinaryLogSupplier implements Supplier {
         Objects.requireNonNull(username, String.format("Configuration required: %s", Configuration.MYSQL_USERNAME));
         Objects.requireNonNull(password, String.format("Configuration required: %s", Configuration.MYSQL_PASSWORD));
 
+        this.executor = Executors.newSingleThreadExecutor();
+        this.running = new AtomicBoolean(false);
         this.client = this.getClient(hostname, Integer.parseInt(port), schema, username, password);
     }
 
@@ -58,22 +67,41 @@ public class BinaryLogSupplier implements Supplier {
     }
 
     @Override
-    public void start(Checkpoint checkpoint) throws IOException {
-        if (!this.client.isConnected()) {
+    public void start(Checkpoint checkpoint) {
+        if (!this.client.isConnected() && !this.running.getAndSet(true)) {
             if (checkpoint != null) {
                 this.client.setServerId(checkpoint.getServerId());
                 this.client.setBinlogFilename(checkpoint.getBinlogFilename());
                 this.client.setBinlogPosition(checkpoint.getBinlogPosition());
             }
 
-            this.client.connect();
+            this.executor.submit(() -> {
+                try {
+                    this.client.connect();
+                } catch (IOException exception) {
+                    BinaryLogSupplier.LOG.log(Level.SEVERE, "error connecting", exception);
+                }
+            });
         }
     }
 
     @Override
-    public void stop() throws IOException {
-        if (this.client.isConnected()) {
-            this.client.disconnect();
+    public void stop() {
+        if (this.client.isConnected() && this.running.getAndSet(false)) {
+            try {
+                this.client.disconnect();
+            } catch (IOException exception) {
+                BinaryLogSupplier.LOG.log(Level.SEVERE, "error disconnecting", exception);
+            }
+
+            try {
+                this.executor.shutdown();
+                this.executor.awaitTermination(5L, TimeUnit.SECONDS);
+            } catch (InterruptedException exception) {
+                throw new RuntimeException(exception);
+            } finally {
+                this.executor.shutdownNow();
+            }
         }
     }
 }

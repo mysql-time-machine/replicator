@@ -4,6 +4,9 @@ import com.booking.replication.commons.checkpoint.CheckpointStorage;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -33,72 +36,106 @@ public abstract class Coordinator implements LeaderCoordinator, CheckpointStorag
     public interface Configuration {
         String TYPE = "coordinator.type";
     }
-    private final AtomicReference<Runnable> takeRunnable;
-    private final AtomicReference<Runnable> lossRunnable;
+
+    private static final long WAIT_STEP_MILLIS = 100;
+
+    private final ExecutorService executor;
+    private final AtomicBoolean running;
+    private final Semaphore semaphore;
     private final AtomicBoolean hasLeadership;
-    private final AtomicBoolean lostLeaderhip;
+    private final AtomicBoolean lostLeadership;
+    private final AtomicReference<Runnable> takeRunnable;
+    private final AtomicReference<Runnable> loseRunnable;
 
     protected Coordinator() {
+        this.executor = Executors.newSingleThreadExecutor();
+        this.running = new AtomicBoolean(false);
+        this.semaphore = new Semaphore(0);
+        this.hasLeadership = new AtomicBoolean(false);
+        this.lostLeadership = new AtomicBoolean(true);
         this.takeRunnable = new AtomicReference<>(() -> {});
-        this.lossRunnable = new AtomicReference<>(() -> {});
-        this.hasLeadership = new AtomicBoolean();
-        this.lostLeaderhip = new AtomicBoolean(true);
+        this.loseRunnable = new AtomicReference<>(() -> {});
     }
 
     @Override
     public void onLeadershipTake(Runnable runnable) {
         Objects.requireNonNull(runnable);
-
         this.takeRunnable.set(runnable);
     }
 
     @Override
-    public void onLeadershipLoss(Runnable runnable) {
+    public void onLeadershipLose(Runnable runnable) {
         Objects.requireNonNull(runnable);
-
-        this.lossRunnable.set(runnable);
+        this.loseRunnable.set(runnable);
     }
 
     protected void takeLeadership() {
         try {
             if (!this.hasLeadership.getAndSet(true)) {
-                this.lostLeaderhip.set(false);
+                this.awaitLeadership();
+                this.lostLeadership.set(false);
 
-                this.takeRunnable.get().run();
-
-                while (this.hasLeadership.get()) {
-                    Thread.sleep(5000L);
+                try {
+                    this.takeRunnable.get().run();
+                } catch (Exception exception) {
+                    Coordinator.LOG.log(Level.SEVERE, "error taking leadership", exception);
                 }
 
-                this.lossRunnable.get().run();
+                this.semaphore.acquire();
             }
         } catch (Exception exception) {
-            Coordinator.LOG.log(Level.SEVERE, "error taking leadership", exception);
+            Coordinator.LOG.log(Level.WARNING, "cannot take for leadership");
         } finally {
-            this.hasLeadership.set(false);
-            this.lostLeaderhip.set(true);
-        }
-    }
-
-    protected void lossLeadership() {
-        try {
-            this.hasLeadership.set(false);
-
-            while (!this.lostLeaderhip.get()) {
-                Thread.sleep(5000L);
+            if (!this.lostLeadership.getAndSet(true)) {
+                this.hasLeadership.set(false);
+                this.loseRunnable.get().run();
             }
-        } catch (InterruptedException exception) {
-            Coordinator.LOG.log(Level.SEVERE, "error taking leadership", exception);
         }
     }
 
-    public abstract void start() throws InterruptedException;
+    protected void loseLeadership() {
+        if (!this.lostLeadership.getAndSet(true)) {
+            this.hasLeadership.set(false);
+            this.loseRunnable.get().run();
+            this.semaphore.release();
+        }
+    }
 
-    public abstract void wait(long timeout, TimeUnit unit) throws InterruptedException;
+    public void start() {
+        if (!this.running.getAndSet(true)) {
+            this.executor.execute(this::takeLeadership);
+        }
+    }
 
-    public abstract void join() throws InterruptedException;
+    public abstract void awaitLeadership();
 
-    public abstract void stop() throws InterruptedException;
+    public void stop() {
+        if (this.running.getAndSet(false)) {
+            try {
+                this.loseLeadership();
+                this.executor.shutdown();
+                this.executor.awaitTermination(5L, TimeUnit.SECONDS);
+            } catch (InterruptedException exception) {
+                throw new RuntimeException(exception);
+            } finally {
+                this.executor.shutdownNow();
+            }
+        }
+    }
+
+    public void wait(long timeout, TimeUnit unit) throws InterruptedException {
+        long remainMillis = unit.toMillis(timeout);
+
+        while (remainMillis > 0) {
+            long sleepMillis = remainMillis > Coordinator.WAIT_STEP_MILLIS ? Coordinator.WAIT_STEP_MILLIS : remainMillis;
+            Thread.sleep(sleepMillis);
+            remainMillis -= sleepMillis;
+        }
+    }
+
+    public void join() throws InterruptedException {
+        this.wait(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
+    }
 
     public static Coordinator build(Map<String, String> configuration) {
         return Type.valueOf(

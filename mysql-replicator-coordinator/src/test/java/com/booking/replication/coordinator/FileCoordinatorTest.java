@@ -40,12 +40,12 @@ public class FileCoordinatorTest {
 
         FileCoordinatorTest.coordinator1 = new FileCoordinator(Collections.singletonMap(Coordinator.Configuration.TYPE, Coordinator.Type.FILE.name()));
         FileCoordinatorTest.coordinator1.onLeadershipTake(leadershipTake);
-        FileCoordinatorTest.coordinator1.onLeadershipLoss(leaderShipLoss);
+        FileCoordinatorTest.coordinator1.onLeadershipLose(leaderShipLoss);
         FileCoordinatorTest.coordinator1.start();
 
         FileCoordinatorTest.coordinator2 = new FileCoordinator(Collections.singletonMap(Coordinator.Configuration.TYPE, Coordinator.Type.FILE.name()));
         FileCoordinatorTest.coordinator2.onLeadershipTake(leadershipTake);
-        FileCoordinatorTest.coordinator2.onLeadershipLoss(leaderShipLoss);
+        FileCoordinatorTest.coordinator2.onLeadershipLose(leaderShipLoss);
         FileCoordinatorTest.coordinator2.start();
     }
 
@@ -79,6 +79,8 @@ public class FileCoordinatorTest {
     public static void after() throws InterruptedException {
         FileCoordinatorTest.coordinator1.stop();
         FileCoordinatorTest.coordinator2.stop();
+
+        Thread.sleep(2000L);
 
         assertEquals(0, FileCoordinatorTest.count.get());
     }

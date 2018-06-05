@@ -75,7 +75,7 @@ public final class ContainersProvider implements ServicesProvider {
         );
     }
 
-    public ServicesControl startMySQL(String schema, String username, String password, String initScript) {
+    public ServicesControl startMySQL(String schema, String username, String password, String... initScripts) {
         GenericContainer<?> mysql = this.getContainer(
                 System.getProperty(ContainersProvider.MYSQL_DOCKER_IMAGE_KEY, ContainersProvider.MYSQL_DOCKER_IMAGE_DEFAULT),
                 ContainersProvider.MYSQL_PORT,
@@ -88,8 +88,11 @@ public final class ContainersProvider implements ServicesProvider {
         ).withEnv(ContainersProvider.MYSQL_USER_KEY, username
         ).withEnv(ContainersProvider.MYSQL_PASSWORD_KEY, password
         ).withClasspathResourceMapping(ContainersProvider.MYSQL_CONFIGURATION_FILE, ContainersProvider.MYSQL_CONFIGURATION_PATH, BindMode.READ_ONLY
-        ).withClasspathResourceMapping(initScript, ContainersProvider.MYSQL_INIT_SCRIPT_PATH, BindMode.READ_ONLY
         );
+
+        for (String initScript : initScripts) {
+            mysql.withClasspathResourceMapping(initScript, ContainersProvider.MYSQL_INIT_SCRIPT_PATH, BindMode.READ_ONLY);
+        }
 
         mysql.start();
 

@@ -4,19 +4,16 @@ import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
-import org.apache.curator.framework.imps.CuratorFrameworkState;
-import org.apache.curator.framework.recipes.leader.LeaderSelector;
-import org.apache.curator.framework.recipes.leader.LeaderSelectorListener;
-import org.apache.curator.framework.state.ConnectionState;
+import org.apache.curator.framework.recipes.leader.LeaderLatch;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.CreateMode;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 
-public class ZookeeperCoordinator extends Coordinator implements LeaderSelectorListener {
+public class ZookeeperCoordinator extends Coordinator {
     public interface Configuration {
         String LEADERSHIP_PATH = "zookeeper.leadership.path";
         String CONNECTION_STRING = "zookeeper.connection.string";
@@ -25,10 +22,9 @@ public class ZookeeperCoordinator extends Coordinator implements LeaderSelectorL
     }
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final long WAIT_STEP_MILLIS = 100;
 
     private final CuratorFramework client;
-    private final LeaderSelector selector;
+    private final LeaderLatch latch;
 
     public ZookeeperCoordinator(Map<String, String> configuration) {
         String leadershipPath = configuration.get(Configuration.LEADERSHIP_PATH);
@@ -40,9 +36,7 @@ public class ZookeeperCoordinator extends Coordinator implements LeaderSelectorL
         Objects.requireNonNull(connectionString, String.format("Configuration required: %s", Configuration.CONNECTION_STRING));
 
         this.client = CuratorFrameworkFactory.newClient(connectionString, new ExponentialBackoffRetry(Integer.parseInt(retryInitialSleep), Integer.parseInt(retryMaximumAttempts)));
-        this.selector = new LeaderSelector(this.client, leadershipPath, this);
-
-        this.client.start();
+        this.latch = new LeaderLatch(this.client, leadershipPath);
     }
 
     @Override
@@ -82,42 +76,35 @@ public class ZookeeperCoordinator extends Coordinator implements LeaderSelectorL
     }
 
     @Override
-    public void takeLeadership(CuratorFramework client) {
-        this.takeLeadership();
-    }
-
-    @Override
-    public void stateChanged(CuratorFramework client, ConnectionState newState) {
-        if (client.getConnectionStateErrorPolicy().isErrorState(newState)) {
-            this.lossLeadership();
-        }
-    }
-
-    @Override
     public void start() {
-        this.selector.start();
-    }
-
-    @Override
-    public void wait(long timeout, TimeUnit unit) throws InterruptedException {
-        long remainMillis = unit.toMillis(timeout);
-
-        while (remainMillis > 0 && this.client.getState() != CuratorFrameworkState.STOPPED) {
-            long sleepMillis = remainMillis > ZookeeperCoordinator.WAIT_STEP_MILLIS ? ZookeeperCoordinator.WAIT_STEP_MILLIS : remainMillis;
-            Thread.sleep(sleepMillis);
-            remainMillis -= sleepMillis;
+        try {
+            this.client.start();
+            this.latch.start();
+        } catch (Exception exception) {
+            throw new RuntimeException(exception);
         }
+
+        super.start();
     }
 
     @Override
-    public void join() throws InterruptedException {
-        this.wait(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
+    public void awaitLeadership() {
+        try {
+            this.latch.await();
+        } catch (InterruptedException | EOFException exception) {
+            throw new RuntimeException(exception);
+        }
     }
 
     @Override
     public void stop() {
-        this.lossLeadership();
-        this.selector.close();
-        this.client.close();
+        super.stop();
+
+        try {
+            this.latch.close();
+            this.client.close();
+        } catch (IOException exception) {
+            throw new RuntimeException(exception);
+        }
     }
 }

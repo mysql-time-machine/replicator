@@ -46,12 +46,12 @@ public class ZookeeperCoordinatorTest {
 
         ZookeeperCoordinatorTest.coordinator1 = Coordinator.build(configuration);
         ZookeeperCoordinatorTest.coordinator1.onLeadershipTake(leadershipTake);
-        ZookeeperCoordinatorTest.coordinator1.onLeadershipLoss(leaderShipLoss);
+        ZookeeperCoordinatorTest.coordinator1.onLeadershipLose(leaderShipLoss);
         ZookeeperCoordinatorTest.coordinator1.start();
 
         ZookeeperCoordinatorTest.coordinator2 = Coordinator.build(configuration);
         ZookeeperCoordinatorTest.coordinator2.onLeadershipTake(leadershipTake);
-        ZookeeperCoordinatorTest.coordinator2.onLeadershipLoss(leaderShipLoss);
+        ZookeeperCoordinatorTest.coordinator2.onLeadershipLose(leaderShipLoss);
         ZookeeperCoordinatorTest.coordinator2.start();
     }
 
@@ -84,6 +84,8 @@ public class ZookeeperCoordinatorTest {
         ZookeeperCoordinatorTest.coordinator1.stop();
         ZookeeperCoordinatorTest.coordinator2.stop();
         ZookeeperCoordinatorTest.servicesControl.close();
+
+        Thread.sleep(2000L);
 
         assertEquals(0, ZookeeperCoordinatorTest.count.get());
     }

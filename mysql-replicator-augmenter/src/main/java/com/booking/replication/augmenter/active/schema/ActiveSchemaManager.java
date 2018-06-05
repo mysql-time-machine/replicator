@@ -1,6 +1,5 @@
 package com.booking.replication.augmenter.active.schema;
 
-import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.augmenter.model.AugmentedEventColumn;
 import com.booking.replication.augmenter.model.AugmentedEventTable;
 import com.mysql.jdbc.Driver;
@@ -9,7 +8,6 @@ import org.apache.commons.dbcp2.BasicDataSource;
 import java.io.Closeable;
 import java.io.IOException;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -18,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class ActiveSchemaLoader implements Closeable {
+public class ActiveSchemaManager implements Closeable {
     public interface Configuration {
         String MYSQL_DRIVER_CLASS = "augmenter.active.schema.mysql.driver.class";
         String MYSQL_HOSTNAME = "augmenter.active.schema.mysql.hostname";
@@ -32,14 +30,14 @@ public class ActiveSchemaLoader implements Closeable {
 
     private static final String CONNECTION_URL_FORMAT = "jdbc:mysql://%s:%d/%s";
     private static final String LIST_TABLES_SQL = "SHOW TABLES";
-    private static final String LIST_COLUMNS_SQL = "DESC ?";
-    private static final String SHOW_CREATE_TABLE_SQL = "SHOW CREATE TABLE ?";
+    private static final String LIST_COLUMNS_SQL = "DESC %s";
+    private static final String SHOW_CREATE_TABLE_SQL = "SHOW CREATE TABLE %s";
 
     private final String schema;
     private final BasicDataSource dataSource;
 
-    public ActiveSchemaLoader(Map<String, String> configuration) {
-        String driverClass = configuration.getOrDefault(Configuration.MYSQL_DRIVER_CLASS, ActiveSchemaLoader.DEFAULT_MYSQL_DRIVER_CLASS);
+    public ActiveSchemaManager(Map<String, String> configuration) {
+        String driverClass = configuration.getOrDefault(Configuration.MYSQL_DRIVER_CLASS, ActiveSchemaManager.DEFAULT_MYSQL_DRIVER_CLASS);
         String hostname = configuration.get(Configuration.MYSQL_HOSTNAME);
         String port = configuration.getOrDefault(Configuration.MYSQL_PORT, "3306");
         String schema = configuration.get(Configuration.MYSQL_SCHEMA);
@@ -59,7 +57,7 @@ public class ActiveSchemaLoader implements Closeable {
         BasicDataSource dataSource = new BasicDataSource();
 
         dataSource.setDriverClassName(driverClass);
-        dataSource.setUrl(String.format(ActiveSchemaLoader.CONNECTION_URL_FORMAT, hostname, port, schema));
+        dataSource.setUrl(String.format(ActiveSchemaManager.CONNECTION_URL_FORMAT, hostname, port, schema));
         dataSource.setUsername(username);
         dataSource.setPassword(password);
 
@@ -77,10 +75,10 @@ public class ActiveSchemaLoader implements Closeable {
 
     public List<AugmentedEventTable> listTables() {
         try (Connection connection = this.dataSource.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(ActiveSchemaLoader.LIST_TABLES_SQL)) {
+             Statement statement = connection.createStatement()) {
             List<AugmentedEventTable> tableList = new ArrayList<>();
 
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+            try (ResultSet resultSet = statement.executeQuery(ActiveSchemaManager.LIST_TABLES_SQL)) {
                 while (resultSet.next()) {
                     tableList.add(new AugmentedEventTable(
                             this.schema,
@@ -97,12 +95,10 @@ public class ActiveSchemaLoader implements Closeable {
 
     public List<AugmentedEventColumn> listColumns(String tableName) {
         try (Connection connection = this.dataSource.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(ActiveSchemaLoader.LIST_COLUMNS_SQL)) {
+             Statement statement = connection.createStatement()) {
             List<AugmentedEventColumn> columnList = new ArrayList<>();
 
-            preparedStatement.setString(1, tableName);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+            try (ResultSet resultSet = statement.executeQuery(String.format(ActiveSchemaManager.LIST_COLUMNS_SQL, tableName))) {
                 while (resultSet.next()) {
                     columnList.add(new AugmentedEventColumn(
                             resultSet.getString(1),
@@ -123,10 +119,8 @@ public class ActiveSchemaLoader implements Closeable {
 
     public String getCreateTable(String tableName) {
         try (Connection connection = this.dataSource.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(ActiveSchemaLoader.SHOW_CREATE_TABLE_SQL)) {
-            preparedStatement.setString(1, tableName);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+             Statement statement = connection.createStatement()) {
+            try (ResultSet resultSet = statement.executeQuery(String.format(ActiveSchemaManager.SHOW_CREATE_TABLE_SQL, tableName))) {
                 return resultSet.getString(2);
             }
         } catch (SQLException exception) {

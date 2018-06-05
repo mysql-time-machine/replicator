@@ -3,9 +3,12 @@ package com.booking.replication.coordinator;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.io.EOFException;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
@@ -23,13 +26,12 @@ public class FileCoordinator extends Coordinator {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private final ExecutorService executor;
-    private final AtomicBoolean running;
     private final String path;
 
+    private FileChannel fileChannel;
+    private FileLock fileLock;
+
     public FileCoordinator(Map<String, String> configuration) {
-        this.executor = Executors.newSingleThreadExecutor();
-        this.running = new AtomicBoolean();
         this.path = configuration.getOrDefault(Configuration.LEADERSHIP_PATH, "/tmp/leadership.coordinator");
     }
 
@@ -57,47 +59,51 @@ public class FileCoordinator extends Coordinator {
 
     @Override
     public void start() {
-        if (!this.running.getAndSet(true)) {
-            this.executor.execute(() -> {
-                while (this.running.get()) {
-                    try (FileChannel fileChannel = FileChannel.open(Paths.get(this.path), StandardOpenOption.WRITE, StandardOpenOption.CREATE);
-                         FileLock fileLock = fileChannel.tryLock()) {
-                        if (fileLock.isValid()) {
-                            this.takeLeadership();
-                        }
-                    } catch (Exception exception) {
-                        try {
-                            Thread.sleep(100L);
-                        } catch (InterruptedException interruptedException) {
-                            throw new RuntimeException(interruptedException);
-                        }
-                    }
-                }
-            });
-        }
-    }
-
-    @Override
-    public final void wait(long timeout, TimeUnit unit) throws InterruptedException {
-        if (this.running.get()) {
-            this.executor.awaitTermination(timeout, unit);
-        }
-    }
-
-    @Override
-    public final void join() throws InterruptedException {
-        this.wait(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
-    }
-
-    @Override
-    public final void stop() throws InterruptedException {
-        if (this.running.getAndSet(false)) {
+        if (this.fileChannel == null) {
             try {
-                this.lossLeadership();
-                this.executor.shutdown();
-                this.executor.awaitTermination(5L, TimeUnit.SECONDS);
-            } finally {
-                this.executor.shutdownNow();
+                this.fileChannel = FileChannel.open(Paths.get(this.path), StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+            } catch (IOException exception) {
+                throw new UncheckedIOException(exception);
+            }
+        }
+
+        super.start();
+    }
+
+    @Override
+    public void awaitLeadership() {
+        try {
+            while (this.fileLock == null) {
+                try {
+                    this.fileLock = this.fileChannel.lock();
+                } catch (OverlappingFileLockException exception) {
+                    Thread.sleep(1000L);
+                }
+            }
+        } catch (IOException exception) {
+            throw new UncheckedIOException(exception);
+        } catch (InterruptedException exception) {
+            throw new RuntimeException(exception);
+        }
+    }
+
+    @Override
+    public final void stop() {
+        super.stop();
+
+        if (this.fileLock != null) {
+            try {
+                this.fileLock.release();
+            } catch (IOException exception) {
+                throw new UncheckedIOException(exception);
+            }
+        }
+
+        if (this.fileChannel != null) {
+            try {
+                this.fileChannel.close();
+            } catch (IOException exception) {
+                throw new UncheckedIOException(exception);
             }
         }
     }

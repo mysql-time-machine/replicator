@@ -11,6 +11,8 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.errors.InvalidPartitionsException;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.UncheckedIOException;
 import java.util.Map;
@@ -18,13 +20,15 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class KafkaApplier implements Applier {
+    private static final Logger LOG = LogManager.getLogger(KafkaApplier.class);
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     public interface Configuration {
         String TOPIC = "kafka.topic";
         String PARTITIONER = "kafka.partitioner";
         String PRODUCER_PREFIX = "kafka.producer.";
     }
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
     private final Map<String, Producer<byte[], byte[]>> producers;
     private final Map<String, Object> configuration;
     private final String topic;
@@ -57,15 +61,16 @@ public class KafkaApplier implements Applier {
     @Override
     public void accept(AugmentedEvent augmentedEvent) {
         try {
-            this.producers.computeIfAbsent( // Once per thread
-                    Thread.currentThread().getName(),
-                    key -> this.getProducer()
+            byte[] header = KafkaApplier.MAPPER.writeValueAsBytes(augmentedEvent.getHeader());
+            byte[] data = KafkaApplier.MAPPER.writeValueAsBytes(augmentedEvent.getData());
+
+            this.producers.computeIfAbsent(
+                    Thread.currentThread().getName(), key -> this.getProducer()
             ).send(new ProducerRecord<>(
-                    this.topic,
-                    this.partitioner.partition(augmentedEvent, this.totalPartitions),
-                    KafkaApplier.MAPPER.writeValueAsBytes(augmentedEvent.getHeader()),
-                    KafkaApplier.MAPPER.writeValueAsBytes(augmentedEvent.getData())
+                    this.topic, this.partitioner.partition(augmentedEvent, this.totalPartitions), header, data
             ));
+
+            KafkaApplier.LOG.debug(String.format("{\"header\":%s,\"data\":%s}", new String(header), new String(data)));
         } catch (JsonProcessingException exception) {
             throw new UncheckedIOException(exception);
         }

@@ -80,6 +80,7 @@ public class ActiveSchemaDataAugmenter  implements Function<RawEvent, AugmentedE
 
                 return new QueryAugmentedEventData(
                         this.context.getQueryType(),
+                        this.context.getOperationType(),
                         queryRawEventData.getThreadId(),
                         queryRawEventData.getExecutionTime(),
                         queryRawEventData.getErrorCode(),

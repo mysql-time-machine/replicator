@@ -38,12 +38,11 @@ public class ActiveSchemaHeaderAugmenter implements Function<RawEvent, Augmented
                 return null;
             }
 
-            return new AugmentedEventHeader(
-                    rawEvent.getHeader().getTimestamp(),
-                    this.context.getCheckpoint(),
-                    type,
-                    this.getAugmentedEventTable(eventHeader, eventData)
-            );
+            long timestamp = this.context.getTransaction().committed()?this.context.getTransaction().getTimestamp():rawEvent.getHeader().getTimestamp();
+            Checkpoint checkpoint = this.context.getCheckpoint();
+            AugmentedEventTable eventTable = this.getAugmentedEventTable(eventHeader, eventData);
+
+            return new AugmentedEventHeader(timestamp, checkpoint, type, eventTable);
         } else {
             return null;
         }
@@ -61,7 +60,11 @@ public class ActiveSchemaHeaderAugmenter implements Function<RawEvent, Augmented
             case EXT_DELETE_ROWS:
                 return AugmentedEventType.DELETE_ROWS;
             case QUERY:
-                return AugmentedEventType.QUERY;
+                if (this.context.getTransaction().committed()) {
+                    return AugmentedEventType.TRANSACTION;
+                } else {
+                    return AugmentedEventType.QUERY;
+                }
             default:
                 return null;
         }

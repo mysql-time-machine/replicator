@@ -31,7 +31,7 @@ public class ActiveSchemaAugmenter implements Augmenter {
 
         this.context.updateContext(eventHeader, eventData);
 
-        if (this.context.hasQuery()) {
+        if (this.context.getQueryContent() != null) {
             this.manager.execute(this.context.getQueryContent());
         }
 

@@ -62,7 +62,6 @@ public class ActiveSchemaContext {
     private final Pattern pseudoGTIDPattern;
 
     private final AtomicBoolean dataFlag;
-    private final AtomicBoolean queryFlag;
     private final AtomicReference<String> queryContent;
     private final AtomicReference<QueryAugmentedEventDataType> queryType;
     private final AtomicReference<QueryAugmentedEventDataOperationType> queryOperationType;
@@ -87,7 +86,6 @@ public class ActiveSchemaContext {
         this.pseudoGTIDPattern = this.getPattern(configuration, Configuration.PSEUDO_GTID_PATTERN, ActiveSchemaContext.DEFAULT_PSEUDO_GTID_PATTERN);
 
         this.dataFlag = new AtomicBoolean();
-        this.queryFlag = new AtomicBoolean();
         this.queryContent = new AtomicReference<>();
         this.queryType = new AtomicReference<>(QueryAugmentedEventDataType.UNKNOWN);
         this.queryOperationType = new AtomicReference<>(QueryAugmentedEventDataOperationType.UNKNOWN);
@@ -112,9 +110,8 @@ public class ActiveSchemaContext {
         );
     }
 
-    private void updateContex(boolean dataFlag, boolean queryFlag, String queryContent, QueryAugmentedEventDataType queryType, QueryAugmentedEventDataOperationType queryOperationType, AugmentedEventTable table) {
+    private void updateContex(boolean dataFlag, String queryContent, QueryAugmentedEventDataType queryType, QueryAugmentedEventDataOperationType queryOperationType, AugmentedEventTable table) {
         this.dataFlag.set(dataFlag);
-        this.queryFlag.set(queryFlag);
         this.queryContent.set(queryContent);
         this.queryType.set(queryType);
         this.queryOperationType.set(queryOperationType);
@@ -127,7 +124,6 @@ public class ActiveSchemaContext {
         switch (eventHeader.getEventType()) {
             case ROTATE:
                 this.updateContex(
-                        false,
                         false,
                         null,
                         QueryAugmentedEventDataType.UNKNOWN,
@@ -148,7 +144,6 @@ public class ActiveSchemaContext {
                 if (this.beginPattern.matcher(query).find()) {
                     this.updateContex(
                             false,
-                            true,
                             query,
                             QueryAugmentedEventDataType.BEGIN,
                             QueryAugmentedEventDataOperationType.UNKNOWN,
@@ -165,7 +160,6 @@ public class ActiveSchemaContext {
                 if (this.commitPattern.matcher(query).find()) {
                     this.updateContex(
                             false,
-                            true,
                             query,
                             QueryAugmentedEventDataType.COMMIT,
                             QueryAugmentedEventDataOperationType.UNKNOWN,
@@ -184,7 +178,6 @@ public class ActiveSchemaContext {
                 if (ddlDefinerMatcher.find()) {
                     this.updateContex(
                             true,
-                            true,
                             query,
                             QueryAugmentedEventDataType.DDL_DEFINER,
                             QueryAugmentedEventDataOperationType.valueOf(ddlDefinerMatcher.group(2).toUpperCase()),
@@ -198,7 +191,6 @@ public class ActiveSchemaContext {
 
                 if (ddlTableMatcher.find()) {
                     this.updateContex(
-                            true,
                             true,
                             query,
                             QueryAugmentedEventDataType.DDL_TABLE,
@@ -214,7 +206,6 @@ public class ActiveSchemaContext {
                 if (ddlTemporaryTableMatcher.find()) {
                     this.updateContex(
                             true,
-                            true,
                             query,
                             QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE,
                             QueryAugmentedEventDataOperationType.valueOf(ddlTemporaryTableMatcher.group(2).toUpperCase()),
@@ -228,7 +219,6 @@ public class ActiveSchemaContext {
 
                 if (ddlViewMatcher.find()) {
                     this.updateContex(
-                            true,
                             true,
                             query,
                             QueryAugmentedEventDataType.DDL_VIEW,
@@ -244,7 +234,6 @@ public class ActiveSchemaContext {
                 if (ddlAnalyze.find()) {
                     this.updateContex(
                             true,
-                            true,
                             query,
                             QueryAugmentedEventDataType.DDL_ANALYZE,
                             QueryAugmentedEventDataOperationType.valueOf(ddlAnalyze.group(2).toUpperCase()),
@@ -259,7 +248,6 @@ public class ActiveSchemaContext {
                 if (pseudoGTIDMatcher.find()) {
                     this.updateContex(
                             false,
-                            true,
                             query,
                             QueryAugmentedEventDataType.PSEUDO_GTID,
                             QueryAugmentedEventDataOperationType.UNKNOWN,
@@ -274,7 +262,6 @@ public class ActiveSchemaContext {
 
                 this.updateContex(
                         true,
-                        true,
                         query,
                         QueryAugmentedEventDataType.UNKNOWN,
                         QueryAugmentedEventDataOperationType.UNKNOWN,
@@ -285,7 +272,6 @@ public class ActiveSchemaContext {
             case XID:
                 this.updateContex(
                         false,
-                        true,
                         null,
                         QueryAugmentedEventDataType.COMMIT,
                         QueryAugmentedEventDataOperationType.UNKNOWN,
@@ -299,7 +285,6 @@ public class ActiveSchemaContext {
                 break;
             case TABLE_MAP:
                 this.updateContex(
-                        false,
                         false,
                         null,
                         QueryAugmentedEventDataType.COMMIT,
@@ -326,7 +311,6 @@ public class ActiveSchemaContext {
             case EXT_DELETE_ROWS:
                 this.updateContex(
                         true,
-                        false,
                         null,
                         QueryAugmentedEventDataType.UNKNOWN,
                         QueryAugmentedEventDataOperationType.UNKNOWN,
@@ -336,7 +320,6 @@ public class ActiveSchemaContext {
                 break;
             default:
                 this.updateContex(
-                        false,
                         false,
                         null,
                         QueryAugmentedEventDataType.UNKNOWN,
@@ -354,10 +337,6 @@ public class ActiveSchemaContext {
 
     public boolean hasData() {
         return this.dataFlag.get();
-    }
-
-    public boolean hasQuery() {
-        return this.queryFlag.get();
     }
 
     public String getQueryContent() {

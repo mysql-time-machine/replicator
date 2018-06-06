@@ -5,6 +5,7 @@ import com.booking.replication.applier.Applier;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.checkpoint.CheckpointApplier;
+import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.ForceRewindException;
 import com.booking.replication.commons.map.MapFlatter;
 import com.booking.replication.coordinator.Coordinator;
@@ -31,12 +32,14 @@ import java.util.logging.Logger;
 public class Replicator {
     interface Configuration {
         String CHECKPOINT_PATH = "checkpoint.path";
+        String CHECKPOINT_DEFAULT = "checkpoint.default";
     }
 
     private static final Logger LOG = Logger.getLogger(Replicator.class.getName());
     private static final String COMMAND_LINE_SYNTAX = "java -jar mysql-replicator-<version>.jar";
 
     private final String checkpointPath;
+    private final String checkpointDefault;
     private final Coordinator coordinator;
     private final Supplier supplier;
     private final Augmenter augmenter;
@@ -48,14 +51,15 @@ public class Replicator {
 
     public Replicator(final Map<String, String> configuration) {
         this.checkpointPath = configuration.get(Configuration.CHECKPOINT_PATH);
+        this.checkpointDefault = configuration.get(Configuration.CHECKPOINT_DEFAULT);
         this.coordinator = Coordinator.build(configuration);
         this.supplier = Supplier.build(configuration);
         this.augmenter = Augmenter.build(configuration);
         this.seeker = Seeker.build(configuration);
         this.applier = Applier.build(configuration);
         this.checkpointApplier = CheckpointApplier.build(configuration, this.coordinator, this.checkpointPath);
-        this.streamsApplier = Streams.<AugmentedEvent>builder().threads(10).tasks(8).queue().fromPush().to(this.applier).post(this.checkpointApplier).build();
-        this.streamsSupplier = Streams.<RawEvent>builder().queue().fromPush().process(this.augmenter).process(this.seeker).to(streamsApplier::push).build();
+        this.streamsApplier = Streams.<AugmentedEvent>builder().threads(10).tasks(10).queue().fromPush().to(this.applier).post(this.checkpointApplier).build();
+        this.streamsSupplier = Streams.<RawEvent>builder().fromPush().process(this.augmenter).process(this.seeker).to(streamsApplier::push).build();
 
         this.supplier.onEvent(this.streamsSupplier::push);
 
@@ -80,7 +84,7 @@ public class Replicator {
 
                 this.streamsApplier.start();
                 this.streamsSupplier.start();
-                this.supplier.start(this.seeker.seek(this.coordinator.loadCheckpoint(this.checkpointPath)));
+                this.supplier.start(this.seeker.seek(this.getCheckpoint()));
             } catch (IOException | InterruptedException exception) {
                 exceptionHandle.accept(exception);
             }
@@ -101,6 +105,16 @@ public class Replicator {
                 exceptionHandle.accept(exception);
             }
         });
+    }
+
+    private Checkpoint getCheckpoint() throws IOException {
+        Checkpoint checkpoint = this.coordinator.loadCheckpoint(this.checkpointPath);
+
+        if (checkpoint == null && this.checkpointDefault != null) {
+            checkpoint = new ObjectMapper().readValue(this.checkpointDefault, Checkpoint.class);
+        }
+
+        return checkpoint;
     }
 
     public void start() {

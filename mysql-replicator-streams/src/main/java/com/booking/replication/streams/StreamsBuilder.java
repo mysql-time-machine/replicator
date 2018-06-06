@@ -31,7 +31,7 @@ public final class StreamsBuilder<Input, Output> implements
     private Consumer<Output> to;
     private BiConsumer<Input, Map<Input, AtomicReference<Output>>> post;
 
-    private StreamsBuilder(Function<Integer, Input> from, Predicate<Input> filter, Function<Input, Output> process) {
+    private StreamsBuilder(Function<Integer, Input> from, Predicate<Input> filter, Function<Input, Output> process, Consumer<Output> to, BiConsumer<Input, Map<Input, AtomicReference<Output>>> post) {
         this.threads = 1;
         this.tasks = 1;
         this.partitioner = null;
@@ -39,25 +39,17 @@ public final class StreamsBuilder<Input, Output> implements
         this.from = from;
         this.filter = filter;
         this.process = process;
-        this.to = (value) -> StreamsBuilder.LOG.log(Level.FINEST, value.toString());
-        this.post = (value, executing) -> StreamsBuilder.LOG.log(Level.FINEST, value.toString());
+        this.to = to;
+        this.post = post;
     }
 
-    @SuppressWarnings("unchecked")
     StreamsBuilder() {
-        this(
-                null,
-                (value) -> true,
-                (value) -> {
-                    StreamsBuilder.LOG.log(Level.FINEST, value.toString());
-                    return (Output) value;
-                }
-        );
+        this(null, null, null, null, null);
     }
 
     @Override
     public final StreamsBuilderFrom<Input, Output> threads(int threads) {
-        if (tasks > 0) {
+        if (threads > 0) {
             this.threads = threads;
             return this;
         } else {
@@ -108,38 +100,58 @@ public final class StreamsBuilder<Input, Output> implements
     }
 
     @Override
-    public final StreamsBuilderTo<Input, Output> filter(Predicate<Input> predicate) {
+    public final StreamsBuilderFilter<Input, Output> filter(Predicate<Input> predicate) {
         Objects.requireNonNull(predicate);
-        this.filter = this.filter.and(predicate);
-        return this;
+        return new StreamsBuilder<>(this.from, input -> (this.filter == null || this.filter.test(input)) && predicate.test(input), null, null, null);
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public final <To> StreamsBuilderTo<Input, To> process(Function<Output, To> function) {
         Objects.requireNonNull(function);
-        return new StreamsBuilder<>(this.from, this.filter, this.process.andThen(function));
+        return new StreamsBuilder<>(this.from, this.filter, input -> {
+            Output output = (this.process != null)?(this.process.apply(input)):((Output) input);
+
+            if (output != null) {
+                return function.apply(output);
+            } else {
+                return null;
+            }
+        }, null, null);
     }
 
     @Override
     public final StreamsBuilderPost<Input, Output> to(Consumer<Output> consumer) {
         Objects.requireNonNull(consumer);
-        this.to = this.to.andThen(consumer);
-        return this;
+        return new StreamsBuilder<>(this.from, this.filter, this.process, output -> {
+            if (this.to != null) {
+                this.to.accept(output);
+            }
+
+            if (output != null) {
+                consumer.accept(output);
+            }
+        }, null);
     }
 
     @Override
     public final StreamsBuilderBuild<Input, Output> post(Consumer<Input> consumer) {
         Objects.requireNonNull(consumer);
-        return this.post((value, executing) -> consumer.accept(value));
+        return this.post((input, executing) -> consumer.accept(input));
     }
 
     @Override
-    public final StreamsBuilderBuild<Input, Output> post(
-            BiConsumer<Input, Map<Input, AtomicReference<Output>>> consumer
-    ) {
+    public final StreamsBuilderBuild<Input, Output> post(BiConsumer<Input, Map<Input, AtomicReference<Output>>> consumer) {
         Objects.requireNonNull(consumer);
-        this.post = this.post.andThen(consumer);
-        return this;
+        return new StreamsBuilder<>(this.from, this.filter, this.process, this.to, (input, executing) -> {
+            if (this.post != null) {
+                this.post.accept(input, executing);
+            }
+
+            if (input != null) {
+                consumer.accept(input, executing);
+            }
+        });
     }
 
     @Override

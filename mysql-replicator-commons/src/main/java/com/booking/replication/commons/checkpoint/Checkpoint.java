@@ -1,7 +1,9 @@
 package com.booking.replication.commons.checkpoint;
 
+import java.io.Serializable;
+
 @SuppressWarnings("unused")
-public class Checkpoint implements Comparable<Checkpoint> {
+public class Checkpoint implements Serializable, Comparable<Checkpoint> {
     private long serverId;
     private String binlogFilename;
     private long binlogPosition;

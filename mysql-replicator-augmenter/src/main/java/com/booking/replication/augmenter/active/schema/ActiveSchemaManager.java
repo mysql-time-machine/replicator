@@ -15,6 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class ActiveSchemaManager implements Closeable {
     public interface Configuration {
@@ -25,6 +27,8 @@ public class ActiveSchemaManager implements Closeable {
         String MYSQL_USERNAME = "augmenter.active.schema.mysql.username";
         String MYSQL_PASSWORD = "augmenter.active.schema.mysql.password";
     }
+
+    private static final Logger LOG = Logger.getLogger(ActiveSchemaManager.class.getName());
 
     private static final String DEFAULT_MYSQL_DRIVER_CLASS = Driver.class.getName();
 
@@ -69,7 +73,8 @@ public class ActiveSchemaManager implements Closeable {
              Statement statement = connection.createStatement()) {
             return statement.execute(query);
         } catch (SQLException exception) {
-            throw new RuntimeException("error executing query", exception);
+            ActiveSchemaManager.LOG.log(Level.WARNING, String.format("error executing query \"%s\": %s", query, exception.getMessage()));
+            return false;
         }
     }
 

@@ -24,6 +24,8 @@ public class ReplicatorIT {
     private static final String ZOOKEEPER_LEADERSHIP_PATH = "/replicator/leadership";
     private static final String ZOOKEEPER_CHECKPOINT_PATH = "/replicator/checkpoint";
 
+    private static final String CHECKPOINT_DEFAULT = "{\"serverId\": 1, \"binlogFilename\": \"binlog.000001\", \"binlogPosition\": 0, \"pseudoGTID\": null, \"pseudoGTIDIndex\": 0}";
+
     private static final String MYSQL_SCHEMA = "replicator";
     private static final String MYSQL_ROOT_USERNAME = "root";
     private static final String MYSQL_USERNAME = "replicator";
@@ -75,9 +77,10 @@ public class ReplicatorIT {
         configuration.put(Supplier.Configuration.TYPE, Supplier.Type.BINLOG.name());
         configuration.put(Augmenter.Configuration.TYPE, Augmenter.Type.ACTIVE_SCHEMA.name());
         configuration.put(Seeker.Configuration.TYPE, Seeker.Type.KAFKA.name());
-        configuration.put(Applier.Configuration.TYPE, Applier.Type.KAFKA.name());
+        configuration.put(Applier.Configuration.TYPE, Applier.Type.CONSOLE.name());
         configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name());
         configuration.put(Replicator.Configuration.CHECKPOINT_PATH, ReplicatorIT.ZOOKEEPER_CHECKPOINT_PATH);
+        configuration.put(Replicator.Configuration.CHECKPOINT_DEFAULT, ReplicatorIT.CHECKPOINT_DEFAULT);
 
         Replicator replicator = new Replicator(configuration);
 

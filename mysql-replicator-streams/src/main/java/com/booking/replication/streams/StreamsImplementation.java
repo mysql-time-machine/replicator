@@ -76,14 +76,14 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
             this.requeue = null;
         }
 
-        this.filter = filter;
-        this.process = process;
-        this.to = to;
-        this.post = post;
+        this.filter = (filter != null)?(filter):(input -> true);
+        this.process = (process != null)?(process):(input -> (Output) input);
+        this.to = (to != null)?(to):(output -> {});
+        this.post = (post != null)?(post):((output, executing) -> {});
         this.executing = new ConcurrentHashMap<>();
         this.executingReadOnly = Collections.unmodifiableMap(this.executing);
         this.running = new AtomicBoolean();
-        this.handler = (exception) -> StreamsImplementation.LOG.log(Level.WARNING, "streams exception handler", exception);
+        this.handler = (exception) -> StreamsImplementation.LOG.log(Level.SEVERE, "error inside streams", exception);
     }
 
     private void process(Input input) {

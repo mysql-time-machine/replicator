@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -39,6 +40,7 @@ public class ActiveSchemaManager implements Closeable {
 
     private final String schema;
     private final BasicDataSource dataSource;
+    private final Map<String, List<AugmentedEventColumn>> cache;
 
     public ActiveSchemaManager(Map<String, String> configuration) {
         String driverClass = configuration.getOrDefault(Configuration.MYSQL_DRIVER_CLASS, ActiveSchemaManager.DEFAULT_MYSQL_DRIVER_CLASS);
@@ -55,6 +57,7 @@ public class ActiveSchemaManager implements Closeable {
 
         this.schema = schema;
         this.dataSource = this.getDataSource(driverClass, hostname, Integer.parseInt(port), schema, username, password);
+        this.cache = new ConcurrentHashMap<>();
     }
 
     private BasicDataSource getDataSource(String driverClass, String hostname, int port, String schema, String username, String password) {
@@ -68,9 +71,14 @@ public class ActiveSchemaManager implements Closeable {
         return dataSource;
     }
 
-    public boolean execute(String query) {
+    public boolean execute(AugmentedEventTable table, String query) {
         try (Connection connection = this.dataSource.getConnection();
              Statement statement = connection.createStatement()) {
+
+            if (table != null) {
+                this.cache.remove(table.getName());
+            }
+
             return statement.execute(query);
         } catch (SQLException exception) {
             ActiveSchemaManager.LOG.log(Level.WARNING, String.format("error executing query \"%s\": %s", query, exception.getMessage()));
@@ -99,27 +107,29 @@ public class ActiveSchemaManager implements Closeable {
     }
 
     public List<AugmentedEventColumn> listColumns(String tableName) {
-        try (Connection connection = this.dataSource.getConnection();
-             Statement statement = connection.createStatement()) {
-            List<AugmentedEventColumn> columnList = new ArrayList<>();
+        return this.cache.computeIfAbsent(tableName, key -> {
+            try (Connection connection = this.dataSource.getConnection();
+                 Statement statement = connection.createStatement()) {
+                List<AugmentedEventColumn> columnList = new ArrayList<>();
 
-            try (ResultSet resultSet = statement.executeQuery(String.format(ActiveSchemaManager.LIST_COLUMNS_SQL, tableName))) {
-                while (resultSet.next()) {
-                    columnList.add(new AugmentedEventColumn(
-                            resultSet.getString(1),
-                            resultSet.getString(2),
-                            resultSet.getBoolean(3),
-                            resultSet.getString(4),
-                            resultSet.getString(5),
-                            resultSet.getString(6)
-                    ));
+                try (ResultSet resultSet = statement.executeQuery(String.format(ActiveSchemaManager.LIST_COLUMNS_SQL, tableName))) {
+                    while (resultSet.next()) {
+                        columnList.add(new AugmentedEventColumn(
+                                resultSet.getString(1),
+                                resultSet.getString(2),
+                                resultSet.getBoolean(3),
+                                resultSet.getString(4),
+                                resultSet.getString(5),
+                                resultSet.getString(6)
+                        ));
+                    }
                 }
-            }
 
-            return columnList;
-        } catch (SQLException exception) {
-            throw new RuntimeException("error listing columns", exception);
-        }
+                return columnList;
+            } catch (SQLException exception) {
+                throw new RuntimeException("error listing columns", exception);
+            }
+        });
     }
 
     public String getCreateTable(String tableName) {

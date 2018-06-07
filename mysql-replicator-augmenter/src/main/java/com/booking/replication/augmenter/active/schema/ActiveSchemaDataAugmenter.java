@@ -1,9 +1,12 @@
 package com.booking.replication.augmenter.active.schema;
 
+import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.augmenter.model.AugmentedEventColumn;
 import com.booking.replication.augmenter.model.AugmentedEventData;
+import com.booking.replication.augmenter.model.AugmentedEventHeader;
 import com.booking.replication.augmenter.model.DeleteRowsAugmentedEventData;
 import com.booking.replication.augmenter.model.QueryAugmentedEventData;
+import com.booking.replication.augmenter.model.TransactionAugmentedEventData;
 import com.booking.replication.augmenter.model.UpdateRowsAugmentedEventData;
 import com.booking.replication.augmenter.model.WriteRowsAugmentedEventData;
 import com.booking.replication.commons.checkpoint.ForceRewindException;
@@ -31,25 +34,27 @@ public class ActiveSchemaDataAugmenter {
         this.manager = manager;
     }
 
-    public AugmentedEventData apply(RawEventHeaderV4 eventHeader, RawEventData eventData) {
-        if (this.context.getTransaction().started()) {
-            if (!this.context.getTransaction().add(this.getAugmentedEventData(eventHeader, eventData))) {
+    public AugmentedEventData apply(RawEventHeaderV4 eventHeader, RawEventData eventData, AugmentedEventHeader augmentedEventHeader) {
+        if (this.context.getTransaction().committed()) {
+            if (this.context.getTransaction().sizeLimitExceeded()) {
+                this.context.getTransaction().clean();
+
+                throw new ForceRewindException("transaction size limit exceeded");
+            } else {
+                return this.context.getTransaction().clean();
+            }
+        } else if (this.context.getTransaction().started()) {
+            if (this.context.getTransaction().resuming() && this.context.getTransaction().sizeLimitExceeded()) {
+                TransactionAugmentedEventData augmentedEventData =  this.context.getTransaction().clean();
+
+                augmentedEventData.getEventList().add(new AugmentedEvent(augmentedEventHeader, this.getAugmentedEventData(eventHeader, eventData)));
+
+                return augmentedEventData;
+            } else if (!this.context.getTransaction().add(new AugmentedEvent(augmentedEventHeader, this.getAugmentedEventData(eventHeader, eventData)))) {
                 ActiveSchemaDataAugmenter.LOG.log(Level.WARNING, "cannot add to transaction");
             }
 
             return null;
-        } else if (this.context.getTransaction().committed()) {
-            if (!this.context.getTransaction().add(this.getAugmentedEventData(eventHeader, eventData))) {
-                ActiveSchemaDataAugmenter.LOG.log(Level.WARNING, "cannot add to transaction");
-            }
-
-            if (this.context.getTransaction().overloaded()) {
-                this.context.getTransaction().clean();
-
-                throw new ForceRewindException("transaction overloaded");
-            }
-
-            return this.context.getTransaction().clean();
         } else {
             return this.getAugmentedEventData(eventHeader, eventData);
         }
@@ -92,7 +97,9 @@ public class ActiveSchemaDataAugmenter {
                         queryRawEventData.getExecutionTime(),
                         queryRawEventData.getErrorCode(),
                         queryRawEventData.getDatabase(),
-                        queryRawEventData.getSQL()
+                        queryRawEventData.getSQL(),
+                        null,
+                        null
                 );
             default:
                 return null;

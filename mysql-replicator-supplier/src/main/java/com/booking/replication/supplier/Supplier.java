@@ -28,6 +28,10 @@ public interface Supplier {
 
     void start(Checkpoint checkpoint) throws IOException;
 
+    void connect(Checkpoint checkpoint) throws IOException;
+
+    void disconnect() throws IOException;
+
     void stop() throws IOException;
 
     @SuppressWarnings("unchecked")

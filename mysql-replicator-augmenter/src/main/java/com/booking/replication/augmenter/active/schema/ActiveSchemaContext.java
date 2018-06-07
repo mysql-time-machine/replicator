@@ -9,6 +9,7 @@ import com.booking.replication.supplier.model.RawEventData;
 import com.booking.replication.supplier.model.RawEventHeaderV4;
 import com.booking.replication.supplier.model.RotateRawEventData;
 import com.booking.replication.supplier.model.TableMapRawEventData;
+import com.booking.replication.supplier.model.XIDRawEventData;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -23,34 +24,30 @@ import java.util.regex.Pattern;
 
 public class ActiveSchemaContext {
     public interface Configuration {
-        String APPLY_UUID = "augmenter.context.apply.uuid";
-        String APPLY_XID = "augmenter.context.apply.xid";
-        String TRANSACTION_LIMIT = "agumenter.context.transaction.limit";
-        String BEGIN_PATTERN = "augmenter.context.pattern.begin";
-        String COMMIT_PATTERN = "augmenter.context.pattern.commit";
-        String DDL_DEFINER_PATTERN = "augmenter.context.pattern.ddl.definer";
-        String DDL_TABLE_PATTERN = "augmenter.context.pattern.ddl.table";
-        String DDL_TEMPORARY_TABLE_PATTERN = "augmenter.context.pattern.ddl.temporary.table";
-        String DDL_VIEW_PATTERN = "augmenter.context.pattern.ddl.view";
-        String DDL_ANALYZE_PATTERN = "augmenter.context.pattern.ddl.analyze";
-        String PSEUDO_GTID_PATTERN = "augmenter.context.pattern.pseudogtid";
-        String UUID_FIELD_NAME = "_replicator_uuid";
-        String XID_FIELD_NAME = "_replicator_xid";
+        String MYSQL_TRANSACTION_LIMIT = "agumenter.context.transaction.limit";
+        String MYSQL_BEGIN_PATTERN = "augmenter.context.pattern.begin";
+        String MYSQL_COMMIT_PATTERN = "augmenter.context.pattern.commit";
+        String MYSQL_DDL_DEFINER_PATTERN = "augmenter.context.pattern.ddl.definer";
+        String MYSQL_DDL_TABLE_PATTERN = "augmenter.context.pattern.ddl.table";
+        String MYSQL_DDL_TEMPORARY_TABLE_PATTERN = "augmenter.context.pattern.ddl.temporary.table";
+        String MYSQL_DDL_VIEW_PATTERN = "augmenter.context.pattern.ddl.view";
+        String MYSQL_DDL_ANALYZE_PATTERN = "augmenter.context.pattern.ddl.analyze";
+        String MYSQL_PSEUDO_GTID_PATTERN = "augmenter.context.pattern.pseudogtid";
     }
 
     private static final Logger LOG = Logger.getLogger(ActiveSchemaContext.class.getName());
 
-    private static final int DEFAULT_TRANSACTION_LIMIT = 1000;
-    private static final String DEFAULT_BEGIN_PATTERN = "^(/\\*.*?\\*/\\s*)?(begin)";
-    private static final String DEFAULT_COMMIT_PATTERN = "^(/\\*.*?\\*/\\s*)?(commit)";
-    private static final String DEFAULT_DDL_DEFINER_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(definer)\\s*=";
-    private static final String DEFAULT_DDL_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(table)\\s+(\\S+)";
-    private static final String DEFAULT_DDL_TEMPORARY_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(temporary)\\s+(table)\\s+(\\S+)";
-    private static final String DEFAULT_DDL_VIEW_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(view)\\s+(\\S+)";
-    private static final String DEFAULT_DDL_ANALYZE_PATTERN = "^(/\\*.*?\\*/\\s*)?(analyze)\\s+(table)\\s+(\\S+)";
-    private static final String DEFAULT_PSEUDO_GTID_PATTERN = "(?<=_pseudo_gtid_hint__asc\\:)(.{8}\\:.{16}\\:.{8})";
+    private static final int DEFAULT_MYSQL_TRANSACTION_LIMIT = 1000;
+    private static final String DEFAULT_MYSQL_BEGIN_PATTERN = "^(/\\*.*?\\*/\\s*)?(begin)";
+    private static final String DEFAULT_MYSQL_COMMIT_PATTERN = "^(/\\*.*?\\*/\\s*)?(commit)";
+    private static final String DEFAULT_MYSQL_DDL_DEFINER_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(definer)\\s*=";
+    private static final String DEFAULT_MYSQL_DDL_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(table)\\s+(\\S+)";
+    private static final String DEFAULT_MYSQL_DDL_TEMPORARY_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(temporary)\\s+(table)\\s+(\\S+)";
+    private static final String DEFAULT_MYSQL_DDL_VIEW_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(view)\\s+(\\S+)";
+    private static final String DEFAULT_MYSQL_DDL_ANALYZE_PATTERN = "^(/\\*.*?\\*/\\s*)?(analyze)\\s+(table)\\s+(\\S+)";
+    private static final String DEFAULT_MYSQL_PSEUDO_GTID_PATTERN = "(?<=_pseudo_gtid_hint__asc\\:)(.{8}\\:.{16}\\:.{8})";
 
-    private final ActiveSchemaTransaction transaction;
+    private final CurrentTransaction transaction;
 
     private final Pattern beginPattern;
     private final Pattern commitPattern;
@@ -61,29 +58,34 @@ public class ActiveSchemaContext {
     private final Pattern ddlAnalyzePattern;
     private final Pattern pseudoGTIDPattern;
 
+    private final AtomicLong serverId;
+
     private final AtomicBoolean dataFlag;
     private final AtomicReference<String> queryContent;
     private final AtomicReference<QueryAugmentedEventDataType> queryType;
     private final AtomicReference<QueryAugmentedEventDataOperationType> queryOperationType;
     private final AtomicReference<AugmentedEventTable> table;
-    private final Map<Long, AugmentedEventTable> tableIdTableMap;
 
-    private final AtomicLong serverId;
     private final AtomicReference<String> binlogFilename;
     private final AtomicLong binlogPosition;
-    private final AtomicReference<String> pseudoGTID;
+
+    private final AtomicReference<String> pseudoGTIDValue;
     private final AtomicInteger pseudoGTIDIndex;
 
+    private final Map<Long, AugmentedEventTable> tableIdTableMap;
+
     public ActiveSchemaContext(Map<String, String> configuration) {
-        this.transaction = new ActiveSchemaTransaction(Integer.parseInt(configuration.getOrDefault(Configuration.TRANSACTION_LIMIT, String.valueOf(ActiveSchemaContext.DEFAULT_TRANSACTION_LIMIT))));
-        this.beginPattern = this.getPattern(configuration, Configuration.BEGIN_PATTERN, ActiveSchemaContext.DEFAULT_BEGIN_PATTERN);
-        this.commitPattern = this.getPattern(configuration, Configuration.COMMIT_PATTERN, ActiveSchemaContext.DEFAULT_COMMIT_PATTERN);
-        this.ddlDefinerPattern = this.getPattern(configuration, Configuration.DDL_DEFINER_PATTERN, ActiveSchemaContext.DEFAULT_DDL_DEFINER_PATTERN);
-        this.ddlTablePattern = this.getPattern(configuration, Configuration.DDL_TABLE_PATTERN, ActiveSchemaContext.DEFAULT_DDL_TABLE_PATTERN);
-        this.ddlTemporaryTablePattern = this.getPattern(configuration, Configuration.DDL_TEMPORARY_TABLE_PATTERN, ActiveSchemaContext.DEFAULT_DDL_TEMPORARY_TABLE_PATTERN);
-        this.ddlViewPattern = this.getPattern(configuration, Configuration.DDL_VIEW_PATTERN, ActiveSchemaContext.DEFAULT_DDL_VIEW_PATTERN);
-        this.ddlAnalyzePattern = this.getPattern(configuration, Configuration.DDL_ANALYZE_PATTERN, ActiveSchemaContext.DEFAULT_DDL_ANALYZE_PATTERN);
-        this.pseudoGTIDPattern = this.getPattern(configuration, Configuration.PSEUDO_GTID_PATTERN, ActiveSchemaContext.DEFAULT_PSEUDO_GTID_PATTERN);
+        this.transaction = new CurrentTransaction(Integer.parseInt(configuration.getOrDefault(Configuration.MYSQL_TRANSACTION_LIMIT, String.valueOf(ActiveSchemaContext.DEFAULT_MYSQL_TRANSACTION_LIMIT))));
+        this.beginPattern = this.getPattern(configuration, Configuration.MYSQL_BEGIN_PATTERN, ActiveSchemaContext.DEFAULT_MYSQL_BEGIN_PATTERN);
+        this.commitPattern = this.getPattern(configuration, Configuration.MYSQL_COMMIT_PATTERN, ActiveSchemaContext.DEFAULT_MYSQL_COMMIT_PATTERN);
+        this.ddlDefinerPattern = this.getPattern(configuration, Configuration.MYSQL_DDL_DEFINER_PATTERN, ActiveSchemaContext.DEFAULT_MYSQL_DDL_DEFINER_PATTERN);
+        this.ddlTablePattern = this.getPattern(configuration, Configuration.MYSQL_DDL_TABLE_PATTERN, ActiveSchemaContext.DEFAULT_MYSQL_DDL_TABLE_PATTERN);
+        this.ddlTemporaryTablePattern = this.getPattern(configuration, Configuration.MYSQL_DDL_TEMPORARY_TABLE_PATTERN, ActiveSchemaContext.DEFAULT_MYSQL_DDL_TEMPORARY_TABLE_PATTERN);
+        this.ddlViewPattern = this.getPattern(configuration, Configuration.MYSQL_DDL_VIEW_PATTERN, ActiveSchemaContext.DEFAULT_MYSQL_DDL_VIEW_PATTERN);
+        this.ddlAnalyzePattern = this.getPattern(configuration, Configuration.MYSQL_DDL_ANALYZE_PATTERN, ActiveSchemaContext.DEFAULT_MYSQL_DDL_ANALYZE_PATTERN);
+        this.pseudoGTIDPattern = this.getPattern(configuration, Configuration.MYSQL_PSEUDO_GTID_PATTERN, ActiveSchemaContext.DEFAULT_MYSQL_PSEUDO_GTID_PATTERN);
+
+        this.serverId = new AtomicLong();
 
         this.dataFlag = new AtomicBoolean();
         this.queryContent = new AtomicReference<>();
@@ -91,13 +93,13 @@ public class ActiveSchemaContext {
         this.queryOperationType = new AtomicReference<>(QueryAugmentedEventDataOperationType.UNKNOWN);
         this.table = new AtomicReference<>();
 
-        this.tableIdTableMap = new ConcurrentHashMap<>();
-
-        this.serverId = new AtomicLong();
         this.binlogFilename = new AtomicReference<>();
         this.binlogPosition = new AtomicLong();
-        this.pseudoGTID = new AtomicReference<>();
+
+        this.pseudoGTIDValue = new AtomicReference<>();
         this.pseudoGTIDIndex = new AtomicInteger();
+
+        this.tableIdTableMap = new ConcurrentHashMap<>();
     }
 
     private Pattern getPattern(Map<String, String> configuration, String configurationPath, String configurationDefault) {
@@ -110,7 +112,11 @@ public class ActiveSchemaContext {
         );
     }
 
-    private void updateContex(boolean dataFlag, String queryContent, QueryAugmentedEventDataType queryType, QueryAugmentedEventDataOperationType queryOperationType, AugmentedEventTable table) {
+    private void updateServer(long id) {
+        this.serverId.set(id);
+    }
+
+    private void updateCommons(boolean dataFlag, String queryContent, QueryAugmentedEventDataType queryType, QueryAugmentedEventDataOperationType queryOperationType, AugmentedEventTable table) {
         this.dataFlag.set(dataFlag);
         this.queryContent.set(queryContent);
         this.queryType.set(queryType);
@@ -118,12 +124,22 @@ public class ActiveSchemaContext {
         this.table.set(table);
     }
 
+    private void updateBinlog(String filename, long position) {
+        this.binlogFilename.set(filename);
+        this.binlogPosition.set(position);
+    }
+
+    private void updatePseudoGTID(String value, int index) {
+        this.pseudoGTIDValue.set(value);
+        this.pseudoGTIDIndex.set(index);
+    }
+
     public void updateContext(RawEventHeaderV4 eventHeader, RawEventData eventData) {
-        this.serverId.set(eventHeader.getServerId());
+        this.updateServer(eventHeader.getServerId());
 
         switch (eventHeader.getEventType()) {
             case ROTATE:
-                this.updateContex(
+                this.updateCommons(
                         false,
                         null,
                         QueryAugmentedEventDataType.UNKNOWN,
@@ -133,8 +149,10 @@ public class ActiveSchemaContext {
 
                 RotateRawEventData rotateRawEventData = RotateRawEventData.class.cast(eventData);
 
-                this.binlogFilename.set(rotateRawEventData.getBinlogFilename());
-                this.binlogPosition.set(rotateRawEventData.getBinlogPosition());
+                this.updateBinlog(
+                        rotateRawEventData.getBinlogFilename(),
+                        rotateRawEventData.getBinlogPosition()
+                );
 
                 break;
             case QUERY:
@@ -142,7 +160,7 @@ public class ActiveSchemaContext {
                 String query = queryRawEventData.getSQL();
 
                 if (this.beginPattern.matcher(query).find()) {
-                    this.updateContex(
+                    this.updateCommons(
                             false,
                             query,
                             QueryAugmentedEventDataType.BEGIN,
@@ -158,8 +176,8 @@ public class ActiveSchemaContext {
                 }
 
                 if (this.commitPattern.matcher(query).find()) {
-                    this.updateContex(
-                            false,
+                    this.updateCommons(
+                            true,
                             query,
                             QueryAugmentedEventDataType.COMMIT,
                             QueryAugmentedEventDataOperationType.UNKNOWN,
@@ -176,7 +194,7 @@ public class ActiveSchemaContext {
                 Matcher ddlDefinerMatcher = this.ddlDefinerPattern.matcher(query);
 
                 if (ddlDefinerMatcher.find()) {
-                    this.updateContex(
+                    this.updateCommons(
                             true,
                             query,
                             QueryAugmentedEventDataType.DDL_DEFINER,
@@ -190,7 +208,7 @@ public class ActiveSchemaContext {
                 Matcher ddlTableMatcher = this.ddlTablePattern.matcher(query);
 
                 if (ddlTableMatcher.find()) {
-                    this.updateContex(
+                    this.updateCommons(
                             true,
                             query,
                             QueryAugmentedEventDataType.DDL_TABLE,
@@ -204,7 +222,7 @@ public class ActiveSchemaContext {
                 Matcher ddlTemporaryTableMatcher = this.ddlTemporaryTablePattern.matcher(query);
 
                 if (ddlTemporaryTableMatcher.find()) {
-                    this.updateContex(
+                    this.updateCommons(
                             true,
                             query,
                             QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE,
@@ -218,7 +236,7 @@ public class ActiveSchemaContext {
                 Matcher ddlViewMatcher = this.ddlViewPattern.matcher(query);
 
                 if (ddlViewMatcher.find()) {
-                    this.updateContex(
+                    this.updateCommons(
                             true,
                             query,
                             QueryAugmentedEventDataType.DDL_VIEW,
@@ -232,7 +250,7 @@ public class ActiveSchemaContext {
                 Matcher ddlAnalyze = this.ddlAnalyzePattern.matcher(query);
 
                 if (ddlAnalyze.find()) {
-                    this.updateContex(
+                    this.updateCommons(
                             true,
                             query,
                             QueryAugmentedEventDataType.DDL_ANALYZE,
@@ -246,7 +264,7 @@ public class ActiveSchemaContext {
                 Matcher pseudoGTIDMatcher = this.pseudoGTIDPattern.matcher(query);
 
                 if (pseudoGTIDMatcher.find()) {
-                    this.updateContex(
+                    this.updateCommons(
                             false,
                             query,
                             QueryAugmentedEventDataType.PSEUDO_GTID,
@@ -254,15 +272,14 @@ public class ActiveSchemaContext {
                             null
                     );
 
-                    this.pseudoGTID.set(pseudoGTIDMatcher.group(0));
-                    this.pseudoGTIDIndex.set(0);
+                    this.updatePseudoGTID(pseudoGTIDMatcher.group(0), 0);
 
                     break;
                 }
 
-                this.updateContex(
-                        true,
-                        query,
+                this.updateCommons(
+                        false,
+                        null,
                         QueryAugmentedEventDataType.UNKNOWN,
                         QueryAugmentedEventDataOperationType.UNKNOWN,
                         null
@@ -270,21 +287,23 @@ public class ActiveSchemaContext {
 
                 break;
             case XID:
-                this.updateContex(
-                        false,
-                        null,
+                XIDRawEventData xidRawEventData = XIDRawEventData.class.cast(eventData);
+
+                this.updateCommons(
+                        true,
+                        "COMMIT",
                         QueryAugmentedEventDataType.COMMIT,
                         QueryAugmentedEventDataOperationType.UNKNOWN,
                         null
                 );
 
-                if (!this.transaction.commit(eventHeader.getTimestamp())) {
+                if (!this.transaction.commit(xidRawEventData.getXID(),eventHeader.getTimestamp())) {
                     ActiveSchemaContext.LOG.log(Level.WARNING, "transaction already committed");
                 }
 
                 break;
             case TABLE_MAP:
-                this.updateContex(
+                this.updateCommons(
                         false,
                         null,
                         QueryAugmentedEventDataType.COMMIT,
@@ -309,7 +328,7 @@ public class ActiveSchemaContext {
             case EXT_UPDATE_ROWS:
             case DELETE_ROWS:
             case EXT_DELETE_ROWS:
-                this.updateContex(
+                this.updateCommons(
                         true,
                         null,
                         QueryAugmentedEventDataType.UNKNOWN,
@@ -319,7 +338,7 @@ public class ActiveSchemaContext {
 
                 break;
             default:
-                this.updateContex(
+                this.updateCommons(
                         false,
                         null,
                         QueryAugmentedEventDataType.UNKNOWN,
@@ -331,7 +350,7 @@ public class ActiveSchemaContext {
         }
     }
 
-    public ActiveSchemaTransaction getTransaction() {
+    public CurrentTransaction getTransaction() {
         return this.transaction;
     }
 
@@ -356,7 +375,7 @@ public class ActiveSchemaContext {
                 this.serverId.get(),
                 this.binlogFilename.get(),
                 this.binlogPosition.get(),
-                this.pseudoGTID.get(),
+                this.pseudoGTIDValue.get(),
                 this.pseudoGTIDIndex.getAndIncrement()
         );
     }

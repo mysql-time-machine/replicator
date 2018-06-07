@@ -51,6 +51,7 @@ public class ActiveSchemaHeaderAugmenter {
             case EXT_DELETE_ROWS:
                 return AugmentedEventType.DELETE_ROWS;
             case QUERY:
+            case XID:
                 if (this.context.getTransaction().committed()) {
                     return AugmentedEventType.TRANSACTION;
                 } else {
@@ -71,6 +72,7 @@ public class ActiveSchemaHeaderAugmenter {
             case EXT_DELETE_ROWS:
                 return this.context.getTable(TableIdRawEventData.class.cast(eventData).getTableId());
             case QUERY:
+            case XID:
                 return this.context.getTable();
             default:
                 return null;

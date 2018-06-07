@@ -5,6 +5,8 @@ import com.booking.replication.applier.Seeker;
 import com.booking.replication.applier.kafka.KafkaApplier;
 import com.booking.replication.applier.kafka.KafkaSeeker;
 import com.booking.replication.augmenter.Augmenter;
+import com.booking.replication.augmenter.active.schema.ActiveSchemaAugmenter;
+import com.booking.replication.augmenter.active.schema.ActiveSchemaContext;
 import com.booking.replication.augmenter.active.schema.ActiveSchemaManager;
 import com.booking.replication.checkpoint.CheckpointApplier;
 import com.booking.replication.commons.services.ServicesControl;
@@ -31,7 +33,8 @@ public class ReplicatorIT {
     private static final String MYSQL_USERNAME = "replicator";
     private static final String MYSQL_PASSWORD = "replicator";
     private static final String MYSQL_ACTIVE_SCHEMA = "active_schema";
-    private static final String MYSQL_INIT_SCIPT = "mysql.init.sql";
+    private static final String MYSQL_INIT_SCRIPT = "mysql.init.sql";
+    private static final int MYSQL_TRANSACTION_LIMIT = 5;
 
     private static final String KAFKA_TOPIC_NAME = "replicator";
     private static final String KAFKA_GROUP_ID = "replicator";
@@ -48,7 +51,7 @@ public class ReplicatorIT {
         ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS);
 
         ReplicatorIT.zookeeper = servicesProvider.startZookeeper();
-        ReplicatorIT.mysqlBinaryLog = servicesProvider.startMySQL(ReplicatorIT.MYSQL_SCHEMA, ReplicatorIT.MYSQL_USERNAME, ReplicatorIT.MYSQL_PASSWORD, ReplicatorIT.MYSQL_INIT_SCIPT);
+        ReplicatorIT.mysqlBinaryLog = servicesProvider.startMySQL(ReplicatorIT.MYSQL_SCHEMA, ReplicatorIT.MYSQL_USERNAME, ReplicatorIT.MYSQL_PASSWORD, ReplicatorIT.MYSQL_INIT_SCRIPT);
         ReplicatorIT.mysqlActiveSchema = servicesProvider.startMySQL(ReplicatorIT.MYSQL_ACTIVE_SCHEMA, ReplicatorIT.MYSQL_USERNAME, ReplicatorIT.MYSQL_PASSWORD);
         ReplicatorIT.kafka = servicesProvider.startKafka(ReplicatorIT.KAFKA_TOPIC_NAME, ReplicatorIT.KAFKA_TOPIC_PARTITIONS, ReplicatorIT.KAFKA_TOPIC_REPLICAS);
     }
@@ -69,6 +72,7 @@ public class ReplicatorIT {
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_SCHEMA, ReplicatorIT.MYSQL_ACTIVE_SCHEMA);
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, ReplicatorIT.MYSQL_ROOT_USERNAME);
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PASSWORD, ReplicatorIT.MYSQL_PASSWORD);
+        configuration.put(ActiveSchemaContext.Configuration.MYSQL_TRANSACTION_LIMIT, String.valueOf(ReplicatorIT.MYSQL_TRANSACTION_LIMIT));
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, "bootstrap.servers"), ReplicatorIT.kafka.getURL());
         configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, "bootstrap.servers"), ReplicatorIT.kafka.getURL());
         configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, "group.id"), ReplicatorIT.KAFKA_GROUP_ID);

@@ -50,6 +50,7 @@ public class BinaryLogSupplier implements Supplier {
     }
 
     private BinaryLogClient getClient(String hostname, int port, String schema, String username, String password) {
+        // TODO: Implement status variable parser: https://github.com/shyiko/mysql-binlog-connector-java/issues/174
         return new BinaryLogClient(hostname, port, schema, username, password);
     }
 
@@ -68,7 +69,14 @@ public class BinaryLogSupplier implements Supplier {
 
     @Override
     public void start(Checkpoint checkpoint) {
-        if (!this.client.isConnected() && !this.running.getAndSet(true)) {
+        if (!this.running.getAndSet(true)) {
+            this.connect(checkpoint);
+        }
+    }
+
+    @Override
+    public void connect(Checkpoint checkpoint) {
+        if (!this.client.isConnected()) {
             if (checkpoint != null) {
                 this.client.setServerId(checkpoint.getServerId());
                 this.client.setBinlogFilename(checkpoint.getBinlogFilename());
@@ -86,13 +94,20 @@ public class BinaryLogSupplier implements Supplier {
     }
 
     @Override
-    public void stop() {
-        if (this.client.isConnected() && this.running.getAndSet(false)) {
+    public void disconnect() {
+        if (this.client.isConnected()) {
             try {
                 this.client.disconnect();
             } catch (IOException exception) {
                 BinaryLogSupplier.LOG.log(Level.SEVERE, "error disconnecting", exception);
             }
+        }
+    }
+
+    @Override
+    public void stop() {
+        if (this.running.getAndSet(false)) {
+            this.disconnect();
 
             try {
                 this.executor.shutdown();

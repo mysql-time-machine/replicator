@@ -32,23 +32,23 @@ public class ActiveSchemaAugmenter implements Augmenter {
         this.context.updateContext(eventHeader, eventData);
 
         if (this.context.getQueryContent() != null) {
-            this.manager.execute(this.context.getQueryContent());
+            this.manager.execute(this.context.getTable(), this.context.getQueryContent());
         }
 
         if (this.context.hasData()) {
-            AugmentedEventHeader header = this.headerAugmenter.apply(eventHeader, eventData);
+            AugmentedEventHeader augmentedEventHeader = this.headerAugmenter.apply(eventHeader, eventData);
 
-            if (header == null) {
+            if (augmentedEventHeader == null) {
                 return null;
             }
 
-            AugmentedEventData data = this.dataAugmenter.apply(eventHeader, eventData);
+            AugmentedEventData data = this.dataAugmenter.apply(eventHeader, eventData, augmentedEventHeader);
 
             if (data == null) {
                 return null;
             }
 
-            return new AugmentedEvent(header, data);
+            return new AugmentedEvent(augmentedEventHeader, data);
         } else {
             return null;
         }

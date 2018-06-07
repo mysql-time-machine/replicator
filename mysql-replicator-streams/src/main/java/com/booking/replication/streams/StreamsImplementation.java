@@ -63,15 +63,15 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
         }
 
         if (this.queues != null) {
-            this.executor = Executors.newFixedThreadPool(threads);
+            this.executor = Executors.newFixedThreadPool(threads + 1);
             this.from = (task) -> StreamsImplementation.this.queues[task].poll();
             this.requeue = (task, input) -> StreamsImplementation.this.queues[task].offerFirst(input);
         } else if(from != null) {
-            this.executor = Executors.newFixedThreadPool(threads);
+            this.executor = Executors.newFixedThreadPool(threads + 1);
             this.from = from;
             this.requeue = null;
         } else {
-            this.executor = null;
+            this.executor = Executors.newSingleThreadExecutor();
             this.from = null;
             this.requeue = null;
         }
@@ -106,7 +106,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
 
     @Override
     public final Streams<Input, Output> start() {
-        if (this.executor != null && !this.running.getAndSet(true)) {
+        if ((this.queues != null || this.from != null) && !this.running.getAndSet(true)) {
             Consumer<Integer> consumer = (task) -> {
                 Input input = null;
 
@@ -117,7 +117,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
                         input = null;
                     }
                 } catch (Exception exception) {
-                    this.handler.accept(exception);
+                    this.executor.submit(() -> this.handler.accept(exception));
                 } finally {
                     if (this.requeue != null && input != null) {
                         this.requeue.accept(task, input);
@@ -153,16 +153,14 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
 
     @Override
     public final void stop() throws InterruptedException {
-        if (this.running.getAndSet(false)) {
-            try {
-                this.executor.shutdown();
-                this.executor.awaitTermination(5L, TimeUnit.SECONDS);
-            } finally {
-                this.executor.shutdownNow();
-            }
-
-            StreamsImplementation.LOG.log(Level.FINE, "streams stopped");
+        try {
+            this.executor.shutdown();
+            this.executor.awaitTermination(5L, TimeUnit.SECONDS);
+        } finally {
+            this.executor.shutdownNow();
         }
+
+        StreamsImplementation.LOG.log(Level.FINE, "streams stopped");
     }
 
     @Override

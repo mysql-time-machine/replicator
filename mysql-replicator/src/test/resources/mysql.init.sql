@@ -1,3 +1,5 @@
+USE replicator;
+
 CREATE TABLE animals (
      id INTEGER NOT NULL AUTO_INCREMENT,
      name VARCHAR(30) NOT NULL,
@@ -14,6 +16,8 @@ INSERT INTO animals (name) VALUES ('whale');
 INSERT INTO animals (name) VALUES ('ostrich');
 
 COMMIT;
+
+INSERT INTO animals (name) VALUES ('horse');
 
 BEGIN;
 

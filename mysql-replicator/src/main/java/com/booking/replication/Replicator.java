@@ -65,7 +65,7 @@ public class Replicator {
 
         Consumer<Exception> exceptionHandle = (exception) -> {
             if (ForceRewindException.class.isInstance(exception)) {
-                Replicator.LOG.log(Level.WARNING, "", exception);
+                Replicator.LOG.log(Level.WARNING, exception.getMessage());
 
                 this.rewind();
             } else {
@@ -143,8 +143,8 @@ public class Replicator {
         try {
             Replicator.LOG.log(Level.INFO, "rewinding supplier");
 
-            this.supplier.stop();
-            this.supplier.start(this.seeker.seek(this.coordinator.loadCheckpoint(this.checkpointPath)));
+            this.supplier.disconnect();
+            this.supplier.connect(this.seeker.seek(this.coordinator.loadCheckpoint(this.checkpointPath)));
         } catch (IOException exception) {
             Replicator.LOG.log(Level.SEVERE, "error rewinding supplier", exception);
         }

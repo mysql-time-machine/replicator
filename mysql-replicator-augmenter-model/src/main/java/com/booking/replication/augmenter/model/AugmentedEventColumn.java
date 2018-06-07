@@ -6,20 +6,21 @@ public class AugmentedEventColumn {
     private String type;
     private boolean nullable;
     private String key;
-    private String defaultValue;
+    private String valueDefault;
     private String extra;
 
     public AugmentedEventColumn() {
     }
 
-    public AugmentedEventColumn(String name, String type, boolean nullable, String key, String defaultValue, String extra) {
+    public AugmentedEventColumn(String name, String type, boolean nullable, String key, String valueDefault, String extra) {
         this.name = name;
         this.type = type;
         this.nullable = nullable;
         this.key = key;
-        this.defaultValue = defaultValue;
+        this.valueDefault = valueDefault;
         this.extra = extra;
     }
+
 
     public String getName() {
         return this.name;
@@ -37,8 +38,8 @@ public class AugmentedEventColumn {
         return this.key;
     }
 
-    public String getDefaultValue() {
-        return this.defaultValue;
+    public String getValueDefault() {
+        return this.valueDefault;
     }
 
     public String getExtra() {

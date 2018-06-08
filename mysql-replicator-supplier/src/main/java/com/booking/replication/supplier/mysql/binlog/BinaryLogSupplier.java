@@ -30,7 +30,15 @@ public class BinaryLogSupplier implements Supplier {
 
     private final ExecutorService executor;
     private final AtomicBoolean running;
-    private final BinaryLogClient client;
+
+    private final String hostname;
+    private final int port;
+    private final String schema;
+    private final String username;
+    private final String password;
+
+    private BinaryLogClient client;
+    private Consumer<RawEvent> consumer;
 
     public BinaryLogSupplier(Map<String, String> configuration) {
         String hostname = configuration.get(Configuration.MYSQL_HOSTNAME);
@@ -46,25 +54,22 @@ public class BinaryLogSupplier implements Supplier {
 
         this.executor = Executors.newSingleThreadExecutor();
         this.running = new AtomicBoolean(false);
-        this.client = this.getClient(hostname, Integer.parseInt(port), schema, username, password);
+
+        this.hostname = hostname;
+        this.port = Integer.parseInt(port);
+        this.schema = schema;
+        this.username = username;
+        this.password = password;
     }
 
-    private BinaryLogClient getClient(String hostname, int port, String schema, String username, String password) {
+    private BinaryLogClient getClient() {
         // TODO: Implement status variable parser: https://github.com/shyiko/mysql-binlog-connector-java/issues/174
-        return new BinaryLogClient(hostname, port, schema, username, password);
+        return new BinaryLogClient(this.hostname, this.port, this.schema, this.username, this.password);
     }
 
     @Override
     public void onEvent(Consumer<RawEvent> consumer) {
-        this.client.registerEventListener(
-                event -> {
-                    try {
-                        consumer.accept(RawEvent.getRawEventProxy(new RawEventInvocationHandler(event)));
-                    } catch (ReflectiveOperationException exception) {
-                        throw new RuntimeException(exception);
-                    }
-                }
-        );
+        this.consumer = consumer;
     }
 
     @Override
@@ -76,8 +81,23 @@ public class BinaryLogSupplier implements Supplier {
 
     @Override
     public void connect(Checkpoint checkpoint) {
-        if (!this.client.isConnected()) {
+        if (this.client == null || !this.client.isConnected()) {
+            this.client = this.getClient();
+
+            if (this.consumer != null) {
+                this.client.registerEventListener(
+                    event -> {
+                        try {
+                            this.consumer.accept(RawEvent.getRawEventProxy(new RawEventInvocationHandler(event)));
+                        } catch (ReflectiveOperationException exception) {
+                            throw new RuntimeException(exception);
+                        }
+                    }
+                );
+            }
+
             if (checkpoint != null) {
+                this.client.setGtidSet(null);
                 this.client.setServerId(checkpoint.getServerId());
                 this.client.setBinlogFilename(checkpoint.getBinlogFilename());
                 this.client.setBinlogPosition(checkpoint.getBinlogPosition());
@@ -95,9 +115,10 @@ public class BinaryLogSupplier implements Supplier {
 
     @Override
     public void disconnect() {
-        if (this.client.isConnected()) {
+        if (this.client != null && this.client.isConnected()) {
             try {
                 this.client.disconnect();
+                this.client = null;
             } catch (IOException exception) {
                 BinaryLogSupplier.LOG.log(Level.SEVERE, "error disconnecting", exception);
             }

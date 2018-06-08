@@ -1,7 +1,6 @@
 package com.booking.replication.augmenter.active.schema;
 
 import com.booking.replication.augmenter.model.AugmentedEvent;
-import com.booking.replication.augmenter.model.AugmentedEventColumn;
 import com.booking.replication.augmenter.model.AugmentedEventData;
 import com.booking.replication.augmenter.model.AugmentedEventHeader;
 import com.booking.replication.augmenter.model.DeleteRowsAugmentedEventData;
@@ -17,9 +16,6 @@ import com.booking.replication.supplier.model.RawEventHeaderV4;
 import com.booking.replication.supplier.model.UpdateRowsRawEventData;
 import com.booking.replication.supplier.model.WriteRowsRawEventData;
 
-import java.util.BitSet;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -27,11 +23,9 @@ public class ActiveSchemaDataAugmenter {
     private static final Logger LOG = Logger.getLogger(ActiveSchemaDataAugmenter.class.getName());
 
     private final ActiveSchemaContext context;
-    private final ActiveSchemaManager manager;
 
-    public ActiveSchemaDataAugmenter(ActiveSchemaContext context, ActiveSchemaManager manager) {
+    public ActiveSchemaDataAugmenter(ActiveSchemaContext context) {
         this.context = context;
-        this.manager = manager;
     }
 
     public AugmentedEventData apply(RawEventHeaderV4 eventHeader, RawEventData eventData, AugmentedEventHeader augmentedEventHeader) {
@@ -67,7 +61,7 @@ public class ActiveSchemaDataAugmenter {
                 WriteRowsRawEventData writeRowsRawEventData = WriteRowsRawEventData.class.cast(eventData);
 
                 return new WriteRowsAugmentedEventData(
-                        this.getColumns(writeRowsRawEventData.getTableId(), writeRowsRawEventData.getIncludedColumns()),
+                        this.context.getColumns(writeRowsRawEventData.getTableId(), writeRowsRawEventData.getIncludedColumns()),
                         writeRowsRawEventData.getRows()
                 );
             case UPDATE_ROWS:
@@ -75,8 +69,8 @@ public class ActiveSchemaDataAugmenter {
                 UpdateRowsRawEventData updateRowsRawEventData = UpdateRowsRawEventData.class.cast(eventData);
 
                 return new UpdateRowsAugmentedEventData(
-                        this.getColumns(updateRowsRawEventData.getTableId(), updateRowsRawEventData.getIncludedColumnsBeforeUpdate()),
-                        this.getColumns(updateRowsRawEventData.getTableId(), updateRowsRawEventData.getIncludedColumns()),
+                        this.context.getColumns(updateRowsRawEventData.getTableId(), updateRowsRawEventData.getIncludedColumnsBeforeUpdate()),
+                        this.context.getColumns(updateRowsRawEventData.getTableId(), updateRowsRawEventData.getIncludedColumns()),
                         updateRowsRawEventData.getRows()
                 );
             case DELETE_ROWS:
@@ -84,7 +78,7 @@ public class ActiveSchemaDataAugmenter {
                 DeleteRowsRawEventData deleteRowsRawEventData = DeleteRowsRawEventData.class.cast(eventData);
 
                 return new DeleteRowsAugmentedEventData(
-                        this.getColumns(deleteRowsRawEventData.getTableId(), deleteRowsRawEventData.getIncludedColumns()),
+                        this.context.getColumns(deleteRowsRawEventData.getTableId(), deleteRowsRawEventData.getIncludedColumns()),
                         deleteRowsRawEventData.getRows()
                 );
             case QUERY:
@@ -104,18 +98,5 @@ public class ActiveSchemaDataAugmenter {
             default:
                 return null;
         }
-    }
-
-    private List<AugmentedEventColumn> getColumns(long tableId, BitSet includedColumns) {
-        List<AugmentedEventColumn> columnList = this.manager.listColumns(this.context.getTable(tableId).getName());
-        List<AugmentedEventColumn> includedColumnList = new LinkedList<>();
-
-        for (int columnIndex = 0; columnIndex < columnList.size(); columnIndex++) {
-            if (includedColumns.get(columnIndex)) {
-                includedColumnList.add(columnList.get(columnIndex));
-            }
-        }
-
-        return includedColumnList;
     }
 }

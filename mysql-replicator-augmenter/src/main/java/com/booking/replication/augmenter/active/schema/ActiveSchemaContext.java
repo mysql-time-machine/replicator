@@ -1,5 +1,6 @@
 package com.booking.replication.augmenter.active.schema;
 
+import com.booking.replication.augmenter.model.AugmentedEventColumn;
 import com.booking.replication.augmenter.model.AugmentedEventTable;
 import com.booking.replication.augmenter.model.QueryAugmentedEventDataOperationType;
 import com.booking.replication.augmenter.model.QueryAugmentedEventDataType;
@@ -11,6 +12,11 @@ import com.booking.replication.supplier.model.RotateRawEventData;
 import com.booking.replication.supplier.model.TableMapRawEventData;
 import com.booking.replication.supplier.model.XIDRawEventData;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.BitSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -22,7 +28,7 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class ActiveSchemaContext {
+public class ActiveSchemaContext implements Closeable {
     public interface Configuration {
         String MYSQL_TRANSACTION_LIMIT = "agumenter.context.transaction.limit";
         String MYSQL_BEGIN_PATTERN = "augmenter.context.pattern.begin";
@@ -48,6 +54,7 @@ public class ActiveSchemaContext {
     private static final String DEFAULT_MYSQL_PSEUDO_GTID_PATTERN = "(?<=_pseudo_gtid_hint__asc\\:)(.{8}\\:.{16}\\:.{8})";
 
     private final CurrentTransaction transaction;
+    private final ActiveSchemaManager manager;
 
     private final Pattern beginPattern;
     private final Pattern commitPattern;
@@ -61,7 +68,6 @@ public class ActiveSchemaContext {
     private final AtomicLong serverId;
 
     private final AtomicBoolean dataFlag;
-    private final AtomicReference<String> queryContent;
     private final AtomicReference<QueryAugmentedEventDataType> queryType;
     private final AtomicReference<QueryAugmentedEventDataOperationType> queryOperationType;
     private final AtomicReference<AugmentedEventTable> table;
@@ -72,10 +78,14 @@ public class ActiveSchemaContext {
     private final AtomicReference<String> pseudoGTIDValue;
     private final AtomicInteger pseudoGTIDIndex;
 
+    private final AtomicReference<String> createTableBefore;
+    private final AtomicReference<String> createTableAfter;
+
     private final Map<Long, AugmentedEventTable> tableIdTableMap;
 
     public ActiveSchemaContext(Map<String, String> configuration) {
         this.transaction = new CurrentTransaction(Integer.parseInt(configuration.getOrDefault(Configuration.MYSQL_TRANSACTION_LIMIT, String.valueOf(ActiveSchemaContext.DEFAULT_MYSQL_TRANSACTION_LIMIT))));
+        this.manager = new ActiveSchemaManager(configuration);
         this.beginPattern = this.getPattern(configuration, Configuration.MYSQL_BEGIN_PATTERN, ActiveSchemaContext.DEFAULT_MYSQL_BEGIN_PATTERN);
         this.commitPattern = this.getPattern(configuration, Configuration.MYSQL_COMMIT_PATTERN, ActiveSchemaContext.DEFAULT_MYSQL_COMMIT_PATTERN);
         this.ddlDefinerPattern = this.getPattern(configuration, Configuration.MYSQL_DDL_DEFINER_PATTERN, ActiveSchemaContext.DEFAULT_MYSQL_DDL_DEFINER_PATTERN);
@@ -88,7 +98,6 @@ public class ActiveSchemaContext {
         this.serverId = new AtomicLong();
 
         this.dataFlag = new AtomicBoolean();
-        this.queryContent = new AtomicReference<>();
         this.queryType = new AtomicReference<>(QueryAugmentedEventDataType.UNKNOWN);
         this.queryOperationType = new AtomicReference<>(QueryAugmentedEventDataOperationType.UNKNOWN);
         this.table = new AtomicReference<>();
@@ -98,6 +107,9 @@ public class ActiveSchemaContext {
 
         this.pseudoGTIDValue = new AtomicReference<>();
         this.pseudoGTIDIndex = new AtomicInteger();
+
+        this.createTableBefore = new AtomicReference<>();
+        this.createTableAfter = new AtomicReference<>();
 
         this.tableIdTableMap = new ConcurrentHashMap<>();
     }
@@ -116,9 +128,8 @@ public class ActiveSchemaContext {
         this.serverId.set(id);
     }
 
-    private void updateCommons(boolean dataFlag, String queryContent, QueryAugmentedEventDataType queryType, QueryAugmentedEventDataOperationType queryOperationType, AugmentedEventTable table) {
+    private void updateCommons(boolean dataFlag, QueryAugmentedEventDataType queryType, QueryAugmentedEventDataOperationType queryOperationType, AugmentedEventTable table) {
         this.dataFlag.set(dataFlag);
-        this.queryContent.set(queryContent);
         this.queryType.set(queryType);
         this.queryOperationType.set(queryOperationType);
         this.table.set(table);
@@ -134,6 +145,34 @@ public class ActiveSchemaContext {
         this.pseudoGTIDIndex.set(index);
     }
 
+    private void updateSchema(String query) {
+        if (query != null) {
+            if (this.table.get() != null) {
+                String tableName = this.table.get().getName();
+
+                if ((this.queryType.get() == QueryAugmentedEventDataType.DDL_TABLE ||
+                     this.queryType.get() == QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE) &&
+                     this.getQueryOperationType() != QueryAugmentedEventDataOperationType.CREATE) {
+                    this.createTableBefore.set(this.manager.getCreateTable(tableName));
+                } else {
+                    this.createTableBefore.set(null);
+                }
+
+                this.manager.execute(tableName, query);
+
+                if ((this.queryType.get() == QueryAugmentedEventDataType.DDL_TABLE ||
+                     this.queryType.get() == QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE) &&
+                     this.getQueryOperationType() != QueryAugmentedEventDataOperationType.DROP) {
+                    this.createTableAfter.set(this.manager.getCreateTable(tableName));
+                } else {
+                    this.createTableAfter.set(null);
+                }
+            } else {
+                this.manager.execute(null, query);
+            }
+        }
+    }
+
     public void updateContext(RawEventHeaderV4 eventHeader, RawEventData eventData) {
         this.updateServer(eventHeader.getServerId());
 
@@ -141,7 +180,6 @@ public class ActiveSchemaContext {
             case ROTATE:
                 this.updateCommons(
                         false,
-                        null,
                         QueryAugmentedEventDataType.UNKNOWN,
                         QueryAugmentedEventDataOperationType.UNKNOWN,
                         null
@@ -158,11 +196,11 @@ public class ActiveSchemaContext {
             case QUERY:
                 QueryRawEventData queryRawEventData = QueryRawEventData.class.cast(eventData);
                 String query = queryRawEventData.getSQL();
+                Matcher matcher;
 
                 if (this.beginPattern.matcher(query).find()) {
                     this.updateCommons(
                             false,
-                            query,
                             QueryAugmentedEventDataType.BEGIN,
                             QueryAugmentedEventDataOperationType.UNKNOWN,
                             null
@@ -171,14 +209,9 @@ public class ActiveSchemaContext {
                     if (!this.transaction.begin()) {
                         ActiveSchemaContext.LOG.log(Level.WARNING, "transaction already started");
                     }
-
-                    break;
-                }
-
-                if (this.commitPattern.matcher(query).find()) {
+                } else if (this.commitPattern.matcher(query).find()) {
                     this.updateCommons(
                             true,
-                            query,
                             QueryAugmentedEventDataType.COMMIT,
                             QueryAugmentedEventDataOperationType.UNKNOWN,
                             null
@@ -187,103 +220,63 @@ public class ActiveSchemaContext {
                     if (!this.transaction.commit(eventHeader.getTimestamp())) {
                         ActiveSchemaContext.LOG.log(Level.WARNING, "transaction already committed");
                     }
-
-                    break;
                 }
-
-                Matcher ddlDefinerMatcher = this.ddlDefinerPattern.matcher(query);
-
-                if (ddlDefinerMatcher.find()) {
+                else if ((matcher = this.ddlDefinerPattern.matcher(query)).find()) {
                     this.updateCommons(
                             true,
-                            query,
                             QueryAugmentedEventDataType.DDL_DEFINER,
-                            QueryAugmentedEventDataOperationType.valueOf(ddlDefinerMatcher.group(2).toUpperCase()),
+                            QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
                             null
                     );
-
-                    break;
-                }
-
-                Matcher ddlTableMatcher = this.ddlTablePattern.matcher(query);
-
-                if (ddlTableMatcher.find()) {
+                } else if ((matcher = this.ddlTablePattern.matcher(query)).find()) {
                     this.updateCommons(
                             true,
-                            query,
                             QueryAugmentedEventDataType.DDL_TABLE,
-                            QueryAugmentedEventDataOperationType.valueOf(ddlTableMatcher.group(2).toUpperCase()),
-                            new AugmentedEventTable(queryRawEventData.getDatabase(), ddlTableMatcher.group(4))
+                            QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
+                            new AugmentedEventTable(queryRawEventData.getDatabase(), matcher.group(4))
                     );
-
-                    break;
-                }
-
-                Matcher ddlTemporaryTableMatcher = this.ddlTemporaryTablePattern.matcher(query);
-
-                if (ddlTemporaryTableMatcher.find()) {
+                } else if ((matcher = this.ddlTemporaryTablePattern.matcher(query)).find()) {
                     this.updateCommons(
                             true,
-                            query,
                             QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE,
-                            QueryAugmentedEventDataOperationType.valueOf(ddlTemporaryTableMatcher.group(2).toUpperCase()),
-                            new AugmentedEventTable(queryRawEventData.getDatabase(), ddlTemporaryTableMatcher.group(4))
+                            QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
+                            new AugmentedEventTable(queryRawEventData.getDatabase(), matcher.group(4))
                     );
-
-                    break;
-                }
-
-                Matcher ddlViewMatcher = this.ddlViewPattern.matcher(query);
-
-                if (ddlViewMatcher.find()) {
+                } else if ((matcher = this.ddlViewPattern.matcher(query)).find()) {
                     this.updateCommons(
                             true,
-                            query,
                             QueryAugmentedEventDataType.DDL_VIEW,
-                            QueryAugmentedEventDataOperationType.valueOf(ddlViewMatcher.group(2).toUpperCase()),
+                            QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
                             null
                     );
-
-                    break;
-                }
-
-                Matcher ddlAnalyze = this.ddlAnalyzePattern.matcher(query);
-
-                if (ddlAnalyze.find()) {
+                } else if ((matcher = this.ddlAnalyzePattern.matcher(query)).find()) {
                     this.updateCommons(
                             true,
-                            query,
                             QueryAugmentedEventDataType.DDL_ANALYZE,
-                            QueryAugmentedEventDataOperationType.valueOf(ddlAnalyze.group(2).toUpperCase()),
+                            QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
                             null
                     );
-
-                    break;
-                }
-
-                Matcher pseudoGTIDMatcher = this.pseudoGTIDPattern.matcher(query);
-
-                if (pseudoGTIDMatcher.find()) {
+                } else if ((matcher = this.pseudoGTIDPattern.matcher(query)).find()) {
                     this.updateCommons(
                             false,
-                            query,
                             QueryAugmentedEventDataType.PSEUDO_GTID,
                             QueryAugmentedEventDataOperationType.UNKNOWN,
                             null
                     );
 
-                    this.updatePseudoGTID(pseudoGTIDMatcher.group(0), 0);
+                    this.updatePseudoGTID(matcher.group(0), 0);
+                } else {
+                    query = null;
 
-                    break;
+                    this.updateCommons(
+                            false,
+                            QueryAugmentedEventDataType.UNKNOWN,
+                            QueryAugmentedEventDataOperationType.UNKNOWN,
+                            null
+                    );
                 }
 
-                this.updateCommons(
-                        false,
-                        null,
-                        QueryAugmentedEventDataType.UNKNOWN,
-                        QueryAugmentedEventDataOperationType.UNKNOWN,
-                        null
-                );
+                this.updateSchema(query);
 
                 break;
             case XID:
@@ -291,7 +284,6 @@ public class ActiveSchemaContext {
 
                 this.updateCommons(
                         true,
-                        "COMMIT",
                         QueryAugmentedEventDataType.COMMIT,
                         QueryAugmentedEventDataOperationType.UNKNOWN,
                         null
@@ -305,7 +297,6 @@ public class ActiveSchemaContext {
             case TABLE_MAP:
                 this.updateCommons(
                         false,
-                        null,
                         QueryAugmentedEventDataType.COMMIT,
                         QueryAugmentedEventDataOperationType.UNKNOWN,
                         null
@@ -330,7 +321,6 @@ public class ActiveSchemaContext {
             case EXT_DELETE_ROWS:
                 this.updateCommons(
                         true,
-                        null,
                         QueryAugmentedEventDataType.UNKNOWN,
                         QueryAugmentedEventDataOperationType.UNKNOWN,
                         null
@@ -340,7 +330,6 @@ public class ActiveSchemaContext {
             default:
                 this.updateCommons(
                         false,
-                        null,
                         QueryAugmentedEventDataType.UNKNOWN,
                         QueryAugmentedEventDataOperationType.UNKNOWN,
                         null
@@ -356,10 +345,6 @@ public class ActiveSchemaContext {
 
     public boolean hasData() {
         return this.dataFlag.get();
-    }
-
-    public String getQueryContent() {
-        return this.queryContent.get();
     }
 
     public QueryAugmentedEventDataType getQueryType() {
@@ -380,11 +365,29 @@ public class ActiveSchemaContext {
         );
     }
 
+    public List<AugmentedEventColumn> getColumns(long tableId, BitSet includedColumns) {
+        List<AugmentedEventColumn> columnList = this.manager.listColumns(this.getTable(tableId).getName());
+        List<AugmentedEventColumn> includedColumnList = new LinkedList<>();
+
+        for (int columnIndex = 0; columnIndex < columnList.size(); columnIndex++) {
+            if (includedColumns.get(columnIndex)) {
+                includedColumnList.add(columnList.get(columnIndex));
+            }
+        }
+
+        return includedColumnList;
+    }
+
     public AugmentedEventTable getTable() {
         return this.table.get();
     }
 
     public AugmentedEventTable getTable(long tableId) {
         return this.tableIdTableMap.get(tableId);
+    }
+
+    @Override
+    public void close() throws IOException {
+        this.manager.close();
     }
 }

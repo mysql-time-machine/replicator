@@ -71,12 +71,12 @@ public class ActiveSchemaManager implements Closeable {
         return dataSource;
     }
 
-    public boolean execute(AugmentedEventTable table, String query) {
+    public boolean execute(String tableName, String query) {
         try (Connection connection = this.dataSource.getConnection();
              Statement statement = connection.createStatement()) {
 
-            if (table != null) {
-                this.cache.remove(table.getName());
+            if (tableName != null) {
+                this.cache.remove(tableName);
             }
 
             return statement.execute(query);
@@ -134,14 +134,16 @@ public class ActiveSchemaManager implements Closeable {
 
     public String getCreateTable(String tableName) {
         try (Connection connection = this.dataSource.getConnection();
-             Statement statement = connection.createStatement()) {
-            try (ResultSet resultSet = statement.executeQuery(String.format(ActiveSchemaManager.SHOW_CREATE_TABLE_SQL, tableName))) {
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(String.format(ActiveSchemaManager.SHOW_CREATE_TABLE_SQL, tableName))) {
+            if (resultSet.next()) {
                 return resultSet.getString(2);
+            } else  {
+                return null;
             }
         } catch (SQLException exception) {
             throw new RuntimeException("error getting create table", exception);
         }
-
     }
 
     @Override

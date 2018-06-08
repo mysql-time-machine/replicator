@@ -26,7 +26,7 @@ public class ReplicatorIT {
     private static final String ZOOKEEPER_LEADERSHIP_PATH = "/replicator/leadership";
     private static final String ZOOKEEPER_CHECKPOINT_PATH = "/replicator/checkpoint";
 
-    private static final String CHECKPOINT_DEFAULT = "{\"serverId\": 1, \"binlogFilename\": \"binlog.000001\", \"binlogPosition\": 0, \"pseudoGTID\": null, \"pseudoGTIDIndex\": 0}";
+    private static final String CHECKPOINT_DEFAULT = "{\"serverId\": 1, \"binlogFilename\": \"binlog.000001\", \"binlogPosition\": 4, \"pseudoGTID\": null, \"pseudoGTIDIndex\": 0}";
 
     private static final String MYSQL_SCHEMA = "replicator";
     private static final String MYSQL_ROOT_USERNAME = "root";

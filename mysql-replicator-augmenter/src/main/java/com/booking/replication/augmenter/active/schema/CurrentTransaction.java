@@ -2,6 +2,7 @@ package com.booking.replication.augmenter.active.schema;
 
 import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.augmenter.model.TransactionAugmentedEventData;
+import com.booking.replication.commons.checkpoint.ForceRewindException;
 
 import java.util.ArrayList;
 import java.util.Queue;

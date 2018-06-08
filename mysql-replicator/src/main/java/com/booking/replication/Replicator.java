@@ -144,7 +144,7 @@ public class Replicator {
             Replicator.LOG.log(Level.INFO, "rewinding supplier");
 
             this.supplier.disconnect();
-            this.supplier.connect(this.seeker.seek(this.coordinator.loadCheckpoint(this.checkpointPath)));
+            this.supplier.connect(this.seeker.seek(this.getCheckpoint()));
         } catch (IOException exception) {
             Replicator.LOG.log(Level.SEVERE, "error rewinding supplier", exception);
         }

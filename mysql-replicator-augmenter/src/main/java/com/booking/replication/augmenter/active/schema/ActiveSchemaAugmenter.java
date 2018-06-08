@@ -13,15 +13,13 @@ import java.util.Map;
 
 public class ActiveSchemaAugmenter implements Augmenter {
     private final ActiveSchemaContext context;
-    private final ActiveSchemaManager manager;
     private final ActiveSchemaHeaderAugmenter headerAugmenter;
     private final ActiveSchemaDataAugmenter dataAugmenter;
 
     public ActiveSchemaAugmenter(Map<String, String> configuration) {
         this.context = new ActiveSchemaContext(configuration);
-        this.manager = new ActiveSchemaManager(configuration);
         this.headerAugmenter = new ActiveSchemaHeaderAugmenter(this.context);
-        this.dataAugmenter = new ActiveSchemaDataAugmenter(this.context, this.manager);
+        this.dataAugmenter = new ActiveSchemaDataAugmenter(this.context);
     }
 
     @Override
@@ -30,10 +28,6 @@ public class ActiveSchemaAugmenter implements Augmenter {
         RawEventData eventData = rawEvent.getData();
 
         this.context.updateContext(eventHeader, eventData);
-
-        if (this.context.getQueryContent() != null) {
-            this.manager.execute(this.context.getTable(), this.context.getQueryContent());
-        }
 
         if (this.context.hasData()) {
             AugmentedEventHeader augmentedEventHeader = this.headerAugmenter.apply(eventHeader, eventData);
@@ -56,6 +50,6 @@ public class ActiveSchemaAugmenter implements Augmenter {
 
     @Override
     public void close() throws IOException {
-        this.manager.close();
+        this.context.close();
     }
 }

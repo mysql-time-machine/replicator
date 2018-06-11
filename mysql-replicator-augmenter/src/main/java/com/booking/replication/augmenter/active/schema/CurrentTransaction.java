@@ -38,6 +38,7 @@ public class CurrentTransaction {
             this.eventQueue.set(new ConcurrentLinkedQueue<>());
             this.xxid.set(0L);
             this.timestamp.set(0L);
+
             return true;
         } else {
             return false;
@@ -55,7 +56,7 @@ public class CurrentTransaction {
     public TransactionAugmentedEventData clean() {
         if (this.eventQueue.get() != null) {
             return new TransactionAugmentedEventData(
-                    this.identifier.get(),
+                    this.identifier.get().toString(),
                     this.xxid.get(),
                     new ArrayList<>(this.eventQueue.getAndSet((this.resuming.get())?(new ConcurrentLinkedQueue<>()):(null)))
             );

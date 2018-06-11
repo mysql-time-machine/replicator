@@ -5,18 +5,20 @@ import java.util.UUID;
 
 @SuppressWarnings("unused")
 public class TransactionAugmentedEventData implements AugmentedEventData {
-    private UUID identifier;
+    private String identifier;
     private long xxid;
     private List<AugmentedEvent> eventList;
 
     public TransactionAugmentedEventData() {
     }
 
-    public TransactionAugmentedEventData(UUID identifier, long xxid, List<AugmentedEvent> eventList) {
+    public TransactionAugmentedEventData(String identifier, long xxid, List<AugmentedEvent> eventList) {
+        this.identifier = identifier;
+        this.xxid = xxid;
         this.eventList = eventList;
     }
 
-    public UUID getIdentifier() {
+    public String getIdentifier() {
         return this.identifier;
     }
 

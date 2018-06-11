@@ -38,7 +38,7 @@ public class ActiveSchemaDataAugmenter {
                         this.context.getTable(updateRowsRawEventData.getTableId()),
                         this.context.getColumns(updateRowsRawEventData.getTableId(), updateRowsRawEventData.getIncludedColumnsBeforeUpdate()),
                         this.context.getColumns(updateRowsRawEventData.getTableId(), updateRowsRawEventData.getIncludedColumns()),
-                        this.context.getRows(updateRowsRawEventData.getRows())
+                        this.context.getUpdatedRows(updateRowsRawEventData.getRows())
                 );
             case DELETE_ROWS:
             case EXT_DELETE_ROWS:

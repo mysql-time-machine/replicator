@@ -7,12 +7,12 @@ public class UpdateRowsAugmentedEventData implements AugmentedEventData {
     private AugmentedEventTable eventTable;
     private List<AugmentedEventColumn> includedColumnsBeforeUpdate;
     private List<AugmentedEventColumn> includedColumns;
-    private List<AugmentedEventRow> rows;
+    private List<AugmentedEventUpdatedRow> rows;
 
     public UpdateRowsAugmentedEventData() {
     }
 
-    public UpdateRowsAugmentedEventData(AugmentedEventTable eventTable, List<AugmentedEventColumn> includedColumnsBeforeUpdate, List<AugmentedEventColumn> includedColumns, List<AugmentedEventRow> rows) {
+    public UpdateRowsAugmentedEventData(AugmentedEventTable eventTable, List<AugmentedEventColumn> includedColumnsBeforeUpdate, List<AugmentedEventColumn> includedColumns, List<AugmentedEventUpdatedRow> rows) {
         this.eventTable = eventTable;
         this.includedColumnsBeforeUpdate = includedColumnsBeforeUpdate;
         this.includedColumns = includedColumns;
@@ -31,7 +31,7 @@ public class UpdateRowsAugmentedEventData implements AugmentedEventData {
         return this.includedColumns;
     }
 
-    public List<AugmentedEventRow> getRows() {
+    public List<AugmentedEventUpdatedRow> getRows() {
         return this.rows;
     }
 }

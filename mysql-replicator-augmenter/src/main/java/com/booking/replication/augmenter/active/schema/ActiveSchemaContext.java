@@ -1,7 +1,7 @@
 package com.booking.replication.augmenter.active.schema;
 
 import com.booking.replication.augmenter.model.AugmentedEventColumn;
-import com.booking.replication.augmenter.model.AugmentedEventRow;
+import com.booking.replication.augmenter.model.AugmentedEventUpdatedRow;
 import com.booking.replication.augmenter.model.AugmentedEventTable;
 import com.booking.replication.augmenter.model.QueryAugmentedEventDataOperationType;
 import com.booking.replication.augmenter.model.QueryAugmentedEventDataType;
@@ -418,11 +418,11 @@ public class ActiveSchemaContext implements Closeable {
         return includedColumnList;
     }
 
-    public List<AugmentedEventRow> getRows(List<Map.Entry<Serializable[], Serializable[]>> rawRows) {
-        List<AugmentedEventRow> rows = new ArrayList<>();
+    public List<AugmentedEventUpdatedRow> getUpdatedRows(List<Map.Entry<Serializable[], Serializable[]>> rawRows) {
+        List<AugmentedEventUpdatedRow> rows = new ArrayList<>();
 
         for (Map.Entry<Serializable[], Serializable[]> rawRow : rawRows) {
-            rows.add(new AugmentedEventRow(
+            rows.add(new AugmentedEventUpdatedRow(
                     rawRow.getKey(),
                     rawRow.getValue()
             ));

@@ -9,8 +9,7 @@ public enum QueryAugmentedEventDataType {
     DDL_TEMPORARY_TABLE(4),
     DDL_VIEW(5),
     DDL_ANALYZE(6),
-    PSEUDO_GTID(7),
-    UNKNOWN(8);
+    PSEUDO_GTID(7);
 
     private final int code;
 

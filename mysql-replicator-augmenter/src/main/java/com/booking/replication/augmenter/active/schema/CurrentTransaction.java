@@ -2,7 +2,6 @@ package com.booking.replication.augmenter.active.schema;
 
 import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.augmenter.model.TransactionAugmentedEventData;
-import com.booking.replication.commons.checkpoint.ForceRewindException;
 
 import java.util.ArrayList;
 import java.util.Queue;
@@ -34,16 +33,13 @@ public class CurrentTransaction {
     }
 
     public boolean begin() {
-        if (!this.started.getAndSet(true)) {
-            this.resuming.set(false);
+        if (!this.started.getAndSet(true) && !this.resuming.get()) {
             this.identifier.set(UUID.randomUUID());
             this.eventQueue.set(new ConcurrentLinkedQueue<>());
             this.xxid.set(0L);
             this.timestamp.set(0L);
             return true;
         } else {
-            this.resuming.set(true);
-            this.eventQueue.set(new ConcurrentLinkedQueue<>());
             return false;
         }
     }
@@ -70,12 +66,18 @@ public class CurrentTransaction {
 
     public boolean commit(long xxid, long timestamp) {
         if (this.started.getAndSet(false)) {
+            this.resuming.set(false);
             this.xxid.set(xxid);
             this.timestamp.set(timestamp);
             return true;
         } else {
             return false;
         }
+    }
+
+    public void rewind() {
+        this.resuming.set(true);
+        this.eventQueue.set(new ConcurrentLinkedQueue<>());
     }
 
     public boolean commit(long timestamp) {

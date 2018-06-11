@@ -1,6 +1,7 @@
 package com.booking.replication.applier.kafka;
 
 import com.booking.replication.augmenter.model.AugmentedEvent;
+import com.booking.replication.augmenter.model.QueryAugmentedEventData;
 
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -8,8 +9,12 @@ public enum KafkaPartitioner {
     TABLE_NAME {
         @Override
         public int partition(AugmentedEvent augmentedEvent, int totalPartitions) {
-            if (augmentedEvent.getHeader().getEventTable() != null) {
-                return Math.abs(augmentedEvent.getHeader().getEventTable().getName().hashCode()) % totalPartitions;
+            if (QueryAugmentedEventData.class.isInstance(augmentedEvent.getData())) {
+                return Math.abs(
+                        QueryAugmentedEventData.class.cast(
+                                augmentedEvent.getHeader()
+                        ).getTable().hashCode()
+                ) % totalPartitions;
             } else {
                 return KafkaPartitioner.RANDOM.partition(augmentedEvent, totalPartitions);
             }

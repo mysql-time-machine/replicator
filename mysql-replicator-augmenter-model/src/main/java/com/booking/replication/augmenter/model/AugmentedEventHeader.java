@@ -9,16 +9,14 @@ public class AugmentedEventHeader implements Serializable {
     private long timestamp;
     private Checkpoint checkpoint;
     private AugmentedEventType eventType;
-    private AugmentedEventTable eventTable;
 
     public AugmentedEventHeader() {
     }
 
-    public AugmentedEventHeader(long timestamp, Checkpoint checkpoint, AugmentedEventType eventType, AugmentedEventTable eventTable) {
+    public AugmentedEventHeader(long timestamp, Checkpoint checkpoint, AugmentedEventType eventType) {
         this.timestamp = timestamp;
         this.checkpoint = checkpoint;
         this.eventType = eventType;
-        this.eventTable = eventTable;
     }
 
     public long getTimestamp() {
@@ -31,10 +29,6 @@ public class AugmentedEventHeader implements Serializable {
 
     public AugmentedEventType getEventType() {
         return this.eventType;
-    }
-
-    public AugmentedEventTable getEventTable() {
-        return this.eventTable;
     }
 }
 

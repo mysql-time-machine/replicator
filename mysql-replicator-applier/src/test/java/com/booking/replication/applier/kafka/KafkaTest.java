@@ -4,7 +4,6 @@ import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.Seeker;
 import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.augmenter.model.AugmentedEventHeader;
-import com.booking.replication.augmenter.model.AugmentedEventTable;
 import com.booking.replication.augmenter.model.AugmentedEventType;
 import com.booking.replication.augmenter.model.ByteArrayAugmentedEventData;
 import com.booking.replication.commons.checkpoint.Checkpoint;
@@ -51,8 +50,7 @@ public class KafkaTest {
                 new AugmentedEventHeader(
                         System.currentTimeMillis(),
                         KafkaTest.getCheckpoint(index),
-                        AugmentedEventType.BYTE_ARRAY,
-                        new AugmentedEventTable("DATABASE", "TABLE")
+                        AugmentedEventType.BYTE_ARRAY
                 ),
                 new ByteArrayAugmentedEventData(data)
         );

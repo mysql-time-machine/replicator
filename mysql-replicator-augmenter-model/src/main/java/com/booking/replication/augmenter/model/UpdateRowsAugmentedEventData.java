@@ -1,22 +1,26 @@
 package com.booking.replication.augmenter.model;
 
-import java.io.Serializable;
 import java.util.List;
-import java.util.Map;
 
 @SuppressWarnings("unused")
 public class UpdateRowsAugmentedEventData implements AugmentedEventData {
+    private AugmentedEventTable eventTable;
     private List<AugmentedEventColumn> includedColumnsBeforeUpdate;
     private List<AugmentedEventColumn> includedColumns;
-    private List<Map.Entry<Serializable[], Serializable[]>> rows;
+    private List<AugmentedEventRow> rows;
 
     public UpdateRowsAugmentedEventData() {
     }
 
-    public UpdateRowsAugmentedEventData(List<AugmentedEventColumn> includedColumnsBeforeUpdate, List<AugmentedEventColumn> includedColumns, List<Map.Entry<Serializable[], Serializable[]>> rows) {
+    public UpdateRowsAugmentedEventData(AugmentedEventTable eventTable, List<AugmentedEventColumn> includedColumnsBeforeUpdate, List<AugmentedEventColumn> includedColumns, List<AugmentedEventRow> rows) {
+        this.eventTable = eventTable;
         this.includedColumnsBeforeUpdate = includedColumnsBeforeUpdate;
         this.includedColumns = includedColumns;
         this.rows = rows;
+    }
+
+    public AugmentedEventTable getEventTable() {
+        return this.eventTable;
     }
 
     public List<AugmentedEventColumn> getIncludedColumnsBeforeUpdate() {
@@ -27,7 +31,7 @@ public class UpdateRowsAugmentedEventData implements AugmentedEventData {
         return this.includedColumns;
     }
 
-    public List<Map.Entry<Serializable[], Serializable[]>> getRows() {
+    public List<AugmentedEventRow> getRows() {
         return this.rows;
     }
 }

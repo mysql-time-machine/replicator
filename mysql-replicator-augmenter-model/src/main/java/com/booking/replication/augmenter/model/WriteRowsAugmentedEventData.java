@@ -5,15 +5,21 @@ import java.util.List;
 
 @SuppressWarnings("unused")
 public class WriteRowsAugmentedEventData implements AugmentedEventData {
+    private AugmentedEventTable eventTable;
     private List<AugmentedEventColumn> includedColumns;
     private List<Serializable[]> rows;
 
     public WriteRowsAugmentedEventData() {
     }
 
-    public WriteRowsAugmentedEventData(List<AugmentedEventColumn> includedColumns, List<Serializable[]> rows) {
+    public WriteRowsAugmentedEventData(AugmentedEventTable eventTable, List<AugmentedEventColumn> includedColumns, List<Serializable[]> rows) {
+        this.eventTable = eventTable;
         this.includedColumns = includedColumns;
         this.rows = rows;
+    }
+
+    public AugmentedEventTable getEventTable() {
+        return this.eventTable;
     }
 
     public List<AugmentedEventColumn> getIncludedColumns() {

@@ -21,6 +21,13 @@ INSERT INTO animals (name) VALUES ('horse');
 
 BEGIN;
 
+UPDATE animals SET name = 'lion' where id = 1;
+UPDATE animals SET name = 'tiger' where id = 2;
+
+COMMIT;
+
+BEGIN;
+
 DELETE FROM animals WHERE id = 1;
 DELETE FROM animals WHERE id = 2;
 

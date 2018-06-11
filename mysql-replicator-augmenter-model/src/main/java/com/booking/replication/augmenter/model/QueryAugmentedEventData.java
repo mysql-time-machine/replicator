@@ -8,6 +8,7 @@ public class QueryAugmentedEventData implements AugmentedEventData {
     private long executionTime;
     private int errorCode;
     private String database;
+    private String table;
     private String sql;
     private String createTableBefore;
     private String createTableAfter;
@@ -15,13 +16,14 @@ public class QueryAugmentedEventData implements AugmentedEventData {
     public QueryAugmentedEventData() {
     }
 
-    public QueryAugmentedEventData(QueryAugmentedEventDataType queryType, QueryAugmentedEventDataOperationType operationType, long threadId, long executionTime, int errorCode, String database, String sql, String createTableBefore, String createTableAfter) {
+    public QueryAugmentedEventData(QueryAugmentedEventDataType queryType, QueryAugmentedEventDataOperationType operationType, long threadId, long executionTime, int errorCode, String database, String table, String sql, String createTableBefore, String createTableAfter) {
         this.queryType = queryType;
         this.operationType = operationType;
         this.threadId = threadId;
         this.executionTime = executionTime;
         this.errorCode = errorCode;
         this.database = database;
+        this.table = table;
         this.sql = sql;
         this.createTableBefore = createTableBefore;
         this.createTableAfter = createTableAfter;
@@ -49,6 +51,10 @@ public class QueryAugmentedEventData implements AugmentedEventData {
 
     public String getDatabase() {
         return this.database;
+    }
+
+    public String getTable() {
+        return this.table;
     }
 
     public String getSQL() {

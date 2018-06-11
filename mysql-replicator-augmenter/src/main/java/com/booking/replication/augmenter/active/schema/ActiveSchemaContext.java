@@ -1,6 +1,7 @@
 package com.booking.replication.augmenter.active.schema;
 
 import com.booking.replication.augmenter.model.AugmentedEventColumn;
+import com.booking.replication.augmenter.model.AugmentedEventRow;
 import com.booking.replication.augmenter.model.AugmentedEventTable;
 import com.booking.replication.augmenter.model.QueryAugmentedEventDataOperationType;
 import com.booking.replication.augmenter.model.QueryAugmentedEventDataType;
@@ -14,6 +15,8 @@ import com.booking.replication.supplier.model.XIDRawEventData;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -70,7 +73,8 @@ public class ActiveSchemaContext implements Closeable {
     private final AtomicBoolean dataFlag;
     private final AtomicReference<QueryAugmentedEventDataType> queryType;
     private final AtomicReference<QueryAugmentedEventDataOperationType> queryOperationType;
-    private final AtomicReference<AugmentedEventTable> table;
+    private final AtomicReference<String> database;
+    private final AtomicReference<String> table;
 
     private final AtomicReference<String> binlogFilename;
     private final AtomicLong binlogPosition;
@@ -98,8 +102,9 @@ public class ActiveSchemaContext implements Closeable {
         this.serverId = new AtomicLong();
 
         this.dataFlag = new AtomicBoolean();
-        this.queryType = new AtomicReference<>(QueryAugmentedEventDataType.UNKNOWN);
-        this.queryOperationType = new AtomicReference<>(QueryAugmentedEventDataOperationType.UNKNOWN);
+        this.queryType = new AtomicReference<>();
+        this.queryOperationType = new AtomicReference<>();
+        this.database = new AtomicReference<>();
         this.table = new AtomicReference<>();
 
         this.binlogFilename = new AtomicReference<>();
@@ -128,10 +133,11 @@ public class ActiveSchemaContext implements Closeable {
         this.serverId.set(id);
     }
 
-    private void updateCommons(boolean dataFlag, QueryAugmentedEventDataType queryType, QueryAugmentedEventDataOperationType queryOperationType, AugmentedEventTable table) {
+    private void updateCommons(boolean dataFlag, QueryAugmentedEventDataType queryType, QueryAugmentedEventDataOperationType queryOperationType, String database, String table) {
         this.dataFlag.set(dataFlag);
         this.queryType.set(queryType);
         this.queryOperationType.set(queryOperationType);
+        this.database.set(database);
         this.table.set(table);
     }
 
@@ -148,22 +154,22 @@ public class ActiveSchemaContext implements Closeable {
     private void updateSchema(String query) {
         if (query != null) {
             if (this.table.get() != null) {
-                String tableName = this.table.get().getName();
+                String table = this.table.get();
 
                 if ((this.queryType.get() == QueryAugmentedEventDataType.DDL_TABLE ||
                      this.queryType.get() == QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE) &&
                      this.getQueryOperationType() != QueryAugmentedEventDataOperationType.CREATE) {
-                    this.createTableBefore.set(this.manager.getCreateTable(tableName));
+                    this.createTableBefore.set(this.manager.getCreateTable(table));
                 } else {
                     this.createTableBefore.set(null);
                 }
 
-                this.manager.execute(tableName, query);
+                this.manager.execute(table, query);
 
                 if ((this.queryType.get() == QueryAugmentedEventDataType.DDL_TABLE ||
                      this.queryType.get() == QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE) &&
                      this.getQueryOperationType() != QueryAugmentedEventDataOperationType.DROP) {
-                    this.createTableAfter.set(this.manager.getCreateTable(tableName));
+                    this.createTableAfter.set(this.manager.getCreateTable(table));
                 } else {
                     this.createTableAfter.set(null);
                 }
@@ -180,8 +186,9 @@ public class ActiveSchemaContext implements Closeable {
             case ROTATE:
                 this.updateCommons(
                         false,
-                        QueryAugmentedEventDataType.UNKNOWN,
-                        QueryAugmentedEventDataOperationType.UNKNOWN,
+                        null,
+                        null,
+                        null,
                         null
                 );
 
@@ -202,7 +209,8 @@ public class ActiveSchemaContext implements Closeable {
                     this.updateCommons(
                             false,
                             QueryAugmentedEventDataType.BEGIN,
-                            QueryAugmentedEventDataOperationType.UNKNOWN,
+                            null,
+                            queryRawEventData.getDatabase(),
                             null
                     );
 
@@ -213,7 +221,8 @@ public class ActiveSchemaContext implements Closeable {
                     this.updateCommons(
                             true,
                             QueryAugmentedEventDataType.COMMIT,
-                            QueryAugmentedEventDataOperationType.UNKNOWN,
+                            null,
+                            queryRawEventData.getDatabase(),
                             null
                     );
 
@@ -226,6 +235,7 @@ public class ActiveSchemaContext implements Closeable {
                             true,
                             QueryAugmentedEventDataType.DDL_DEFINER,
                             QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
+                            queryRawEventData.getDatabase(),
                             null
                     );
                 } else if ((matcher = this.ddlTablePattern.matcher(query)).find()) {
@@ -233,20 +243,23 @@ public class ActiveSchemaContext implements Closeable {
                             true,
                             QueryAugmentedEventDataType.DDL_TABLE,
                             QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
-                            new AugmentedEventTable(queryRawEventData.getDatabase(), matcher.group(4))
+                            queryRawEventData.getDatabase(),
+                            matcher.group(4)
                     );
                 } else if ((matcher = this.ddlTemporaryTablePattern.matcher(query)).find()) {
                     this.updateCommons(
                             true,
                             QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE,
                             QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
-                            new AugmentedEventTable(queryRawEventData.getDatabase(), matcher.group(4))
+                            queryRawEventData.getDatabase(),
+                            matcher.group(4)
                     );
                 } else if ((matcher = this.ddlViewPattern.matcher(query)).find()) {
                     this.updateCommons(
                             true,
                             QueryAugmentedEventDataType.DDL_VIEW,
                             QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
+                            queryRawEventData.getDatabase(),
                             null
                     );
                 } else if ((matcher = this.ddlAnalyzePattern.matcher(query)).find()) {
@@ -254,13 +267,15 @@ public class ActiveSchemaContext implements Closeable {
                             true,
                             QueryAugmentedEventDataType.DDL_ANALYZE,
                             QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
+                            queryRawEventData.getDatabase(),
                             null
                     );
                 } else if ((matcher = this.pseudoGTIDPattern.matcher(query)).find()) {
                     this.updateCommons(
                             false,
                             QueryAugmentedEventDataType.PSEUDO_GTID,
-                            QueryAugmentedEventDataOperationType.UNKNOWN,
+                            null,
+                            queryRawEventData.getDatabase(),
                             null
                     );
 
@@ -270,8 +285,9 @@ public class ActiveSchemaContext implements Closeable {
 
                     this.updateCommons(
                             false,
-                            QueryAugmentedEventDataType.UNKNOWN,
-                            QueryAugmentedEventDataOperationType.UNKNOWN,
+                            null,
+                            null,
+                            queryRawEventData.getDatabase(),
                             null
                     );
                 }
@@ -285,11 +301,12 @@ public class ActiveSchemaContext implements Closeable {
                 this.updateCommons(
                         true,
                         QueryAugmentedEventDataType.COMMIT,
-                        QueryAugmentedEventDataOperationType.UNKNOWN,
+                        null,
+                        null,
                         null
                 );
 
-                if (!this.transaction.commit(xidRawEventData.getXID(),eventHeader.getTimestamp())) {
+                if (!this.transaction.commit(xidRawEventData.getXID(), eventHeader.getTimestamp())) {
                     ActiveSchemaContext.LOG.log(Level.WARNING, "transaction already committed");
                 }
 
@@ -298,7 +315,8 @@ public class ActiveSchemaContext implements Closeable {
                 this.updateCommons(
                         false,
                         QueryAugmentedEventDataType.COMMIT,
-                        QueryAugmentedEventDataOperationType.UNKNOWN,
+                        null,
+                        null,
                         null
                 );
 
@@ -321,8 +339,9 @@ public class ActiveSchemaContext implements Closeable {
             case EXT_DELETE_ROWS:
                 this.updateCommons(
                         true,
-                        QueryAugmentedEventDataType.UNKNOWN,
-                        QueryAugmentedEventDataOperationType.UNKNOWN,
+                        null,
+                        null,
+                        null,
                         null
                 );
 
@@ -330,8 +349,9 @@ public class ActiveSchemaContext implements Closeable {
             default:
                 this.updateCommons(
                         false,
-                        QueryAugmentedEventDataType.UNKNOWN,
-                        QueryAugmentedEventDataOperationType.UNKNOWN,
+                        null,
+                        null,
+                        null,
                         null
                 );
 
@@ -365,6 +385,26 @@ public class ActiveSchemaContext implements Closeable {
         );
     }
 
+    public String getDatabase() {
+        return this.database.get();
+    }
+
+    public String getTable() {
+        return this.table.get();
+    }
+
+    public String getCreateTableBefore() {
+        return this.createTableBefore.get();
+    }
+
+    public String getCreateTableAfter() {
+        return this.createTableAfter.get();
+    }
+
+    public AugmentedEventTable getTable(long tableId) {
+        return this.tableIdTableMap.get(tableId);
+    }
+
     public List<AugmentedEventColumn> getColumns(long tableId, BitSet includedColumns) {
         List<AugmentedEventColumn> columnList = this.manager.listColumns(this.getTable(tableId).getName());
         List<AugmentedEventColumn> includedColumnList = new LinkedList<>();
@@ -378,12 +418,17 @@ public class ActiveSchemaContext implements Closeable {
         return includedColumnList;
     }
 
-    public AugmentedEventTable getTable() {
-        return this.table.get();
-    }
+    public List<AugmentedEventRow> getRows(List<Map.Entry<Serializable[], Serializable[]>> rawRows) {
+        List<AugmentedEventRow> rows = new ArrayList<>();
 
-    public AugmentedEventTable getTable(long tableId) {
-        return this.tableIdTableMap.get(tableId);
+        for (Map.Entry<Serializable[], Serializable[]> rawRow : rawRows) {
+            rows.add(new AugmentedEventRow(
+                    rawRow.getKey(),
+                    rawRow.getValue()
+            ));
+        }
+
+        return rows;
     }
 
     @Override

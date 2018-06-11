@@ -55,11 +55,10 @@ public class ActiveSchemaDataAugmenter {
                 return new QueryAugmentedEventData(
                         this.context.getQueryType(),
                         this.context.getQueryOperationType(),
+                        this.context.getEventTable(),
                         queryRawEventData.getThreadId(),
                         queryRawEventData.getExecutionTime(),
                         queryRawEventData.getErrorCode(),
-                        this.context.getDatabase(),
-                        this.context.getTable(),
                         queryRawEventData.getSQL(),
                         this.context.getCreateTableBefore(),
                         this.context.getCreateTableAfter()
@@ -68,11 +67,10 @@ public class ActiveSchemaDataAugmenter {
                 return new QueryAugmentedEventData(
                         this.context.getQueryType(),
                         this.context.getQueryOperationType(),
+                        this.context.getEventTable(),
                         0L,
                         0L,
                         0,
-                        null,
-                        null,
                         null,
                         this.context.getCreateTableBefore(),
                         this.context.getCreateTableAfter()

@@ -1,20 +1,21 @@
 package com.booking.replication.augmenter.model;
 
 import java.util.List;
-import java.util.UUID;
 
 @SuppressWarnings("unused")
-public class TransactionAugmentedEventData implements AugmentedEventData {
+public class TransactionAugmentedEventData implements TableAugmentedEventData {
     private String identifier;
     private long xxid;
+    private AugmentedEventTable eventTable;
     private List<AugmentedEvent> eventList;
 
     public TransactionAugmentedEventData() {
     }
 
-    public TransactionAugmentedEventData(String identifier, long xxid, List<AugmentedEvent> eventList) {
+    public TransactionAugmentedEventData(String identifier, long xxid, AugmentedEventTable eventTable, List<AugmentedEvent> eventList) {
         this.identifier = identifier;
         this.xxid = xxid;
+        this.eventTable = eventTable;
         this.eventList = eventList;
     }
 
@@ -24,6 +25,11 @@ public class TransactionAugmentedEventData implements AugmentedEventData {
 
     public long getXXID() {
         return this.xxid;
+    }
+
+    @Override
+    public AugmentedEventTable getEventTable() {
+        return this.eventTable;
     }
 
     public List<AugmentedEvent> getEventList() {

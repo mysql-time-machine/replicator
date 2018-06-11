@@ -4,7 +4,7 @@ import java.io.Serializable;
 import java.util.List;
 
 @SuppressWarnings("unused")
-public class DeleteRowsAugmentedEventData implements AugmentedEventData {
+public class DeleteRowsAugmentedEventData implements TableAugmentedEventData {
     private AugmentedEventTable eventTable;
     private List<AugmentedEventColumn> includedColumns;
     private List<Serializable[]> rows;
@@ -18,6 +18,7 @@ public class DeleteRowsAugmentedEventData implements AugmentedEventData {
         this.rows = rows;
     }
 
+    @Override
     public AugmentedEventTable getEventTable() {
         return this.eventTable;
     }

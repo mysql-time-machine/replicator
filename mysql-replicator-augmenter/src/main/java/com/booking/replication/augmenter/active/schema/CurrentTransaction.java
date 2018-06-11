@@ -58,6 +58,7 @@ public class CurrentTransaction {
             return new TransactionAugmentedEventData(
                     this.identifier.get().toString(),
                     this.xxid.get(),
+                    null,
                     new ArrayList<>(this.eventQueue.getAndSet((this.resuming.get())?(new ConcurrentLinkedQueue<>()):(null)))
             );
         } else {

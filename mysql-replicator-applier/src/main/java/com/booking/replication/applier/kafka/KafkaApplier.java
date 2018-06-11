@@ -1,6 +1,7 @@
 package com.booking.replication.applier.kafka;
 
 import com.booking.replication.applier.Applier;
+import com.booking.replication.applier.Partitioner;
 import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.commons.map.MapFilter;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -12,6 +13,7 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.errors.InvalidPartitionsException;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 
+import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Map;
 import java.util.Objects;
@@ -22,19 +24,17 @@ public class KafkaApplier implements Applier {
 
     public interface Configuration {
         String TOPIC = "kafka.topic";
-        String PARTITIONER = "kafka.partitioner";
         String PRODUCER_PREFIX = "kafka.producer.";
     }
 
-    private final Map<String, Producer<byte[], byte[]>> producers;
+    private final Map<Integer, Producer<byte[], byte[]>> producers;
     private final Map<String, Object> configuration;
     private final String topic;
     private final int totalPartitions;
-    private final KafkaPartitioner partitioner;
+    private final Partitioner partitioner;
 
     public KafkaApplier(Map<String, String> configuration) {
         String topic = configuration.get(Configuration.TOPIC);
-        String partitioner = configuration.getOrDefault(Configuration.PARTITIONER, KafkaPartitioner.RANDOM.name());
 
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
 
@@ -42,7 +42,7 @@ public class KafkaApplier implements Applier {
         this.configuration = new MapFilter(configuration).filter(Configuration.PRODUCER_PREFIX);
         this.topic = topic;
         this.totalPartitions = this.getTotalPartitions();
-        this.partitioner = KafkaPartitioner.valueOf(partitioner);
+        this.partitioner = Partitioner.build(configuration);
     }
 
     private Producer<byte[], byte[]> getProducer() {
@@ -58,11 +58,13 @@ public class KafkaApplier implements Applier {
     @Override
     public void accept(AugmentedEvent augmentedEvent) {
         try {
+            int partition = this.partitioner.apply(augmentedEvent, this.totalPartitions);
+
             this.producers.computeIfAbsent(
-                    Thread.currentThread().getName(), key -> this.getProducer()
+                    partition, key -> this.getProducer()
             ).send(new ProducerRecord<>(
                     this.topic,
-                    this.partitioner.partition(augmentedEvent, this.totalPartitions),
+                    partition,
                     KafkaApplier.MAPPER.writeValueAsBytes(augmentedEvent.getHeader()),
                     KafkaApplier.MAPPER.writeValueAsBytes(augmentedEvent.getData())
             ));
@@ -72,7 +74,8 @@ public class KafkaApplier implements Applier {
     }
 
     @Override
-    public void close() {
+    public void close() throws IOException {
+        this.partitioner.close();
         this.producers.values().forEach(Producer::close);
         this.producers.clear();
     }

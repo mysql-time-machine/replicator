@@ -2,6 +2,8 @@ package com.booking.replication;
 
 import com.booking.replication.applier.Seeker;
 import com.booking.replication.applier.Applier;
+import com.booking.replication.applier.Splitter;
+import com.booking.replication.applier.Partitioner;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.checkpoint.CheckpointApplier;
@@ -24,7 +26,10 @@ import org.apache.commons.cli.Options;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -33,6 +38,8 @@ public class Replicator {
     interface Configuration {
         String CHECKPOINT_PATH = "checkpoint.path";
         String CHECKPOINT_DEFAULT = "checkpoint.default";
+        String REPLICATOR_THREADS = "replicator.threads";
+        String REPLICATOR_TASKS = "replicator.tasks";
     }
 
     private static final Logger LOG = Logger.getLogger(Replicator.class.getName());
@@ -44,22 +51,36 @@ public class Replicator {
     private final Supplier supplier;
     private final Augmenter augmenter;
     private final Seeker seeker;
+    private final Splitter splitter;
+    private final Partitioner partitioner;
     private final Applier applier;
     private final CheckpointApplier checkpointApplier;
     private final Streams<AugmentedEvent, AugmentedEvent> streamsApplier;
-    private final Streams<RawEvent, AugmentedEvent> streamsSupplier;
+    private final Streams<RawEvent, List<AugmentedEvent>> streamsSupplier;
 
     public Replicator(final Map<String, String> configuration) {
+        String threads = configuration.get(Configuration.REPLICATOR_THREADS);
+        String tasks = configuration.get(Configuration.REPLICATOR_TASKS);
+
+        Objects.requireNonNull(threads, String.format("Configuration required: %s", Configuration.REPLICATOR_THREADS));
+        Objects.requireNonNull(threads, String.format("Configuration required: %s", Configuration.REPLICATOR_TASKS));
+
         this.checkpointPath = configuration.get(Configuration.CHECKPOINT_PATH);
         this.checkpointDefault = configuration.get(Configuration.CHECKPOINT_DEFAULT);
         this.coordinator = Coordinator.build(configuration);
         this.supplier = Supplier.build(configuration);
         this.augmenter = Augmenter.build(configuration);
         this.seeker = Seeker.build(configuration);
+        this.splitter = Splitter.build(configuration);
+        this.partitioner = Partitioner.build(configuration);
         this.applier = Applier.build(configuration);
         this.checkpointApplier = CheckpointApplier.build(configuration, this.coordinator, this.checkpointPath);
-        this.streamsApplier = Streams.<AugmentedEvent>builder().threads(10).tasks(10).queue().fromPush().to(this.applier).post(this.checkpointApplier).build();
-        this.streamsSupplier = Streams.<RawEvent>builder().fromPush().process(this.augmenter).process(this.seeker).to(streamsApplier::push).build();
+        this.streamsApplier = Streams.<AugmentedEvent>builder().threads(Integer.parseInt(threads)).tasks(Integer.parseInt(tasks)).partitioner(this.partitioner).queue().fromPush().to(this.applier).post(this.checkpointApplier).build();
+        this.streamsSupplier = Streams.<RawEvent>builder().fromPush().process(this.augmenter).process(this.seeker).process(this.splitter).to(eventList -> {
+            for (AugmentedEvent event : eventList) {
+                this.streamsApplier.push(event);
+            }
+        }).build();
 
         this.supplier.onEvent(this.streamsSupplier::push);
 
@@ -97,6 +118,8 @@ public class Replicator {
                 this.supplier.stop();
                 this.augmenter.close();
                 this.seeker.close();
+                this.splitter.close();
+                this.partitioner.close();
                 this.applier.close();
                 this.checkpointApplier.close();
                 this.streamsSupplier.stop();
@@ -121,6 +144,17 @@ public class Replicator {
         Replicator.LOG.log(Level.INFO, "starting coordinator");
 
         this.coordinator.start();
+    }
+
+    public void wait(long timeout, TimeUnit unit) {
+        try {
+            Replicator.LOG.log(Level.INFO, "waiting coordinator");
+
+            this.coordinator.wait(timeout, unit);
+        } catch (InterruptedException exception) {
+            Replicator.LOG.log(Level.SEVERE, "error waiting coordinator", exception);
+        }
+
     }
 
     public void join() {

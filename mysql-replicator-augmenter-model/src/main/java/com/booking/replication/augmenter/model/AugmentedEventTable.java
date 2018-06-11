@@ -20,4 +20,9 @@ public class AugmentedEventTable {
     public String getName() {
         return this.name;
     }
+
+    @Override
+    public String toString() {
+        return String.format("%s.%s", this.database, this.name);
+    }
 }

@@ -73,8 +73,7 @@ public class ActiveSchemaContext implements Closeable {
     private final AtomicBoolean dataFlag;
     private final AtomicReference<QueryAugmentedEventDataType> queryType;
     private final AtomicReference<QueryAugmentedEventDataOperationType> queryOperationType;
-    private final AtomicReference<String> database;
-    private final AtomicReference<String> table;
+    private final AtomicReference<AugmentedEventTable> eventTable;
 
     private final AtomicReference<String> binlogFilename;
     private final AtomicLong binlogPosition;
@@ -104,8 +103,7 @@ public class ActiveSchemaContext implements Closeable {
         this.dataFlag = new AtomicBoolean();
         this.queryType = new AtomicReference<>();
         this.queryOperationType = new AtomicReference<>();
-        this.database = new AtomicReference<>();
-        this.table = new AtomicReference<>();
+        this.eventTable = new AtomicReference<>();
 
         this.binlogFilename = new AtomicReference<>();
         this.binlogPosition = new AtomicLong();
@@ -137,8 +135,10 @@ public class ActiveSchemaContext implements Closeable {
         this.dataFlag.set(dataFlag);
         this.queryType.set(queryType);
         this.queryOperationType.set(queryOperationType);
-        this.database.set(database);
-        this.table.set(table);
+
+        if (table != null) {
+            this.eventTable.set(new AugmentedEventTable(database, table));
+        }
     }
 
     private void updateBinlog(String filename, long position) {
@@ -153,8 +153,8 @@ public class ActiveSchemaContext implements Closeable {
 
     private void updateSchema(String query) {
         if (query != null) {
-            if (this.table.get() != null) {
-                String table = this.table.get();
+            if (this.eventTable.get() != null) {
+                String table = this.eventTable.get().getName();
 
                 if ((this.queryType.get() == QueryAugmentedEventDataType.DDL_TABLE ||
                      this.queryType.get() == QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE) &&
@@ -375,6 +375,10 @@ public class ActiveSchemaContext implements Closeable {
         return this.queryOperationType.get();
     }
 
+    public AugmentedEventTable getEventTable() {
+        return this.eventTable.get();
+    }
+
     public Checkpoint getCheckpoint() {
         return new Checkpoint(
                 this.serverId.get(),
@@ -383,14 +387,6 @@ public class ActiveSchemaContext implements Closeable {
                 this.pseudoGTIDValue.get(),
                 this.pseudoGTIDIndex.getAndIncrement()
         );
-    }
-
-    public String getDatabase() {
-        return this.database.get();
-    }
-
-    public String getTable() {
-        return this.table.get();
     }
 
     public String getCreateTableBefore() {

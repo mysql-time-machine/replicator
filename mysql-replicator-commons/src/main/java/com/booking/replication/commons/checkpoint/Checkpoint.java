@@ -73,29 +73,35 @@ public class Checkpoint implements Serializable, Comparable<Checkpoint> {
 
     @Override
     public int compareTo(Checkpoint checkpoint) {
-        if (this.getPseudoGTID() != null && checkpoint != null && checkpoint.getPseudoGTID() != null) {
-            if (this.getPseudoGTID().equals(checkpoint.getPseudoGTID())) {
-                return Integer.compare(this.getPseudoGTIDIndex(), checkpoint.getPseudoGTIDIndex());
-            } else {
-                return this.getPseudoGTID().compareTo(checkpoint.getPseudoGTID());
-            }
-        } else if (this.getPseudoGTID() != null) {
-            return Integer.MAX_VALUE;
-        } else if (checkpoint != null && checkpoint.getPseudoGTID() != null) {
-            return Integer.MIN_VALUE;
-        } else if (checkpoint != null) {
-            if (this.getBinlogFilename() != null && checkpoint.getBinlogFilename() != null) {
-                if (this.getBinlogFilename().equals(checkpoint.getBinlogFilename())) {
-                    return Long.compare(this.getBinlogPosition(), checkpoint.getBinlogPosition());
+        if (checkpoint != null) {
+            if (this.getPseudoGTID() != null &&  checkpoint.getPseudoGTID() != null) {
+                if (this.getPseudoGTID().equals(checkpoint.getPseudoGTID())) {
+                    return Integer.compare(this.getPseudoGTIDIndex(), checkpoint.getPseudoGTIDIndex());
                 } else {
-                    return this.getBinlogFilename().compareTo(checkpoint.getBinlogFilename());
+                    return this.getPseudoGTID().compareTo(checkpoint.getPseudoGTID());
                 }
-            } else if (this.getBinlogFilename() != null) {
+            } else if (this.getPseudoGTID() != null) {
                 return Integer.MAX_VALUE;
-            } else if (checkpoint.getBinlogFilename() != null) {
+            } else if (checkpoint.getPseudoGTID() != null){
                 return Integer.MIN_VALUE;
             } else {
-                return 0;
+                if (this.getBinlogFilename() != null && checkpoint.getBinlogFilename() != null) {
+                    if (this.getBinlogFilename().equals(checkpoint.getBinlogFilename())) {
+                        if (this.getBinlogPosition() == checkpoint.getBinlogPosition()) {
+                            return Integer.compare(this.getPseudoGTIDIndex(), checkpoint.getPseudoGTIDIndex());
+                        } else {
+                            return Long.compare(this.getBinlogPosition(), checkpoint.getBinlogPosition());
+                        }
+                    } else {
+                        return this.getBinlogFilename().compareTo(checkpoint.getBinlogFilename());
+                    }
+                } else if (this.getBinlogFilename() != null) {
+                    return Integer.MAX_VALUE;
+                } else if (checkpoint.getBinlogFilename() != null) {
+                    return Integer.MIN_VALUE;
+                } else {
+                    return 0;
+                }
             }
         } else {
             return Integer.MAX_VALUE;

@@ -3,7 +3,7 @@ package com.booking.replication.augmenter.model;
 import java.util.List;
 
 @SuppressWarnings("unused")
-public class UpdateRowsAugmentedEventData implements AugmentedEventData {
+public class UpdateRowsAugmentedEventData implements TableAugmentedEventData {
     private AugmentedEventTable eventTable;
     private List<AugmentedEventColumn> includedColumnsBeforeUpdate;
     private List<AugmentedEventColumn> includedColumns;
@@ -19,6 +19,7 @@ public class UpdateRowsAugmentedEventData implements AugmentedEventData {
         this.rows = rows;
     }
 
+    @Override
     public AugmentedEventTable getEventTable() {
         return this.eventTable;
     }

@@ -81,11 +81,14 @@ public class ActiveSchemaAugmenter implements Augmenter {
     }
 
     private AugmentedEvent getTransactionAugmentedEvent(TransactionAugmentedEventData transactionAugmentedEventData) {
-        return new AugmentedEvent(new AugmentedEventHeader(
-                this.context.getTransaction().getTimestamp(),
-                transactionAugmentedEventData.getEventList().get(transactionAugmentedEventData.getEventList().size() - 1).getHeader().getCheckpoint(),
-                AugmentedEventType.TRANSACTION
-        ), transactionAugmentedEventData);
+        return new AugmentedEvent(
+                new AugmentedEventHeader(
+                        this.context.getTransaction().getTimestamp(),
+                        transactionAugmentedEventData.getEventList().get(transactionAugmentedEventData.getEventList().size() - 1).getHeader().getCheckpoint(),
+                        AugmentedEventType.TRANSACTION
+                ),
+                transactionAugmentedEventData
+        );
     }
 
     @Override

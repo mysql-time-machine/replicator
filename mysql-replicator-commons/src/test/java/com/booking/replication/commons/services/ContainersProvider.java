@@ -28,7 +28,7 @@ public final class ContainersProvider implements ServicesProvider {
     private static final String MYSQL_PASSWORD_KEY = "MYSQL_PASSWORD";
     private static final String MYSQL_CONFIGURATION_FILE = "my.cnf";
     private static final String MYSQL_CONFIGURATION_PATH = "/etc/mysql/conf.d/my.cnf";
-    private static final String MYSQL_INIT_SCRIPT_PATH = "/docker-entrypoint-initdb.d/init.sql";
+    private static final String MYSQL_INIT_SCRIPT_PATH = "/docker-entrypoint-initdb.d/%s";
     private static final String MYSQL_STARTUP_WAIT_REGEX = ".*mysqld: ready for connections.*\\n";
     private static final int MYSQL_STARTUP_WAIT_TIMES = 1;
     private static final int MYSQL_PORT = 3306;
@@ -91,7 +91,7 @@ public final class ContainersProvider implements ServicesProvider {
         );
 
         for (String initScript : initScripts) {
-            mysql.withClasspathResourceMapping(initScript, ContainersProvider.MYSQL_INIT_SCRIPT_PATH, BindMode.READ_ONLY);
+            mysql.withClasspathResourceMapping(initScript, String.format(ContainersProvider.MYSQL_INIT_SCRIPT_PATH, initScript), BindMode.READ_ONLY);
         }
 
         mysql.start();

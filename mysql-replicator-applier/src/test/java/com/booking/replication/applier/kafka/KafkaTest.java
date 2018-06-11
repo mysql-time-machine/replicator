@@ -1,6 +1,7 @@
 package com.booking.replication.applier.kafka;
 
 import com.booking.replication.applier.Applier;
+import com.booking.replication.applier.Partitioner;
 import com.booking.replication.applier.Seeker;
 import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.augmenter.model.AugmentedEventHeader;
@@ -9,6 +10,8 @@ import com.booking.replication.augmenter.model.ByteArrayAugmentedEventData;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.services.ServicesControl;
 import com.booking.replication.commons.services.ServicesProvider;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -73,9 +76,8 @@ public class KafkaTest {
         Map<String, String> configuration = new HashMap<>();
 
         configuration.put(Applier.Configuration.TYPE, Applier.Type.KAFKA.name());
-        configuration.put(KafkaApplier.Configuration.PARTITIONER, KafkaPartitioner.RANDOM.name());
         configuration.put(KafkaApplier.Configuration.TOPIC, KafkaTest.TOPIC_NAME);
-        configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, "bootstrap.servers"), KafkaTest.servicesControl.getURL());
+        configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.BOOTSTRAP_SERVERS_CONFIG), KafkaTest.servicesControl.getURL());
 
         try (Applier applier = Applier.build(configuration)) {
             for (AugmentedEvent event : KafkaTest.events) {
@@ -90,8 +92,8 @@ public class KafkaTest {
 
         configuration.put(Seeker.Configuration.TYPE, Seeker.Type.KAFKA.name());
         configuration.put(KafkaSeeker.Configuration.TOPIC, KafkaTest.TOPIC_NAME);
-        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, "bootstrap.servers"), KafkaTest.servicesControl.getURL());
-        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, "group.id"), KafkaTest.GROUP_ID);
+        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG), KafkaTest.servicesControl.getURL());
+        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.GROUP_ID_CONFIG), KafkaTest.GROUP_ID);
 
         Seeker seeker = Seeker.build(configuration);
 

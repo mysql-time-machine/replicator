@@ -22,6 +22,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class KafkaSeeker implements Seeker {
     public interface Configuration {
@@ -29,12 +31,13 @@ public class KafkaSeeker implements Seeker {
         String CONSUMER_PREFIX = "kafka.consumer.";
     }
 
+    private static final Logger LOG = Logger.getLogger(KafkaSeeker.class.getName());
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final String topic;
     private final Map<String, Object> configuration;
     private final AtomicReference<Checkpoint> checkpoint;
-    private final AtomicBoolean seeked;
+    private final AtomicBoolean sought;
 
     public KafkaSeeker(Map<String, String> configuration) {
         String topic = configuration.get(Configuration.TOPIC);
@@ -44,11 +47,13 @@ public class KafkaSeeker implements Seeker {
         this.topic = topic;
         this.configuration = new MapFilter(configuration).filter(Configuration.CONSUMER_PREFIX);
         this.checkpoint = new AtomicReference<>();
-        this.seeked = new AtomicBoolean();
+        this.sought = new AtomicBoolean();
     }
 
     @Override
     public Checkpoint seek(Checkpoint checkpoint) {
+        KafkaSeeker.LOG.log(Level.INFO,"seeking for last events");
+
         try (Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(this.configuration, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
             Checkpoint lastCheckpoint = checkpoint;
 
@@ -78,7 +83,7 @@ public class KafkaSeeker implements Seeker {
             }
 
             this.checkpoint.set(lastCheckpoint);
-            this.seeked.set(false);
+            this.sought.set(false);
 
             return lastCheckpoint;
         } catch (IOException exception) {
@@ -88,10 +93,11 @@ public class KafkaSeeker implements Seeker {
 
     @Override
     public AugmentedEvent apply(AugmentedEvent augmentedEvent) {
-        if (this.seeked.get()) {
+        if (this.sought.get()) {
             return augmentedEvent;
         } else if (this.checkpoint.get() == null || this.checkpoint.get().compareTo(augmentedEvent.getHeader().getCheckpoint()) < 0) {
-            this.seeked.set(true);
+            KafkaSeeker.LOG.log(Level.INFO,"sought");
+            this.sought.set(true);
             return augmentedEvent;
         } else {
             return null;

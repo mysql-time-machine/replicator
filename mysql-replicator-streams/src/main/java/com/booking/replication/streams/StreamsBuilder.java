@@ -10,7 +10,6 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class StreamsBuilder<Input, Output> implements
@@ -31,11 +30,20 @@ public final class StreamsBuilder<Input, Output> implements
     private Consumer<Output> to;
     private BiConsumer<Input, Map<Input, AtomicReference<Output>>> post;
 
-    private StreamsBuilder(Function<Integer, Input> from, Predicate<Input> filter, Function<Input, Output> process, Consumer<Output> to, BiConsumer<Input, Map<Input, AtomicReference<Output>>> post) {
-        this.threads = 1;
-        this.tasks = 1;
-        this.partitioner = null;
-        this.queueType = null;
+    private StreamsBuilder(
+            int threads,
+            int tasks,
+            BiFunction<Input, Integer, Integer> partitioner,
+            Class<? extends Deque> queueType,
+            Function<Integer, Input> from,
+            Predicate<Input> filter,
+            Function<Input, Output> process,
+            Consumer<Output> to,
+            BiConsumer<Input, Map<Input, AtomicReference<Output>>> post) {
+        this.threads = threads;
+        this.tasks = tasks;
+        this.partitioner = partitioner;
+        this.queueType = queueType;
         this.from = from;
         this.filter = filter;
         this.process = process;
@@ -44,7 +52,7 @@ public final class StreamsBuilder<Input, Output> implements
     }
 
     StreamsBuilder() {
-        this(null, null, null, null, null);
+        this(1, 1, null, null, null, null, null, null, null);
     }
 
     @Override
@@ -102,36 +110,65 @@ public final class StreamsBuilder<Input, Output> implements
     @Override
     public final StreamsBuilderFilter<Input, Output> filter(Predicate<Input> predicate) {
         Objects.requireNonNull(predicate);
-        return new StreamsBuilder<>(this.from, input -> (this.filter == null || this.filter.test(input)) && predicate.test(input), null, null, null);
+        return new StreamsBuilder<>(
+                this.threads,
+                this.tasks,
+                this.partitioner,
+                this.queueType,
+                this.from,
+                input -> (this.filter == null || this.filter.test(input)) && predicate.test(input),
+                null,
+                null,
+                null
+        );
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public final <To> StreamsBuilderTo<Input, To> process(Function<Output, To> function) {
         Objects.requireNonNull(function);
-        return new StreamsBuilder<>(this.from, this.filter, input -> {
-            Output output = (this.process != null)?(this.process.apply(input)):((Output) input);
-
-            if (output != null) {
-                return function.apply(output);
-            } else {
-                return null;
-            }
-        }, null, null);
+        return new StreamsBuilder<>(
+                this.threads,
+                this.tasks,
+                this.partitioner,
+                this.queueType,
+                this.from,
+                this.filter,
+                input -> {
+                    Output output = (this.process != null)?(this.process.apply(input)):((Output) input);
+                    if (output != null) {
+                        return function.apply(output);
+                    } else {
+                        return null;
+                    }
+                },
+                null,
+                null
+        );
     }
 
     @Override
     public final StreamsBuilderPost<Input, Output> to(Consumer<Output> consumer) {
         Objects.requireNonNull(consumer);
-        return new StreamsBuilder<>(this.from, this.filter, this.process, output -> {
-            if (this.to != null) {
-                this.to.accept(output);
-            }
+        return new StreamsBuilder<>(
+                this.threads,
+                this.tasks,
+                this.partitioner,
+                this.queueType,
+                this.from,
+                this.filter,
+                this.process,
+                output -> {
+                    if (this.to != null) {
+                        this.to.accept(output);
+                    }
 
-            if (output != null) {
-                consumer.accept(output);
-            }
-        }, null);
+                    if (output != null) {
+                        consumer.accept(output);
+                    }
+                },
+                null
+        );
     }
 
     @Override
@@ -143,15 +180,25 @@ public final class StreamsBuilder<Input, Output> implements
     @Override
     public final StreamsBuilderBuild<Input, Output> post(BiConsumer<Input, Map<Input, AtomicReference<Output>>> consumer) {
         Objects.requireNonNull(consumer);
-        return new StreamsBuilder<>(this.from, this.filter, this.process, this.to, (input, executing) -> {
-            if (this.post != null) {
-                this.post.accept(input, executing);
-            }
+        return new StreamsBuilder<>(
+                this.threads,
+                this.tasks,
+                this.partitioner,
+                this.queueType,
+                this.from,
+                this.filter,
+                this.process,
+                this.to,
+                (input, executing) -> {
+                    if (this.post != null) {
+                        this.post.accept(input, executing);
+                    }
 
-            if (input != null) {
-                consumer.accept(input, executing);
-            }
-        });
+                    if (input != null) {
+                        consumer.accept(input, executing);
+                    }
+                }
+        );
     }
 
     @Override

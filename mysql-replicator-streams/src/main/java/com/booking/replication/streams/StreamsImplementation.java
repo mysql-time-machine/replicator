@@ -130,9 +130,9 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
 
                 this.executor.execute(() -> consumer.accept(task));
             }
-
-            StreamsImplementation.LOG.log(Level.FINE, "streams started");
         }
+
+        StreamsImplementation.LOG.log(Level.FINE, "streams started");
 
         return this;
     }

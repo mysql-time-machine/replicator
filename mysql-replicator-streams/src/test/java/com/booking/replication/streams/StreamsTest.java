@@ -12,25 +12,27 @@ import static org.junit.Assert.assertTrue;
 public class StreamsTest {
     @Test
     public void testFromPull() throws InterruptedException {
-        AtomicInteger inputCount = new AtomicInteger();
-        AtomicInteger outputCount = new AtomicInteger();
+        AtomicInteger count1 = new AtomicInteger();
+        AtomicInteger count2 = new AtomicInteger();
 
         Streams.<Integer>builder()
                 .queue()
                 .fromPull((task) -> {
-                    inputCount.incrementAndGet();
+                    count1.incrementAndGet();
                     return ThreadLocalRandom.current().nextInt();
                 })
-                .to((value) -> assertEquals(inputCount.get(), outputCount.incrementAndGet()))
+                .to((value) -> count2.incrementAndGet())
                 .build()
                 .start()
                 .wait(1L, TimeUnit.SECONDS)
                 .stop();
+
+        assertEquals(count1.get(), count2.get());
     }
 
     @Test
     public void testFromPush() throws InterruptedException {
-        AtomicInteger count = new AtomicInteger();
+        AtomicInteger count1 = new AtomicInteger();
 
         int number = ThreadLocalRandom.current().nextInt();
 
@@ -38,7 +40,7 @@ public class StreamsTest {
                 .queue()
                 .fromPush()
                 .to((value) -> {
-                    assertEquals(1, count.incrementAndGet());
+                    count1.incrementAndGet();
                     assertEquals(number, value.intValue());
                 })
                 .build()
@@ -46,12 +48,14 @@ public class StreamsTest {
 
         streams.push(number);
         streams.wait(1L, TimeUnit.SECONDS).stop();
+
+        assertEquals(1, count1.get());
     }
 
     @Test
     public void testFilter() throws InterruptedException {
-        AtomicInteger inputCount = new AtomicInteger();
-        AtomicInteger outputCount = new AtomicInteger();
+        AtomicInteger count1 = new AtomicInteger();
+        AtomicInteger count2 = new AtomicInteger();
 
         Streams.<Integer>builder()
                 .queue()
@@ -59,94 +63,106 @@ public class StreamsTest {
                     int value = ThreadLocalRandom.current().nextInt();
 
                     if (value > 0) {
-                        inputCount.incrementAndGet();
+                        count1.incrementAndGet();
                     }
 
                     return value;
                 })
                 .filter((value) -> value > 0)
                 .to((value) -> {
-                    assertEquals(inputCount.get(), outputCount.incrementAndGet());
+                    count2.incrementAndGet();
                     assertTrue(value > 0);
                 })
                 .build()
                 .start()
                 .wait(1L, TimeUnit.SECONDS)
                 .stop();
+
+        assertEquals(count1.get(), count2.get());
     }
 
     @Test
     public void testProcess() throws InterruptedException {
-        AtomicInteger inputCount = new AtomicInteger();
-        AtomicInteger outputCount = new AtomicInteger();
+        AtomicInteger count1 = new AtomicInteger();
+        AtomicInteger count2 = new AtomicInteger();
 
         Streams.<Integer>builder()
                 .queue()
                 .fromPull((task) -> {
-                    inputCount.incrementAndGet();
+                    count1.incrementAndGet();
                     return ThreadLocalRandom.current().nextInt();
                 })
                 .process(Object::toString)
                 .to((value) -> {
-                    assertEquals(inputCount.get(), outputCount.incrementAndGet());
+                    count2.incrementAndGet();
                     assertTrue(String.class.isInstance(value));
                 })
                 .build()
                 .start()
                 .wait(1L, TimeUnit.SECONDS)
                 .stop();
+
+        assertEquals(count1.get(), count2.get());
     }
 
     @Test
     public void testMultipleProcess() throws InterruptedException {
-        AtomicInteger inputCount = new AtomicInteger();
-        AtomicInteger outputCount = new AtomicInteger();
+        AtomicInteger count1 = new AtomicInteger();
+        AtomicInteger count2 = new AtomicInteger();
 
         Streams.<Integer>builder()
                 .queue()
                 .fromPull((task) -> {
-                    inputCount.incrementAndGet();
+                    count1.incrementAndGet();
                     return ThreadLocalRandom.current().nextInt();
                 })
                 .process(Object::toString)
                 .process((value) -> String.format("value=%s", value))
                 .to((value) -> {
-                    assertEquals(inputCount.get(), outputCount.incrementAndGet());
+                    count2.incrementAndGet();
                     assertTrue(value.startsWith("value="));
                 })
                 .build()
                 .start()
                 .wait(1L, TimeUnit.SECONDS)
                 .stop();
+
+        assertEquals(count1.get(), count2.get());
     }
 
     @Test
     public void testThreads() throws InterruptedException {
-        AtomicInteger inputCount = new AtomicInteger();
-        AtomicInteger outputCount = new AtomicInteger();
+        AtomicInteger count1 = new AtomicInteger();
+        AtomicInteger count2 = new AtomicInteger();
 
-        Streams.<Integer>builder()
+        Streams<Integer, String> streams = Streams.<Integer>builder()
                 .tasks(10)
                 .threads(10)
                 .queue()
                 .fromPull((task) -> {
-                    inputCount.incrementAndGet();
+                    count1.incrementAndGet();
                     return ThreadLocalRandom.current().nextInt();
                 })
                 .process(Object::toString)
                 .process((value) -> String.format("value=%s", value))
-                .to((value) -> assertEquals(inputCount.get(), outputCount.incrementAndGet()))
+                .to((value) -> count2.incrementAndGet())
                 .build()
-                .start()
-                .wait(1L, TimeUnit.SECONDS)
-                .stop();
+                .start();
+
+        while (count2.get() < count1.get()) {
+            streams.wait(1L, TimeUnit.SECONDS);
+        }
+
+        streams.stop();
+
+        assertEquals(count1.get(), count2.get());
     }
 
     @Test
     public void testMultipleTo() throws InterruptedException {
-        AtomicInteger inputCount = new AtomicInteger();
-        AtomicInteger outputCount1 = new AtomicInteger();
-        AtomicInteger outputCount2 = new AtomicInteger();
+        AtomicInteger count1 = new AtomicInteger();
+        AtomicInteger count2 = new AtomicInteger();
+        AtomicInteger count3 = new AtomicInteger();
 
         Streams.<Integer>builder()
                 .queue()
@@ -154,7 +170,7 @@ public class StreamsTest {
                     int value = ThreadLocalRandom.current().nextInt();
 
                     if (value > 0) {
-                        inputCount.incrementAndGet();
+                        count1.incrementAndGet();
                     }
 
                     return value;
@@ -162,24 +178,27 @@ public class StreamsTest {
                 .filter(value -> value > 0)
                 .process(Object::toString)
                 .to((value) -> {
-                    assertEquals(inputCount.get(), outputCount1.incrementAndGet());
+                    count2.incrementAndGet();
                     assertTrue(String.class.isInstance(value));
                 })
                 .to((value) -> {
-                    assertEquals(inputCount.get(), outputCount2.incrementAndGet());
+                    count3.incrementAndGet();
                     assertTrue(Integer.parseInt(value) > 0);
                 })
                 .build()
                 .start()
                 .wait(1L, TimeUnit.SECONDS)
                 .stop();
+
+        assertEquals(count1.get(), count2.get());
+        assertEquals(count1.get(), count3.get());
     }
 
     @Test
     public void testPost() throws InterruptedException {
-        AtomicInteger inputCount = new AtomicInteger();
-        AtomicInteger outputCount1 = new AtomicInteger();
-        AtomicInteger outputCount2 = new AtomicInteger();
+        AtomicInteger count1 = new AtomicInteger();
+        AtomicInteger count2 = new AtomicInteger();
+        AtomicInteger count3 = new AtomicInteger();
 
         Streams.<Integer>builder()
                 .queue()
@@ -187,7 +206,7 @@ public class StreamsTest {
                     int value = ThreadLocalRandom.current().nextInt();
 
                     if (value > 0) {
-                        inputCount.incrementAndGet();
+                        count1.incrementAndGet();
                     }
 
                     return value;
@@ -195,17 +214,20 @@ public class StreamsTest {
                 .filter(value -> value > 0)
                 .process(Object::toString)
                 .to((value) -> {
-                    assertEquals(inputCount.get(), outputCount1.incrementAndGet());
+                    count2.incrementAndGet();
                     assertTrue(String.class.isInstance(value));
                 })
                 .post((value) -> {
-                    assertEquals(inputCount.get(), outputCount2.incrementAndGet());
+                    count3.incrementAndGet();
                     assertTrue(value > 0);
                 })
                 .build()
                 .start()
                 .wait(1L, TimeUnit.SECONDS)
                 .stop();
+
+        assertEquals(count1.get(), count2.get());
+        assertEquals(count1.get(), count3.get());
     }
 
     @Test
@@ -228,25 +250,25 @@ public class StreamsTest {
 
     @Test
     public void testChain() throws InterruptedException {
-        AtomicInteger inputCount = new AtomicInteger();
-        AtomicInteger outputCount1 = new AtomicInteger();
-        AtomicInteger outputCount2 = new AtomicInteger();
-        AtomicInteger outputCount3 = new AtomicInteger();
+        AtomicInteger count1 = new AtomicInteger();
+        AtomicInteger count2 = new AtomicInteger();
+        AtomicInteger count3 = new AtomicInteger();
+        AtomicInteger count4 = new AtomicInteger();
 
         Streams<String, String> streamsDestination = Streams.<String>builder()
                 .tasks(10)
                 .threads(10)
                 .queue()
                 .fromPush()
-                .to(output -> assertEquals(outputCount1.get(), outputCount2.incrementAndGet()))
-                .post(input -> assertEquals(outputCount2.get(), outputCount3.incrementAndGet()))
+                .to(output -> count3.incrementAndGet())
+                .post(input -> count4.incrementAndGet())
                 .build();
 
         Streams<Integer, String> streamsSource = Streams.<Integer>builder()
                 .fromPush()
                 .process(Object::toString)
                 .process((value) -> {
-                    assertEquals(inputCount.get(), outputCount1.incrementAndGet());
+                    count2.incrementAndGet();
                     return String.format("value=%s", value);
                 })
                 .to(streamsDestination::push)
@@ -256,10 +278,19 @@ public class StreamsTest {
         streamsSource.start();
 
         for (int index = 0; index < 20; index++) {
-            inputCount.incrementAndGet();
+            count1.incrementAndGet();
             streamsSource.push(ThreadLocalRandom.current().nextInt());
         }
 
-        streamsSource.wait(1L, TimeUnit.SECONDS).stop();
+        while (count4.get() < count1.get()) {
+            streamsSource.wait(1L, TimeUnit.SECONDS);
+        }
+
+        streamsDestination.stop();
+        streamsSource.stop();
+
+        assertEquals(count1.get(), count2.get());
+        assertEquals(count1.get(), count3.get());
+        assertEquals(count1.get(), count4.get());
     }
 }

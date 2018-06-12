@@ -31,8 +31,8 @@ public class FileCoordinator extends Coordinator {
     private FileChannel fileChannel;
     private FileLock fileLock;
 
-    public FileCoordinator(Map<String, String> configuration) {
-        this.path = configuration.getOrDefault(Configuration.LEADERSHIP_PATH, "/tmp/leadership.coordinator");
+    public FileCoordinator(Map<String, Object> configuration) {
+        this.path = configuration.getOrDefault(Configuration.LEADERSHIP_PATH, "/tmp/leadership.coordinator").toString();
     }
 
     @Override

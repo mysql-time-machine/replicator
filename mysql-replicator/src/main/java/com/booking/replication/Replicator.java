@@ -58,15 +58,18 @@ public class Replicator {
     private final Streams<AugmentedEvent, AugmentedEvent> streamsApplier;
     private final Streams<RawEvent, List<AugmentedEvent>> streamsSupplier;
 
-    public Replicator(final Map<String, String> configuration) {
-        String threads = configuration.get(Configuration.REPLICATOR_THREADS);
-        String tasks = configuration.get(Configuration.REPLICATOR_TASKS);
+    public Replicator(final Map<String, Object> configuration) {
+        Object checkpointPath = configuration.get(Configuration.CHECKPOINT_PATH);
+        Object checkpointDefault = configuration.get(Configuration.CHECKPOINT_DEFAULT);
+        Object threads = configuration.get(Configuration.REPLICATOR_THREADS);
+        Object tasks = configuration.get(Configuration.REPLICATOR_TASKS);
 
+        Objects.requireNonNull(checkpointPath, String.format("Configuration required: %s", Configuration.CHECKPOINT_PATH));
         Objects.requireNonNull(threads, String.format("Configuration required: %s", Configuration.REPLICATOR_THREADS));
-        Objects.requireNonNull(threads, String.format("Configuration required: %s", Configuration.REPLICATOR_TASKS));
+        Objects.requireNonNull(tasks, String.format("Configuration required: %s", Configuration.REPLICATOR_TASKS));
 
-        this.checkpointPath = configuration.get(Configuration.CHECKPOINT_PATH);
-        this.checkpointDefault = configuration.get(Configuration.CHECKPOINT_DEFAULT);
+        this.checkpointPath = checkpointPath.toString();
+        this.checkpointDefault = (checkpointDefault != null)?(checkpointDefault.toString()):(null);
         this.coordinator = Coordinator.build(configuration);
         this.supplier = Supplier.build(configuration);
         this.augmenter = Augmenter.build(configuration);
@@ -75,7 +78,7 @@ public class Replicator {
         this.partitioner = Partitioner.build(configuration);
         this.applier = Applier.build(configuration);
         this.checkpointApplier = CheckpointApplier.build(configuration, this.coordinator, this.checkpointPath);
-        this.streamsApplier = Streams.<AugmentedEvent>builder().threads(Integer.parseInt(threads)).tasks(Integer.parseInt(tasks)).partitioner(this.partitioner).queue().fromPush().to(this.applier).post(this.checkpointApplier).build();
+        this.streamsApplier = Streams.<AugmentedEvent>builder().threads(Integer.parseInt(threads.toString())).tasks(Integer.parseInt(tasks.toString())).partitioner(this.partitioner).queue().fromPush().to(this.applier).post(this.checkpointApplier).build();
         this.streamsSupplier = Streams.<RawEvent>builder().fromPush().process(this.augmenter).process(this.seeker).process(this.splitter).to(eventList -> {
             for (AugmentedEvent event : eventList) {
                 this.streamsApplier.push(event);
@@ -202,7 +205,7 @@ public class Replicator {
             if (line.hasOption("help")) {
                 new HelpFormatter().printHelp(Replicator.COMMAND_LINE_SYNTAX, options);
             } else {
-                Map<String, String> configuration = new HashMap<>();
+                Map<String, Object> configuration = new HashMap<>();
 
                 if (line.hasOption("config")) {
                     for (String keyValue : line.getOptionValues("config")) {

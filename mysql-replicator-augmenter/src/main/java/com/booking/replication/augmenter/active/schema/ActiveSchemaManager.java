@@ -42,21 +42,21 @@ public class ActiveSchemaManager implements Closeable {
     private final BasicDataSource dataSource;
     private final Map<String, List<AugmentedEventColumn>> cache;
 
-    public ActiveSchemaManager(Map<String, String> configuration) {
-        String driverClass = configuration.getOrDefault(Configuration.MYSQL_DRIVER_CLASS, ActiveSchemaManager.DEFAULT_MYSQL_DRIVER_CLASS);
-        String hostname = configuration.get(Configuration.MYSQL_HOSTNAME);
-        String port = configuration.getOrDefault(Configuration.MYSQL_PORT, "3306");
-        String schema = configuration.get(Configuration.MYSQL_SCHEMA);
-        String username = configuration.get(Configuration.MYSQL_USERNAME);
-        String password = configuration.get(Configuration.MYSQL_PASSWORD);
+    public ActiveSchemaManager(Map<String, Object> configuration) {
+        Object driverClass = configuration.getOrDefault(Configuration.MYSQL_DRIVER_CLASS, ActiveSchemaManager.DEFAULT_MYSQL_DRIVER_CLASS);
+        Object hostname = configuration.get(Configuration.MYSQL_HOSTNAME);
+        Object port = configuration.getOrDefault(Configuration.MYSQL_PORT, "3306");
+        Object schema = configuration.get(Configuration.MYSQL_SCHEMA);
+        Object username = configuration.get(Configuration.MYSQL_USERNAME);
+        Object password = configuration.get(Configuration.MYSQL_PASSWORD);
 
         Objects.requireNonNull(hostname, String.format("Configuration required: %s", Configuration.MYSQL_HOSTNAME));
         Objects.requireNonNull(schema, String.format("Configuration required: %s", Configuration.MYSQL_SCHEMA));
         Objects.requireNonNull(username, String.format("Configuration required: %s", Configuration.MYSQL_USERNAME));
         Objects.requireNonNull(password, String.format("Configuration required: %s", Configuration.MYSQL_PASSWORD));
 
-        this.schema = schema;
-        this.dataSource = this.getDataSource(driverClass, hostname, Integer.parseInt(port), schema, username, password);
+        this.schema = schema.toString();
+        this.dataSource = this.getDataSource(driverClass.toString(), hostname.toString(), Integer.parseInt(port.toString()), schema.toString(), username.toString(), password.toString());
         this.cache = new ConcurrentHashMap<>();
     }
 

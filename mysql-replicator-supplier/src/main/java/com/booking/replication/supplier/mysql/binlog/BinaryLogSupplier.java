@@ -40,12 +40,12 @@ public class BinaryLogSupplier implements Supplier {
     private BinaryLogClient client;
     private Consumer<RawEvent> consumer;
 
-    public BinaryLogSupplier(Map<String, String> configuration) {
-        String hostname = configuration.get(Configuration.MYSQL_HOSTNAME);
-        String port = configuration.getOrDefault(Configuration.MYSQL_PORT, "3306");
-        String schema = configuration.get(Configuration.MYSQL_SCHEMA);
-        String username = configuration.get(Configuration.MYSQL_USERNAME);
-        String password = configuration.get(Configuration.MYSQL_PASSWORD);
+    public BinaryLogSupplier(Map<String, Object> configuration) {
+        Object hostname = configuration.get(Configuration.MYSQL_HOSTNAME);
+        Object port = configuration.getOrDefault(Configuration.MYSQL_PORT, "3306");
+        Object schema = configuration.get(Configuration.MYSQL_SCHEMA);
+        Object username = configuration.get(Configuration.MYSQL_USERNAME);
+        Object password = configuration.get(Configuration.MYSQL_PASSWORD);
 
         Objects.requireNonNull(hostname, String.format("Configuration required: %s", Configuration.MYSQL_HOSTNAME));
         Objects.requireNonNull(schema, String.format("Configuration required: %s", Configuration.MYSQL_SCHEMA));
@@ -55,11 +55,11 @@ public class BinaryLogSupplier implements Supplier {
         this.executor = Executors.newSingleThreadExecutor();
         this.running = new AtomicBoolean(false);
 
-        this.hostname = hostname;
-        this.port = Integer.parseInt(port);
-        this.schema = schema;
-        this.username = username;
-        this.password = password;
+        this.hostname = hostname.toString();
+        this.port = Integer.parseInt(port.toString());
+        this.schema = schema.toString();
+        this.username = username.toString();
+        this.password = password.toString();
     }
 
     private BinaryLogClient getClient() {

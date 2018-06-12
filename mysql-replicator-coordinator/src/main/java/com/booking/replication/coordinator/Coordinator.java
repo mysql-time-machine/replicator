@@ -19,18 +19,18 @@ public abstract class Coordinator implements LeaderCoordinator, CheckpointStorag
     public enum Type {
         ZOOKEEPER {
             @Override
-            public Coordinator newInstance(Map<String, String> configuration) {
+            public Coordinator newInstance(Map<String, Object> configuration) {
                 return new ZookeeperCoordinator(configuration);
             }
         },
         FILE {
             @Override
-            public Coordinator newInstance(Map<String, String> configuration) {
+            public Coordinator newInstance(Map<String, Object> configuration) {
                 return new FileCoordinator(configuration);
             }
         };
 
-        public abstract Coordinator newInstance(Map<String, String> configuration);
+        public abstract Coordinator newInstance(Map<String, Object> configuration);
     }
 
     public interface Configuration {
@@ -137,9 +137,9 @@ public abstract class Coordinator implements LeaderCoordinator, CheckpointStorag
         this.wait(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
     }
 
-    public static Coordinator build(Map<String, String> configuration) {
+    public static Coordinator build(Map<String, Object> configuration) {
         return Type.valueOf(
-                configuration.getOrDefault(Configuration.TYPE, Type.FILE.name())
+                configuration.getOrDefault(Configuration.TYPE, Type.FILE.name()).toString()
         ).newInstance(configuration);
     }
 }

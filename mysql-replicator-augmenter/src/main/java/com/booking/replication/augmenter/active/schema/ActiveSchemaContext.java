@@ -33,7 +33,7 @@ import java.util.regex.Pattern;
 
 public class ActiveSchemaContext implements Closeable {
     public interface Configuration {
-        String MYSQL_TRANSACTION_LIMIT = "agumenter.context.transaction.limit";
+        String MYSQL_TRANSACTION_LIMIT = "augmenter.context.transaction.limit";
         String MYSQL_BEGIN_PATTERN = "augmenter.context.pattern.begin";
         String MYSQL_COMMIT_PATTERN = "augmenter.context.pattern.commit";
         String MYSQL_DDL_DEFINER_PATTERN = "augmenter.context.pattern.ddl.definer";
@@ -86,8 +86,8 @@ public class ActiveSchemaContext implements Closeable {
 
     private final Map<Long, AugmentedEventTable> tableIdTableMap;
 
-    public ActiveSchemaContext(Map<String, String> configuration) {
-        this.transaction = new CurrentTransaction(Integer.parseInt(configuration.getOrDefault(Configuration.MYSQL_TRANSACTION_LIMIT, String.valueOf(ActiveSchemaContext.DEFAULT_MYSQL_TRANSACTION_LIMIT))));
+    public ActiveSchemaContext(Map<String, Object> configuration) {
+        this.transaction = new CurrentTransaction(Integer.parseInt(configuration.getOrDefault(Configuration.MYSQL_TRANSACTION_LIMIT, String.valueOf(ActiveSchemaContext.DEFAULT_MYSQL_TRANSACTION_LIMIT)).toString()));
         this.manager = new ActiveSchemaManager(configuration);
         this.beginPattern = this.getPattern(configuration, Configuration.MYSQL_BEGIN_PATTERN, ActiveSchemaContext.DEFAULT_MYSQL_BEGIN_PATTERN);
         this.commitPattern = this.getPattern(configuration, Configuration.MYSQL_COMMIT_PATTERN, ActiveSchemaContext.DEFAULT_MYSQL_COMMIT_PATTERN);
@@ -117,12 +117,12 @@ public class ActiveSchemaContext implements Closeable {
         this.tableIdTableMap = new ConcurrentHashMap<>();
     }
 
-    private Pattern getPattern(Map<String, String> configuration, String configurationPath, String configurationDefault) {
+    private Pattern getPattern(Map<String, Object> configuration, String configurationPath, String configurationDefault) {
         return Pattern.compile(
                 configuration.getOrDefault(
                         configurationPath,
                         configurationDefault
-                ),
+                ).toString(),
                 Pattern.CASE_INSENSITIVE
         );
     }

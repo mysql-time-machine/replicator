@@ -33,14 +33,14 @@ public class KafkaApplier implements Applier {
     private final int totalPartitions;
     private final Partitioner partitioner;
 
-    public KafkaApplier(Map<String, String> configuration) {
-        String topic = configuration.get(Configuration.TOPIC);
+    public KafkaApplier(Map<String, Object> configuration) {
+        Object topic = configuration.get(Configuration.TOPIC);
 
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
 
         this.producers = new ConcurrentHashMap<>();
         this.configuration = new MapFilter(configuration).filter(Configuration.PRODUCER_PREFIX);
-        this.topic = topic;
+        this.topic = topic.toString();
         this.totalPartitions = this.getTotalPartitions();
         this.partitioner = Partitioner.build(configuration);
     }

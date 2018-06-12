@@ -13,7 +13,7 @@ public interface Partitioner extends BiFunction<AugmentedEvent, Integer, Integer
     enum Type {
         TABLE_NAME {
             @Override
-            protected Partitioner newInstance(Map<String, String> configuration) {
+            protected Partitioner newInstance(Map<String, Object> configuration) {
                 return (augmentedEvent, totalPartitions) -> {
                     if (TableAugmentedEventData.class.isInstance(augmentedEvent.getData())) {
                         TableAugmentedEventData tableAugmentedEventData = TableAugmentedEventData.class.cast(augmentedEvent.getData());
@@ -27,12 +27,12 @@ public interface Partitioner extends BiFunction<AugmentedEvent, Integer, Integer
         },
         RANDOM {
             @Override
-            protected Partitioner newInstance(Map<String, String> configuration) {
+            protected Partitioner newInstance(Map<String, Object> configuration) {
                 return (augmentedEvent, totalPartitions) -> ThreadLocalRandom.current().nextInt(totalPartitions);
             }
         };
 
-        protected abstract Partitioner newInstance(Map<String, String> configuration);
+        protected abstract Partitioner newInstance(Map<String, Object> configuration);
     }
 
     interface Configuration {
@@ -43,9 +43,9 @@ public interface Partitioner extends BiFunction<AugmentedEvent, Integer, Integer
     default void close() throws IOException {
     }
 
-    static Partitioner build(Map<String, String> configuration) {
+    static Partitioner build(Map<String, Object> configuration) {
         return Partitioner.Type.valueOf(
-                configuration.getOrDefault(Configuration.TYPE, Type.RANDOM.name())
+                configuration.getOrDefault(Configuration.TYPE, Type.RANDOM.name()).toString()
         ).newInstance(configuration);
     }
 }

@@ -26,17 +26,17 @@ public class ZookeeperCoordinator extends Coordinator {
     private final CuratorFramework client;
     private final LeaderLatch latch;
 
-    public ZookeeperCoordinator(Map<String, String> configuration) {
-        String leadershipPath = configuration.get(Configuration.LEADERSHIP_PATH);
-        String connectionString = configuration.get(Configuration.CONNECTION_STRING);
-        String retryInitialSleep = configuration.getOrDefault(Configuration.RETRY_INITIAL_SLEEP, "1000");
-        String retryMaximumAttempts = configuration.getOrDefault(Configuration.RETRY_MAXIMUM_ATTEMPTS, "3");
+    public ZookeeperCoordinator(Map<String, Object> configuration) {
+        Object leadershipPath = configuration.get(Configuration.LEADERSHIP_PATH);
+        Object connectionString = configuration.get(Configuration.CONNECTION_STRING);
+        Object retryInitialSleep = configuration.getOrDefault(Configuration.RETRY_INITIAL_SLEEP, "1000");
+        Object retryMaximumAttempts = configuration.getOrDefault(Configuration.RETRY_MAXIMUM_ATTEMPTS, "3");
 
         Objects.requireNonNull(leadershipPath, String.format("Configuration required: %s", Configuration.LEADERSHIP_PATH));
         Objects.requireNonNull(connectionString, String.format("Configuration required: %s", Configuration.CONNECTION_STRING));
 
-        this.client = CuratorFrameworkFactory.newClient(connectionString, new ExponentialBackoffRetry(Integer.parseInt(retryInitialSleep), Integer.parseInt(retryMaximumAttempts)));
-        this.latch = new LeaderLatch(this.client, leadershipPath);
+        this.client = CuratorFrameworkFactory.newClient(connectionString.toString(), new ExponentialBackoffRetry(Integer.parseInt(retryInitialSleep.toString()), Integer.parseInt(retryMaximumAttempts.toString())));
+        this.latch = new LeaderLatch(this.client, leadershipPath.toString());
     }
 
     @Override

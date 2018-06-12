@@ -13,18 +13,18 @@ public interface Seeker extends Function<AugmentedEvent, AugmentedEvent>, Closea
     enum Type {
         NONE {
             @Override
-            public Seeker newInstance(Map<String, String> configuration) {
+            public Seeker newInstance(Map<String, Object> configuration) {
                 return event -> event;
             }
         },
         KAFKA {
             @Override
-            public Seeker newInstance(Map<String, String> configuration) {
+            public Seeker newInstance(Map<String, Object> configuration) {
                 return new KafkaSeeker(configuration);
             }
         };
 
-        public abstract Seeker newInstance(Map<String, String> configuration);
+        public abstract Seeker newInstance(Map<String, Object> configuration);
     }
 
     interface Configuration {
@@ -39,9 +39,9 @@ public interface Seeker extends Function<AugmentedEvent, AugmentedEvent>, Closea
     default void close() throws IOException {
     }
 
-    static Seeker build(Map<String, String> configuration) {
+    static Seeker build(Map<String, Object> configuration) {
         return Seeker.Type.valueOf(
-                configuration.getOrDefault(Configuration.TYPE, Type.NONE.name())
+                configuration.getOrDefault(Configuration.TYPE, Type.NONE.name()).toString()
         ).newInstance(configuration);
     }
 }

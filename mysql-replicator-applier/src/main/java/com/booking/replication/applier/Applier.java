@@ -13,18 +13,18 @@ public interface Applier extends Consumer<AugmentedEvent>, Closeable {
     enum Type {
         CONSOLE {
             @Override
-            protected Applier newInstance(Map<String, String> configuration) {
+            protected Applier newInstance(Map<String, Object> configuration) {
                 return new ConsoleApplier(configuration);
             }
         },
         KAFKA {
             @Override
-            protected Applier newInstance(Map<String, String> configuration) {
+            protected Applier newInstance(Map<String, Object> configuration) {
                 return new KafkaApplier(configuration);
             }
         };
 
-        protected abstract Applier newInstance(Map<String, String> configuration);
+        protected abstract Applier newInstance(Map<String, Object> configuration);
     }
 
     interface Configuration {
@@ -35,9 +35,9 @@ public interface Applier extends Consumer<AugmentedEvent>, Closeable {
     default void close() throws IOException {
     }
 
-    static Applier build(Map<String, String> configuration) {
+    static Applier build(Map<String, Object> configuration) {
         return Type.valueOf(
-                configuration.getOrDefault(Configuration.TYPE, Type.CONSOLE.name())
+                configuration.getOrDefault(Configuration.TYPE, Type.CONSOLE.name()).toString()
         ).newInstance(configuration);
     }
 }

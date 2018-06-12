@@ -13,19 +13,19 @@ public interface Augmenter extends Function<RawEvent, AugmentedEvent>, Closeable
     enum Type {
         NONE {
             @Override
-            protected Augmenter newInstance(Map<String, String> configuration)
+            protected Augmenter newInstance(Map<String, Object> configuration)
             {
                 return event -> null;
             }
         },
         ACTIVE_SCHEMA {
             @Override
-            protected Augmenter newInstance(Map<String, String> configuration) {
+            protected Augmenter newInstance(Map<String, Object> configuration) {
                 return new ActiveSchemaAugmenter(configuration);
             }
         };
 
-        protected abstract Augmenter newInstance(Map<String, String> configuration);
+        protected abstract Augmenter newInstance(Map<String, Object> configuration);
     }
 
     interface Configuration {
@@ -36,9 +36,9 @@ public interface Augmenter extends Function<RawEvent, AugmentedEvent>, Closeable
     default void close() throws IOException {
     }
 
-    static Augmenter build(Map<String, String> configuration) {
+    static Augmenter build(Map<String, Object> configuration) {
         return Augmenter.Type.valueOf(
-                configuration.getOrDefault(Configuration.TYPE, Type.NONE.name())
+                configuration.getOrDefault(Configuration.TYPE, Type.NONE.name()).toString()
         ).newInstance(configuration);
     }
 }

@@ -12,12 +12,12 @@ public interface Supplier {
     enum Type {
         BINLOG {
             @Override
-            protected Supplier newInstance(Map<String, String> configuration) {
+            protected Supplier newInstance(Map<String, Object> configuration) {
                 return new BinaryLogSupplier(configuration);
             }
         };
 
-        protected abstract Supplier newInstance(Map<String, String> configuration);
+        protected abstract Supplier newInstance(Map<String, Object> configuration);
     }
 
     interface Configuration {
@@ -35,9 +35,9 @@ public interface Supplier {
     void stop() throws IOException;
 
     @SuppressWarnings("unchecked")
-    static Supplier build(Map<String, String> configuration) {
+    static Supplier build(Map<String, Object> configuration) {
         return Type.valueOf(
-                configuration.getOrDefault(Configuration.TYPE, Type.BINLOG.name())
+                configuration.getOrDefault(Configuration.TYPE, Type.BINLOG.name()).toString()
         ).newInstance(configuration);
     }
 }

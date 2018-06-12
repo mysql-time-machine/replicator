@@ -36,9 +36,9 @@ public interface CheckpointApplier extends BiConsumer<AugmentedEvent, Map<Augmen
     default void close() throws IOException {
     }
 
-    static CheckpointApplier build(Map<String, String> configuration, CheckpointStorage checkpointStorage, String checkpointPath) {
+    static CheckpointApplier build(Map<String, Object> configuration, CheckpointStorage checkpointStorage, String checkpointPath) {
         return CheckpointApplier.Type.valueOf(
-                configuration.getOrDefault(Configuration.TYPE, Type.NONE.name())
+                configuration.getOrDefault(Configuration.TYPE, Type.NONE.name()).toString()
         ).newInstance(checkpointStorage, checkpointPath);
     }
 }

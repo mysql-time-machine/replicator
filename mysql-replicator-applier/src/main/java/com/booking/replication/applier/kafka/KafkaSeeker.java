@@ -39,12 +39,12 @@ public class KafkaSeeker implements Seeker {
     private final AtomicReference<Checkpoint> checkpoint;
     private final AtomicBoolean sought;
 
-    public KafkaSeeker(Map<String, String> configuration) {
-        String topic = configuration.get(Configuration.TOPIC);
+    public KafkaSeeker(Map<String, Object> configuration) {
+        Object topic = configuration.get(Configuration.TOPIC);
 
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
 
-        this.topic = topic;
+        this.topic = topic.toString();
         this.configuration = new MapFilter(configuration).filter(Configuration.CONSUMER_PREFIX);
         this.checkpoint = new AtomicReference<>();
         this.sought = new AtomicBoolean();

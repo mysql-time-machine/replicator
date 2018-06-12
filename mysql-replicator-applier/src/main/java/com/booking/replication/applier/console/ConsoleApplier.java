@@ -14,7 +14,7 @@ public class ConsoleApplier implements Applier {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @SuppressWarnings("unused")
-    public ConsoleApplier(Map<String, String> configuration) {
+    public ConsoleApplier(Map<String, Object> configuration) {
     }
 
     @Override

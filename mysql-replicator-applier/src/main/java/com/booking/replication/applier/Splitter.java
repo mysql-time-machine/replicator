@@ -18,13 +18,13 @@ public interface Splitter extends Function<AugmentedEvent, List<AugmentedEvent>>
     enum Type {
         NONE {
             @Override
-            public Splitter newInstance(Map<String, String> configuration) {
+            public Splitter newInstance(Map<String, Object> configuration) {
                 return Collections::singletonList;
             }
         },
         TABLE_NAME {
             @Override
-            public Splitter newInstance(Map<String, String> configuration) {
+            public Splitter newInstance(Map<String, Object> configuration) {
                 return event -> {
                     if (TransactionAugmentedEventData.class.isInstance(event.getData())) {
                         TransactionAugmentedEventData transactionAugmentedEventData = TransactionAugmentedEventData.class.cast(event.getData());
@@ -61,7 +61,7 @@ public interface Splitter extends Function<AugmentedEvent, List<AugmentedEvent>>
             }
         };
 
-        public abstract Splitter newInstance(Map<String, String> configuration);
+        public abstract Splitter newInstance(Map<String, Object> configuration);
     }
 
     interface Configuration {
@@ -72,9 +72,9 @@ public interface Splitter extends Function<AugmentedEvent, List<AugmentedEvent>>
     default void close() throws IOException {
     }
 
-    static Splitter build(Map<String, String> configuration) {
+    static Splitter build(Map<String, Object> configuration) {
         return Splitter.Type.valueOf(
-                configuration.getOrDefault(Configuration.TYPE, Type.NONE.name())
+                configuration.getOrDefault(Configuration.TYPE, Type.NONE.name()).toString()
         ).newInstance(configuration);
     }
 }

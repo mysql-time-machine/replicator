@@ -19,7 +19,7 @@ public class ActiveSchemaAugmenter implements Augmenter {
     private final ActiveSchemaHeaderAugmenter headerAugmenter;
     private final ActiveSchemaDataAugmenter dataAugmenter;
 
-    public ActiveSchemaAugmenter(Map<String, String> configuration) {
+    public ActiveSchemaAugmenter(Map<String, Object> configuration) {
         this.context = new ActiveSchemaContext(configuration);
         this.headerAugmenter = new ActiveSchemaHeaderAugmenter(this.context);
         this.dataAugmenter = new ActiveSchemaDataAugmenter(this.context);

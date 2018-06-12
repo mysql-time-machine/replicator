@@ -74,7 +74,7 @@ public class ReplicatorIT {
 
     @Test
     public void testReplicator() throws Exception {
-        Map<String, String> configuration = new HashMap<>();
+        Map<String, Object> configuration = new HashMap<>();
 
         configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, ReplicatorIT.zookeeper.getURL());
         configuration.put(ZookeeperCoordinator.Configuration.LEADERSHIP_PATH, ReplicatorIT.ZOOKEEPER_LEADERSHIP_PATH);

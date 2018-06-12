@@ -73,7 +73,7 @@ public class KafkaTest {
 
     @Test
     public void testApplier() throws IOException {
-        Map<String, String> configuration = new HashMap<>();
+        Map<String, Object> configuration = new HashMap<>();
 
         configuration.put(Applier.Configuration.TYPE, Applier.Type.KAFKA.name());
         configuration.put(KafkaApplier.Configuration.TOPIC, KafkaTest.TOPIC_NAME);
@@ -88,7 +88,7 @@ public class KafkaTest {
 
     @Test
     public void testSeeker() {
-        Map<String, String> configuration = new HashMap<>();
+        Map<String, Object> configuration = new HashMap<>();
 
         configuration.put(Seeker.Configuration.TYPE, Seeker.Type.KAFKA.name());
         configuration.put(KafkaSeeker.Configuration.TOPIC, KafkaTest.TOPIC_NAME);

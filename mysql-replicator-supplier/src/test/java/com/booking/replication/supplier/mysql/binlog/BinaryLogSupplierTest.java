@@ -1,4 +1,4 @@
 package com.booking.replication.supplier.mysql.binlog;
 
-public class BinaryLogSupplierTes {
+public class BinaryLogSupplierTest {
 }

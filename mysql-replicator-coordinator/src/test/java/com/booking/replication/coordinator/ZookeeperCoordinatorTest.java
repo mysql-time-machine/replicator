@@ -38,7 +38,7 @@ public class ZookeeperCoordinatorTest {
             ZookeeperCoordinatorTest.count.getAndDecrement();
         };
 
-        Map<String, String> configuration = new HashMap<>();
+        Map<String, Object> configuration = new HashMap<>();
 
         configuration.put(Coordinator.Configuration.TYPE, Coordinator.Type.ZOOKEEPER.name());
         configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, ZookeeperCoordinatorTest.servicesControl.getURL());

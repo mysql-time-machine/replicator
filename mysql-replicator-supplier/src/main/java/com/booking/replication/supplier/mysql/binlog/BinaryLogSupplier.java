@@ -7,6 +7,7 @@ import com.booking.replication.supplier.mysql.binlog.handler.RawEventInvocationH
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
@@ -16,6 +17,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class BinaryLogSupplier implements Supplier {
     private static final Logger LOG = Logger.getLogger(BinaryLogSupplier.class.getName());
@@ -31,7 +34,7 @@ public class BinaryLogSupplier implements Supplier {
     private final ExecutorService executor;
     private final AtomicBoolean running;
 
-    private final String hostname;
+    private final List<String> hostname;
     private final int port;
     private final String schema;
     private final String username;
@@ -55,16 +58,21 @@ public class BinaryLogSupplier implements Supplier {
         this.executor = Executors.newSingleThreadExecutor();
         this.running = new AtomicBoolean(false);
 
-        this.hostname = hostname.toString();
+        this.hostname = this.cast(hostname);
         this.port = Integer.parseInt(port.toString());
         this.schema = schema.toString();
         this.username = username.toString();
         this.password = password.toString();
     }
 
-    private BinaryLogClient getClient() {
+    @SuppressWarnings("unchecked")
+    private <T extends List<?>> T cast(Object object) {
+        return (T) object;
+    }
+
+    private BinaryLogClient getClient(String hostname) {
         // TODO: Implement status variable parser: https://github.com/shyiko/mysql-binlog-connector-java/issues/174
-        return new BinaryLogClient(this.hostname, this.port, this.schema, this.username, this.password);
+        return new BinaryLogClient(hostname, this.port, this.schema, this.username, this.password);
     }
 
     @Override
@@ -82,33 +90,39 @@ public class BinaryLogSupplier implements Supplier {
     @Override
     public void connect(Checkpoint checkpoint) {
         if (this.client == null || !this.client.isConnected()) {
-            this.client = this.getClient();
-
-            if (this.consumer != null) {
-                this.client.registerEventListener(
-                    event -> {
-                        try {
-                            this.consumer.accept(RawEvent.getRawEventProxy(new RawEventInvocationHandler(event)));
-                        } catch (ReflectiveOperationException exception) {
-                            throw new RuntimeException(exception);
-                        }
-                    }
-                );
-            }
-
-            if (checkpoint != null) {
-                this.client.setGtidSet(null);
-                this.client.setServerId(checkpoint.getServerId());
-                this.client.setBinlogFilename(checkpoint.getBinlogFilename());
-                this.client.setBinlogPosition(checkpoint.getBinlogPosition());
-            }
-
             this.executor.submit(() -> {
-                try {
-                    this.client.connect();
-                } catch (IOException exception) {
-                    BinaryLogSupplier.LOG.log(Level.SEVERE, "error connecting", exception);
+                for (String hostname : this.hostname) {
+                    try {
+                        this.client = this.getClient(hostname);
+
+                        if (this.consumer != null) {
+                            this.client.registerEventListener(
+                                    event -> {
+                                        try {
+                                            this.consumer.accept(RawEvent.getRawEventProxy(new RawEventInvocationHandler(event)));
+                                        } catch (ReflectiveOperationException exception) {
+                                            throw new RuntimeException(exception);
+                                        }
+                                    }
+                            );
+                        }
+
+                        if (checkpoint != null) {
+                            this.client.setGtidSet(null);
+                            this.client.setServerId(checkpoint.getServerId());
+                            this.client.setBinlogFilename(checkpoint.getBinlogFilename());
+                            this.client.setBinlogPosition(checkpoint.getBinlogPosition());
+                        }
+
+                        this.client.connect();
+
+                        return;
+                    } catch (IOException exception) {
+                        BinaryLogSupplier.LOG.log(Level.WARNING, String.format("error connecting to %s, falling over to the next one", hostname), exception);
+                    }
                 }
+
+                BinaryLogSupplier.LOG.log(Level.SEVERE, "error connecting");
             });
         }
     }

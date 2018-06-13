@@ -26,7 +26,7 @@ public class ActiveSchemaDataAugmenter {
                 WriteRowsRawEventData writeRowsRawEventData = WriteRowsRawEventData.class.cast(eventData);
 
                 return new WriteRowsAugmentedEventData(
-                        this.context.getTable(writeRowsRawEventData.getTableId()),
+                        this.context.getEventTable(writeRowsRawEventData.getTableId()),
                         this.context.getColumns(writeRowsRawEventData.getTableId(), writeRowsRawEventData.getIncludedColumns()),
                         writeRowsRawEventData.getRows()
                 );
@@ -35,7 +35,7 @@ public class ActiveSchemaDataAugmenter {
                 UpdateRowsRawEventData updateRowsRawEventData = UpdateRowsRawEventData.class.cast(eventData);
 
                 return new UpdateRowsAugmentedEventData(
-                        this.context.getTable(updateRowsRawEventData.getTableId()),
+                        this.context.getEventTable(updateRowsRawEventData.getTableId()),
                         this.context.getColumns(updateRowsRawEventData.getTableId(), updateRowsRawEventData.getIncludedColumnsBeforeUpdate()),
                         this.context.getColumns(updateRowsRawEventData.getTableId(), updateRowsRawEventData.getIncludedColumns()),
                         this.context.getUpdatedRows(updateRowsRawEventData.getRows())
@@ -45,7 +45,7 @@ public class ActiveSchemaDataAugmenter {
                 DeleteRowsRawEventData deleteRowsRawEventData = DeleteRowsRawEventData.class.cast(eventData);
 
                 return new DeleteRowsAugmentedEventData(
-                        this.context.getTable(deleteRowsRawEventData.getTableId()),
+                        this.context.getEventTable(deleteRowsRawEventData.getTableId()),
                         this.context.getColumns(deleteRowsRawEventData.getTableId(), deleteRowsRawEventData.getIncludedColumns()),
                         deleteRowsRawEventData.getRows()
                 );

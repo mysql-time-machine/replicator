@@ -1,7 +1,6 @@
 package com.booking.replication.augmenter.active.schema;
 
 import com.booking.replication.augmenter.model.AugmentedEventColumn;
-import com.booking.replication.augmenter.model.AugmentedEventTable;
 import com.mysql.jdbc.Driver;
 import org.apache.commons.dbcp2.BasicDataSource;
 
@@ -34,11 +33,9 @@ public class ActiveSchemaManager implements Closeable {
     private static final String DEFAULT_MYSQL_DRIVER_CLASS = Driver.class.getName();
 
     private static final String CONNECTION_URL_FORMAT = "jdbc:mysql://%s:%d/%s";
-    private static final String LIST_TABLES_SQL = "SHOW TABLES";
     private static final String LIST_COLUMNS_SQL = "DESC %s";
     private static final String SHOW_CREATE_TABLE_SQL = "SHOW CREATE TABLE %s";
 
-    private final String schema;
     private final BasicDataSource dataSource;
     private final Map<String, List<AugmentedEventColumn>> cache;
 
@@ -55,7 +52,6 @@ public class ActiveSchemaManager implements Closeable {
         Objects.requireNonNull(username, String.format("Configuration required: %s", Configuration.MYSQL_USERNAME));
         Objects.requireNonNull(password, String.format("Configuration required: %s", Configuration.MYSQL_PASSWORD));
 
-        this.schema = schema.toString();
         this.dataSource = this.getDataSource(driverClass.toString(), hostname.toString(), Integer.parseInt(port.toString()), schema.toString(), username.toString(), password.toString());
         this.cache = new ConcurrentHashMap<>();
     }

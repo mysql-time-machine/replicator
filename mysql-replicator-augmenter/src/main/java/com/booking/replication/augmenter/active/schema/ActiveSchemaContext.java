@@ -84,7 +84,7 @@ public class ActiveSchemaContext implements Closeable {
     private final AtomicReference<String> createTableBefore;
     private final AtomicReference<String> createTableAfter;
 
-    private final Map<Long, AugmentedEventTable> tableIdTableMap;
+    private final Map<Long, AugmentedEventTable> tableIdEventTableMap;
 
     public ActiveSchemaContext(Map<String, Object> configuration) {
         this.transaction = new CurrentTransaction(Integer.parseInt(configuration.getOrDefault(Configuration.MYSQL_TRANSACTION_LIMIT, String.valueOf(ActiveSchemaContext.DEFAULT_MYSQL_TRANSACTION_LIMIT)).toString()));
@@ -114,7 +114,7 @@ public class ActiveSchemaContext implements Closeable {
         this.createTableBefore = new AtomicReference<>();
         this.createTableAfter = new AtomicReference<>();
 
-        this.tableIdTableMap = new ConcurrentHashMap<>();
+        this.tableIdEventTableMap = new ConcurrentHashMap<>();
     }
 
     private Pattern getPattern(Map<String, Object> configuration, String configurationPath, String configurationDefault) {
@@ -322,7 +322,7 @@ public class ActiveSchemaContext implements Closeable {
 
                 TableMapRawEventData tableMapRawEventData = TableMapRawEventData.class.cast(eventData);
 
-                this.tableIdTableMap.put(
+                this.tableIdEventTableMap.put(
                         tableMapRawEventData.getTableId(),
                         new AugmentedEventTable(
                                 tableMapRawEventData.getDatabase(),
@@ -397,23 +397,29 @@ public class ActiveSchemaContext implements Closeable {
         return this.createTableAfter.get();
     }
 
-    public AugmentedEventTable getTable(long tableId) {
-        return this.tableIdTableMap.get(tableId);
+    public AugmentedEventTable getEventTable(long tableId) {
+        return this.tableIdEventTableMap.get(tableId);
     }
 
     public List<AugmentedEventColumn> getColumns(long tableId, BitSet includedColumns) {
-        List<AugmentedEventColumn> columnList = this.manager.listColumns(this.getTable(tableId).getName());
+        AugmentedEventTable eventTable = this.getEventTable(tableId);
 
-        if (columnList != null) {
-            List<AugmentedEventColumn> includedColumnList = new LinkedList<>();
+        if (eventTable != null) {
+            List<AugmentedEventColumn> columnList = this.manager.listColumns(eventTable.getName());
 
-            for (int columnIndex = 0; columnIndex < columnList.size(); columnIndex++) {
-                if (includedColumns.get(columnIndex)) {
-                    includedColumnList.add(columnList.get(columnIndex));
+            if (columnList != null) {
+                List<AugmentedEventColumn> includedColumnList = new LinkedList<>();
+
+                for (int columnIndex = 0; columnIndex < columnList.size(); columnIndex++) {
+                    if (includedColumns.get(columnIndex)) {
+                        includedColumnList.add(columnList.get(columnIndex));
+                    }
                 }
-            }
 
-            return includedColumnList;
+                return includedColumnList;
+            } else {
+                return null;
+            }
         } else {
             return null;
         }

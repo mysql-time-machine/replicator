@@ -30,8 +30,4 @@ public class MapFlatter {
             }
         }
     }
-
-    public static void main(String[] arguments) {
-
-    }
 }

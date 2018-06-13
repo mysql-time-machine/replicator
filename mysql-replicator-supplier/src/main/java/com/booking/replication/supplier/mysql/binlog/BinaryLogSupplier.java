@@ -7,6 +7,7 @@ import com.booking.replication.supplier.mysql.binlog.handler.RawEventInvocationH
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -58,7 +59,7 @@ public class BinaryLogSupplier implements Supplier {
         this.executor = Executors.newSingleThreadExecutor();
         this.running = new AtomicBoolean(false);
 
-        this.hostname = this.cast(hostname);
+        this.hostname = this.getList(hostname);
         this.port = Integer.parseInt(port.toString());
         this.schema = schema.toString();
         this.username = username.toString();
@@ -66,8 +67,12 @@ public class BinaryLogSupplier implements Supplier {
     }
 
     @SuppressWarnings("unchecked")
-    private <T extends List<?>> T cast(Object object) {
-        return (T) object;
+    private List<String> getList(Object object) {
+        if (List.class.isInstance(object)) {
+            return (List<String>) object;
+        } else {
+            return Collections.singletonList(object.toString());
+        }
     }
 
     private BinaryLogClient getClient(String hostname) {

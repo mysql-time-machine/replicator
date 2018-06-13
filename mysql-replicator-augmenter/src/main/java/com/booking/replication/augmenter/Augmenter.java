@@ -6,10 +6,11 @@ import com.booking.replication.supplier.model.RawEvent;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-public interface Augmenter extends Function<RawEvent, AugmentedEvent>, Closeable {
+public interface Augmenter extends Function<RawEvent, List<AugmentedEvent>>, Closeable {
     enum Type {
         NONE {
             @Override

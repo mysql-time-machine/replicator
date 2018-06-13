@@ -2,6 +2,7 @@ package com.booking.replication.checkpoint;
 
 import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.commons.checkpoint.CheckpointStorage;
+import com.booking.replication.streams.Streams;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -9,7 +10,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
-public interface CheckpointApplier extends BiConsumer<AugmentedEvent, Map<AugmentedEvent, AtomicReference<AugmentedEvent>>>, Closeable {
+public interface CheckpointApplier extends BiConsumer<AugmentedEvent, Streams.Task>, Closeable {
     enum Type {
         NONE {
             @Override

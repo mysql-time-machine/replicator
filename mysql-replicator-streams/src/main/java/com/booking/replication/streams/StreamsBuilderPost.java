@@ -1,7 +1,5 @@
 package com.booking.replication.streams;
 
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -10,7 +8,7 @@ public interface StreamsBuilderPost<Input, Output> {
 
     StreamsBuilderBuild<Input, Output> post(Consumer<Input> consumer);
 
-    StreamsBuilderBuild<Input, Output> post(BiConsumer<Input, Map<Input, AtomicReference<Output>>> consumer);
+    StreamsBuilderBuild<Input, Output> post(BiConsumer<Input, Streams.Task> consumer);
 
     Streams<Input, Output> build();
 }

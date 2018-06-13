@@ -6,10 +6,11 @@ import com.booking.replication.commons.checkpoint.Checkpoint;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-public interface Seeker extends Function<AugmentedEvent, AugmentedEvent>, Closeable {
+public interface Seeker extends Function<List<AugmentedEvent>, List<AugmentedEvent>>, Closeable {
     enum Type {
         NONE {
             @Override

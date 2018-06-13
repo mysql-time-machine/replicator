@@ -10,6 +10,8 @@ import org.apache.zookeeper.CreateMode;
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -35,8 +37,17 @@ public class ZookeeperCoordinator extends Coordinator {
         Objects.requireNonNull(leadershipPath, String.format("Configuration required: %s", Configuration.LEADERSHIP_PATH));
         Objects.requireNonNull(connectionString, String.format("Configuration required: %s", Configuration.CONNECTION_STRING));
 
-        this.client = CuratorFrameworkFactory.newClient(connectionString.toString(), new ExponentialBackoffRetry(Integer.parseInt(retryInitialSleep.toString()), Integer.parseInt(retryMaximumAttempts.toString())));
+        this.client = CuratorFrameworkFactory.newClient(String.join(",", this.getList(connectionString)), new ExponentialBackoffRetry(Integer.parseInt(retryInitialSleep.toString()), Integer.parseInt(retryMaximumAttempts.toString())));
         this.latch = new LeaderLatch(this.client, leadershipPath.toString());
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> getList(Object object) {
+        if (List.class.isInstance(object)) {
+            return (List<String>) object;
+        } else {
+            return Collections.singletonList(object.toString());
+        }
     }
 
     @Override

@@ -1,7 +1,6 @@
 package com.booking.replication.applier.kafka;
 
 import com.booking.replication.applier.Applier;
-import com.booking.replication.applier.Partitioner;
 import com.booking.replication.applier.Seeker;
 import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.augmenter.model.AugmentedEventHeader;
@@ -17,7 +16,10 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -27,10 +29,10 @@ import static org.junit.Assert.assertNull;
 public class KafkaTest {
     private static final String TOPIC_NAME = "replicator";
     private static final String GROUP_ID = "replicator";
-    private static final int TOPIC_PARTITIONS = 3;
+    private static final int TOPIC_PARTITIONS = 1;
     private static final int TOPIC_REPLICAS = 1;
 
-    private static AugmentedEvent[] events;
+    private static List<AugmentedEvent> events;
     private static AugmentedEvent lastEvent;
     private static ServicesControl servicesControl;
 
@@ -61,13 +63,13 @@ public class KafkaTest {
 
     @BeforeClass
     public static void before() {
-        KafkaTest.events = new AugmentedEvent[3];
+        KafkaTest.events = new ArrayList<>();
 
-        for (int index  = 0; index < KafkaTest.events.length; index ++) {
-            KafkaTest.events[index] = KafkaTest.getAugmentedEvent(index);
+        for (int index  = 0; index < 3; index ++) {
+            KafkaTest.events.add(KafkaTest.getAugmentedEvent(index));
         }
 
-        KafkaTest.lastEvent = KafkaTest.getAugmentedEvent(KafkaTest.events.length);
+        KafkaTest.lastEvent = KafkaTest.getAugmentedEvent(KafkaTest.events.size());
         KafkaTest.servicesControl = ServicesProvider.build(ServicesProvider.Type.CONTAINERS).startKafka(KafkaTest.TOPIC_NAME, KafkaTest.TOPIC_PARTITIONS, KafkaTest.TOPIC_REPLICAS);
     }
 
@@ -97,13 +99,10 @@ public class KafkaTest {
 
         Seeker seeker = Seeker.build(configuration);
 
-        seeker.seek(KafkaTest.events[KafkaTest.events.length - 1].getHeader().getCheckpoint());
+        seeker.seek(KafkaTest.events.get(KafkaTest.events.size() - 1).getHeader().getCheckpoint());
 
-        for (AugmentedEvent event : KafkaTest.events) {
-            assertNull(seeker.apply(event));
-        }
-
-        assertNotNull(seeker.apply(KafkaTest.lastEvent));
+        assertNull(seeker.apply(KafkaTest.events));
+        assertNotNull(seeker.apply(Collections.singletonList(KafkaTest.lastEvent)));
     }
 
     @AfterClass

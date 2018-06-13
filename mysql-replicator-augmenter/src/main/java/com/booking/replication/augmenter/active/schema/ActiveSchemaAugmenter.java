@@ -5,13 +5,14 @@ import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.augmenter.model.AugmentedEventData;
 import com.booking.replication.augmenter.model.AugmentedEventHeader;
 import com.booking.replication.augmenter.model.AugmentedEventType;
-import com.booking.replication.augmenter.model.TransactionAugmentedEventData;
 import com.booking.replication.commons.checkpoint.ForceRewindException;
 import com.booking.replication.supplier.model.RawEvent;
 import com.booking.replication.supplier.model.RawEventData;
 import com.booking.replication.supplier.model.RawEventHeaderV4;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 public class ActiveSchemaAugmenter implements Augmenter {
@@ -26,7 +27,7 @@ public class ActiveSchemaAugmenter implements Augmenter {
     }
 
     @Override
-    public AugmentedEvent apply(RawEvent rawEvent) {
+    public List<AugmentedEvent> apply(RawEvent rawEvent) {
         RawEventHeaderV4 eventHeader = rawEvent.getHeader();
         RawEventData eventData = rawEvent.getData();
 
@@ -52,43 +53,32 @@ public class ActiveSchemaAugmenter implements Augmenter {
 
                     throw new ForceRewindException("transaction size limit exceeded");
                 } else {
-                    TransactionAugmentedEventData transactionAugmentedEventData = this.context.getTransaction().clean();
+                    List<AugmentedEvent> augmentedEventList = this.context.getTransaction().clean();
 
-                    if (transactionAugmentedEventData.getEventList().size() > 0) {
-                        return this.getTransactionAugmentedEvent(transactionAugmentedEventData);
+                    if (augmentedEventList.size() > 0) {
+                        return augmentedEventList;
                     } else {
                         return null;
                     }
                 }
             } else if (this.context.getTransaction().started()) {
                 if (this.context.getTransaction().resuming() && this.context.getTransaction().sizeLimitExceeded()) {
-                    TransactionAugmentedEventData transactionAugmentedEventData = this.context.getTransaction().clean();
+                    List<AugmentedEvent> augmentedEventList = this.context.getTransaction().clean();
 
                     this.context.getTransaction().add(new AugmentedEvent(augmentedEventHeader, augmentedEventData));
 
-                    return this.getTransactionAugmentedEvent(transactionAugmentedEventData);
+                    return augmentedEventList;
                 } else {
                     this.context.getTransaction().add(new AugmentedEvent(augmentedEventHeader, augmentedEventData));
 
                     return null;
                 }
             } else {
-                return new AugmentedEvent(augmentedEventHeader, augmentedEventData);
+                return Collections.singletonList(new AugmentedEvent(augmentedEventHeader, augmentedEventData));
             }
         } else {
             return null;
         }
-    }
-
-    private AugmentedEvent getTransactionAugmentedEvent(TransactionAugmentedEventData transactionAugmentedEventData) {
-        return new AugmentedEvent(
-                new AugmentedEventHeader(
-                        this.context.getTransaction().getTimestamp(),
-                        transactionAugmentedEventData.getEventList().get(transactionAugmentedEventData.getEventList().size() - 1).getHeader().getCheckpoint(),
-                        AugmentedEventType.TRANSACTION
-                ),
-                transactionAugmentedEventData
-        );
     }
 
     @Override

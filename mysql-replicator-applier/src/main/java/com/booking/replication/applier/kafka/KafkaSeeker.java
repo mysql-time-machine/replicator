@@ -1,5 +1,6 @@
 package com.booking.replication.applier.kafka;
 
+import com.booking.replication.applier.Partitioner;
 import com.booking.replication.applier.Seeker;
 import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.augmenter.model.AugmentedEventHeader;
@@ -10,18 +11,22 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.InvalidPartitionsException;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -35,9 +40,13 @@ public class KafkaSeeker implements Seeker {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final String topic;
+    private final Partitioner partitioner;
     private final Map<String, Object> configuration;
-    private final AtomicReference<Checkpoint> checkpoint;
     private final AtomicBoolean sought;
+
+    private int totalPartitions;
+    private Checkpoint[] partitionCheckpoint;
+    private BitSet partitionSought;
 
     public KafkaSeeker(Map<String, Object> configuration) {
         Object topic = configuration.get(Configuration.TOPIC);
@@ -45,8 +54,8 @@ public class KafkaSeeker implements Seeker {
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
 
         this.topic = topic.toString();
+        this.partitioner = Partitioner.build(configuration);
         this.configuration = new MapFilter(configuration).filter(Configuration.CONSUMER_PREFIX);
-        this.checkpoint = new AtomicReference<>();
         this.sought = new AtomicBoolean();
     }
 
@@ -55,7 +64,13 @@ public class KafkaSeeker implements Seeker {
         KafkaSeeker.LOG.log(Level.INFO,"seeking for last events");
 
         try (Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(this.configuration, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
-            Checkpoint lastCheckpoint = checkpoint;
+            this.totalPartitions = consumer.partitionsFor(this.topic).stream().mapToInt(PartitionInfo::partition).max().orElseThrow(() -> new InvalidPartitionsException("partitions not found")) + 1;
+            this.partitionCheckpoint = new Checkpoint[this.totalPartitions];
+            this.partitionSought = new BitSet(this.totalPartitions);
+
+            Arrays.fill(this.partitionCheckpoint, checkpoint);
+
+            Checkpoint minimumCheckpoint = checkpoint;
 
             consumer.subscribe(Arrays.asList(this.topic));
             consumer.poll(100L);
@@ -71,36 +86,58 @@ public class KafkaSeeker implements Seeker {
                     ConsumerRecords<byte[], byte[]> consumerRecords = consumer.poll(100);
 
                     for (ConsumerRecord<byte[], byte[]> consumerRecord : consumerRecords) {
+                        int partition = consumerRecord.partition();
+
                         Checkpoint currentCheckpoint = KafkaSeeker.MAPPER.readValue(
                                 consumerRecord.key(), AugmentedEventHeader.class
                         ).getCheckpoint();
 
-                        if (lastCheckpoint != null && lastCheckpoint.compareTo(currentCheckpoint) < 0) {
-                            lastCheckpoint = currentCheckpoint;
+                        if (this.partitionCheckpoint[partition] == null || this.partitionCheckpoint[partition].compareTo(currentCheckpoint) < 0) {
+                            this.partitionCheckpoint[partition] = currentCheckpoint;
+                        }
+
+                        if (minimumCheckpoint == null || minimumCheckpoint.compareTo(currentCheckpoint) > 0) {
+                            minimumCheckpoint = currentCheckpoint;
                         }
                     }
                 }
             }
 
-            this.checkpoint.set(lastCheckpoint);
             this.sought.set(false);
 
-            return lastCheckpoint;
+            return minimumCheckpoint;
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }
     }
 
     @Override
-    public AugmentedEvent apply(AugmentedEvent augmentedEvent) {
+    public List<AugmentedEvent> apply(List<AugmentedEvent> augmentedEventList) {
         if (this.sought.get()) {
-            return augmentedEvent;
-        } else if (this.checkpoint.get() == null || this.checkpoint.get().compareTo(augmentedEvent.getHeader().getCheckpoint()) < 0) {
-            KafkaSeeker.LOG.log(Level.INFO,"sought");
-            this.sought.set(true);
-            return augmentedEvent;
+            return augmentedEventList;
         } else {
-            return null;
+            List<AugmentedEvent> soughtAugmentedEventList = new ArrayList<>();
+
+            for (AugmentedEvent augmentedEvent : augmentedEventList) {
+                int partition = this.partitioner.apply(augmentedEvent, this.totalPartitions);
+
+                if (this.partitionSought.get(partition)) {
+                    soughtAugmentedEventList.add(augmentedEvent);
+                } else if (this.partitionCheckpoint[partition] == null || this.partitionCheckpoint[partition].compareTo(augmentedEvent.getHeader().getCheckpoint()) < 0) {
+                    this.partitionSought.set(partition);
+                    this.sought.set(this.partitionSought.cardinality() == this.totalPartitions);
+
+                    soughtAugmentedEventList.add(augmentedEvent);
+
+                    KafkaSeeker.LOG.log(Level.INFO, String.format("sought partition %d", partition));
+                }
+            }
+
+            if (soughtAugmentedEventList.size() > 0) {
+                return soughtAugmentedEventList;
+            } else {
+                return null;
+            }
         }
     }
 }

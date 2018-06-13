@@ -1,9 +1,10 @@
 package com.booking.replication.augmenter.active.schema;
 
 import com.booking.replication.augmenter.model.AugmentedEvent;
-import com.booking.replication.augmenter.model.TransactionAugmentedEventData;
+import com.booking.replication.augmenter.model.AugmentedEventTransaction;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Queue;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -47,20 +48,28 @@ public class CurrentTransaction {
 
     public boolean add(AugmentedEvent event) {
         if (this.started.get() && !this.sizeLimitExceeded()) {
-            return this.eventQueue.get().offer(event);
+            return this.eventQueue.get().add(event);
         } else {
             return false;
         }
     }
 
-    public TransactionAugmentedEventData clean() {
+    public List<AugmentedEvent> clean() {
         if (this.eventQueue.get() != null) {
-            return new TransactionAugmentedEventData(
-                    this.identifier.get().toString(),
-                    this.xxid.get(),
-                    null,
-                    new ArrayList<>(this.eventQueue.getAndSet((this.resuming.get())?(new ConcurrentLinkedQueue<>()):(null)))
-            );
+            Queue<AugmentedEvent> augmentedEventQueue = this.eventQueue.getAndSet((this.resuming.get())?(new ConcurrentLinkedQueue<>()):(null));
+            List<AugmentedEvent> augmentedEventList = new ArrayList<>();
+
+            for (AugmentedEvent augmentedEvent : augmentedEventQueue) {
+                augmentedEvent.getHeader().setEventTransaction(new AugmentedEventTransaction(
+                        this.timestamp.get(),
+                        this.identifier.get().toString(),
+                        this.xxid.get()
+                ));
+
+                augmentedEventList.add(augmentedEvent);
+            }
+
+            return augmentedEventList;
         } else {
             return null;
         }
@@ -99,10 +108,6 @@ public class CurrentTransaction {
     }
 
     public boolean sizeLimitExceeded() {
-        return this.eventQueue.get().size() >= this.sizeLimit;
-    }
-
-    public long getTimestamp() {
-        return this.timestamp.get();
+        return this.eventQueue.get() != null && this.eventQueue.get().size() >= this.sizeLimit;
     }
 }

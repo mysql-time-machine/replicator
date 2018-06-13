@@ -3,7 +3,6 @@ package com.booking.replication;
 import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.Partitioner;
 import com.booking.replication.applier.Seeker;
-import com.booking.replication.applier.Splitter;
 import com.booking.replication.applier.kafka.KafkaApplier;
 import com.booking.replication.applier.kafka.KafkaSeeker;
 import com.booking.replication.augmenter.Augmenter;
@@ -98,7 +97,6 @@ public class ReplicatorIT {
         configuration.put(Supplier.Configuration.TYPE, Supplier.Type.BINLOG.name());
         configuration.put(Augmenter.Configuration.TYPE, Augmenter.Type.ACTIVE_SCHEMA.name());
         configuration.put(Seeker.Configuration.TYPE, Seeker.Type.KAFKA.name());
-        configuration.put(Splitter.Configuration.TYPE, Splitter.Type.TABLE_NAME.name());
         configuration.put(Partitioner.Configuration.TYPE, Partitioner.Type.TABLE_NAME.name());
         configuration.put(Applier.Configuration.TYPE, Applier.Type.KAFKA.name());
         configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name());
@@ -128,7 +126,7 @@ public class ReplicatorIT {
 
             while (!consumed) {
                 for (ConsumerRecord<byte[], byte[]> record : consumer.poll(1000L)) {
-                    ReplicatorIT.LOG.log(Level.INFO, new String(record.value()));
+                    ReplicatorIT.LOG.log(Level.INFO, String.format("%s:%s", new String(record.key()), new String(record.value())));
 
                     consumed = true;
                 }

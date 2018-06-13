@@ -1,17 +1,13 @@
 package com.booking.replication.streams;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Deque;
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -32,14 +28,12 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     private final Predicate<Input> filter;
     private final Function<Input, Output> process;
     private final Consumer<Output> to;
-    private final BiConsumer<Input, Map<Input, AtomicReference<Output>>> post;
-    private final Map<Input, AtomicReference<Output>> executing;
-    private final Map<Input, AtomicReference<Output>> executingReadOnly;
+    private final BiConsumer<Input, Streams.Task> post;
     private final AtomicBoolean running;
     private Consumer<Exception> handler;
 
     @SuppressWarnings("unchecked")
-    StreamsImplementation(int threads, int tasks, BiFunction<Input, Integer, Integer> partitioner, Class<? extends Deque> queueType, Function<Integer, Input> from, Predicate<Input> filter, Function<Input, Output> process, Consumer<Output> to, BiConsumer<Input, Map<Input, AtomicReference<Output>>> post) {
+    StreamsImplementation(int threads, int tasks, BiFunction<Input, Integer, Integer> partitioner, Class<? extends Deque> queueType, Function<Integer, Input> from, Predicate<Input> filter, Function<Input, Output> process, Consumer<Output> to, BiConsumer<Input, Streams.Task> post) {
         this.tasks = tasks;
 
         if (partitioner != null) {
@@ -80,26 +74,17 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
         this.process = (process != null)?(process):(input -> (Output) input);
         this.to = (to != null)?(to):(output -> {});
         this.post = (post != null)?(post):((output, executing) -> {});
-        this.executing = new ConcurrentHashMap<>();
-        this.executingReadOnly = Collections.unmodifiableMap(this.executing);
         this.running = new AtomicBoolean();
         this.handler = (exception) -> StreamsImplementation.LOG.log(Level.SEVERE, "error inside streams", exception);
     }
 
-    private void process(Input input) {
+    private void process(int task, Input input) {
         if (input != null && this.filter.test(input)) {
-            try {
-                this.executing.put(input, new AtomicReference<>());
+            Output output = this.process.apply(input);
 
-                Output output = this.process.apply(input);
-
-                if (output != null) {
-                    this.executing.get(input).set(output);
-                    this.to.accept(output);
-                    this.post.accept(input, this.executingReadOnly);
-                }
-            } finally {
-                this.executing.remove(input);
+            if (output != null) {
+                this.to.accept(output);
+                this.post.accept(input, new Task(task, this.tasks));
             }
         }
     }
@@ -113,7 +98,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
                 try {
                     while (this.running.get()) {
                         input = this.from.apply(task);
-                        this.process(input);
+                        this.process(task, input);
                         input = null;
                     }
                 } catch (Exception exception) {
@@ -173,7 +158,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     public final boolean push(Input input) {
         if (this.queues == null && this.from == null) {
             try {
-                this.process(input);
+                this.process(0, input);
                 return true;
             } catch (Exception exception) {
                 this.handler.accept(exception);

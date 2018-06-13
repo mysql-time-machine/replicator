@@ -28,7 +28,7 @@ public final class StreamsBuilder<Input, Output> implements
     private Predicate<Input> filter;
     private Function<Input, Output> process;
     private Consumer<Output> to;
-    private BiConsumer<Input, Map<Input, AtomicReference<Output>>> post;
+    private BiConsumer<Input, Streams.Task> post;
 
     private StreamsBuilder(
             int threads,
@@ -39,7 +39,7 @@ public final class StreamsBuilder<Input, Output> implements
             Predicate<Input> filter,
             Function<Input, Output> process,
             Consumer<Output> to,
-            BiConsumer<Input, Map<Input, AtomicReference<Output>>> post) {
+            BiConsumer<Input, Streams.Task> post) {
         this.threads = threads;
         this.tasks = tasks;
         this.partitioner = partitioner;
@@ -178,7 +178,7 @@ public final class StreamsBuilder<Input, Output> implements
     }
 
     @Override
-    public final StreamsBuilderBuild<Input, Output> post(BiConsumer<Input, Map<Input, AtomicReference<Output>>> consumer) {
+    public final StreamsBuilderBuild<Input, Output> post(BiConsumer<Input, Streams.Task> consumer) {
         Objects.requireNonNull(consumer);
         return new StreamsBuilder<>(
                 this.threads,
@@ -189,13 +189,13 @@ public final class StreamsBuilder<Input, Output> implements
                 this.filter,
                 this.process,
                 this.to,
-                (input, executing) -> {
+                (input, tasks) -> {
                     if (this.post != null) {
-                        this.post.accept(input, executing);
+                        this.post.accept(input, tasks);
                     }
 
                     if (input != null) {
-                        consumer.accept(input, executing);
+                        consumer.accept(input, tasks);
                     }
                 }
         );

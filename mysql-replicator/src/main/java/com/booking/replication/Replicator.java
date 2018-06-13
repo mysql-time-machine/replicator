@@ -2,7 +2,6 @@ package com.booking.replication;
 
 import com.booking.replication.applier.Seeker;
 import com.booking.replication.applier.Applier;
-import com.booking.replication.applier.Splitter;
 import com.booking.replication.applier.Partitioner;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.model.AugmentedEvent;
@@ -51,7 +50,6 @@ public class Replicator {
     private final Supplier supplier;
     private final Augmenter augmenter;
     private final Seeker seeker;
-    private final Splitter splitter;
     private final Partitioner partitioner;
     private final Applier applier;
     private final CheckpointApplier checkpointApplier;
@@ -74,12 +72,11 @@ public class Replicator {
         this.supplier = Supplier.build(configuration);
         this.augmenter = Augmenter.build(configuration);
         this.seeker = Seeker.build(configuration);
-        this.splitter = Splitter.build(configuration);
         this.partitioner = Partitioner.build(configuration);
         this.applier = Applier.build(configuration);
         this.checkpointApplier = CheckpointApplier.build(configuration, this.coordinator, this.checkpointPath);
         this.streamsApplier = Streams.<AugmentedEvent>builder().threads(Integer.parseInt(threads.toString())).tasks(Integer.parseInt(tasks.toString())).partitioner(this.partitioner).queue().fromPush().to(this.applier).post(this.checkpointApplier).build();
-        this.streamsSupplier = Streams.<RawEvent>builder().fromPush().process(this.augmenter).process(this.seeker).process(this.splitter).to(eventList -> {
+        this.streamsSupplier = Streams.<RawEvent>builder().fromPush().process(this.augmenter).process(this.seeker).to(eventList -> {
             for (AugmentedEvent event : eventList) {
                 this.streamsApplier.push(event);
             }
@@ -121,7 +118,6 @@ public class Replicator {
                 this.supplier.stop();
                 this.augmenter.close();
                 this.seeker.close();
-                this.splitter.close();
                 this.partitioner.close();
                 this.applier.close();
                 this.checkpointApplier.close();

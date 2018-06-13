@@ -26,6 +26,8 @@ public interface Supplier {
 
     void onEvent(Consumer<RawEvent> consumer);
 
+    void onException(Consumer<Exception> handler);
+
     void start(Checkpoint checkpoint) throws IOException;
 
     void connect(Checkpoint checkpoint) throws IOException;

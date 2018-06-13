@@ -30,6 +30,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     private final Consumer<Output> to;
     private final BiConsumer<Input, Streams.Task> post;
     private final AtomicBoolean running;
+    private final AtomicBoolean handling;
     private Consumer<Exception> handler;
 
     @SuppressWarnings("unchecked")
@@ -75,6 +76,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
         this.to = (to != null)?(to):(output -> {});
         this.post = (post != null)?(post):((output, executing) -> {});
         this.running = new AtomicBoolean();
+        this.handling = new AtomicBoolean();
         this.handler = (exception) -> StreamsImplementation.LOG.log(Level.SEVERE, "error inside streams", exception);
     }
 
@@ -102,7 +104,14 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
                         input = null;
                     }
                 } catch (Exception exception) {
-                    this.executor.submit(() -> this.handler.accept(exception));
+                    if (!this.handling.getAndSet(true)) {
+                        this.executor.submit(() -> {
+                            this.handler.accept(exception);
+                            this.handling.set(false);
+                        });
+                    } else {
+                        StreamsImplementation.LOG.log(Level.SEVERE, "error inside streams", exception);
+                    }
                 } finally {
                     if (this.requeue != null && input != null) {
                         this.requeue.accept(task, input);

@@ -43,6 +43,7 @@ public class BinaryLogSupplier implements Supplier {
 
     private BinaryLogClient client;
     private Consumer<RawEvent> consumer;
+    private Consumer<Exception> handler;
 
     public BinaryLogSupplier(Map<String, Object> configuration) {
         Object hostname = configuration.get(Configuration.MYSQL_HOSTNAME);
@@ -83,6 +84,11 @@ public class BinaryLogSupplier implements Supplier {
     @Override
     public void onEvent(Consumer<RawEvent> consumer) {
         this.consumer = consumer;
+    }
+
+    @Override
+    public void onException(Consumer<Exception> handler) {
+        this.handler = handler;
     }
 
     @Override
@@ -127,7 +133,9 @@ public class BinaryLogSupplier implements Supplier {
                     }
                 }
 
-                BinaryLogSupplier.LOG.log(Level.SEVERE, "error connecting");
+                if (this.handler != null) {
+                    this.handler.accept(new IOException("error connecting"));
+                }
             });
         }
     }

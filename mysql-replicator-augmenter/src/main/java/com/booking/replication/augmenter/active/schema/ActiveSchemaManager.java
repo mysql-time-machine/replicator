@@ -86,26 +86,6 @@ public class ActiveSchemaManager implements Closeable {
         }
     }
 
-    public List<AugmentedEventTable> listTables() {
-        try (Connection connection = this.dataSource.getConnection();
-             Statement statement = connection.createStatement()) {
-            List<AugmentedEventTable> tableList = new ArrayList<>();
-
-            try (ResultSet resultSet = statement.executeQuery(ActiveSchemaManager.LIST_TABLES_SQL)) {
-                while (resultSet.next()) {
-                    tableList.add(new AugmentedEventTable(
-                            this.schema,
-                            resultSet.getString(0)
-                    ));
-                }
-            }
-
-            return tableList;
-        } catch (SQLException exception) {
-            throw new RuntimeException("error listing tables", exception);
-        }
-    }
-
     public List<AugmentedEventColumn> listColumns(String tableName) {
         return this.cache.computeIfAbsent(tableName, key -> {
             try (Connection connection = this.dataSource.getConnection();
@@ -127,7 +107,8 @@ public class ActiveSchemaManager implements Closeable {
 
                 return columnList;
             } catch (SQLException exception) {
-                throw new RuntimeException("error listing columns", exception);
+                ActiveSchemaManager.LOG.log(Level.WARNING, String.format("error listing columns from table \"%s\": %s", tableName, exception.getMessage()));
+                return null;
             }
         });
     }
@@ -142,7 +123,8 @@ public class ActiveSchemaManager implements Closeable {
                 return null;
             }
         } catch (SQLException exception) {
-            throw new RuntimeException("error getting create table", exception);
+            ActiveSchemaManager.LOG.log(Level.WARNING, String.format("error getting create table from table \"%s\"", tableName, exception.getMessage()));
+            return null;
         }
     }
 

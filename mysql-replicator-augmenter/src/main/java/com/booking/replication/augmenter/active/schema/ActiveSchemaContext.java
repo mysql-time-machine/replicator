@@ -403,15 +403,20 @@ public class ActiveSchemaContext implements Closeable {
 
     public List<AugmentedEventColumn> getColumns(long tableId, BitSet includedColumns) {
         List<AugmentedEventColumn> columnList = this.manager.listColumns(this.getTable(tableId).getName());
-        List<AugmentedEventColumn> includedColumnList = new LinkedList<>();
 
-        for (int columnIndex = 0; columnIndex < columnList.size(); columnIndex++) {
-            if (includedColumns.get(columnIndex)) {
-                includedColumnList.add(columnList.get(columnIndex));
+        if (columnList != null) {
+            List<AugmentedEventColumn> includedColumnList = new LinkedList<>();
+
+            for (int columnIndex = 0; columnIndex < columnList.size(); columnIndex++) {
+                if (includedColumns.get(columnIndex)) {
+                    includedColumnList.add(columnList.get(columnIndex));
+                }
             }
-        }
 
-        return includedColumnList;
+            return includedColumnList;
+        } else {
+            return null;
+        }
     }
 
     public List<AugmentedEventUpdatedRow> getUpdatedRows(List<Map.Entry<Serializable[], Serializable[]>> rawRows) {

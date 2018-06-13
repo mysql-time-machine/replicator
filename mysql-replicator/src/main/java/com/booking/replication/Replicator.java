@@ -82,8 +82,6 @@ public class Replicator {
             }
         }).build();
 
-        this.supplier.onEvent(this.streamsSupplier::push);
-
         Consumer<Exception> exceptionHandle = (exception) -> {
             if (ForceRewindException.class.isInstance(exception)) {
                 Replicator.LOG.log(Level.WARNING, exception.getMessage());
@@ -95,9 +93,6 @@ public class Replicator {
                 this.stop();
             }
         };
-
-        this.streamsSupplier.onException(exceptionHandle);
-        this.streamsApplier.onException(exceptionHandle);
 
         this.coordinator.onLeadershipTake(() -> {
             try {
@@ -127,6 +122,11 @@ public class Replicator {
                 exceptionHandle.accept(exception);
             }
         });
+
+        this.supplier.onEvent(this.streamsSupplier::push);
+        this.supplier.onException(exceptionHandle);
+        this.streamsSupplier.onException(exceptionHandle);
+        this.streamsApplier.onException(exceptionHandle);
     }
 
     private Checkpoint getCheckpoint() throws IOException {

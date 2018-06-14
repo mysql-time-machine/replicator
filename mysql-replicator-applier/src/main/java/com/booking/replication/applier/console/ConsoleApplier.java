@@ -25,8 +25,4 @@ public class ConsoleApplier implements Applier {
             ConsoleApplier.LOG.error("error converting to json", exception);
         }
     }
-
-    @Override
-    public void close() {
-    }
 }

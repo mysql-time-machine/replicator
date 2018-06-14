@@ -103,6 +103,8 @@ public abstract class Coordinator implements LeaderCoordinator, CheckpointStorag
 
     public void start() {
         if (!this.running.getAndSet(true)) {
+            Coordinator.LOG.log(Level.INFO, "starting coordinator");
+
             this.executor.execute(this::takeLeadership);
         }
     }
@@ -111,29 +113,35 @@ public abstract class Coordinator implements LeaderCoordinator, CheckpointStorag
 
     public void stop() {
         if (this.running.getAndSet(false)) {
+            Coordinator.LOG.log(Level.INFO, "stopping coordinator");
+
             try {
                 this.loseLeadership();
                 this.executor.shutdown();
                 this.executor.awaitTermination(5L, TimeUnit.SECONDS);
             } catch (InterruptedException exception) {
-                throw new RuntimeException(exception);
+                Coordinator.LOG.log(Level.SEVERE, "error stopping coordinator", exception);
             } finally {
                 this.executor.shutdownNow();
             }
         }
     }
 
-    public void wait(long timeout, TimeUnit unit) throws InterruptedException {
-        long remainMillis = unit.toMillis(timeout);
+    public void wait(long timeout, TimeUnit unit) {
+        try {
+            long remainMillis = unit.toMillis(timeout);
 
-        while (remainMillis > 0) {
-            long sleepMillis = remainMillis > Coordinator.WAIT_STEP_MILLIS ? Coordinator.WAIT_STEP_MILLIS : remainMillis;
-            Thread.sleep(sleepMillis);
-            remainMillis -= sleepMillis;
+            while (remainMillis > 0) {
+                long sleepMillis = remainMillis > Coordinator.WAIT_STEP_MILLIS ? Coordinator.WAIT_STEP_MILLIS : remainMillis;
+                Thread.sleep(sleepMillis);
+                remainMillis -= sleepMillis;
+            }
+        } catch (InterruptedException exception) {
+            Coordinator.LOG.log(Level.SEVERE, "error waiting coordinator", exception);
         }
     }
 
-    public void join() throws InterruptedException {
+    public void join() {
         this.wait(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
     }
 

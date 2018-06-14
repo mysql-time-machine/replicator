@@ -4,7 +4,6 @@ import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.augmenter.model.AugmentedEventData;
 import com.booking.replication.augmenter.model.AugmentedEventHeader;
-import com.booking.replication.augmenter.model.AugmentedEventType;
 import com.booking.replication.commons.checkpoint.ForceRewindException;
 import com.booking.replication.supplier.model.RawEvent;
 import com.booking.replication.supplier.model.RawEventData;

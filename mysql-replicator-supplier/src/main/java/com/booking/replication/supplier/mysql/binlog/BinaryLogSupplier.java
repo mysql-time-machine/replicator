@@ -94,6 +94,8 @@ public class BinaryLogSupplier implements Supplier {
     @Override
     public void start(Checkpoint checkpoint) {
         if (!this.running.getAndSet(true)) {
+            BinaryLogSupplier.LOG.log(Level.INFO, "starting binary log supplier connecting");
+
             this.connect(checkpoint);
         }
     }
@@ -133,8 +135,10 @@ public class BinaryLogSupplier implements Supplier {
                     }
                 }
 
-                if (this.handler != null) {
+                if (this.running.get() && this.handler != null) {
                     this.handler.accept(new IOException("error connecting"));
+                } else {
+                    BinaryLogSupplier.LOG.log(Level.SEVERE, "error connecting");
                 }
             });
         }
@@ -155,6 +159,8 @@ public class BinaryLogSupplier implements Supplier {
     @Override
     public void stop() {
         if (this.running.getAndSet(false)) {
+            BinaryLogSupplier.LOG.log(Level.INFO, "stopping binary log supplier connecting");
+
             this.disconnect();
 
             try {

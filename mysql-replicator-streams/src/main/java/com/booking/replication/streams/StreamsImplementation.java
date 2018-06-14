@@ -91,6 +91,17 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
         }
     }
 
+    private void handleException(Exception exception) {
+        if (!this.handling.getAndSet(true)) {
+            new Thread(() -> {
+                this.handler.accept(exception);
+                this.handling.set(false);
+            }).start();
+        } else {
+            StreamsImplementation.LOG.log(Level.SEVERE, "error inside streams", exception);
+        }
+    }
+
     @Override
     public final Streams<Input, Output> start() {
         if ((this.queues != null || this.from != null) && !this.running.getAndSet(true)) {
@@ -104,14 +115,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
                         input = null;
                     }
                 } catch (Exception exception) {
-                    if (!this.handling.getAndSet(true)) {
-                        this.executor.submit(() -> {
-                            this.handler.accept(exception);
-                            this.handling.set(false);
-                        });
-                    } else {
-                        StreamsImplementation.LOG.log(Level.SEVERE, "error inside streams", exception);
-                    }
+                    this.handleException(exception);
                 } finally {
                     if (this.requeue != null && input != null) {
                         this.requeue.accept(task, input);
@@ -147,14 +151,16 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
 
     @Override
     public final void stop() throws InterruptedException {
-        try {
-            this.executor.shutdown();
-            this.executor.awaitTermination(5L, TimeUnit.SECONDS);
-        } finally {
-            this.executor.shutdownNow();
-        }
+        if (this.running.getAndSet(false)) {
+            try {
+                this.executor.shutdown();
+                this.executor.awaitTermination(5L, TimeUnit.SECONDS);
+            } finally {
+                this.executor.shutdownNow();
+            }
 
-        StreamsImplementation.LOG.log(Level.FINE, "streams stopped");
+            StreamsImplementation.LOG.log(Level.FINE, "streams stopped");
+        }
     }
 
     @Override
@@ -170,7 +176,8 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
                 this.process(0, input);
                 return true;
             } catch (Exception exception) {
-                this.handler.accept(exception);
+                this.handleException(exception);
+
                 return false;
             }
         } else {

@@ -98,9 +98,16 @@ public class Replicator {
             try {
                 Replicator.LOG.log(Level.INFO, "starting replicator");
 
+                Replicator.LOG.log(Level.INFO, "starting streams applier");
                 this.streamsApplier.start();
+
+                Replicator.LOG.log(Level.INFO, "starting streams supplier");
                 this.streamsSupplier.start();
+
+                Replicator.LOG.log(Level.INFO, "starting supplier");
                 this.supplier.start(this.seeker.seek(this.getCheckpoint()));
+
+                Replicator.LOG.log(Level.INFO, "replicator started");
             } catch (IOException | InterruptedException exception) {
                 exceptionHandle.accept(exception);
             }
@@ -110,14 +117,31 @@ public class Replicator {
             try {
                 Replicator.LOG.log(Level.INFO, "stopping replicator");
 
+                Replicator.LOG.log(Level.INFO, "stopping supplier");
                 this.supplier.stop();
+
+                Replicator.LOG.log(Level.INFO, "closing augmenter");
                 this.augmenter.close();
+
+                Replicator.LOG.log(Level.INFO, "closing seeker");
                 this.seeker.close();
+
+                Replicator.LOG.log(Level.INFO, "closing partitioner");
                 this.partitioner.close();
+
+                Replicator.LOG.log(Level.INFO, "closing applier");
                 this.applier.close();
+
+                Replicator.LOG.log(Level.INFO, "closing checkpoint applier");
                 this.checkpointApplier.close();
+
+                Replicator.LOG.log(Level.INFO, "stopping streams supplier");
                 this.streamsSupplier.stop();
+
+                Replicator.LOG.log(Level.INFO, "stopping streams applier");
                 this.streamsApplier.stop();
+
+                Replicator.LOG.log(Level.INFO, "replicator stopped");
             } catch (IOException | InterruptedException exception) {
                 exceptionHandle.accept(exception);
             }
@@ -140,35 +164,18 @@ public class Replicator {
     }
 
     public void start() {
-        Replicator.LOG.log(Level.INFO, "starting coordinator");
-
         this.coordinator.start();
     }
 
     public void wait(long timeout, TimeUnit unit) {
-        try {
-            Replicator.LOG.log(Level.INFO, "waiting coordinator");
-
-            this.coordinator.wait(timeout, unit);
-        } catch (InterruptedException exception) {
-            Replicator.LOG.log(Level.SEVERE, "error waiting coordinator", exception);
-        }
-
+        this.coordinator.wait(timeout, unit);
     }
 
     public void join() {
-        try {
-            Replicator.LOG.log(Level.INFO, "running coordinator");
-
-            this.coordinator.join();
-        } catch (InterruptedException exception) {
-            Replicator.LOG.log(Level.SEVERE, "error starting coordinator", exception);
-        }
+        this.coordinator.join();
     }
 
     public void stop() {
-        Replicator.LOG.log(Level.INFO, "stopping coordinator");
-
         this.coordinator.stop();
     }
 
@@ -238,7 +245,6 @@ public class Replicator {
                 Runtime.getRuntime().addShutdownHook(new Thread(replicator::stop));
 
                 replicator.start();
-                replicator.join();
             }
         } catch (Exception exception) {
             new HelpFormatter().printHelp(Replicator.COMMAND_LINE_SYNTAX, null, options, exception.getMessage());

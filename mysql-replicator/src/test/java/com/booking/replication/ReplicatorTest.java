@@ -48,7 +48,7 @@ public class ReplicatorTest {
     private static final String MYSQL_PASSWORD = "replicator";
     private static final String MYSQL_ACTIVE_SCHEMA = "active_schema";
     private static final String MYSQL_INIT_SCRIPT = "mysql.init.sql";
-    private static final int MYSQL_TRANSACTION_LIMIT = 5;
+    private static final int TRANSACTION_LIMIT = 5;
 
     private static final String KAFKA_REPLICATOR_TOPIC_NAME = "replicator";
     private static final String KAFKA_REPLICATOR_GROUP_ID = "replicator";
@@ -87,7 +87,7 @@ public class ReplicatorTest {
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_SCHEMA, ReplicatorTest.MYSQL_ACTIVE_SCHEMA);
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, ReplicatorTest.MYSQL_ROOT_USERNAME);
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PASSWORD, ReplicatorTest.MYSQL_PASSWORD);
-        configuration.put(ActiveSchemaContext.Configuration.MYSQL_TRANSACTION_LIMIT, String.valueOf(ReplicatorTest.MYSQL_TRANSACTION_LIMIT));
+        configuration.put(ActiveSchemaContext.Configuration.TRANSACTION_LIMIT, String.valueOf(ReplicatorTest.TRANSACTION_LIMIT));
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorTest.kafka.getURL());
         configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorTest.kafka.getURL());
         configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.GROUP_ID_CONFIG), ReplicatorTest.KAFKA_REPLICATOR_GROUP_ID);

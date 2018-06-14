@@ -32,7 +32,7 @@ public class ActiveSchemaAugmenter implements Augmenter {
 
         this.context.updateContext(eventHeader, eventData);
 
-        if (this.context.hasData()) {
+        if (this.context.process()) {
             AugmentedEventHeader augmentedEventHeader = this.headerAugmenter.apply(eventHeader, eventData);
 
             if (augmentedEventHeader == null) {

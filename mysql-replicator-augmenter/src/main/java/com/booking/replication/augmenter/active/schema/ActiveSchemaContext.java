@@ -10,6 +10,7 @@ import com.booking.replication.supplier.model.QueryRawEventData;
 import com.booking.replication.supplier.model.RawEventData;
 import com.booking.replication.supplier.model.RawEventHeaderV4;
 import com.booking.replication.supplier.model.RotateRawEventData;
+import com.booking.replication.supplier.model.TableIdRawEventData;
 import com.booking.replication.supplier.model.TableMapRawEventData;
 import com.booking.replication.supplier.model.XIDRawEventData;
 
@@ -18,6 +19,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -33,28 +35,29 @@ import java.util.regex.Pattern;
 
 public class ActiveSchemaContext implements Closeable {
     public interface Configuration {
-        String MYSQL_TRANSACTION_LIMIT = "augmenter.context.transaction.limit";
-        String MYSQL_BEGIN_PATTERN = "augmenter.context.pattern.begin";
-        String MYSQL_COMMIT_PATTERN = "augmenter.context.pattern.commit";
-        String MYSQL_DDL_DEFINER_PATTERN = "augmenter.context.pattern.ddl.definer";
-        String MYSQL_DDL_TABLE_PATTERN = "augmenter.context.pattern.ddl.table";
-        String MYSQL_DDL_TEMPORARY_TABLE_PATTERN = "augmenter.context.pattern.ddl.temporary.table";
-        String MYSQL_DDL_VIEW_PATTERN = "augmenter.context.pattern.ddl.view";
-        String MYSQL_DDL_ANALYZE_PATTERN = "augmenter.context.pattern.ddl.analyze";
-        String MYSQL_PSEUDO_GTID_PATTERN = "augmenter.context.pattern.pseudogtid";
+        String TRANSACTION_LIMIT = "augmenter.context.transaction.limit";
+        String BEGIN_PATTERN = "augmenter.context.pattern.begin";
+        String COMMIT_PATTERN = "augmenter.context.pattern.commit";
+        String DDL_DEFINER_PATTERN = "augmenter.context.pattern.ddl.definer";
+        String DDL_TABLE_PATTERN = "augmenter.context.pattern.ddl.table";
+        String DDL_TEMPORARY_TABLE_PATTERN = "augmenter.context.pattern.ddl.temporary.table";
+        String DDL_VIEW_PATTERN = "augmenter.context.pattern.ddl.view";
+        String DDL_ANALYZE_PATTERN = "augmenter.context.pattern.ddl.analyze";
+        String PSEUDO_GTID_PATTERN = "augmenter.context.pattern.pseudogtid";
+        String EXCLUDE_TABLE = "augmenter.context.exclude.table";
     }
 
     private static final Logger LOG = Logger.getLogger(ActiveSchemaContext.class.getName());
 
-    private static final int DEFAULT_MYSQL_TRANSACTION_LIMIT = 1000;
-    private static final String DEFAULT_MYSQL_BEGIN_PATTERN = "^(/\\*.*?\\*/\\s*)?(begin)";
-    private static final String DEFAULT_MYSQL_COMMIT_PATTERN = "^(/\\*.*?\\*/\\s*)?(commit)";
-    private static final String DEFAULT_MYSQL_DDL_DEFINER_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(definer)\\s*=";
-    private static final String DEFAULT_MYSQL_DDL_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(table)\\s+(\\S+)";
-    private static final String DEFAULT_MYSQL_DDL_TEMPORARY_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(temporary)\\s+(table)\\s+(\\S+)";
-    private static final String DEFAULT_MYSQL_DDL_VIEW_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(view)\\s+(\\S+)";
-    private static final String DEFAULT_MYSQL_DDL_ANALYZE_PATTERN = "^(/\\*.*?\\*/\\s*)?(analyze)\\s+(table)\\s+(\\S+)";
-    private static final String DEFAULT_MYSQL_PSEUDO_GTID_PATTERN = "(?<=_pseudo_gtid_hint__asc\\:)(.{8}\\:.{16}\\:.{8})";
+    private static final int DEFAULT_TRANSACTION_LIMIT = 1000;
+    private static final String DEFAULT_BEGIN_PATTERN = "^(/\\*.*?\\*/\\s*)?(begin)";
+    private static final String DEFAULT_COMMIT_PATTERN = "^(/\\*.*?\\*/\\s*)?(commit)";
+    private static final String DEFAULT_DDL_DEFINER_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(definer)\\s*=";
+    private static final String DEFAULT_DDL_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(table)\\s+(\\S+)";
+    private static final String DEFAULT_DDL_TEMPORARY_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(temporary)\\s+(table)\\s+(\\S+)";
+    private static final String DEFAULT_DDL_VIEW_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(view)\\s+(\\S+)";
+    private static final String DEFAULT_DDL_ANALYZE_PATTERN = "^(/\\*.*?\\*/\\s*)?(analyze)\\s+(table)\\s+(\\S+)";
+    private static final String DEFAULT_PSEUDO_GTID_PATTERN = "(?<=_pseudo_gtid_hint__asc\\:)(.{8}\\:.{16}\\:.{8})";
 
     private final CurrentTransaction transaction;
     private final ActiveSchemaManager manager;
@@ -68,9 +71,11 @@ public class ActiveSchemaContext implements Closeable {
     private final Pattern ddlAnalyzePattern;
     private final Pattern pseudoGTIDPattern;
 
+    private final List<String> excludeTableList;
+
     private final AtomicLong serverId;
 
-    private final AtomicBoolean dataFlag;
+    private final AtomicBoolean continueFlag;
     private final AtomicReference<QueryAugmentedEventDataType> queryType;
     private final AtomicReference<QueryAugmentedEventDataOperationType> queryOperationType;
     private final AtomicReference<AugmentedEventTable> eventTable;
@@ -87,20 +92,21 @@ public class ActiveSchemaContext implements Closeable {
     private final Map<Long, AugmentedEventTable> tableIdEventTableMap;
 
     public ActiveSchemaContext(Map<String, Object> configuration) {
-        this.transaction = new CurrentTransaction(Integer.parseInt(configuration.getOrDefault(Configuration.MYSQL_TRANSACTION_LIMIT, String.valueOf(ActiveSchemaContext.DEFAULT_MYSQL_TRANSACTION_LIMIT)).toString()));
+        this.transaction = new CurrentTransaction(Integer.parseInt(configuration.getOrDefault(Configuration.TRANSACTION_LIMIT, String.valueOf(ActiveSchemaContext.DEFAULT_TRANSACTION_LIMIT)).toString()));
         this.manager = new ActiveSchemaManager(configuration);
-        this.beginPattern = this.getPattern(configuration, Configuration.MYSQL_BEGIN_PATTERN, ActiveSchemaContext.DEFAULT_MYSQL_BEGIN_PATTERN);
-        this.commitPattern = this.getPattern(configuration, Configuration.MYSQL_COMMIT_PATTERN, ActiveSchemaContext.DEFAULT_MYSQL_COMMIT_PATTERN);
-        this.ddlDefinerPattern = this.getPattern(configuration, Configuration.MYSQL_DDL_DEFINER_PATTERN, ActiveSchemaContext.DEFAULT_MYSQL_DDL_DEFINER_PATTERN);
-        this.ddlTablePattern = this.getPattern(configuration, Configuration.MYSQL_DDL_TABLE_PATTERN, ActiveSchemaContext.DEFAULT_MYSQL_DDL_TABLE_PATTERN);
-        this.ddlTemporaryTablePattern = this.getPattern(configuration, Configuration.MYSQL_DDL_TEMPORARY_TABLE_PATTERN, ActiveSchemaContext.DEFAULT_MYSQL_DDL_TEMPORARY_TABLE_PATTERN);
-        this.ddlViewPattern = this.getPattern(configuration, Configuration.MYSQL_DDL_VIEW_PATTERN, ActiveSchemaContext.DEFAULT_MYSQL_DDL_VIEW_PATTERN);
-        this.ddlAnalyzePattern = this.getPattern(configuration, Configuration.MYSQL_DDL_ANALYZE_PATTERN, ActiveSchemaContext.DEFAULT_MYSQL_DDL_ANALYZE_PATTERN);
-        this.pseudoGTIDPattern = this.getPattern(configuration, Configuration.MYSQL_PSEUDO_GTID_PATTERN, ActiveSchemaContext.DEFAULT_MYSQL_PSEUDO_GTID_PATTERN);
+        this.beginPattern = this.getPattern(configuration, Configuration.BEGIN_PATTERN, ActiveSchemaContext.DEFAULT_BEGIN_PATTERN);
+        this.commitPattern = this.getPattern(configuration, Configuration.COMMIT_PATTERN, ActiveSchemaContext.DEFAULT_COMMIT_PATTERN);
+        this.ddlDefinerPattern = this.getPattern(configuration, Configuration.DDL_DEFINER_PATTERN, ActiveSchemaContext.DEFAULT_DDL_DEFINER_PATTERN);
+        this.ddlTablePattern = this.getPattern(configuration, Configuration.DDL_TABLE_PATTERN, ActiveSchemaContext.DEFAULT_DDL_TABLE_PATTERN);
+        this.ddlTemporaryTablePattern = this.getPattern(configuration, Configuration.DDL_TEMPORARY_TABLE_PATTERN, ActiveSchemaContext.DEFAULT_DDL_TEMPORARY_TABLE_PATTERN);
+        this.ddlViewPattern = this.getPattern(configuration, Configuration.DDL_VIEW_PATTERN, ActiveSchemaContext.DEFAULT_DDL_VIEW_PATTERN);
+        this.ddlAnalyzePattern = this.getPattern(configuration, Configuration.DDL_ANALYZE_PATTERN, ActiveSchemaContext.DEFAULT_DDL_ANALYZE_PATTERN);
+        this.pseudoGTIDPattern = this.getPattern(configuration, Configuration.PSEUDO_GTID_PATTERN, ActiveSchemaContext.DEFAULT_PSEUDO_GTID_PATTERN);
+        this.excludeTableList = this.getList(configuration.get(Configuration.EXCLUDE_TABLE));
 
         this.serverId = new AtomicLong();
 
-        this.dataFlag = new AtomicBoolean();
+        this.continueFlag = new AtomicBoolean();
         this.queryType = new AtomicReference<>();
         this.queryOperationType = new AtomicReference<>();
         this.eventTable = new AtomicReference<>();
@@ -117,6 +123,19 @@ public class ActiveSchemaContext implements Closeable {
         this.tableIdEventTableMap = new ConcurrentHashMap<>();
     }
 
+    @SuppressWarnings("unchecked")
+    private List<String> getList(Object object) {
+        if (object != null) {
+            if (List.class.isInstance(object)) {
+                return (List<String>) object;
+            } else {
+                return Collections.singletonList(object.toString());
+            }
+        } else {
+            return Collections.emptyList();
+        }
+    }
+
     private Pattern getPattern(Map<String, Object> configuration, String configurationPath, String configurationDefault) {
         return Pattern.compile(
                 configuration.getOrDefault(
@@ -131,8 +150,8 @@ public class ActiveSchemaContext implements Closeable {
         this.serverId.set(id);
     }
 
-    private void updateCommons(boolean dataFlag, QueryAugmentedEventDataType queryType, QueryAugmentedEventDataOperationType queryOperationType, String database, String table) {
-        this.dataFlag.set(dataFlag);
+    private void updateCommons(boolean continueFlag, QueryAugmentedEventDataType queryType, QueryAugmentedEventDataOperationType queryOperationType, String database, String table) {
+        this.continueFlag.set(continueFlag);
         this.queryType.set(queryType);
         this.queryOperationType.set(queryOperationType);
 
@@ -177,6 +196,10 @@ public class ActiveSchemaContext implements Closeable {
                 this.manager.execute(null, query);
             }
         }
+    }
+
+    private boolean excludeTable(String tableName) {
+        return this.excludeTableList.contains(tableName);
     }
 
     public void updateContext(RawEventHeaderV4 eventHeader, RawEventData eventData) {
@@ -337,8 +360,11 @@ public class ActiveSchemaContext implements Closeable {
             case EXT_UPDATE_ROWS:
             case DELETE_ROWS:
             case EXT_DELETE_ROWS:
+                TableIdRawEventData tableIdRawEventData = TableIdRawEventData.class.cast(eventData);
+                AugmentedEventTable eventTable = this.getEventTable(tableIdRawEventData.getTableId());
+
                 this.updateCommons(
-                        true,
+                        (eventTable == null) || (!this.excludeTable(eventTable.getName())),
                         null,
                         null,
                         null,
@@ -363,8 +389,8 @@ public class ActiveSchemaContext implements Closeable {
         return this.transaction;
     }
 
-    public boolean hasData() {
-        return this.dataFlag.get();
+    public boolean process() {
+        return this.continueFlag.get();
     }
 
     public QueryAugmentedEventDataType getQueryType() {

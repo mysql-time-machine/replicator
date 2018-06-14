@@ -7,101 +7,55 @@ public class Checkpoint implements Serializable, Comparable<Checkpoint> {
     private long serverId;
     private String binlogFilename;
     private long binlogPosition;
-    private String pseudoGTID;
-    private int pseudoGTIDIndex;
+    private GTID gtid;
 
     public Checkpoint() {
     }
 
-    public Checkpoint(long serverId, String binlogFilename, long binlogPosition, String pseudoGTID, int pseudoGTIDIndex) {
+    public Checkpoint(long serverId, String binlogFilename, long binlogPosition, GTID gtid) {
         this.serverId = serverId;
         this.binlogFilename = binlogFilename;
         this.binlogPosition = binlogPosition;
-        this.pseudoGTID = pseudoGTID;
-        this.pseudoGTIDIndex = pseudoGTIDIndex;
-    }
-
-    public Checkpoint(Checkpoint checkpoint) {
-        this(
-                checkpoint.serverId,
-                checkpoint.binlogFilename,
-                checkpoint.binlogPosition,
-                checkpoint.pseudoGTID,
-                checkpoint.pseudoGTIDIndex
-        );
+        this.gtid = gtid;
     }
 
     public long getServerId() {
         return this.serverId;
     }
 
-    public void setServerId(long serverId) {
-        this.serverId = serverId;
-    }
-
     public String getBinlogFilename() {
         return this.binlogFilename;
-    }
-
-    public void setBinlogFilename(String binlogFilename) {
-        this.binlogFilename = binlogFilename;
     }
 
     public long getBinlogPosition() {
         return this.binlogPosition;
     }
 
-    public void setBinlogPosition(long binlogPosition) {
-        this.binlogPosition = binlogPosition;
-    }
-
-    public String getPseudoGTID() {
-        return this.pseudoGTID;
-    }
-
-    public void setPseudoGTID(String pseudoGTID) {
-        this.pseudoGTID = pseudoGTID;
-    }
-
-    public int getPseudoGTIDIndex() {
-        return this.pseudoGTIDIndex;
-    }
-
-    public void setPseudoGTIDIndex(int pseudoGTIDIndex) {
-        this.pseudoGTIDIndex = pseudoGTIDIndex;
+    public GTID getGTID() {
+        return this.gtid;
     }
 
     @Override
     public int compareTo(Checkpoint checkpoint) {
         if (checkpoint != null) {
-            if (this.getPseudoGTID() != null &&  checkpoint.getPseudoGTID() != null) {
-                if (this.getPseudoGTID().equals(checkpoint.getPseudoGTID())) {
-                    return Integer.compare(this.getPseudoGTIDIndex(), checkpoint.getPseudoGTIDIndex());
-                } else {
-                    return this.getPseudoGTID().compareTo(checkpoint.getPseudoGTID());
-                }
-            } else if (this.getPseudoGTID() != null) {
+            if (this.gtid != null &&  checkpoint.gtid != null) {
+                return this.gtid.compareTo(checkpoint.gtid);
+            } else if (this.gtid != null) {
                 return Integer.MAX_VALUE;
-            } else if (checkpoint.getPseudoGTID() != null){
+            } else if (checkpoint.gtid != null){
+                return Integer.MIN_VALUE;
+            } else if (this.binlogFilename != null && checkpoint.binlogFilename != null) {
+                if (this.binlogFilename.equals(checkpoint.binlogFilename)) {
+                    return Long.compare(this.binlogPosition, checkpoint.binlogPosition);
+                } else {
+                    return this.binlogFilename.compareTo(checkpoint.binlogFilename);
+                }
+            } else if (this.binlogFilename != null) {
+                return Integer.MAX_VALUE;
+            } else if (checkpoint.binlogFilename != null) {
                 return Integer.MIN_VALUE;
             } else {
-                if (this.getBinlogFilename() != null && checkpoint.getBinlogFilename() != null) {
-                    if (this.getBinlogFilename().equals(checkpoint.getBinlogFilename())) {
-                        if (this.getBinlogPosition() == checkpoint.getBinlogPosition()) {
-                            return Integer.compare(this.getPseudoGTIDIndex(), checkpoint.getPseudoGTIDIndex());
-                        } else {
-                            return Long.compare(this.getBinlogPosition(), checkpoint.getBinlogPosition());
-                        }
-                    } else {
-                        return this.getBinlogFilename().compareTo(checkpoint.getBinlogFilename());
-                    }
-                } else if (this.getBinlogFilename() != null) {
-                    return Integer.MAX_VALUE;
-                } else if (checkpoint.getBinlogFilename() != null) {
-                    return Integer.MIN_VALUE;
-                } else {
-                    return 0;
-                }
+                return 0;
             }
         } else {
             return Integer.MAX_VALUE;

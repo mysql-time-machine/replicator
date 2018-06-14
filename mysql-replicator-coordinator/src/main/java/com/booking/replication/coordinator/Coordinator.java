@@ -84,7 +84,7 @@ public abstract class Coordinator implements LeaderCoordinator, CheckpointStorag
                 this.semaphore.acquire();
             }
         } catch (Exception exception) {
-            Coordinator.LOG.log(Level.WARNING, "cannot take for leadership");
+            Coordinator.LOG.log(Level.WARNING, "cannot take leadership");
         } finally {
             if (!this.lostLeadership.getAndSet(true)) {
                 this.hasLeadership.set(false);

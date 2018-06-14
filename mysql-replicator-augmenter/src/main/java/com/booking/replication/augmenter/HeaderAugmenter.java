@@ -1,14 +1,14 @@
-package com.booking.replication.augmenter.active.schema;
+package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.model.AugmentedEventHeader;
 import com.booking.replication.augmenter.model.AugmentedEventType;
 import com.booking.replication.supplier.model.RawEventData;
 import com.booking.replication.supplier.model.RawEventHeaderV4;
 
-public class ActiveSchemaHeaderAugmenter {
-    private final ActiveSchemaContext context;
+public class HeaderAugmenter {
+    private final AugmenterContext context;
 
-    public ActiveSchemaHeaderAugmenter(ActiveSchemaContext context) {
+    public HeaderAugmenter(AugmenterContext context) {
         this.context = context;
     }
 

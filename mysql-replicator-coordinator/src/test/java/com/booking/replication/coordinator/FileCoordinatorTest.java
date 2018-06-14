@@ -1,6 +1,8 @@
 package com.booking.replication.coordinator;
 
 import com.booking.replication.commons.checkpoint.Checkpoint;
+import com.booking.replication.commons.checkpoint.GTID;
+import com.booking.replication.commons.checkpoint.GTIDType;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -19,7 +21,7 @@ public class FileCoordinatorTest {
     private static Coordinator coordinator2;
 
     @BeforeClass
-    public static void before() throws InterruptedException {
+    public static void before() {
         FileCoordinatorTest.count = new AtomicInteger();
 
         Runnable leadershipTake = () -> {
@@ -64,8 +66,12 @@ public class FileCoordinatorTest {
                 ThreadLocalRandom.current().nextLong(),
                 UUID.randomUUID().toString(),
                 ThreadLocalRandom.current().nextLong(),
-                UUID.randomUUID().toString(),
-                ThreadLocalRandom.current().nextInt()
+                new GTID(
+                        GTIDType.REAL,
+                        UUID.randomUUID().toString(),
+                        Byte.MAX_VALUE,
+                        ThreadLocalRandom.current().nextInt()
+                )
         );
 
         FileCoordinatorTest.coordinator1.saveCheckpoint("/tmp/checkpoint", checkpoint1);

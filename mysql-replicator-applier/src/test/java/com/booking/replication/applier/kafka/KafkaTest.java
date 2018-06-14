@@ -7,6 +7,8 @@ import com.booking.replication.augmenter.model.AugmentedEventHeader;
 import com.booking.replication.augmenter.model.AugmentedEventType;
 import com.booking.replication.augmenter.model.ByteArrayAugmentedEventData;
 import com.booking.replication.commons.checkpoint.Checkpoint;
+import com.booking.replication.commons.checkpoint.GTID;
+import com.booking.replication.commons.checkpoint.GTIDType;
 import com.booking.replication.commons.services.ServicesControl;
 import com.booking.replication.commons.services.ServicesProvider;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -41,8 +43,12 @@ public class KafkaTest {
                 0,
                 null,
                 0,
-                "PSEUDO_GTID",
-                index
+                new GTID(
+                        GTIDType.REAL,
+                        "REAL",
+                        Byte.MAX_VALUE,
+                        index
+                )
         );
     }
 

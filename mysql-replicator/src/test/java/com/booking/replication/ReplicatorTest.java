@@ -6,8 +6,8 @@ import com.booking.replication.applier.Seeker;
 import com.booking.replication.applier.kafka.KafkaApplier;
 import com.booking.replication.applier.kafka.KafkaSeeker;
 import com.booking.replication.augmenter.Augmenter;
-import com.booking.replication.augmenter.active.schema.ActiveSchemaContext;
-import com.booking.replication.augmenter.active.schema.ActiveSchemaManager;
+import com.booking.replication.augmenter.AugmenterContext;
+import com.booking.replication.augmenter.ActiveSchema;
 import com.booking.replication.checkpoint.CheckpointApplier;
 import com.booking.replication.commons.services.ServicesControl;
 import com.booking.replication.commons.services.ServicesProvider;
@@ -40,7 +40,7 @@ public class ReplicatorTest {
     private static final String ZOOKEEPER_LEADERSHIP_PATH = "/replicator/leadership";
     private static final String ZOOKEEPER_CHECKPOINT_PATH = "/replicator/checkpoint";
 
-    private static final String CHECKPOINT_DEFAULT = "{\"serverId\": 1, \"binlogFilename\": \"binlog.000001\", \"binlogPosition\": 4, \"pseudoGTID\": null, \"pseudoGTIDIndex\": 0}";
+    private static final String CHECKPOINT_DEFAULT = "{\"serverId\": 1, \"binlogFilename\": \"binlog.000001\", \"binlogPosition\": 4, \"gtid\": null}";
 
     private static final String MYSQL_SCHEMA = "replicator";
     private static final String MYSQL_ROOT_USERNAME = "root";
@@ -82,12 +82,12 @@ public class ReplicatorTest {
         configuration.put(BinaryLogSupplier.Configuration.MYSQL_SCHEMA, ReplicatorTest.MYSQL_SCHEMA);
         configuration.put(BinaryLogSupplier.Configuration.MYSQL_USERNAME, ReplicatorTest.MYSQL_ROOT_USERNAME);
         configuration.put(BinaryLogSupplier.Configuration.MYSQL_PASSWORD, ReplicatorTest.MYSQL_PASSWORD);
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, ReplicatorTest.mysqlActiveSchema.getHost());
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(ReplicatorTest.mysqlActiveSchema.getPort()));
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_SCHEMA, ReplicatorTest.MYSQL_ACTIVE_SCHEMA);
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, ReplicatorTest.MYSQL_ROOT_USERNAME);
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PASSWORD, ReplicatorTest.MYSQL_PASSWORD);
-        configuration.put(ActiveSchemaContext.Configuration.TRANSACTION_LIMIT, String.valueOf(ReplicatorTest.TRANSACTION_LIMIT));
+        configuration.put(ActiveSchema.Configuration.MYSQL_HOSTNAME, ReplicatorTest.mysqlActiveSchema.getHost());
+        configuration.put(ActiveSchema.Configuration.MYSQL_PORT, String.valueOf(ReplicatorTest.mysqlActiveSchema.getPort()));
+        configuration.put(ActiveSchema.Configuration.MYSQL_SCHEMA, ReplicatorTest.MYSQL_ACTIVE_SCHEMA);
+        configuration.put(ActiveSchema.Configuration.MYSQL_USERNAME, ReplicatorTest.MYSQL_ROOT_USERNAME);
+        configuration.put(ActiveSchema.Configuration.MYSQL_PASSWORD, ReplicatorTest.MYSQL_PASSWORD);
+        configuration.put(AugmenterContext.Configuration.TRANSACTION_LIMIT, String.valueOf(ReplicatorTest.TRANSACTION_LIMIT));
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorTest.kafka.getURL());
         configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorTest.kafka.getURL());
         configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.GROUP_ID_CONFIG), ReplicatorTest.KAFKA_REPLICATOR_GROUP_ID);
@@ -95,7 +95,7 @@ public class ReplicatorTest {
         configuration.put(KafkaApplier.Configuration.TOPIC, ReplicatorTest.KAFKA_REPLICATOR_TOPIC_NAME);
         configuration.put(Coordinator.Configuration.TYPE, Coordinator.Type.ZOOKEEPER.name());
         configuration.put(Supplier.Configuration.TYPE, Supplier.Type.BINLOG.name());
-        configuration.put(Augmenter.Configuration.TYPE, Augmenter.Type.ACTIVE_SCHEMA.name());
+        configuration.put(Augmenter.Configuration.SCHEMA_TYPE, Augmenter.SchemaType.ACTIVE.name());
         configuration.put(Seeker.Configuration.TYPE, Seeker.Type.KAFKA.name());
         configuration.put(Partitioner.Configuration.TYPE, Partitioner.Type.TABLE_NAME.name());
         configuration.put(Applier.Configuration.TYPE, Applier.Type.KAFKA.name());

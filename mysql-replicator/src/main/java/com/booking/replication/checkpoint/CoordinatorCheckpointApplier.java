@@ -25,7 +25,7 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
     public void accept(AugmentedEvent augmentedEvent, Streams.Task task) {
         Checkpoint checkpoint = augmentedEvent.getHeader().getCheckpoint();
 
-        if (checkpoint.getPseudoGTID() != null && checkpoint.getPseudoGTIDIndex() == 0) {
+        if (checkpoint.getGTID() != null && checkpoint.getGTID().getValue() != null && checkpoint.getGTID().getIndex() == 0) {
             this.taskCheckpointMap.put(task.getCurrent(), checkpoint);
 
             if (this.taskCheckpointMap.size() == task.getTotal()) {

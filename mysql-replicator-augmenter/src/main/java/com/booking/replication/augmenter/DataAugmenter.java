@@ -1,4 +1,4 @@
-package com.booking.replication.augmenter.active.schema;
+package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.model.AugmentedEventData;
 import com.booking.replication.augmenter.model.DeleteRowsAugmentedEventData;
@@ -12,10 +12,10 @@ import com.booking.replication.supplier.model.RawEventHeaderV4;
 import com.booking.replication.supplier.model.UpdateRowsRawEventData;
 import com.booking.replication.supplier.model.WriteRowsRawEventData;
 
-public class ActiveSchemaDataAugmenter {
-    private final ActiveSchemaContext context;
+public class DataAugmenter {
+    private final AugmenterContext context;
 
-    public ActiveSchemaDataAugmenter(ActiveSchemaContext context) {
+    public DataAugmenter(AugmenterContext context) {
         this.context = context;
     }
 

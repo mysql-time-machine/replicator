@@ -1,4 +1,4 @@
-package com.booking.replication.augmenter.active.schema;
+package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.model.AugmentedEventColumn;
 import com.booking.replication.augmenter.model.AugmentedEventUpdatedRow;
@@ -6,6 +6,9 @@ import com.booking.replication.augmenter.model.AugmentedEventTable;
 import com.booking.replication.augmenter.model.QueryAugmentedEventDataOperationType;
 import com.booking.replication.augmenter.model.QueryAugmentedEventDataType;
 import com.booking.replication.commons.checkpoint.Checkpoint;
+import com.booking.replication.commons.checkpoint.GTID;
+import com.booking.replication.commons.checkpoint.GTIDType;
+import com.booking.replication.supplier.model.GTIDRawEventData;
 import com.booking.replication.supplier.model.QueryRawEventData;
 import com.booking.replication.supplier.model.RawEventData;
 import com.booking.replication.supplier.model.RawEventHeaderV4;
@@ -33,9 +36,10 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class ActiveSchemaContext implements Closeable {
+public class AugmenterContext implements Closeable {
     public interface Configuration {
         String TRANSACTION_LIMIT = "augmenter.context.transaction.limit";
+        String GTID_TYPE = "augmenter.context.gtid.type";
         String BEGIN_PATTERN = "augmenter.context.pattern.begin";
         String COMMIT_PATTERN = "augmenter.context.pattern.commit";
         String DDL_DEFINER_PATTERN = "augmenter.context.pattern.ddl.definer";
@@ -43,13 +47,14 @@ public class ActiveSchemaContext implements Closeable {
         String DDL_TEMPORARY_TABLE_PATTERN = "augmenter.context.pattern.ddl.temporary.table";
         String DDL_VIEW_PATTERN = "augmenter.context.pattern.ddl.view";
         String DDL_ANALYZE_PATTERN = "augmenter.context.pattern.ddl.analyze";
-        String PSEUDO_GTID_PATTERN = "augmenter.context.pattern.pseudogtid";
+        String PSEUDO_GTID_PATTERN = "augmenter.context.pattern.pseudo.gtid";
         String EXCLUDE_TABLE = "augmenter.context.exclude.table";
     }
 
-    private static final Logger LOG = Logger.getLogger(ActiveSchemaContext.class.getName());
+    private static final Logger LOG = Logger.getLogger(AugmenterContext.class.getName());
 
     private static final int DEFAULT_TRANSACTION_LIMIT = 1000;
+    private static final String DEFAULT_GTID_TYPE = GTIDType.REAL.name();
     private static final String DEFAULT_BEGIN_PATTERN = "^(/\\*.*?\\*/\\s*)?(begin)";
     private static final String DEFAULT_COMMIT_PATTERN = "^(/\\*.*?\\*/\\s*)?(commit)";
     private static final String DEFAULT_DDL_DEFINER_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(definer)\\s*=";
@@ -59,8 +64,8 @@ public class ActiveSchemaContext implements Closeable {
     private static final String DEFAULT_DDL_ANALYZE_PATTERN = "^(/\\*.*?\\*/\\s*)?(analyze)\\s+(table)\\s+(\\S+)";
     private static final String DEFAULT_PSEUDO_GTID_PATTERN = "(?<=_pseudo_gtid_hint__asc\\:)(.{8}\\:.{16}\\:.{8})";
 
+    private final Schema schema;
     private final CurrentTransaction transaction;
-    private final ActiveSchemaManager manager;
 
     private final Pattern beginPattern;
     private final Pattern commitPattern;
@@ -74,6 +79,7 @@ public class ActiveSchemaContext implements Closeable {
     private final List<String> excludeTableList;
 
     private final AtomicLong serverId;
+    private final AtomicLong nextPosition;
 
     private final AtomicBoolean continueFlag;
     private final AtomicReference<QueryAugmentedEventDataType> queryType;
@@ -83,28 +89,31 @@ public class ActiveSchemaContext implements Closeable {
     private final AtomicReference<String> binlogFilename;
     private final AtomicLong binlogPosition;
 
-    private final AtomicReference<String> pseudoGTIDValue;
-    private final AtomicInteger pseudoGTIDIndex;
+    private final GTIDType gtidType;
+    private final AtomicReference<String> gtidValue;
+    private final AtomicReference<Byte> gtidFlags;
+    private final AtomicInteger gtidIndex;
 
     private final AtomicReference<String> createTableBefore;
     private final AtomicReference<String> createTableAfter;
 
     private final Map<Long, AugmentedEventTable> tableIdEventTableMap;
 
-    public ActiveSchemaContext(Map<String, Object> configuration) {
-        this.transaction = new CurrentTransaction(Integer.parseInt(configuration.getOrDefault(Configuration.TRANSACTION_LIMIT, String.valueOf(ActiveSchemaContext.DEFAULT_TRANSACTION_LIMIT)).toString()));
-        this.manager = new ActiveSchemaManager(configuration);
-        this.beginPattern = this.getPattern(configuration, Configuration.BEGIN_PATTERN, ActiveSchemaContext.DEFAULT_BEGIN_PATTERN);
-        this.commitPattern = this.getPattern(configuration, Configuration.COMMIT_PATTERN, ActiveSchemaContext.DEFAULT_COMMIT_PATTERN);
-        this.ddlDefinerPattern = this.getPattern(configuration, Configuration.DDL_DEFINER_PATTERN, ActiveSchemaContext.DEFAULT_DDL_DEFINER_PATTERN);
-        this.ddlTablePattern = this.getPattern(configuration, Configuration.DDL_TABLE_PATTERN, ActiveSchemaContext.DEFAULT_DDL_TABLE_PATTERN);
-        this.ddlTemporaryTablePattern = this.getPattern(configuration, Configuration.DDL_TEMPORARY_TABLE_PATTERN, ActiveSchemaContext.DEFAULT_DDL_TEMPORARY_TABLE_PATTERN);
-        this.ddlViewPattern = this.getPattern(configuration, Configuration.DDL_VIEW_PATTERN, ActiveSchemaContext.DEFAULT_DDL_VIEW_PATTERN);
-        this.ddlAnalyzePattern = this.getPattern(configuration, Configuration.DDL_ANALYZE_PATTERN, ActiveSchemaContext.DEFAULT_DDL_ANALYZE_PATTERN);
-        this.pseudoGTIDPattern = this.getPattern(configuration, Configuration.PSEUDO_GTID_PATTERN, ActiveSchemaContext.DEFAULT_PSEUDO_GTID_PATTERN);
+    public AugmenterContext(Schema schema, Map<String, Object> configuration) {
+        this.schema = schema;
+        this.transaction = new CurrentTransaction(Integer.parseInt(configuration.getOrDefault(Configuration.TRANSACTION_LIMIT, String.valueOf(AugmenterContext.DEFAULT_TRANSACTION_LIMIT)).toString()));
+        this.beginPattern = this.getPattern(configuration, Configuration.BEGIN_PATTERN, AugmenterContext.DEFAULT_BEGIN_PATTERN);
+        this.commitPattern = this.getPattern(configuration, Configuration.COMMIT_PATTERN, AugmenterContext.DEFAULT_COMMIT_PATTERN);
+        this.ddlDefinerPattern = this.getPattern(configuration, Configuration.DDL_DEFINER_PATTERN, AugmenterContext.DEFAULT_DDL_DEFINER_PATTERN);
+        this.ddlTablePattern = this.getPattern(configuration, Configuration.DDL_TABLE_PATTERN, AugmenterContext.DEFAULT_DDL_TABLE_PATTERN);
+        this.ddlTemporaryTablePattern = this.getPattern(configuration, Configuration.DDL_TEMPORARY_TABLE_PATTERN, AugmenterContext.DEFAULT_DDL_TEMPORARY_TABLE_PATTERN);
+        this.ddlViewPattern = this.getPattern(configuration, Configuration.DDL_VIEW_PATTERN, AugmenterContext.DEFAULT_DDL_VIEW_PATTERN);
+        this.ddlAnalyzePattern = this.getPattern(configuration, Configuration.DDL_ANALYZE_PATTERN, AugmenterContext.DEFAULT_DDL_ANALYZE_PATTERN);
+        this.pseudoGTIDPattern = this.getPattern(configuration, Configuration.PSEUDO_GTID_PATTERN, AugmenterContext.DEFAULT_PSEUDO_GTID_PATTERN);
         this.excludeTableList = this.getList(configuration.get(Configuration.EXCLUDE_TABLE));
 
         this.serverId = new AtomicLong();
+        this.nextPosition = new AtomicLong();
 
         this.continueFlag = new AtomicBoolean();
         this.queryType = new AtomicReference<>();
@@ -114,13 +123,25 @@ public class ActiveSchemaContext implements Closeable {
         this.binlogFilename = new AtomicReference<>();
         this.binlogPosition = new AtomicLong();
 
-        this.pseudoGTIDValue = new AtomicReference<>();
-        this.pseudoGTIDIndex = new AtomicInteger();
+        this.gtidType = GTIDType.valueOf(configuration.getOrDefault(Configuration.GTID_TYPE, AugmenterContext.DEFAULT_GTID_TYPE).toString());
+        this.gtidValue = new AtomicReference<>();
+        this.gtidFlags = new AtomicReference<>();
+        this.gtidIndex = new AtomicInteger();
 
         this.createTableBefore = new AtomicReference<>();
         this.createTableAfter = new AtomicReference<>();
 
         this.tableIdEventTableMap = new ConcurrentHashMap<>();
+    }
+
+    private Pattern getPattern(Map<String, Object> configuration, String configurationPath, String configurationDefault) {
+        return Pattern.compile(
+                configuration.getOrDefault(
+                        configurationPath,
+                        configurationDefault
+                ).toString(),
+                Pattern.CASE_INSENSITIVE
+        );
     }
 
     @SuppressWarnings("unchecked")
@@ -136,74 +157,11 @@ public class ActiveSchemaContext implements Closeable {
         }
     }
 
-    private Pattern getPattern(Map<String, Object> configuration, String configurationPath, String configurationDefault) {
-        return Pattern.compile(
-                configuration.getOrDefault(
-                        configurationPath,
-                        configurationDefault
-                ).toString(),
-                Pattern.CASE_INSENSITIVE
-        );
-    }
-
-    private void updateServer(long id) {
-        this.serverId.set(id);
-    }
-
-    private void updateCommons(boolean continueFlag, QueryAugmentedEventDataType queryType, QueryAugmentedEventDataOperationType queryOperationType, String database, String table) {
-        this.continueFlag.set(continueFlag);
-        this.queryType.set(queryType);
-        this.queryOperationType.set(queryOperationType);
-
-        if (table != null) {
-            this.eventTable.set(new AugmentedEventTable(database, table));
-        }
-    }
-
-    private void updateBinlog(String filename, long position) {
-        this.binlogFilename.set(filename);
-        this.binlogPosition.set(position);
-    }
-
-    private void updatePseudoGTID(String value, int index) {
-        this.pseudoGTIDValue.set(value);
-        this.pseudoGTIDIndex.set(index);
-    }
-
-    private void updateSchema(String query) {
-        if (query != null) {
-            if (this.eventTable.get() != null) {
-                String table = this.eventTable.get().getName();
-
-                if ((this.queryType.get() == QueryAugmentedEventDataType.DDL_TABLE ||
-                     this.queryType.get() == QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE) &&
-                     this.getQueryOperationType() != QueryAugmentedEventDataOperationType.CREATE) {
-                    this.createTableBefore.set(this.manager.getCreateTable(table));
-                } else {
-                    this.createTableBefore.set(null);
-                }
-
-                this.manager.execute(table, query);
-
-                if ((this.queryType.get() == QueryAugmentedEventDataType.DDL_TABLE ||
-                     this.queryType.get() == QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE) &&
-                     this.getQueryOperationType() != QueryAugmentedEventDataOperationType.DROP) {
-                    this.createTableAfter.set(this.manager.getCreateTable(table));
-                } else {
-                    this.createTableAfter.set(null);
-                }
-            } else {
-                this.manager.execute(null, query);
-            }
-        }
-    }
-
-    private boolean excludeTable(String tableName) {
-        return this.excludeTableList.contains(tableName);
-    }
-
     public void updateContext(RawEventHeaderV4 eventHeader, RawEventData eventData) {
-        this.updateServer(eventHeader.getServerId());
+        this.updateHeader(
+                eventHeader.getServerId(),
+                eventHeader.getNextPosition()
+        );
 
         switch (eventHeader.getEventType()) {
             case ROTATE:
@@ -238,7 +196,7 @@ public class ActiveSchemaContext implements Closeable {
                     );
 
                     if (!this.transaction.begin()) {
-                        ActiveSchemaContext.LOG.log(Level.WARNING, "transaction already started");
+                        AugmenterContext.LOG.log(Level.WARNING, "transaction already started");
                     }
                 } else if (this.commitPattern.matcher(query).find()) {
                     this.updateCommons(
@@ -250,7 +208,7 @@ public class ActiveSchemaContext implements Closeable {
                     );
 
                     if (!this.transaction.commit(eventHeader.getTimestamp())) {
-                        ActiveSchemaContext.LOG.log(Level.WARNING, "transaction already committed");
+                        AugmenterContext.LOG.log(Level.WARNING, "transaction already committed");
                     }
                 }
                 else if ((matcher = this.ddlDefinerPattern.matcher(query)).find()) {
@@ -302,7 +260,12 @@ public class ActiveSchemaContext implements Closeable {
                             null
                     );
 
-                    this.updatePseudoGTID(matcher.group(0), 0);
+                    this.updateGTID(
+                            GTIDType.PSEUDO,
+                            matcher.group(0),
+                            (byte) 0,
+                            0
+                    );
                 } else {
                     query = null;
 
@@ -330,8 +293,27 @@ public class ActiveSchemaContext implements Closeable {
                 );
 
                 if (!this.transaction.commit(xidRawEventData.getXID(), eventHeader.getTimestamp())) {
-                    ActiveSchemaContext.LOG.log(Level.WARNING, "transaction already committed");
+                    AugmenterContext.LOG.log(Level.WARNING, "transaction already committed");
                 }
+
+                break;
+            case GTID:
+                GTIDRawEventData gtidRawEventData = GTIDRawEventData.class.cast(eventData);
+
+                this.updateCommons(
+                        false,
+                        QueryAugmentedEventDataType.GTID,
+                        null,
+                        null,
+                        null
+                );
+
+                this.updateGTID(
+                        GTIDType.REAL,
+                        gtidRawEventData.getGTID(),
+                        gtidRawEventData.getFlags(),
+                        0
+                );
 
                 break;
             case TABLE_MAP:
@@ -385,6 +367,73 @@ public class ActiveSchemaContext implements Closeable {
         }
     }
 
+    private void updateHeader(long id, long nextPosition) {
+        this.serverId.set(id);
+        this.nextPosition.set(nextPosition);
+    }
+
+    private void updateCommons(boolean continueFlag, QueryAugmentedEventDataType queryType, QueryAugmentedEventDataOperationType queryOperationType, String database, String table) {
+        this.continueFlag.set(continueFlag);
+        this.queryType.set(queryType);
+        this.queryOperationType.set(queryOperationType);
+
+        if (table != null) {
+            this.eventTable.set(new AugmentedEventTable(database, table));
+        }
+    }
+
+    private void updateBinlog(String filename, long position) {
+        this.binlogFilename.set(filename);
+        this.binlogPosition.set(0);
+        this.nextPosition.set(position);
+    }
+
+    private void updateGTID(GTIDType type, String value, byte flags, int index) {
+        if (this.gtidType == type) {
+            this.gtidValue.set(value);
+            this.gtidFlags.set(flags);
+            this.gtidIndex.set(index);
+        }
+    }
+
+    private void updateSchema(String query) {
+        if (query != null) {
+            if (this.eventTable.get() != null) {
+                String table = this.eventTable.get().getName();
+
+                if ((this.queryType.get() == QueryAugmentedEventDataType.DDL_TABLE ||
+                        this.queryType.get() == QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE) &&
+                        this.getQueryOperationType() != QueryAugmentedEventDataOperationType.CREATE) {
+                    this.createTableBefore.set(this.schema.getCreateTable(table));
+                } else {
+                    this.createTableBefore.set(null);
+                }
+
+                this.schema.execute(table, query);
+
+                if ((this.queryType.get() == QueryAugmentedEventDataType.DDL_TABLE ||
+                        this.queryType.get() == QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE) &&
+                        this.getQueryOperationType() != QueryAugmentedEventDataOperationType.DROP) {
+                    this.createTableAfter.set(this.schema.getCreateTable(table));
+                } else {
+                    this.createTableAfter.set(null);
+                }
+            } else {
+                this.schema.execute(null, query);
+            }
+        }
+    }
+
+    private boolean excludeTable(String tableName) {
+        return this.excludeTableList.contains(tableName);
+    }
+
+    public void updatePostion() {
+        if (this.nextPosition.get() > 0) {
+            this.binlogPosition.set(this.nextPosition.get());
+        }
+    }
+
     public CurrentTransaction getTransaction() {
         return this.transaction;
     }
@@ -410,9 +459,21 @@ public class ActiveSchemaContext implements Closeable {
                 this.serverId.get(),
                 this.binlogFilename.get(),
                 this.binlogPosition.get(),
-                this.pseudoGTIDValue.get(),
-                this.pseudoGTIDIndex.getAndIncrement()
+                this.getGTID()
         );
+    }
+
+    private GTID getGTID() {
+        if (this.gtidValue.get() != null) {
+            return new GTID(
+                    this.gtidType,
+                    this.gtidValue.get(),
+                    this.gtidFlags.get(),
+                    this.gtidIndex.getAndIncrement()
+            );
+        } else {
+            return null;
+        }
     }
 
     public String getCreateTableBefore() {
@@ -431,7 +492,7 @@ public class ActiveSchemaContext implements Closeable {
         AugmentedEventTable eventTable = this.getEventTable(tableId);
 
         if (eventTable != null) {
-            List<AugmentedEventColumn> columnList = this.manager.listColumns(eventTable.getName());
+            List<AugmentedEventColumn> columnList = this.schema.listColumns(eventTable.getName());
 
             if (columnList != null) {
                 List<AugmentedEventColumn> includedColumnList = new LinkedList<>();
@@ -466,6 +527,6 @@ public class ActiveSchemaContext implements Closeable {
 
     @Override
     public void close() throws IOException {
-        this.manager.close();
+        this.schema.close();
     }
 }

@@ -1,4 +1,4 @@
-package com.booking.replication.augmenter.active.schema;
+package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.augmenter.model.AugmentedEventTransaction;

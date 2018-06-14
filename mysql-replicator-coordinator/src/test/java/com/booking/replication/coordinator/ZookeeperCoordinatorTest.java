@@ -1,6 +1,8 @@
 package com.booking.replication.coordinator;
 
 import com.booking.replication.commons.checkpoint.Checkpoint;
+import com.booking.replication.commons.checkpoint.GTID;
+import com.booking.replication.commons.checkpoint.GTIDType;
 import com.booking.replication.commons.services.ServicesControl;
 import com.booking.replication.commons.services.ContainersProvider;
 import com.booking.replication.commons.services.ServicesProvider;
@@ -24,7 +26,7 @@ public class ZookeeperCoordinatorTest {
     private static Coordinator coordinator2;
 
     @BeforeClass
-    public static void before() throws Exception {
+    public static void before() {
         ZookeeperCoordinatorTest.servicesControl = ServicesProvider.build(ServicesProvider.Type.CONTAINERS).startZookeeper();
         ZookeeperCoordinatorTest.count = new AtomicInteger();
 
@@ -68,8 +70,12 @@ public class ZookeeperCoordinatorTest {
                 ThreadLocalRandom.current().nextLong(),
                 UUID.randomUUID().toString(),
                 ThreadLocalRandom.current().nextLong(),
-                UUID.randomUUID().toString(),
-                ThreadLocalRandom.current().nextInt()
+                new GTID(
+                        GTIDType.REAL,
+                        UUID.randomUUID().toString(),
+                        Byte.MAX_VALUE,
+                        ThreadLocalRandom.current().nextInt()
+                )
         );
 
         ZookeeperCoordinatorTest.coordinator1.saveCheckpoint("/checkpoint.coordinator", checkpoint1);

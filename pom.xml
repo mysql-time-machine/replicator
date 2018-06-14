@@ -11,7 +11,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <tests.arguments>-Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager</tests.arguments>
+        <tests.arguments>-Djava.util.logging.schema=org.apache.logging.log4j.jul.LogManager</tests.arguments>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <maven.compiler.testSource>1.8</maven.compiler.testSource>

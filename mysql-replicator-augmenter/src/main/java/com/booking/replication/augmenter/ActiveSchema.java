@@ -20,11 +20,11 @@ import java.util.logging.Logger;
 public class ActiveSchema implements Schema {
     public interface Configuration {
         String MYSQL_DRIVER_CLASS = "augmenter.schema.active.mysql.driver.class";
-        String MYSQL_HOSTNAME = "augmenter.schema.active..mysql.hostname";
-        String MYSQL_PORT = "augmenter.schema.active..mysql.port";
-        String MYSQL_SCHEMA = "augmenter.schema.active..mysql.schema";
+        String MYSQL_HOSTNAME = "augmenter.schema.active.mysql.hostname";
+        String MYSQL_PORT = "augmenter.schema.active.mysql.port";
+        String MYSQL_SCHEMA = "augmenter.schema.active.mysql.schema";
         String MYSQL_USERNAME = "augmenter.schema.active.mysql.username";
-        String MYSQL_PASSWORD = "augmenter.schema.active..mysql.password";
+        String MYSQL_PASSWORD = "augmenter.schema.active.mysql.password";
     }
 
     private static final Logger LOG = Logger.getLogger(ActiveSchema.class.getName());

@@ -95,7 +95,9 @@ public class AugmenterContext implements Closeable {
     private final AtomicReference<Byte> gtidFlags;
     private final AtomicInteger gtidIndex;
 
+    private final AtomicReference<List<AugmentedEventColumn>> columnsBefore;
     private final AtomicReference<String> createTableBefore;
+    private final AtomicReference<List<AugmentedEventColumn>> columnsAfter;
     private final AtomicReference<String> createTableAfter;
 
     private final Map<Long, AugmentedEventTable> tableIdEventTableMap;
@@ -129,7 +131,9 @@ public class AugmenterContext implements Closeable {
         this.gtidFlags = new AtomicReference<>();
         this.gtidIndex = new AtomicInteger();
 
+        this.columnsBefore = new AtomicReference<>();
         this.createTableBefore = new AtomicReference<>();
+        this.columnsAfter = new AtomicReference<>();
         this.createTableAfter = new AtomicReference<>();
 
         this.tableIdEventTableMap = new ConcurrentHashMap<>();
@@ -405,8 +409,10 @@ public class AugmenterContext implements Closeable {
                 if ((this.queryType.get() == QueryAugmentedEventDataType.DDL_TABLE ||
                         this.queryType.get() == QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE) &&
                         this.getQueryOperationType() != QueryAugmentedEventDataOperationType.CREATE) {
+                    this.columnsBefore.set(this.schema.listColumns(table));
                     this.createTableBefore.set(this.schema.getCreateTable(table));
                 } else {
+                    this.columnsBefore.set(null);
                     this.createTableBefore.set(null);
                 }
 
@@ -415,13 +421,24 @@ public class AugmenterContext implements Closeable {
                 if ((this.queryType.get() == QueryAugmentedEventDataType.DDL_TABLE ||
                         this.queryType.get() == QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE) &&
                         this.getQueryOperationType() != QueryAugmentedEventDataOperationType.DROP) {
+                    this.columnsAfter.set(this.schema.listColumns(table));
                     this.createTableAfter.set(this.schema.getCreateTable(table));
                 } else {
+                    this.columnsAfter.set(null);
                     this.createTableAfter.set(null);
                 }
             } else {
+                this.columnsBefore.set(null);
+                this.createTableBefore.set(null);
                 this.schema.execute(null, query);
+                this.columnsAfter.set(null);
+                this.createTableAfter.set(null);
             }
+        } else {
+            this.columnsBefore.set(null);
+            this.createTableBefore.set(null);
+            this.columnsAfter.set(null);
+            this.createTableAfter.set(null);
         }
     }
 
@@ -487,8 +504,16 @@ public class AugmenterContext implements Closeable {
         }
     }
 
+    public List<AugmentedEventColumn> getColumnsBefore() {
+        return this.columnsBefore.get();
+    }
+
     public String getCreateTableBefore() {
         return this.createTableBefore.get();
+    }
+
+    public List<AugmentedEventColumn> getColumnsAfter() {
+        return this.columnsAfter.get();
     }
 
     public String getCreateTableAfter() {

@@ -60,7 +60,9 @@ public class DataAugmenter {
                         queryRawEventData.getExecutionTime(),
                         queryRawEventData.getErrorCode(),
                         queryRawEventData.getSQL(),
+                        this.context.getColumnsBefore(),
                         this.context.getCreateTableBefore(),
+                        this.context.getColumnsAfter(),
                         this.context.getCreateTableAfter()
                 );
             case XID:
@@ -72,7 +74,9 @@ public class DataAugmenter {
                         0L,
                         0,
                         null,
+                        this.context.getColumnsBefore(),
                         this.context.getCreateTableBefore(),
+                        this.context.getColumnsAfter(),
                         this.context.getCreateTableAfter()
                 );
             default:

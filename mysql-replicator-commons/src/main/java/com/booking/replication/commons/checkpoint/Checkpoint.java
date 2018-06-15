@@ -5,30 +5,24 @@ import java.io.Serializable;
 @SuppressWarnings("unused")
 public class Checkpoint implements Serializable, Comparable<Checkpoint> {
     private long serverId;
-    private String binlogFilename;
-    private long binlogPosition;
     private GTID gtid;
+    private Binlog binlog;
 
     public Checkpoint() {
     }
 
-    public Checkpoint(long serverId, String binlogFilename, long binlogPosition, GTID gtid) {
+    public Checkpoint(long serverId, GTID gtid, Binlog binlog) {
         this.serverId = serverId;
-        this.binlogFilename = binlogFilename;
-        this.binlogPosition = binlogPosition;
         this.gtid = gtid;
+        this.binlog = binlog;
     }
 
     public long getServerId() {
         return this.serverId;
     }
 
-    public String getBinlogFilename() {
-        return this.binlogFilename;
-    }
-
-    public long getBinlogPosition() {
-        return this.binlogPosition;
+    public Binlog getBinlog() {
+        return this.binlog;
     }
 
     public GTID getGTID() {
@@ -44,15 +38,11 @@ public class Checkpoint implements Serializable, Comparable<Checkpoint> {
                 return Integer.MAX_VALUE;
             } else if (checkpoint.gtid != null){
                 return Integer.MIN_VALUE;
-            } else if (this.binlogFilename != null && checkpoint.binlogFilename != null) {
-                if (this.binlogFilename.equals(checkpoint.binlogFilename)) {
-                    return Long.compare(this.binlogPosition, checkpoint.binlogPosition);
-                } else {
-                    return this.binlogFilename.compareTo(checkpoint.binlogFilename);
-                }
-            } else if (this.binlogFilename != null) {
+            } else if (this.binlog != null && checkpoint.binlog != null) {
+                return this.binlog.compareTo(checkpoint.binlog);
+            } else if (this.binlog != null) {
                 return Integer.MAX_VALUE;
-            } else if (checkpoint.binlogFilename != null) {
+            } else if (checkpoint.binlog != null) {
                 return Integer.MIN_VALUE;
             } else {
                 return 0;

@@ -1,5 +1,6 @@
 package com.booking.replication.coordinator;
 
+import com.booking.replication.commons.checkpoint.Binlog;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.GTID;
 import com.booking.replication.commons.checkpoint.GTIDType;
@@ -55,7 +56,7 @@ public class FileCoordinatorTest {
     public void testLeadership() throws InterruptedException {
         Thread.sleep(2000L);
 
-        assertEquals(1, this.count.get());
+        assertEquals(1, FileCoordinatorTest.count.get());
     }
 
     @Test
@@ -64,13 +65,15 @@ public class FileCoordinatorTest {
 
         Checkpoint checkpoint1 = new Checkpoint(
                 ThreadLocalRandom.current().nextLong(),
-                UUID.randomUUID().toString(),
-                ThreadLocalRandom.current().nextLong(),
                 new GTID(
                         GTIDType.REAL,
                         UUID.randomUUID().toString(),
                         Byte.MAX_VALUE,
                         ThreadLocalRandom.current().nextInt()
+                ),
+                new Binlog(
+                        UUID.randomUUID().toString(),
+                        ThreadLocalRandom.current().nextLong()
                 )
         );
 

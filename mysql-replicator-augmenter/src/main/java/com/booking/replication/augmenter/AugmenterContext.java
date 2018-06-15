@@ -5,6 +5,7 @@ import com.booking.replication.augmenter.model.AugmentedEventUpdatedRow;
 import com.booking.replication.augmenter.model.AugmentedEventTable;
 import com.booking.replication.augmenter.model.QueryAugmentedEventDataOperationType;
 import com.booking.replication.augmenter.model.QueryAugmentedEventDataType;
+import com.booking.replication.commons.checkpoint.Binlog;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.GTID;
 import com.booking.replication.commons.checkpoint.GTIDType;
@@ -457,9 +458,8 @@ public class AugmenterContext implements Closeable {
     public Checkpoint getCheckpoint() {
         return new Checkpoint(
                 this.serverId.get(),
-                this.binlogFilename.get(),
-                this.binlogPosition.get(),
-                this.getGTID()
+                this.getGTID(),
+                this.getBinlog()
         );
     }
 
@@ -470,6 +470,17 @@ public class AugmenterContext implements Closeable {
                     this.gtidValue.get(),
                     this.gtidFlags.get(),
                     this.gtidIndex.getAndIncrement()
+            );
+        } else {
+            return null;
+        }
+    }
+
+    private Binlog getBinlog() {
+        if (this.binlogFilename.get() != null) {
+            return new Binlog(
+                    this.binlogFilename.get(),
+                    this.binlogPosition.get()
             );
         } else {
             return null;

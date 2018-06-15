@@ -6,6 +6,7 @@ import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.augmenter.model.AugmentedEventHeader;
 import com.booking.replication.augmenter.model.AugmentedEventType;
 import com.booking.replication.augmenter.model.ByteArrayAugmentedEventData;
+import com.booking.replication.commons.checkpoint.Binlog;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.GTID;
 import com.booking.replication.commons.checkpoint.GTIDType;
@@ -41,13 +42,15 @@ public class KafkaTest {
     private static Checkpoint getCheckpoint(int index) {
         return new Checkpoint(
                 0,
-                null,
-                0,
                 new GTID(
                         GTIDType.REAL,
                         "REAL",
                         Byte.MAX_VALUE,
                         index
+                ),
+                new Binlog(
+                        null,
+                        0
                 )
         );
     }

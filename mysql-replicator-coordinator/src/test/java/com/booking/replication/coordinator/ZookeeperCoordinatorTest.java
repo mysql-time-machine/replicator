@@ -1,10 +1,10 @@
 package com.booking.replication.coordinator;
 
+import com.booking.replication.commons.checkpoint.Binlog;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.GTID;
 import com.booking.replication.commons.checkpoint.GTIDType;
 import com.booking.replication.commons.services.ServicesControl;
-import com.booking.replication.commons.services.ContainersProvider;
 import com.booking.replication.commons.services.ServicesProvider;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -68,13 +68,15 @@ public class ZookeeperCoordinatorTest {
 
         Checkpoint checkpoint1 = new Checkpoint(
                 ThreadLocalRandom.current().nextLong(),
-                UUID.randomUUID().toString(),
-                ThreadLocalRandom.current().nextLong(),
                 new GTID(
                         GTIDType.REAL,
                         UUID.randomUUID().toString(),
                         Byte.MAX_VALUE,
                         ThreadLocalRandom.current().nextInt()
+                ),
+                new Binlog(
+                        UUID.randomUUID().toString(),
+                        ThreadLocalRandom.current().nextLong()
                 )
         );
 

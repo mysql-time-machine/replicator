@@ -1,6 +1,7 @@
 package com.booking.replication.supplier.mysql.binlog;
 
 import com.booking.replication.commons.checkpoint.Checkpoint;
+import com.booking.replication.commons.checkpoint.GTIDType;
 import com.booking.replication.supplier.model.RawEvent;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.handler.RawEventInvocationHandler;
@@ -121,10 +122,14 @@ public class BinaryLogSupplier implements Supplier {
                         }
 
                         if (checkpoint != null) {
-                            this.client.setGtidSet(null);
                             this.client.setServerId(checkpoint.getServerId());
-                            this.client.setBinlogFilename(checkpoint.getBinlogFilename());
-                            this.client.setBinlogPosition(checkpoint.getBinlogPosition());
+
+                            if (checkpoint.getGTID() != null && checkpoint.getGTID().getType() == GTIDType.REAL) {
+                                this.client.setGtidSet(checkpoint.getGTID().getValue());
+                            } else if (checkpoint.getBinlog() != null) {
+                                this.client.setBinlogFilename(checkpoint.getBinlog().getFilename());
+                                this.client.setBinlogPosition(checkpoint.getBinlog().getPosition());
+                            }
                         }
 
                         this.client.connect();

@@ -1,5 +1,6 @@
 package com.booking.replication.augmenter.model;
 
+@SuppressWarnings("unused")
 public enum QueryAugmentedEventDataOperationType {
     CREATE(0),
     ALTER(1),

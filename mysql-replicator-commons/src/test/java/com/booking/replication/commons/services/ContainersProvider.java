@@ -2,18 +2,13 @@ package com.booking.replication.commons.services;
 
 import com.github.dockerjava.api.model.PortBinding;
 import org.testcontainers.containers.BindMode;
-import org.testcontainers.containers.Container;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
 
 import java.time.Duration;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public final class ContainersProvider implements ServicesProvider {
-    private static final Logger LOG = Logger.getLogger(ContainersProvider.class.getName());
-
     private static final String ZOOKEEPER_DOCKER_IMAGE_KEY = "docker.image.zookeeper";
     private static final String ZOOKEEPER_DOCKER_IMAGE_DEFAULT = "zookeeper:latest";
     private static final String ZOOKEEPER_STARTUP_WAIT_REGEX = ".*binding to port.*\\n";

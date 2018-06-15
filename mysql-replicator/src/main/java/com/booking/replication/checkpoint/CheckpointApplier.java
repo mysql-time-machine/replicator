@@ -7,7 +7,6 @@ import com.booking.replication.streams.Streams;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
 public interface CheckpointApplier extends BiConsumer<AugmentedEvent, Streams.Task>, Closeable {

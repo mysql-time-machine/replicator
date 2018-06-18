@@ -29,6 +29,7 @@
         <mysql-connector.version>5.1.46</mysql-connector.version>
         <commons-dbcp2.version>2.3.0</commons-dbcp2.version>
         <kafka.version>1.1.0</kafka.version>
+        <dropwizard.metrics.version>4.0.2</dropwizard.metrics.version>
     </properties>
     <modules>
         <module>mysql-replicator-commons</module>
@@ -157,6 +158,21 @@
                 <groupId>org.apache.kafka</groupId>
                 <artifactId>kafka_2.12</artifactId>
                 <version>${kafka.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.dropwizard.metrics</groupId>
+                <artifactId>metrics-core</artifactId>
+                <version>${dropwizard.metrics.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.dropwizard.metrics</groupId>
+                <artifactId>metrics-jmx</artifactId>
+                <version>${dropwizard.metrics.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.dropwizard.metrics</groupId>
+                <artifactId>metrics-graphite</artifactId>
+                <version>${dropwizard.metrics.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.booking.replication</groupId>

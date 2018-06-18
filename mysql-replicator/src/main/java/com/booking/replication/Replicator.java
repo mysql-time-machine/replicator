@@ -10,7 +10,7 @@ import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.ForceRewindException;
 import com.booking.replication.commons.map.MapFlatter;
 import com.booking.replication.coordinator.Coordinator;
-import com.booking.replication.metric.MetricApplier;
+import com.booking.replication.metrics.MetricsApplier;
 import com.booking.replication.supplier.model.RawEvent;
 import com.booking.replication.streams.Streams;
 import com.booking.replication.supplier.Supplier;
@@ -53,7 +53,7 @@ public class Replicator {
     private final Seeker seeker;
     private final Partitioner partitioner;
     private final Applier applier;
-    private final MetricApplier metricApplier;
+    private final MetricsApplier<?> metricsApplier;
     private final CheckpointApplier checkpointApplier;
     private final Streams<AugmentedEvent, AugmentedEvent> streamsApplier;
     private final Streams<RawEvent, List<AugmentedEvent>> streamsSupplier;
@@ -76,7 +76,7 @@ public class Replicator {
         this.seeker = Seeker.build(configuration);
         this.partitioner = Partitioner.build(configuration);
         this.applier = Applier.build(configuration);
-        this.metricApplier = MetricApplier.build(configuration);
+        this.metricsApplier = MetricsApplier.build(configuration);
         this.checkpointApplier = CheckpointApplier.build(configuration, this.coordinator, this.checkpointPath);
 
         this.streamsApplier = Streams.<AugmentedEvent>builder()
@@ -86,7 +86,7 @@ public class Replicator {
                 .queue()
                 .fromPush()
                 .to(this.applier)
-                .to(this.metricApplier)
+                .to(this.metricsApplier)
                 .post(this.checkpointApplier).build();
 
         this.streamsSupplier = Streams.<RawEvent>builder()
@@ -149,8 +149,8 @@ public class Replicator {
                 Replicator.LOG.log(Level.INFO, "closing applier");
                 this.applier.close();
 
-                Replicator.LOG.log(Level.INFO, "closing metric applier");
-                this.metricApplier.close();
+                Replicator.LOG.log(Level.INFO, "closing metrics applier");
+                this.metricsApplier.close();
 
                 Replicator.LOG.log(Level.INFO, "closing checkpoint applier");
                 this.checkpointApplier.close();

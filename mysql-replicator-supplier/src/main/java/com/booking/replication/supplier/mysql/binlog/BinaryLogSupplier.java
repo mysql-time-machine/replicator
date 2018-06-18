@@ -25,12 +25,19 @@ import java.util.stream.Stream;
 public class BinaryLogSupplier implements Supplier {
     private static final Logger LOG = Logger.getLogger(BinaryLogSupplier.class.getName());
 
+    public enum PositionType {
+        ANY,
+        BINLOG,
+        GTID
+    }
+
     public interface Configuration {
         String MYSQL_HOSTNAME = "mysql.hostname";
         String MYSQL_PORT = "mysql.port";
         String MYSQL_SCHEMA = "mysql.schema";
         String MYSQL_USERNAME = "mysql.username";
         String MYSQL_PASSWORD = "mysql.password";
+        String POSITION_TYPE = "supplier.binlog.position.type";
     }
 
     private final ExecutorService executor;
@@ -41,6 +48,7 @@ public class BinaryLogSupplier implements Supplier {
     private final String schema;
     private final String username;
     private final String password;
+    private final PositionType positionType;
 
     private BinaryLogClient client;
     private Consumer<RawEvent> consumer;
@@ -52,6 +60,7 @@ public class BinaryLogSupplier implements Supplier {
         Object schema = configuration.get(Configuration.MYSQL_SCHEMA);
         Object username = configuration.get(Configuration.MYSQL_USERNAME);
         Object password = configuration.get(Configuration.MYSQL_PASSWORD);
+        Object positionType = configuration.getOrDefault(Configuration.POSITION_TYPE, PositionType.ANY.name());
 
         Objects.requireNonNull(hostname, String.format("Configuration required: %s", Configuration.MYSQL_HOSTNAME));
         Objects.requireNonNull(schema, String.format("Configuration required: %s", Configuration.MYSQL_SCHEMA));
@@ -66,6 +75,7 @@ public class BinaryLogSupplier implements Supplier {
         this.schema = schema.toString();
         this.username = username.toString();
         this.password = password.toString();
+        this.positionType = PositionType.valueOf(positionType.toString());
     }
 
     @SuppressWarnings("unchecked")
@@ -124,11 +134,13 @@ public class BinaryLogSupplier implements Supplier {
                         if (checkpoint != null) {
                             this.client.setServerId(checkpoint.getServerId());
 
-                            if (checkpoint.getGTID() != null && checkpoint.getGTID().getType() == GTIDType.REAL) {
-                                this.client.setGtidSet(checkpoint.getGTID().getValue());
-                            } else if (checkpoint.getBinlog() != null) {
+                            if ((this.positionType == PositionType.ANY || this.positionType == PositionType.BINLOG) && checkpoint.getBinlog() != null) {
                                 this.client.setBinlogFilename(checkpoint.getBinlog().getFilename());
                                 this.client.setBinlogPosition(checkpoint.getBinlog().getPosition());
+                            }
+
+                            if ((this.positionType == PositionType.ANY || this.positionType == PositionType.GTID) && checkpoint.getGTID() != null && checkpoint.getGTID().getType() == GTIDType.REAL) {
+                                this.client.setGtidSet(checkpoint.getGTID().getValue());
                             }
                         }
 

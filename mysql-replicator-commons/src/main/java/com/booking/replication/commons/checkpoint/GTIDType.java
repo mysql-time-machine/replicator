@@ -8,8 +8,8 @@ public enum GTIDType implements Serializable, Comparator<GTID> {
     REAL(0) {
         @Override
         public int compareValue(String value1, String value2) {
-            String[] transactions1 = value1.substring(GTIDType.UUID_SIZE).split(GTIDType.TRANSACTION_SEPARATOR);
-            String[] transactions2 = value2.substring(GTIDType.UUID_SIZE).split(GTIDType.TRANSACTION_SEPARATOR);
+            String[] transactions1 = value1.substring(GTIDType.UUID_SIZE + 1).split(GTIDType.TRANSACTION_SEPARATOR);
+            String[] transactions2 = value2.substring(GTIDType.UUID_SIZE + 1).split(GTIDType.TRANSACTION_SEPARATOR);
 
             for (int index = 0; index < transactions1.length && index < transactions2.length; index++) {
                 if (!transactions1[index].equals(transactions2[index])) {

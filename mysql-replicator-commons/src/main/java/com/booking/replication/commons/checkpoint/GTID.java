@@ -3,7 +3,7 @@ package com.booking.replication.commons.checkpoint;
 import java.io.Serializable;
 
 @SuppressWarnings("unused")
-public class GTID  implements Serializable, Comparable<GTID>{
+public class GTID implements Serializable, Comparable<GTID>{
     private GTIDType type;
     private String value;
     private byte flags;
@@ -37,23 +37,7 @@ public class GTID  implements Serializable, Comparable<GTID>{
 
     @Override
     public int compareTo(GTID gtid) {
-        if (gtid != null) {
-            if (this.value != null && gtid.value != null) {
-                if (this.value.equals(gtid.value)) {
-                    return Integer.compare(this.index, gtid.index);
-                } else {
-                    return this.value.compareTo(gtid.value);
-                }
-            } else if (this.value != null) {
-                return Integer.MAX_VALUE;
-            } else if (gtid.value != null) {
-                return Integer.MIN_VALUE;
-            } else {
-                return 0;
-            }
-        } else {
-            return Integer.MAX_VALUE;
-        }
+        return this.type.compare(this, gtid);
     }
 
     @Override

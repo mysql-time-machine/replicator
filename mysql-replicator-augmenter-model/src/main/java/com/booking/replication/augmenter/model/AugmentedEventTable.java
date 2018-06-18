@@ -1,7 +1,9 @@
 package com.booking.replication.augmenter.model;
 
+import java.io.Serializable;
+
 @SuppressWarnings("unused")
-public class AugmentedEventTable {
+public class AugmentedEventTable implements Serializable {
     private String database;
     private String name;
 

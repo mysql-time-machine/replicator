@@ -3,7 +3,7 @@ package com.booking.replication.augmenter.model;
 import java.io.Serializable;
 
 @SuppressWarnings("unused")
-public class AugmentedEventUpdatedRow {
+public class AugmentedEventUpdatedRow implements Serializable {
     private Serializable[] before;
     private Serializable[] after;
 

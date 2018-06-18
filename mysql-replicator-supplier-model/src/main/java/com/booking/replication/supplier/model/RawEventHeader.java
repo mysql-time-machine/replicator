@@ -10,12 +10,6 @@ public interface RawEventHeader extends Serializable, RawEventProxyProvider {
 
     RawEventType getEventType();
 
-    String getBinlogFileName();
-
-    long getBinlogPosition();
-
-    long getNextBinlogPosition();
-
     static <SubEventHeader extends RawEventHeader> SubEventHeader getProxy(Class<SubEventHeader> type, InvocationHandler handler) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
         return RawEventProxyProvider.getProxy(type, handler);
     }

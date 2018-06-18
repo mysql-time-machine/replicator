@@ -1,6 +1,7 @@
 package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.model.AugmentedEventColumn;
+import com.booking.replication.augmenter.model.AugmentedEventSchema;
 import com.booking.replication.augmenter.model.AugmentedEventUpdatedRow;
 import com.booking.replication.augmenter.model.AugmentedEventTable;
 import com.booking.replication.augmenter.model.QueryAugmentedEventDataOperationType;
@@ -504,20 +505,26 @@ public class AugmenterContext implements Closeable {
         }
     }
 
-    public List<AugmentedEventColumn> getColumnsBefore() {
-        return this.columnsBefore.get();
+    public AugmentedEventSchema getSchemaBefore() {
+        if (this.columnsBefore.get() != null && this.createTableBefore != null) {
+            return new AugmentedEventSchema(
+                    this.columnsBefore.get(),
+                    this.createTableBefore.get()
+            );
+        } else {
+            return null;
+        }
     }
 
-    public String getCreateTableBefore() {
-        return this.createTableBefore.get();
-    }
-
-    public List<AugmentedEventColumn> getColumnsAfter() {
-        return this.columnsAfter.get();
-    }
-
-    public String getCreateTableAfter() {
-        return this.createTableAfter.get();
+    public AugmentedEventSchema getSchemaAfter() {
+        if (this.columnsAfter.get() != null && this.createTableAfter != null) {
+            return new AugmentedEventSchema(
+                    this.columnsAfter.get(),
+                    this.createTableAfter.get()
+            );
+        } else {
+            return null;
+        }
     }
 
     public AugmentedEventTable getEventTable(long tableId) {

@@ -1,7 +1,9 @@
 package com.booking.replication.augmenter.model;
 
+import java.io.Serializable;
+
 @SuppressWarnings("unused")
-public enum QueryAugmentedEventDataOperationType {
+public enum QueryAugmentedEventDataOperationType implements Serializable {
     CREATE(0),
     ALTER(1),
     DROP(2),

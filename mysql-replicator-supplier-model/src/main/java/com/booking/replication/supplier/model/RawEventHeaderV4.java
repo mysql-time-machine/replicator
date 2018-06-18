@@ -9,13 +9,11 @@ public interface RawEventHeaderV4 extends RawEventHeader {
 
     long getEventLength();
 
-    default long getHeaderLength() {
-        return 19;
-    }
+    long getHeaderLength();
 
-    default long getDataLength() {
-        return this.getEventLength() - this.getHeaderLength();
-    }
+    long getDataLength();
+
+    long getPosition();
 
     long getNextPosition();
 

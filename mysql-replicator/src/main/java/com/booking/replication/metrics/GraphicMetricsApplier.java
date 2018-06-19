@@ -4,6 +4,11 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.ScheduledReporter;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
+import com.codahale.metrics.jvm.ClassLoadingGaugeSet;
+import com.codahale.metrics.jvm.FileDescriptorRatioGauge;
+import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
+import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
+import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
 
 import java.net.InetSocketAddress;
 import java.util.Map;
@@ -30,6 +35,12 @@ public class GraphicMetricsApplier extends MetricsApplier<ScheduledReporter> {
         Objects.requireNonNull(namespace, String.format("Configuration required: %s", Configuration.GRAPHITE_NAMESPACE));
         Objects.requireNonNull(hostname, String.format("Configuration required: %s", Configuration.GRAPHITE_HOSTNAME));
         Objects.requireNonNull(port, String.format("Configuration required: %s", Configuration.GRAPHITE_PORT));
+
+        registry.register(MetricRegistry.name("jvm", "gc"), new GarbageCollectorMetricSet());
+        registry.register(MetricRegistry.name("jvm", "threads"), new ThreadStatesGaugeSet());
+        registry.register(MetricRegistry.name("jvm", "classes"), new ClassLoadingGaugeSet());
+        registry.register(MetricRegistry.name("jvm", "fd"), new FileDescriptorRatioGauge());
+        registry.register(MetricRegistry.name("jvm", "memory"), new MemoryUsageGaugeSet());
 
         ScheduledReporter reporter = GraphiteReporter
                 .forRegistry(registry)

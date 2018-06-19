@@ -44,12 +44,15 @@ public abstract class MetricsApplier<CloseableReporter extends Closeable & Repor
 
     private final MetricRegistry registry;
     private final CloseableReporter reporter;
-    private final String[] delayPath;
+    private final String delayName;
 
     public MetricsApplier(Map<String, Object> configuration) {
         this.registry = new MetricRegistry();
         this.reporter = this.getReporter(configuration, this.registry);
-        this.delayPath = this.getList(configuration.getOrDefault(Configuration.PATH, "delay")).toArray(new String[0]);
+        this.delayName = MetricRegistry.name(
+                MetricsApplier.BASE_PATH,
+                this.getList(configuration.getOrDefault(Configuration.PATH, "delay")).toArray(new String[0])
+        );
     }
 
     @SuppressWarnings("unchecked")
@@ -63,7 +66,7 @@ public abstract class MetricsApplier<CloseableReporter extends Closeable & Repor
 
     @Override
     public void accept(AugmentedEvent event) {
-        this.registry.histogram(MetricRegistry.name(MetricsApplier.BASE_PATH, this.delayPath)).update(
+        this.registry.histogram(this.delayName).update(
                 System.currentTimeMillis() - event.getHeader().getTimestamp()
         );
     }

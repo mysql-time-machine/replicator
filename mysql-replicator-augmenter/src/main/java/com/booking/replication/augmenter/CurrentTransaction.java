@@ -34,11 +34,13 @@ public class CurrentTransaction {
     }
 
     public boolean begin() {
-        if (!this.started.getAndSet(true) && !this.resuming.get()) {
-            this.identifier.set(UUID.randomUUID());
-            this.eventQueue.set(new ConcurrentLinkedQueue<>());
-            this.xxid.set(0L);
-            this.timestamp.set(0L);
+        if (!this.started.getAndSet(true)) {
+            if (!this.resuming.get()) {
+                this.identifier.set(UUID.randomUUID());
+                this.eventQueue.set(new ConcurrentLinkedQueue<>());
+                this.xxid.set(0L);
+                this.timestamp.set(0L);
+            }
 
             return true;
         } else {
@@ -80,6 +82,7 @@ public class CurrentTransaction {
             this.resuming.set(false);
             this.xxid.set(xxid);
             this.timestamp.set(timestamp);
+
             return true;
         } else {
             return false;
@@ -104,7 +107,7 @@ public class CurrentTransaction {
     }
 
     public boolean committed() {
-        return !this.started.get() && this.eventQueue.get() != null;
+        return !this.started.get() && !this.resuming.get() && this.eventQueue.get() != null;
     }
 
     public boolean sizeLimitExceeded() {

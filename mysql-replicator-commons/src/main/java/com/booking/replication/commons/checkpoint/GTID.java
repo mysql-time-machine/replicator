@@ -7,16 +7,14 @@ public class GTID implements Serializable, Comparable<GTID>{
     private GTIDType type;
     private String value;
     private byte flags;
-    private int index;
 
     public GTID() {
     }
 
-    public GTID(GTIDType type, String value, byte flags, int index) {
+    public GTID(GTIDType type, String value, byte flags) {
         this.type = type;
         this.value = value;
         this.flags = flags;
-        this.index = index;
     }
 
     public GTIDType getType() {
@@ -29,10 +27,6 @@ public class GTID implements Serializable, Comparable<GTID>{
 
     public byte getFlags() {
         return this.flags;
-    }
-
-    public int getIndex() {
-        return this.index;
     }
 
     @Override

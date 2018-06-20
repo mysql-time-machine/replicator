@@ -94,7 +94,6 @@ public class AugmenterContext implements Closeable {
     private final GTIDType gtidType;
     private final AtomicReference<String> gtidValue;
     private final AtomicReference<Byte> gtidFlags;
-    private final AtomicInteger gtidIndex;
 
     private final AtomicReference<List<AugmentedEventColumn>> columnsBefore;
     private final AtomicReference<String> createTableBefore;
@@ -130,7 +129,6 @@ public class AugmenterContext implements Closeable {
         this.gtidType = GTIDType.valueOf(configuration.getOrDefault(Configuration.GTID_TYPE, AugmenterContext.DEFAULT_GTID_TYPE).toString());
         this.gtidValue = new AtomicReference<>();
         this.gtidFlags = new AtomicReference<>();
-        this.gtidIndex = new AtomicInteger();
 
         this.columnsBefore = new AtomicReference<>();
         this.createTableBefore = new AtomicReference<>();
@@ -398,7 +396,6 @@ public class AugmenterContext implements Closeable {
         if (this.gtidType == type) {
             this.gtidValue.set(value);
             this.gtidFlags.set(flags);
-            this.gtidIndex.set(index);
         }
     }
 
@@ -486,8 +483,7 @@ public class AugmenterContext implements Closeable {
             return new GTID(
                     this.gtidType,
                     this.gtidValue.get(),
-                    this.gtidFlags.get(),
-                    this.gtidIndex.getAndIncrement()
+                    this.gtidFlags.get()
             );
         } else {
             return null;

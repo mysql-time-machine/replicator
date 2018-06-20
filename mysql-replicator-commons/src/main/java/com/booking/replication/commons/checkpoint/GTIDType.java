@@ -47,11 +47,7 @@ public enum GTIDType implements Serializable, Comparator<GTID> {
     public int compare(GTID gtid1, GTID gtid2) {
         if (gtid1 != null && gtid2 != null) {
             if (gtid1.getValue() != null && gtid2.getValue() != null) {
-                if (gtid1.getValue().equals(gtid2.getValue())) {
-                    return Integer.compare(gtid1.getIndex(), gtid2.getIndex());
-                } else {
-                    return this.compareValue(gtid1.getValue(), gtid2.getValue());
-                }
+                return this.compareValue(gtid1.getValue(), gtid2.getValue());
             } else if (gtid1.getValue() != null) {
                 return Integer.MAX_VALUE;
             } else if (gtid2.getValue() != null) {

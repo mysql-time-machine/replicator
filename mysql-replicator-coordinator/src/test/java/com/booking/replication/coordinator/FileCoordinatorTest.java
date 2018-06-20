@@ -66,10 +66,9 @@ public class FileCoordinatorTest {
         Checkpoint checkpoint1 = new Checkpoint(
                 ThreadLocalRandom.current().nextLong(),
                 new GTID(
-                        GTIDType.REAL,
+                        GTIDType.PSEUDO,
                         UUID.randomUUID().toString(),
-                        Byte.MAX_VALUE,
-                        ThreadLocalRandom.current().nextInt()
+                        Byte.MAX_VALUE
                 ),
                 new Binlog(
                         UUID.randomUUID().toString(),

@@ -43,10 +43,9 @@ public class KafkaTest {
         return new Checkpoint(
                 0,
                 new GTID(
-                        GTIDType.REAL,
-                        "REAL",
-                        Byte.MAX_VALUE,
-                        index
+                        GTIDType.PSEUDO,
+                        String.valueOf(index),
+                        Byte.MAX_VALUE
                 ),
                 new Binlog(
                         null,

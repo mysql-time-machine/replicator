@@ -31,25 +31,31 @@ public class Checkpoint implements Serializable, Comparable<Checkpoint> {
 
     @Override
     public int compareTo(Checkpoint checkpoint) {
+        int comparison = 0;
+
         if (checkpoint != null) {
             if (this.gtid != null &&  checkpoint.gtid != null) {
-                return this.gtid.compareTo(checkpoint.gtid);
+                comparison = this.gtid.compareTo(checkpoint.gtid);
             } else if (this.gtid != null) {
-                return Integer.MAX_VALUE;
+                comparison = Integer.MAX_VALUE;
             } else if (checkpoint.gtid != null){
-                return Integer.MIN_VALUE;
-            } else if (this.binlog != null && checkpoint.binlog != null) {
-                return this.binlog.compareTo(checkpoint.binlog);
-            } else if (this.binlog != null) {
-                return Integer.MAX_VALUE;
-            } else if (checkpoint.binlog != null) {
-                return Integer.MIN_VALUE;
-            } else {
-                return 0;
+                comparison = Integer.MIN_VALUE;
+            }
+
+            if (comparison == 0 && this.serverId == checkpoint.serverId) {
+                if (this.binlog != null && checkpoint.binlog != null) {
+                    comparison = this.binlog.compareTo(checkpoint.binlog);
+                } else if (this.binlog != null) {
+                    comparison = Integer.MAX_VALUE;
+                } else if (checkpoint.binlog != null) {
+                    comparison = Integer.MIN_VALUE;
+                }
             }
         } else {
-            return Integer.MAX_VALUE;
+            comparison = Integer.MAX_VALUE;
         }
+
+        return comparison;
     }
 
     @Override

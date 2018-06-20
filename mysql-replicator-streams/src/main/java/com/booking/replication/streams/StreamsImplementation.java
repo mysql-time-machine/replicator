@@ -19,10 +19,10 @@ import java.util.logging.Logger;
 public final class StreamsImplementation<Input, Output> implements Streams<Input, Output> {
     private static final Logger LOG = Logger.getLogger(StreamsImplementation.class.getName());
 
+    private final int threads;
     private final int tasks;
     private final BiFunction<Input, Integer, Integer> partitioner;
     private final Deque<Input>[] queues;
-    private final ExecutorService executor;
     private final Function<Integer, Input> from;
     private final BiConsumer<Integer, Input> requeue;
     private final Predicate<Input> filter;
@@ -31,10 +31,13 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     private final BiConsumer<Input, Streams.Task> post;
     private final AtomicBoolean running;
     private final AtomicBoolean handling;
+
+    private ExecutorService executor;
     private Consumer<Exception> handler;
 
     @SuppressWarnings("unchecked")
     StreamsImplementation(int threads, int tasks, BiFunction<Input, Integer, Integer> partitioner, Class<? extends Deque> queueType, Function<Integer, Input> from, Predicate<Input> filter, Function<Input, Output> process, Consumer<Output> to, BiConsumer<Input, Streams.Task> post) {
+        this.threads = threads + 1;
         this.tasks = tasks;
 
         if (partitioner != null) {
@@ -58,15 +61,12 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
         }
 
         if (this.queues != null) {
-            this.executor = Executors.newFixedThreadPool(threads + 1);
             this.from = (task) -> StreamsImplementation.this.queues[task].poll();
             this.requeue = (task, input) -> StreamsImplementation.this.queues[task].offerFirst(input);
         } else if(from != null) {
-            this.executor = Executors.newFixedThreadPool(threads + 1);
             this.from = from;
             this.requeue = null;
         } else {
-            this.executor = Executors.newSingleThreadExecutor();
             this.from = null;
             this.requeue = null;
         }
@@ -104,7 +104,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
 
     @Override
     public final Streams<Input, Output> start() {
-        if ((this.queues != null || this.from != null) && !this.running.getAndSet(true)) {
+        if ((this.queues != null || this.from != null) && !this.running.getAndSet(true) && this.executor == null) {
             Consumer<Integer> consumer = (task) -> {
                 Input input = null;
 
@@ -123,6 +123,8 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
                 }
             };
 
+            this.executor = Executors.newFixedThreadPool(this.threads);
+
             for (int index = 0; index < this.tasks; index++) {
                 final int task = index;
 
@@ -137,7 +139,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
 
     @Override
     public final Streams<Input, Output> wait(long timeout, TimeUnit unit) throws InterruptedException {
-        if (this.running.get()) {
+        if (this.running.get() && this.executor != null) {
             this.executor.awaitTermination(timeout, unit);
         }
 
@@ -151,12 +153,13 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
 
     @Override
     public final void stop() throws InterruptedException {
-        if (this.running.getAndSet(false)) {
+        if (this.running.getAndSet(false) && this.executor != null) {
             try {
                 this.executor.shutdown();
                 this.executor.awaitTermination(5L, TimeUnit.SECONDS);
             } finally {
                 this.executor.shutdownNow();
+                this.executor = null;
             }
 
             StreamsImplementation.LOG.log(Level.FINE, "streams stopped");

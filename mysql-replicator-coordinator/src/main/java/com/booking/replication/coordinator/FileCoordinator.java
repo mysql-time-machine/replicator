@@ -3,7 +3,6 @@ package com.booking.replication.coordinator;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.io.EOFException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.channels.FileChannel;
@@ -14,10 +13,6 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FileCoordinator extends Coordinator {
     public interface Configuration {

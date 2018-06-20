@@ -52,7 +52,7 @@ public final class StreamsBuilder<Input, Output> implements
     }
 
     StreamsBuilder() {
-        this(1, 1, null, null, null, null, null, null, null);
+        this(0, 1, null, null, null, null, null, null, null);
     }
 
     @Override

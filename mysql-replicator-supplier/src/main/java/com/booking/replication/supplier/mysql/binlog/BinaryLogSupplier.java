@@ -40,9 +40,7 @@ public class BinaryLogSupplier implements Supplier {
         String POSITION_TYPE = "supplier.binlog.position.type";
     }
 
-    private final ExecutorService executor;
     private final AtomicBoolean running;
-
     private final List<String> hostname;
     private final int port;
     private final String schema;
@@ -50,6 +48,7 @@ public class BinaryLogSupplier implements Supplier {
     private final String password;
     private final PositionType positionType;
 
+    private ExecutorService executor;
     private BinaryLogClient client;
     private Consumer<RawEvent> consumer;
     private Consumer<Exception> handler;
@@ -67,9 +66,7 @@ public class BinaryLogSupplier implements Supplier {
         Objects.requireNonNull(username, String.format("Configuration required: %s", Configuration.MYSQL_USERNAME));
         Objects.requireNonNull(password, String.format("Configuration required: %s", Configuration.MYSQL_PASSWORD));
 
-        this.executor = Executors.newSingleThreadExecutor();
         this.running = new AtomicBoolean(false);
-
         this.hostname = this.getList(hostname);
         this.port = Integer.parseInt(port.toString());
         this.schema = schema.toString();
@@ -106,6 +103,10 @@ public class BinaryLogSupplier implements Supplier {
     public void start(Checkpoint checkpoint) {
         if (!this.running.getAndSet(true)) {
             BinaryLogSupplier.LOG.log(Level.INFO, "starting binary log supplier connecting");
+
+            if (this.executor == null) {
+                this.executor = Executors.newSingleThreadExecutor();
+            }
 
             this.connect(checkpoint);
         }
@@ -180,13 +181,16 @@ public class BinaryLogSupplier implements Supplier {
 
             this.disconnect();
 
-            try {
-                this.executor.shutdown();
-                this.executor.awaitTermination(5L, TimeUnit.SECONDS);
-            } catch (InterruptedException exception) {
-                throw new RuntimeException(exception);
-            } finally {
-                this.executor.shutdownNow();
+            if (this.executor != null) {
+                try {
+                    this.executor.shutdown();
+                    this.executor.awaitTermination(5L, TimeUnit.SECONDS);
+                } catch (InterruptedException exception) {
+                    throw new RuntimeException(exception);
+                } finally {
+                    this.executor.shutdownNow();
+                    this.executor = null;
+                }
             }
         }
     }

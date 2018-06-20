@@ -103,8 +103,6 @@ public abstract class Coordinator implements LeaderCoordinator, CheckpointStorag
 
     public void start() {
         if (!this.running.getAndSet(true)) {
-            Coordinator.LOG.log(Level.INFO, "starting coordinator");
-
             this.executor.execute(this::takeLeadership);
         }
     }
@@ -113,8 +111,6 @@ public abstract class Coordinator implements LeaderCoordinator, CheckpointStorag
 
     public void stop() {
         if (this.running.getAndSet(false)) {
-            Coordinator.LOG.log(Level.INFO, "stopping coordinator");
-
             try {
                 this.loseLeadership();
                 this.executor.shutdown();

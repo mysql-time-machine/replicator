@@ -28,4 +28,19 @@ public class AugmentedEventTransaction implements Serializable {
     public long getXXID() {
         return this.xxid;
     }
+
+    @Override
+    public boolean equals(Object object) {
+        if (AugmentedEventTransaction.class.isInstance(object)) {
+            AugmentedEventTransaction transaction = AugmentedEventTransaction.class.cast(object);
+
+            if (this.timestamp == transaction.timestamp && this.identifier.equals(transaction.identifier) && this.xxid == transaction.xxid) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
 }

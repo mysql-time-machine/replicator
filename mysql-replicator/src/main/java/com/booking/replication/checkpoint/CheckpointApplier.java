@@ -13,23 +13,24 @@ public interface CheckpointApplier extends BiConsumer<AugmentedEvent, Streams.Ta
     enum Type {
         NONE {
             @Override
-            protected CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath) {
+            protected CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath, long period) {
                 return (event, map) -> {
                 };
             }
         },
         COORDINATOR {
             @Override
-            protected CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath) {
-                return new CoordinatorCheckpointApplier(checkpointStorage, checkpointPath);
+            protected CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath, long period) {
+                return new CoordinatorCheckpointApplier(checkpointStorage, checkpointPath, period);
             }
         };
 
-        protected abstract CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath);
+        protected abstract CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath, long period);
     }
 
     interface Configuration {
         String TYPE = "checkpoint.applier.type";
+        String PERIOD = "checkpoint.applier.period.ms";
     }
 
     @Override
@@ -39,6 +40,10 @@ public interface CheckpointApplier extends BiConsumer<AugmentedEvent, Streams.Ta
     static CheckpointApplier build(Map<String, Object> configuration, CheckpointStorage checkpointStorage, String checkpointPath) {
         return CheckpointApplier.Type.valueOf(
                 configuration.getOrDefault(Configuration.TYPE, Type.NONE.name()).toString()
-        ).newInstance(checkpointStorage, checkpointPath);
+        ).newInstance(
+                checkpointStorage,
+                checkpointPath,
+                Long.parseLong(configuration.getOrDefault(Configuration.PERIOD, "5000").toString())
+        );
     }
 }

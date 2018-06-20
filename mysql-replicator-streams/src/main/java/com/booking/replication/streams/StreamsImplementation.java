@@ -132,8 +132,6 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
             }
         }
 
-        StreamsImplementation.LOG.log(Level.FINE, "streams started");
-
         return this;
     }
 
@@ -161,8 +159,6 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
                 this.executor.shutdownNow();
                 this.executor = null;
             }
-
-            StreamsImplementation.LOG.log(Level.FINE, "streams stopped");
         }
     }
 
@@ -184,10 +180,10 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
                 return false;
             }
         } else {
-            Objects.requireNonNull(this.queues, "invalid operation");
+            Objects.requireNonNull(this.queues);
 
             if (!this.running.get()) {
-                throw new IllegalStateException("streams is stopped");
+                throw new IllegalStateException();
             }
 
             return this.queues[this.partitioner.apply(input, this.tasks)].offer(input);

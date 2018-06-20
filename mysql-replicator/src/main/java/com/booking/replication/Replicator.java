@@ -137,24 +137,6 @@ public class Replicator {
                 Replicator.LOG.log(Level.INFO, "stopping supplier");
                 this.supplier.stop();
 
-                Replicator.LOG.log(Level.INFO, "closing augmenter");
-                this.augmenter.close();
-
-                Replicator.LOG.log(Level.INFO, "closing seeker");
-                this.seeker.close();
-
-                Replicator.LOG.log(Level.INFO, "closing partitioner");
-                this.partitioner.close();
-
-                Replicator.LOG.log(Level.INFO, "closing applier");
-                this.applier.close();
-
-                Replicator.LOG.log(Level.INFO, "closing metrics applier");
-                this.metricsApplier.close();
-
-                Replicator.LOG.log(Level.INFO, "closing checkpoint applier");
-                this.checkpointApplier.close();
-
                 Replicator.LOG.log(Level.INFO, "stopping streams supplier");
                 this.streamsSupplier.stop();
 
@@ -184,6 +166,7 @@ public class Replicator {
     }
 
     public void start() {
+        Replicator.LOG.log(Level.INFO, "starting coordinator");
         this.coordinator.start();
     }
 
@@ -196,7 +179,30 @@ public class Replicator {
     }
 
     public void stop() {
-        this.coordinator.stop();
+        try {
+            Replicator.LOG.log(Level.INFO, "stopping coordinator");
+            this.coordinator.stop();
+
+            Replicator.LOG.log(Level.INFO, "closing augmenter");
+            this.augmenter.close();
+
+            Replicator.LOG.log(Level.INFO, "closing seeker");
+            this.seeker.close();
+
+            Replicator.LOG.log(Level.INFO, "closing partitioner");
+            this.partitioner.close();
+
+            Replicator.LOG.log(Level.INFO, "closing applier");
+            this.applier.close();
+
+            Replicator.LOG.log(Level.INFO, "closing metrics applier");
+            this.metricsApplier.close();
+
+            Replicator.LOG.log(Level.INFO, "closing checkpoint applier");
+        this.checkpointApplier.close();
+        } catch (IOException exception) {
+            Replicator.LOG.log(Level.SEVERE, "error stopping coordinator", exception);
+        }
     }
 
     public void rewind() {

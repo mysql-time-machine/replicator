@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.leader.LeaderLatch;
+import org.apache.curator.framework.recipes.leader.LeaderLatchListener;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.CreateMode;
 
@@ -14,6 +15,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ZookeeperCoordinator extends Coordinator {
     public interface Configuration {
@@ -27,6 +29,7 @@ public class ZookeeperCoordinator extends Coordinator {
 
     private final CuratorFramework client;
     private final LeaderLatch latch;
+    private final AtomicBoolean running;
 
     public ZookeeperCoordinator(Map<String, Object> configuration) {
         Object leadershipPath = configuration.get(Configuration.LEADERSHIP_PATH);
@@ -39,6 +42,19 @@ public class ZookeeperCoordinator extends Coordinator {
 
         this.client = CuratorFrameworkFactory.newClient(String.join(",", this.getList(connectionString)), new ExponentialBackoffRetry(Integer.parseInt(retryInitialSleep.toString()), Integer.parseInt(retryMaximumAttempts.toString())));
         this.latch = new LeaderLatch(this.client, leadershipPath.toString());
+        this.running = new AtomicBoolean();
+
+        this.latch.addListener(new LeaderLatchListener() {
+            @Override
+            public void isLeader() {
+                ZookeeperCoordinator.this.takeLeadership();
+            }
+
+            @Override
+            public void notLeader() {
+                ZookeeperCoordinator.this.loseLeadership();
+            }
+        });
     }
 
     @SuppressWarnings("unchecked")
@@ -88,11 +104,13 @@ public class ZookeeperCoordinator extends Coordinator {
 
     @Override
     public void start() {
-        try {
-            this.client.start();
-            this.latch.start();
-        } catch (Exception exception) {
-            throw new RuntimeException(exception);
+        if (!this.running.getAndSet(true)) {
+            try {
+                this.client.start();
+                this.latch.start();
+            } catch (Exception exception) {
+                throw new RuntimeException(exception);
+            }
         }
 
         super.start();
@@ -111,11 +129,13 @@ public class ZookeeperCoordinator extends Coordinator {
     public void stop() {
         super.stop();
 
-        try {
-            this.latch.close();
-            this.client.close();
-        } catch (IOException exception) {
-            throw new RuntimeException(exception);
+        if (this.running.getAndSet(false)) {
+            try {
+                this.latch.close();
+                this.client.close();
+            } catch (IOException exception) {
+                throw new RuntimeException(exception);
+            }
         }
     }
 }

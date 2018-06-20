@@ -9,8 +9,12 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class CoordinatorCheckpointApplier implements CheckpointApplier {
+    private static final Logger LOG = Logger.getLogger(CoordinatorCheckpointApplier.class.getName());
+
     private final CheckpointStorage storage;
     private final String path;
     private final Map<Integer, Checkpoint> taskCheckpointMap;
@@ -40,7 +44,7 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
                 try {
                     this.storage.saveCheckpoint(this.path, checkpoint);
                 } catch (IOException exception) {
-                    throw new UncheckedIOException(exception);
+                    CoordinatorCheckpointApplier.LOG.log(Level.WARNING, "error saving checkpoint", exception);
                 }
             }
         }

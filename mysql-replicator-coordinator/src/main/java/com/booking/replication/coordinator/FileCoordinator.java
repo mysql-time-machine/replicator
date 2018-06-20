@@ -73,7 +73,7 @@ public class FileCoordinator extends Coordinator {
     @Override
     public void awaitLeadership() {
         try {
-            while (this.fileLock == null) {
+            while (this.fileChannel != null && this.fileLock == null) {
                 try {
                     this.fileLock = this.fileChannel.lock();
                 } catch (OverlappingFileLockException exception) {
@@ -94,6 +94,7 @@ public class FileCoordinator extends Coordinator {
         if (this.fileLock != null) {
             try {
                 this.fileLock.release();
+                this.fileLock = null;
             } catch (IOException exception) {
                 throw new UncheckedIOException(exception);
             }
@@ -102,6 +103,7 @@ public class FileCoordinator extends Coordinator {
         if (this.fileChannel != null) {
             try {
                 this.fileChannel.close();
+                this.fileChannel = null;
             } catch (IOException exception) {
                 throw new UncheckedIOException(exception);
             }

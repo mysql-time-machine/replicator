@@ -70,25 +70,25 @@ public abstract class Coordinator implements LeaderCoordinator, CheckpointStorag
     }
 
     protected void takeLeadership() {
-        try {
-            if (!this.hasLeadership.getAndSet(true)) {
-                this.awaitLeadership();
-                this.lostLeadership.set(false);
+        if (!this.hasLeadership.getAndSet(true)) {
+            try {
+                    this.awaitLeadership();
+                    this.lostLeadership.set(false);
 
-                try {
-                    this.takeRunnable.get().run();
-                } catch (Exception exception) {
-                    Coordinator.LOG.log(Level.SEVERE, "error taking leadership", exception);
+                    try {
+                        this.takeRunnable.get().run();
+                    } catch (Exception exception) {
+                        Coordinator.LOG.log(Level.SEVERE, "error taking leadership", exception);
+                    }
+
+                    this.semaphore.acquire();
+            } catch (Exception exception) {
+                Coordinator.LOG.log(Level.WARNING, "cannot take leadership");
+            } finally {
+                if (!this.lostLeadership.getAndSet(true)) {
+                    this.hasLeadership.set(false);
+                    this.loseRunnable.get().run();
                 }
-
-                this.semaphore.acquire();
-            }
-        } catch (Exception exception) {
-            Coordinator.LOG.log(Level.WARNING, "cannot take leadership");
-        } finally {
-            if (!this.lostLeadership.getAndSet(true)) {
-                this.hasLeadership.set(false);
-                this.loseRunnable.get().run();
             }
         }
     }

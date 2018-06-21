@@ -64,6 +64,7 @@ public class FileCoordinatorTest {
         Thread.sleep(2000L);
 
         Checkpoint checkpoint1 = new Checkpoint(
+                System.currentTimeMillis(),
                 ThreadLocalRandom.current().nextLong(),
                 new GTID(
                         GTIDType.PSEUDO,

@@ -41,6 +41,7 @@ public class KafkaTest {
 
     private static Checkpoint getCheckpoint(int index) {
         return new Checkpoint(
+                System.currentTimeMillis(),
                 0,
                 new GTID(
                         GTIDType.PSEUDO,

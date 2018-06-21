@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
@@ -80,6 +79,7 @@ public class AugmenterContext implements Closeable {
 
     private final List<String> excludeTableList;
 
+    private final AtomicLong timestamp;
     private final AtomicLong serverId;
     private final AtomicLong nextPosition;
 
@@ -115,6 +115,7 @@ public class AugmenterContext implements Closeable {
         this.pseudoGTIDPattern = this.getPattern(configuration, Configuration.PSEUDO_GTID_PATTERN, AugmenterContext.DEFAULT_PSEUDO_GTID_PATTERN);
         this.excludeTableList = this.getList(configuration.get(Configuration.EXCLUDE_TABLE));
 
+        this.timestamp = new AtomicLong();
         this.serverId = new AtomicLong();
         this.nextPosition = new AtomicLong();
 
@@ -163,6 +164,7 @@ public class AugmenterContext implements Closeable {
 
     public void updateContext(RawEventHeaderV4 eventHeader, RawEventData eventData) {
         this.updateHeader(
+                eventHeader.getTimestamp(),
                 eventHeader.getServerId(),
                 eventHeader.getNextPosition()
         );
@@ -371,8 +373,9 @@ public class AugmenterContext implements Closeable {
         }
     }
 
-    private void updateHeader(long id, long nextPosition) {
-        this.serverId.set(id);
+    private void updateHeader(long timestamp, long serverId, long nextPosition) {
+        this.timestamp.set(timestamp);
+        this.serverId.set(serverId);
         this.nextPosition.set(nextPosition);
     }
 
@@ -472,6 +475,7 @@ public class AugmenterContext implements Closeable {
 
     public Checkpoint getCheckpoint() {
         return new Checkpoint(
+                this.timestamp.get(),
                 this.serverId.get(),
                 this.getGTID(),
                 this.getBinlog()

@@ -40,7 +40,7 @@ public class ReplicatorTest {
     private static final String ZOOKEEPER_LEADERSHIP_PATH = "/replicator/leadership";
     private static final String ZOOKEEPER_CHECKPOINT_PATH = "/replicator/checkpoint";
 
-    private static final String CHECKPOINT_DEFAULT = "{\"serverId\": 1, \"binlog\": {\"filename\": \"binlog.000001\", \"position\": 4}, \"gtid\": null}";
+    private static final String CHECKPOINT_DEFAULT = "{\"timestamp\": 0, \"serverId\": 1, \"gtid\": null, \"binlog\": {\"filename\": \"binlog.000001\", \"position\": 4}}";
 
     private static final String MYSQL_SCHEMA = "replicator";
     private static final String MYSQL_ROOT_USERNAME = "root";

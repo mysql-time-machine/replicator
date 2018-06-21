@@ -27,12 +27,12 @@ public class Checkpoint implements Serializable, Comparable<Checkpoint> {
         return this.serverId;
     }
 
-    public Binlog getBinlog() {
-        return this.binlog;
-    }
-
     public GTID getGTID() {
         return this.gtid;
+    }
+
+    public Binlog getBinlog() {
+        return this.binlog;
     }
 
     @Override

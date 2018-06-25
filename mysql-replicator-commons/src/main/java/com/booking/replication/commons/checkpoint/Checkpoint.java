@@ -41,6 +41,14 @@ public class Checkpoint implements Serializable, Comparable<Checkpoint> {
 
         if (checkpoint != null) {
             if (this.gtid != null &&  checkpoint.gtid != null) {
+                if (this.gtid.getType() != checkpoint.gtid.getType()) {
+                    throw new UnsupportedOperationException(String.format(
+                            "cannot compare checkpoints with distinct types: %s and %s",
+                            this.gtid.getType().name(),
+                            checkpoint.gtid.getType().name()
+                    ));
+                }
+
                 comparison = this.gtid.compareTo(checkpoint.gtid);
             } else if (this.gtid != null) {
                 comparison = Integer.MAX_VALUE;

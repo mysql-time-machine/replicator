@@ -25,7 +25,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -531,25 +530,21 @@ public class AugmenterContext implements Closeable {
         return this.tableIdEventTableMap.get(tableId);
     }
 
-    public List<AugmentedEventColumn> getColumns(long tableId, BitSet includedColumns) {
+    public List<Boolean> getIncludedColumns(BitSet includedColumns) {
+        List<Boolean> includedColumnList = new ArrayList<>(includedColumns.length());
+
+        for (int index = 0; index < includedColumns.length(); index++) {
+            includedColumnList.add(includedColumns.get(index));
+        }
+
+        return includedColumnList;
+    }
+
+    public List<AugmentedEventColumn> getColumns(long tableId) {
         AugmentedEventTable eventTable = this.getEventTable(tableId);
 
         if (eventTable != null) {
-            List<AugmentedEventColumn> columnList = this.schema.listColumns(eventTable.getName());
-
-            if (columnList != null) {
-                List<AugmentedEventColumn> includedColumnList = new LinkedList<>();
-
-                for (int columnIndex = 0; columnIndex < columnList.size(); columnIndex++) {
-                    if (includedColumns.get(columnIndex)) {
-                        includedColumnList.add(columnList.get(columnIndex));
-                    }
-                }
-
-                return includedColumnList;
-            } else {
-                return null;
-            }
+            return this.schema.listColumns(eventTable.getName());
         } else {
             return null;
         }

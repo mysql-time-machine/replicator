@@ -27,7 +27,8 @@ public class DataAugmenter {
 
                 return new WriteRowsAugmentedEventData(
                         this.context.getEventTable(writeRowsRawEventData.getTableId()),
-                        this.context.getColumns(writeRowsRawEventData.getTableId(), writeRowsRawEventData.getIncludedColumns()),
+                        this.context.getIncludedColumns(writeRowsRawEventData.getIncludedColumns()),
+                        this.context.getColumns(writeRowsRawEventData.getTableId()),
                         writeRowsRawEventData.getRows()
                 );
             case UPDATE_ROWS:
@@ -36,8 +37,9 @@ public class DataAugmenter {
 
                 return new UpdateRowsAugmentedEventData(
                         this.context.getEventTable(updateRowsRawEventData.getTableId()),
-                        this.context.getColumns(updateRowsRawEventData.getTableId(), updateRowsRawEventData.getIncludedColumnsBeforeUpdate()),
-                        this.context.getColumns(updateRowsRawEventData.getTableId(), updateRowsRawEventData.getIncludedColumns()),
+                        this.context.getIncludedColumns(updateRowsRawEventData.getIncludedColumnsBeforeUpdate()),
+                        this.context.getIncludedColumns(updateRowsRawEventData.getIncludedColumns()),
+                        this.context.getColumns(updateRowsRawEventData.getTableId()),
                         this.context.getUpdatedRows(updateRowsRawEventData.getRows())
                 );
             case DELETE_ROWS:
@@ -46,7 +48,8 @@ public class DataAugmenter {
 
                 return new DeleteRowsAugmentedEventData(
                         this.context.getEventTable(deleteRowsRawEventData.getTableId()),
-                        this.context.getColumns(deleteRowsRawEventData.getTableId(), deleteRowsRawEventData.getIncludedColumns()),
+                        this.context.getIncludedColumns(deleteRowsRawEventData.getIncludedColumns()),
+                        this.context.getColumns(deleteRowsRawEventData.getTableId()),
                         deleteRowsRawEventData.getRows()
                 );
             case QUERY:

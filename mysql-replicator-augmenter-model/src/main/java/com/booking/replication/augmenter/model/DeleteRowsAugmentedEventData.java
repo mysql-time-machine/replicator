@@ -2,18 +2,19 @@ package com.booking.replication.augmenter.model;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Map;
 
 @SuppressWarnings("unused")
 public class DeleteRowsAugmentedEventData implements TableAugmentedEventData {
     private AugmentedEventTable eventTable;
     private List<Boolean> includedColumns;
     private List<AugmentedEventColumn> columns;
-    private List<Serializable[]> rows;
+    private List<Map<String, Serializable>> rows;
 
     public DeleteRowsAugmentedEventData() {
     }
 
-    public DeleteRowsAugmentedEventData(AugmentedEventTable eventTable, List<Boolean> includedColumns, List<AugmentedEventColumn> columns, List<Serializable[]> rows) {
+    public DeleteRowsAugmentedEventData(AugmentedEventTable eventTable, List<Boolean> includedColumns, List<AugmentedEventColumn> columns, List<Map<String, Serializable>> rows) {
         this.eventTable = eventTable;
         this.includedColumns = includedColumns;
         this.columns = columns;
@@ -33,7 +34,7 @@ public class DeleteRowsAugmentedEventData implements TableAugmentedEventData {
         return this.columns;
     }
 
-    public List<Serializable[]> getRows() {
+    public List<Map<String, Serializable>> getRows() {
         return this.rows;
     }
 }

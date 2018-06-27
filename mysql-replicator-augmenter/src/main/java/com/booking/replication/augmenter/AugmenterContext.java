@@ -25,6 +25,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -550,17 +551,53 @@ public class AugmenterContext implements Closeable {
         }
     }
 
-    public List<AugmentedEventUpdatedRow> getUpdatedRows(List<Map.Entry<Serializable[], Serializable[]>> rawRows) {
-        List<AugmentedEventUpdatedRow> rows = new ArrayList<>();
+    public List<Map<String, Serializable>> getRows(long tableId, BitSet includedColumns, List<Serializable[]> rows) {
+        AugmentedEventTable eventTable = this.getEventTable(tableId);
 
-        for (Map.Entry<Serializable[], Serializable[]> rawRow : rawRows) {
-            rows.add(new AugmentedEventUpdatedRow(
-                    rawRow.getKey(),
-                    rawRow.getValue()
-            ));
+        if (eventTable != null) {
+            List<Map<String, Serializable>> rowList = new ArrayList<>();
+            List<AugmentedEventColumn> columns = this.schema.listColumns(eventTable.getName());
+
+            for (Serializable[] row : rows) {
+                rowList.add(this.getRow(columns, includedColumns, row));
+            }
+
+            return rowList;
+        } else {
+            return null;
+        }
+    }
+
+    public List<AugmentedEventUpdatedRow> getUpdatedRows(long tableId, BitSet includedColumns, List<Map.Entry<Serializable[], Serializable[]>> rows) {
+        AugmentedEventTable eventTable = this.getEventTable(tableId);
+
+        if (eventTable != null) {
+            List<AugmentedEventUpdatedRow> rowList = new ArrayList<>();
+            List<AugmentedEventColumn> columns = this.schema.listColumns(eventTable.getName());
+
+            for (Map.Entry<Serializable[], Serializable[]> row : rows) {
+                rowList.add(new AugmentedEventUpdatedRow(
+                        this.getRow(columns, includedColumns, row.getKey()),
+                        this.getRow(columns, includedColumns, row.getValue())
+                ));
+            }
+
+            return rowList;
+        } else {
+            return null;
+        }
+    }
+
+    private Map<String, Serializable> getRow(List<AugmentedEventColumn> columns, BitSet includedColumns, Serializable[] row) {
+        Map<String, Serializable> rowMap = new LinkedHashMap<>();
+
+        for (int columnIndex = 0, rowIndex = 0; columnIndex < columns.size() && rowIndex < row.length; columnIndex++) {
+            if (includedColumns.get(columnIndex)) {
+                rowMap.put(columns.get(columnIndex).getName(), row[rowIndex++]);
+            }
         }
 
-        return rows;
+        return rowMap;
     }
 
     @Override

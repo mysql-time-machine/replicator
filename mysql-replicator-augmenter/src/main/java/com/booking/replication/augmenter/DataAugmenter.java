@@ -29,7 +29,7 @@ public class DataAugmenter {
                         this.context.getEventTable(writeRowsRawEventData.getTableId()),
                         this.context.getIncludedColumns(writeRowsRawEventData.getIncludedColumns()),
                         this.context.getColumns(writeRowsRawEventData.getTableId()),
-                        writeRowsRawEventData.getRows()
+                        this.context.getRows(writeRowsRawEventData.getTableId(), writeRowsRawEventData.getIncludedColumns(), writeRowsRawEventData.getRows())
                 );
             case UPDATE_ROWS:
             case EXT_UPDATE_ROWS:
@@ -40,7 +40,7 @@ public class DataAugmenter {
                         this.context.getIncludedColumns(updateRowsRawEventData.getIncludedColumnsBeforeUpdate()),
                         this.context.getIncludedColumns(updateRowsRawEventData.getIncludedColumns()),
                         this.context.getColumns(updateRowsRawEventData.getTableId()),
-                        this.context.getUpdatedRows(updateRowsRawEventData.getRows())
+                        this.context.getUpdatedRows(updateRowsRawEventData.getTableId(), updateRowsRawEventData.getIncludedColumns(), updateRowsRawEventData.getRows())
                 );
             case DELETE_ROWS:
             case EXT_DELETE_ROWS:
@@ -50,7 +50,7 @@ public class DataAugmenter {
                         this.context.getEventTable(deleteRowsRawEventData.getTableId()),
                         this.context.getIncludedColumns(deleteRowsRawEventData.getIncludedColumns()),
                         this.context.getColumns(deleteRowsRawEventData.getTableId()),
-                        deleteRowsRawEventData.getRows()
+                        this.context.getRows(deleteRowsRawEventData.getTableId(), deleteRowsRawEventData.getIncludedColumns(), deleteRowsRawEventData.getRows())
                 );
             case QUERY:
                 QueryRawEventData queryRawEventData = QueryRawEventData.class.cast(eventData);

@@ -2,6 +2,7 @@ package com.booking.replication;
 
 import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 import com.booking.replication.coordinator.CoordinatorInterface;
+import com.booking.replication.exceptions.CheckpointException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,13 +32,12 @@ public class Coordinator {
      *
      * @return Checkpoint marker
      */
-    public static PseudoGTIDCheckpoint getSafeCheckpoint() {
+    public static PseudoGTIDCheckpoint getSafeCheckpoint() throws CheckpointException {
         PseudoGTIDCheckpoint cp = implementation.getSafeCheckPoint();
         try {
             LOGGER.info(String.format("Got checkpoint: %s", implementation.serialize(cp)));
         } catch (Exception e) {
-            LOGGER.error("Could not get safe checkpoint marker", e);
-            System.exit(1);
+            throw new CheckpointException(e, "Could not get safe checkpoint marker");
         }
         return cp;
     }

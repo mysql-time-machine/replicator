@@ -5,6 +5,7 @@ import com.booking.replication.applier.*;
 import com.booking.replication.binlog.event.IBinlogEvent;
 import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 
+import com.booking.replication.exceptions.CheckpointException;
 import com.booking.replication.monitor.*;
 import com.booking.replication.schema.MysqlActiveSchemaVersion;
 
@@ -227,7 +228,8 @@ public class Replicator {
 
     }
 
-    private void initPipelinePositionInFailoverMode(Configuration configuration, Long fakeMicrosecondCounter) throws SQLException {
+    private void initPipelinePositionInFailoverMode(Configuration configuration, Long fakeMicrosecondCounter)
+            throws SQLException, CheckpointException {
 
         if (configuration.getStartingBinlogFileName() != null) { // <- No previous PseudoGTID
 

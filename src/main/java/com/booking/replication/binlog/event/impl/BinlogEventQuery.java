@@ -1,6 +1,5 @@
 package com.booking.replication.binlog.event.impl;
 
-import com.booking.replication.binlog.event.impl.BinlogEvent;
 import com.github.shyiko.mysql.binlog.event.QueryEventData;
 import com.google.code.or.binlog.StatusVariable;
 import com.google.code.or.binlog.impl.event.QueryEvent;

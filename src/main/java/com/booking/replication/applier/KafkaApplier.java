@@ -9,6 +9,8 @@ import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.binlog.event.impl.*;
 import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
+import com.booking.replication.exceptions.RowListMessageDeserializationException;
+import com.booking.replication.exceptions.RowListMessageSerializationException;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.schema.exception.TableMapException;
@@ -119,7 +121,7 @@ public class KafkaApplier implements Applier {
         return prop;
     }
 
-    public KafkaApplier(Configuration configuration, Meter meterForMessagesPushedToKafka) {
+    public KafkaApplier(Configuration configuration, Meter meterForMessagesPushedToKafka) throws RowListMessageDeserializationException {
 
         DRY_RUN = configuration.isDryRunMode();
 
@@ -170,7 +172,7 @@ public class KafkaApplier implements Applier {
     }
 
     @Override
-    public void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedDataEvent, CurrentTransaction currentTransaction) {
+    public void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedDataEvent, CurrentTransaction currentTransaction) throws RowListMessageSerializationException, KafkaMessageBufferException {
 
         for (AugmentedRow augmentedRow : augmentedDataEvent.getSingleRowEvents()) {
 
@@ -193,7 +195,7 @@ public class KafkaApplier implements Applier {
     }
 
     @Override
-    public void applyBeginQueryEvent(BinlogEventQuery event, CurrentTransaction currentTransaction) {
+    public void applyBeginQueryEvent(BinlogEventQuery event, CurrentTransaction currentTransaction) throws RowListMessageSerializationException, KafkaMessageBufferException {
         if (!apply_begin_event) {
             LOGGER.debug("Dropping BEGIN event because applyBeginEvent is off");
             return;
@@ -222,7 +224,7 @@ public class KafkaApplier implements Applier {
     }
 
     @Override
-    public void applyCommitQueryEvent(BinlogEventQuery event, CurrentTransaction currentTransaction) {
+    public void applyCommitQueryEvent(BinlogEventQuery event, CurrentTransaction currentTransaction) throws RowListMessageSerializationException, KafkaMessageBufferException {
         if (!apply_commit_event) {
             LOGGER.debug("Dropping COMMIT event because applyCommitEvent is off");
             return;
@@ -250,7 +252,7 @@ public class KafkaApplier implements Applier {
     }
 
     @Override
-    public void applyXidEvent(BinlogEventXid event, CurrentTransaction currentTransaction) {
+    public void applyXidEvent(BinlogEventXid event, CurrentTransaction currentTransaction) throws RowListMessageSerializationException, KafkaMessageBufferException {
         if (!apply_commit_event) {
             LOGGER.debug("Dropping XID event because applyBeginEvent is off");
             return;
@@ -298,7 +300,7 @@ public class KafkaApplier implements Applier {
 
     }
 
-    private void loadLastMessagePositionForEachPartition() {
+    private void loadLastMessagePositionForEachPartition() throws RowListMessageDeserializationException {
         // Method to fetch the last committed message in each partition of each topic.
         final int RetriesLimit = 100;
         final int POLL_TIME_OUT = 1000;
@@ -483,7 +485,7 @@ public class KafkaApplier implements Applier {
      *  3. If partition is not empty, and message has not reached maximum number of
      *     rows, add row to the current message
      */
-    private void pushToBuffer(int partitionNum, AugmentedRow augmentedRow) {
+    private void pushToBuffer(int partitionNum, AugmentedRow augmentedRow) throws RowListMessageSerializationException, KafkaMessageBufferException {
 
         String rowBinlogPositionID = augmentedRow.getRowBinlogPositionID();
 
@@ -531,12 +533,7 @@ public class KafkaApplier implements Applier {
 
                 } else {
                     // buffer row to current buffer
-                    try {
-                        partitionCurrentMessageBuffer.get(partitionNum).addRowToMessage(augmentedRow);
-                    } catch (KafkaMessageBufferException ke) {
-                        LOGGER.error("Trying to write to a closed buffer. This should never happen. Exiting...");
-                        System.exit(-1);
-                    }
+                    partitionCurrentMessageBuffer.get(partitionNum).addRowToMessage(augmentedRow);
                 }
             }
             meterForMessagesPushedToKafka.mark();
@@ -603,7 +600,7 @@ public class KafkaApplier implements Applier {
         rowLastPositionID = rowBinlogPositionID;
     }
 
-    private void sendMessage(int partitionNum) {
+    private void sendMessage(int partitionNum) throws RowListMessageSerializationException {
 
         RowListMessage rowListMessage = partitionCurrentMessageBuffer.get(partitionNum);
         String jsonMessage = rowListMessage.toJSON();
@@ -631,7 +628,7 @@ public class KafkaApplier implements Applier {
     }
 
     @Override
-    public void forceFlush() {
+    public void forceFlush() throws RowListMessageSerializationException {
 
         LOGGER.debug("Kafka Applier force flush");
 

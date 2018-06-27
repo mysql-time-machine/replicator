@@ -8,8 +8,9 @@ import com.booking.replication.binlog.event.impl.*;
 import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
-import com.booking.replication.schema.HBaseSchemaManager;
+import com.booking.replication.applier.hbase.HBaseSchemaManager;
 import com.booking.replication.schema.TableNameMapper;
+import com.booking.replication.schema.exception.SchemaTransitionException;
 import com.booking.replication.validation.ValidationService;
 import com.codahale.metrics.Counter;
 
@@ -17,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 
 /**
  * This class abstracts the HBase store.
@@ -60,7 +62,7 @@ public class HBaseApplier implements Applier {
         com.booking.replication.Configuration config,
         Counter mainProgressIndicator,
         ValidationService validationService
-    ) {
+    ) throws NoSuchAlgorithmException {
         configuration = config;
 
         hbaseApplierWriter =
@@ -114,7 +116,7 @@ public class HBaseApplier implements Applier {
     @Override
     public void applyAugmentedSchemaChangeEvent(
             AugmentedSchemaChangeEvent event,
-            PipelineOrchestrator caller) {
+            PipelineOrchestrator caller) throws SchemaTransitionException {
         hbaseSchemaManager.writeSchemaSnapshotToHBase(event, configuration);
     }
 

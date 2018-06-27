@@ -1,8 +1,10 @@
 package com.booking.replication.pipeline.event.handler;
 
 import com.booking.replication.Metrics;
+import com.booking.replication.applier.kafka.KafkaMessageBufferException;
 import com.booking.replication.binlog.event.impl.BinlogEventXid;
 import com.booking.replication.binlog.event.IBinlogEvent;
+import com.booking.replication.exceptions.RowListMessageSerializationException;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.codahale.metrics.Meter;
@@ -29,7 +31,7 @@ public class XidEventHandler implements RawBinlogEventHandler {
 
 
     @Override
-    public void apply(IBinlogEvent binlogEvent, CurrentTransaction currentTransaction) throws EventHandlerApplyException {
+    public void apply(IBinlogEvent binlogEvent, CurrentTransaction currentTransaction) throws EventHandlerApplyException, RowListMessageSerializationException, KafkaMessageBufferException {
         if (binlogEvent instanceof BinlogEventXid) {
             final BinlogEventXid event = (BinlogEventXid) binlogEvent;
             if (currentTransaction.getXid() != event.getXid()) {

@@ -1,5 +1,6 @@
 package com.booking.replication.applier;
 
+import com.booking.replication.applier.kafka.KafkaMessageBufferException;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 
@@ -7,8 +8,10 @@ import com.booking.replication.applier.SupportedAppliers.ApplierName;
 
 import com.booking.replication.binlog.event.impl.*;
 import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
+import com.booking.replication.exceptions.RowListMessageSerializationException;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
+import com.booking.replication.schema.exception.SchemaTransitionException;
 import com.codahale.metrics.Counter;
 import java.io.IOException;
 
@@ -56,25 +59,27 @@ public class EventCountingApplier implements Applier {
         }
 
     @Override
-    public void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedSingleRowEvent, CurrentTransaction currentTransaction) throws ApplierException, IOException {
+    public void applyAugmentedRowsEvent(AugmentedRowsEvent augmentedSingleRowEvent, CurrentTransaction currentTransaction) throws ApplierException, IOException, RowListMessageSerializationException, KafkaMessageBufferException {
         wrapped.applyAugmentedRowsEvent(augmentedSingleRowEvent, currentTransaction);
         counter.inc();
     }
 
     @Override
-    public void applyBeginQueryEvent(BinlogEventQuery event, CurrentTransaction currentTransaction) {
+    public void applyBeginQueryEvent(BinlogEventQuery event, CurrentTransaction currentTransaction) throws RowListMessageSerializationException, KafkaMessageBufferException {
         wrapped.applyBeginQueryEvent(event, currentTransaction);
         counter.inc();
     }
 
     @Override
-    public void applyCommitQueryEvent(BinlogEventQuery event, CurrentTransaction currentTransaction) {
+    public void applyCommitQueryEvent(BinlogEventQuery event, CurrentTransaction currentTransaction)
+            throws RowListMessageSerializationException, KafkaMessageBufferException {
         wrapped.applyCommitQueryEvent(event, currentTransaction);
         counter.inc();
     }
 
     @Override
-    public void applyXidEvent(BinlogEventXid event, CurrentTransaction currentTransaction) {
+    public void applyXidEvent(BinlogEventXid event, CurrentTransaction currentTransaction)
+            throws RowListMessageSerializationException, KafkaMessageBufferException {
         wrapped.applyXidEvent(event, currentTransaction);
         counter.inc();
     }
@@ -85,13 +90,13 @@ public class EventCountingApplier implements Applier {
     }
 
     @Override
-    public void applyAugmentedSchemaChangeEvent(AugmentedSchemaChangeEvent augmentedSchemaChangeEvent, PipelineOrchestrator caller) {
+    public void applyAugmentedSchemaChangeEvent(AugmentedSchemaChangeEvent augmentedSchemaChangeEvent, PipelineOrchestrator caller) throws SchemaTransitionException {
         wrapped.applyAugmentedSchemaChangeEvent(augmentedSchemaChangeEvent, caller);
         counter.inc();
     }
 
     @Override
-    public void forceFlush() throws ApplierException, IOException {
+    public void forceFlush() throws ApplierException, IOException, RowListMessageSerializationException {
         wrapped.forceFlush();
     }
 

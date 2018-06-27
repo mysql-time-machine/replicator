@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -163,7 +164,7 @@ public class HBaseApplierWriter {
             com.booking.replication.Configuration configuration,
             Counter tasksSucceededCounter,
             ValidationService validationService
-    ) {
+    ) throws NoSuchAlgorithmException {
         DRY_RUN = configuration.isDryRunMode();
 
         this.validationService = validationService;
@@ -173,7 +174,7 @@ public class HBaseApplierWriter {
 
         mutationGenerator = new HBaseApplierMutationGenerator(configuration);
         if (!configuration.isInitialSnapshotMode()) {
-            timestampOrganizer = new RowTimestampOrganizer();
+            timestampOrganizer = new RowTimestampOrganizer(mutationGenerator);
         }
 
         hbaseConf.set("hbase.zookeeper.quorum", configuration.getHBaseQuorum());

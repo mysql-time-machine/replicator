@@ -2,9 +2,11 @@ package com.booking.replication.pipeline.event.handler;
 
 import com.booking.replication.Metrics;
 import com.booking.replication.applier.ApplierException;
+import com.booking.replication.applier.kafka.KafkaMessageBufferException;
 import com.booking.replication.augmenter.AugmentedRowsEvent;
 import com.booking.replication.binlog.event.impl.BinlogEventRows;
 import com.booking.replication.binlog.event.IBinlogEvent;
+import com.booking.replication.exceptions.RowListMessageSerializationException;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
 import com.booking.replication.schema.exception.TableMapException;
@@ -32,7 +34,7 @@ public class WriteRowsEventHandler implements RawBinlogEventHandler {
     }
 
     @Override
-    public void apply(IBinlogEvent binlogEvent, CurrentTransaction currentTransaction) throws TableMapException, ApplierException, IOException {
+    public void apply(IBinlogEvent binlogEvent, CurrentTransaction currentTransaction) throws TableMapException, ApplierException, IOException, RowListMessageSerializationException, KafkaMessageBufferException {
         final BinlogEventRows event = (BinlogEventRows) binlogEvent;
         AugmentedRowsEvent augmentedRowsEvent =
                 eventHandlerConfiguration.getEventAugmenter().mapDataEventToSchema(

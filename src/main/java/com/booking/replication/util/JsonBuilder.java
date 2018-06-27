@@ -3,12 +3,15 @@ package com.booking.replication.util;
 import com.booking.replication.applier.kafka.RowListMessage;
 import com.booking.replication.augmenter.AugmentedRow;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
+import com.booking.replication.exceptions.RowListMessageDeserializationException;
+import com.booking.replication.exceptions.RowListMessageSerializationException;
 import com.booking.replication.schema.ActiveSchemaVersion;
 import com.booking.replication.schema.table.TableSchemaVersion;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.yaml.snakeyaml.serializer.SerializerException;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -35,24 +38,24 @@ public class JsonBuilder {
         return json;
     }
 
-    public static String rowListMessageToJSON(RowListMessage rowListMessage) {
+    public static String rowListMessageToJSON(RowListMessage rowListMessage)
+            throws RowListMessageSerializationException {
         String json = null;
         try {
             json = om.writeValueAsString(rowListMessage);
         } catch (IOException e) {
-            LOGGER.error("ERROR: could not serialize RowListMessage object.", e);
-            System.exit(-1);
+            throw new RowListMessageSerializationException("ERROR: could not serialize RowListMessage object.");
         }
         return json;
     }
 
-    public static RowListMessage rowListMessageFromJSON(String jsonString) {
+    public static RowListMessage rowListMessageFromJSON(String jsonString)
+            throws RowListMessageDeserializationException {
         RowListMessage rowListMessageFrom = null;
         try {
             rowListMessageFrom = om.readValue(jsonString, RowListMessage.class);
         } catch (IOException e) {
-            LOGGER.error("ERROR: could not deserialize RowListMessage object from jsonString" + jsonString, e);
-            System.exit(-1);
+            throw new RowListMessageDeserializationException("ERROR: could not deserialize RowListMessage object from jsonString" + jsonString);
         }
         return rowListMessageFrom;
     }

@@ -1,13 +1,10 @@
 package com.booking.replication.applier.hbase;
 
 import com.booking.replication.augmenter.AugmentedRow;
-import com.google.code.or.binlog.impl.event.BinlogEventV4HeaderImpl;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static com.booking.replication.applier.hbase.HBaseApplierMutationGenerator.getHBaseRowKey;
 
 /**
  * This class takes care that all HBase rows with same row_id in same table have different timestamp.
@@ -41,6 +38,12 @@ import static com.booking.replication.applier.hbase.HBaseApplierMutationGenerato
  */
 public class RowTimestampOrganizer {
 
+    private HBaseApplierMutationGenerator hBaseApplierMutationGenerator;
+
+    public RowTimestampOrganizer(HBaseApplierMutationGenerator mgen) {
+
+    }
+
     private class TimestampTuple {
         public long timestamp;
         public long maximumTimestamp;
@@ -49,7 +52,7 @@ public class RowTimestampOrganizer {
             this.maximumTimestamp = maximumTimestamp;
         }
     }
-    private static final long TIMESTAMP_SPAN_MISCROSECONDS = 50;
+    private static final long TIMESTAMP_SPAN_MICROSECONDS = 50;
 
     private String currentTransactionUUID = null;
     private Map<String, TimestampTuple> timestampsCache;
@@ -61,7 +64,7 @@ public class RowTimestampOrganizer {
             timestampsCache = new HashMap<>();
         }
         for (AugmentedRow row : rows) {
-            String key = mysqlTableName + ":" + getHBaseRowKey(row);
+            String key = mysqlTableName + ":" + hBaseApplierMutationGenerator.getHBaseRowKey(row);
             TimestampTuple v;
             if (timestampsCache.containsKey(key)) {
                 v = timestampsCache.get(key);
@@ -70,7 +73,7 @@ public class RowTimestampOrganizer {
                 }
             } else {
                 v = new TimestampTuple(
-                    row.getCommitTimestamp() - TIMESTAMP_SPAN_MISCROSECONDS,
+                    row.getCommitTimestamp() - TIMESTAMP_SPAN_MICROSECONDS,
                     row.getCommitTimestamp()
                 );
                 timestampsCache.put(key, v);
@@ -78,5 +81,4 @@ public class RowTimestampOrganizer {
             row.setRowMicrosecondTimestamp(v.timestamp);
         }
     }
-
 }

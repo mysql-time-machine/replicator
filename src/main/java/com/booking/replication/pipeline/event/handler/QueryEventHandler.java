@@ -3,12 +3,14 @@ package com.booking.replication.pipeline.event.handler;
 import com.booking.replication.Coordinator;
 import com.booking.replication.Metrics;
 import com.booking.replication.applier.*;
+import com.booking.replication.applier.kafka.KafkaMessageBufferException;
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
 import com.booking.replication.binlog.EventPosition;
 import com.booking.replication.binlog.event.impl.BinlogEventQuery;
 import com.booking.replication.binlog.event.IBinlogEvent;
 import com.booking.replication.binlog.event.QueryEventType;
 import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
+import com.booking.replication.exceptions.RowListMessageSerializationException;
 import com.booking.replication.pipeline.BinlogEventProducerException;
 import com.booking.replication.pipeline.CurrentTransaction;
 import com.booking.replication.pipeline.PipelineOrchestrator;
@@ -48,7 +50,7 @@ public class QueryEventHandler implements RawBinlogEventHandler {
     }
 
     @Override
-    public void apply(IBinlogEvent binlogEvent, CurrentTransaction currentTransaction) throws EventHandlerApplyException, ApplierException, IOException {
+    public void apply(IBinlogEvent binlogEvent, CurrentTransaction currentTransaction) throws EventHandlerApplyException, ApplierException, IOException, RowListMessageSerializationException, KafkaMessageBufferException {
         final BinlogEventQuery event = (BinlogEventQuery) binlogEvent;
         String querySQL = event.getSql().toString();
         QueryEventType queryEventType = QueryInspector.getQueryEventType(event);

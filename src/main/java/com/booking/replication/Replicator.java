@@ -6,6 +6,7 @@ import com.booking.replication.binlog.event.IBinlogEvent;
 import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
 
 import com.booking.replication.exceptions.CheckpointException;
+import com.booking.replication.exceptions.ReplicatorStartException;
 import com.booking.replication.monitor.*;
 import com.booking.replication.schema.MysqlActiveSchemaVersion;
 
@@ -56,7 +57,7 @@ import static spark.Spark.port;
 public class Replicator {
 
     private final ReplicantPool                       replicantPool;
-    private final LinkedBlockingQueue<IBinlogEvent> binlogEventQueue;
+    private final LinkedBlockingQueue<IBinlogEvent>   binlogEventQueue;
     private final BinlogEventProducer                 binlogEventSupplier;
     private final PipelineOrchestrator                pipelineOrchestrator;
     private       PipelinePosition                    pipelinePosition;
@@ -155,12 +156,12 @@ public class Replicator {
                     replicantPool.getReplicantDBActiveHost(),
                     replicantPool.getReplicantDBActiveHostServerID(),
                     configuration.getLastBinlogFileName(), 4L))) {
-            LOGGER.error(String.format(
+
+            throw new ReplicatorStartException(String.format(
                     "The current position is beyond the last position you configured.\nThe current position is: %s %s",
                     pipelinePosition.getStartPosition().getBinlogFilename(),
                     pipelinePosition.getStartPosition().getBinlogPosition())
             );
-            System.exit(1);
         }
 
         LOGGER.info(String.format(

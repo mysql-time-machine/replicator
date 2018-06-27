@@ -13,6 +13,7 @@ import com.booking.replication.binlog.event.impl.BinlogEventQuery;
 import com.booking.replication.binlog.event.impl.BinlogEventTableMap;
 import com.booking.replication.binlog.event.impl.BinlogEventXid;
 import com.booking.replication.checkpoints.PseudoGTIDCheckpoint;
+import com.booking.replication.exceptions.RowListMessageSerializationException;
 import com.booking.replication.pipeline.event.handler.*;
 
 import com.booking.replication.binlog.event.*;
@@ -320,12 +321,17 @@ public class PipelineOrchestrator extends Thread {
         }
     }
 
-    private IBinlogEvent rewindToCommitEvent() throws ApplierException, IOException, InterruptedException {
+    private IBinlogEvent rewindToCommitEvent()
+        throws
+            ApplierException,
+            IOException,
+            InterruptedException,
+            RowListMessageSerializationException {
         return rewindToCommitEvent(QUEUE_POLL_TIMEOUT, QUEUE_POLL_SLEEP);
     }
 
     private IBinlogEvent rewindToCommitEvent(long timeout, long sleep)
-            throws ApplierException, IOException, InterruptedException {
+            throws ApplierException, IOException, InterruptedException, RowListMessageSerializationException {
 
         LOGGER.debug("Rewinding to the next commit event. Either XidEvent or QueryEvent with COMMIT statement");
 
@@ -363,7 +369,7 @@ public class PipelineOrchestrator extends Thread {
         return resultEvent;
     }
 
-    private IBinlogEvent waitForEvent(long timeout, long sleep) throws InterruptedException, ApplierException, IOException {
+    private IBinlogEvent waitForEvent(long timeout, long sleep) throws InterruptedException, ApplierException, IOException, RowListMessageSerializationException {
         while (isRunning()) {
 
             if (binlogEventQueue.size() > 0) {

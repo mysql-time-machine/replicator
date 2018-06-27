@@ -2,6 +2,8 @@ package com.booking.replication.applier.kafka;
 
 //import com.booking.replication.applier.KafkaApplier;
 import com.booking.replication.augmenter.AugmentedRow;
+import com.booking.replication.exceptions.RowListMessageDeserializationException;
+import com.booking.replication.exceptions.RowListMessageSerializationException;
 import com.booking.replication.util.JsonBuilder;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -49,11 +51,12 @@ public class RowListMessage {
         rows                          = rowsInitialBucket;
     }
 
-    public static RowListMessage fromJSON(String jsonString) {
+    public static RowListMessage fromJSON(String jsonString)
+            throws RowListMessageDeserializationException {
         return JsonBuilder.rowListMessageFromJSON(jsonString);
     }
 
-    public String toJSON() {
+    public String toJSON() throws RowListMessageSerializationException {
         return JsonBuilder.rowListMessageToJSON(this);
     }
 

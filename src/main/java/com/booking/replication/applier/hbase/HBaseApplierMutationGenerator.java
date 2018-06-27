@@ -24,6 +24,7 @@ import java.util.stream.Stream;
 
 /**
  * Created by bosko on 4/18/16.
+ * Created by bosko on 4/18/16.
  */
 public class HBaseApplierMutationGenerator {
 
@@ -89,12 +90,15 @@ public class HBaseApplierMutationGenerator {
     private static final String DIGEST_ALGORITHM             = "MD5";
 
     private final com.booking.replication.Configuration configuration;
+    private final MessageDigest md;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HBaseApplierMutationGenerator.class);
 
     // Constructor
-    public HBaseApplierMutationGenerator(com.booking.replication.Configuration configuration) {
+    public HBaseApplierMutationGenerator(com.booking.replication.Configuration configuration)
+            throws NoSuchAlgorithmException {
         this.configuration = configuration;
+        this.md = MessageDigest.getInstance(DIGEST_ALGORITHM);
     }
 
     /**
@@ -228,7 +232,6 @@ public class HBaseApplierMutationGenerator {
                     );
                 }
 
-
                 put.addColumn(
                         CF,
                         Bytes.toBytes("row_status"),
@@ -246,8 +249,7 @@ public class HBaseApplierMutationGenerator {
                 break;
             }
             default:
-                LOGGER.error("ERROR: Wrong event type. Expected RowType event. Shutting down...");
-                System.exit(1);
+                LOGGER.error("Wrong event type " + row.getEventType() + ". Expected INSERT/UPDATE/DELETE.");
         }
 
         return new PutMutation(put,hbaseTableName,getRowUri(row), true);
@@ -340,8 +342,7 @@ public class HBaseApplierMutationGenerator {
                 break;
             }
             default:
-                LOGGER.error("ERROR: Wrong event type. Expected RowType event. Shutting down...");
-                System.exit(1);
+                LOGGER.error("Wrong event type " + row.getEventType() + ". Expected INSERT/UPDATE/DELETE.");
         }
 
         return new PutMutation(put,deltaTableName,getRowUri(row),false);
@@ -379,7 +380,7 @@ public class HBaseApplierMutationGenerator {
         return String.format("mysql://%s/%s?%s", configuration.validationConfig.getSourceDomain(), table, keys  );
     }
 
-    public static String getHBaseRowKey(AugmentedRow row) {
+    public String getHBaseRowKey(AugmentedRow row) {
         // RowID
         // This is sorted by column OP (from information schema)
         List<String> pkColumnNames  = row.getPrimaryKeyColumns();
@@ -425,18 +426,10 @@ public class HBaseApplierMutationGenerator {
      *
      * <p>hbaseRowID = md5(hbaseRowID)[0] + md5(hbaseRowID)[1] + "-" + hbaseRowID;</p>
      */
-    private static String saltRowKey(String hbaseRowID, String firstPartOfRowKey) {
+    private String saltRowKey(String hbaseRowID, String firstPartOfRowKey) {
 
         byte[] bytesOfSaltingPartOfRowKey = firstPartOfRowKey.getBytes(StandardCharsets.US_ASCII);
 
-        MessageDigest md = null;
-        try {
-            md = MessageDigest.getInstance(DIGEST_ALGORITHM);
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-            LOGGER.error("md5 algorithm not available. Shutting down...");
-            System.exit(1);
-        }
         byte[] bytesMD5 = md.digest(bytesOfSaltingPartOfRowKey);
 
         String byte1hex = Integer.toHexString(bytesMD5[0] & 0xFF);

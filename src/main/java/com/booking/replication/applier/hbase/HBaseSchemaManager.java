@@ -1,6 +1,8 @@
-package com.booking.replication.schema;
+package com.booking.replication.applier.hbase;
 
 import com.booking.replication.augmenter.AugmentedSchemaChangeEvent;
+import com.booking.replication.schema.TableNameMapper;
+import com.booking.replication.schema.exception.SchemaTransitionException;
 import com.booking.replication.util.JsonBuilder;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -173,7 +175,8 @@ public class HBaseSchemaManager {
 
     public void writeSchemaSnapshotToHBase(
             AugmentedSchemaChangeEvent event,
-            com.booking.replication.Configuration configuration) {
+            com.booking.replication.Configuration configuration)
+            throws SchemaTransitionException {
 
         // get database_name
         String mySqlDbName = configuration.getReplicantSchemaName();
@@ -181,8 +184,7 @@ public class HBaseSchemaManager {
         // get sql_statement
         String ddl = event.getSchemaTransitionSequence().get("ddl");
         if (ddl == null) {
-            LOGGER.error("DDL can not be null");
-            System.exit(-1);
+            throw new SchemaTransitionException("DDL can not be null");
         }
 
         // get pre/post schemas
@@ -289,9 +291,7 @@ public class HBaseSchemaManager {
             hbaseTable.put(put);
 
         } catch (IOException ioe) {
-            LOGGER.error("Failed to store schemaChangePointSnapshot in HBase.", ioe);
-            // TODO: add wait and retry.
-            System.exit(-1);
+            throw new SchemaTransitionException("Failed to store schemaChangePointSnapshot in HBase.", ioe);
         }
     }
 }

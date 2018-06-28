@@ -141,6 +141,7 @@ public class HBaseApplier implements Applier {
             final CurrentTransaction currentTransaction) throws ApplierException, IOException {
 
         String hbaseNamespace = getHBaseNamespace(currentTransaction);
+
         if (hbaseNamespace == null) {
             return;
         }

@@ -41,7 +41,7 @@ public class RowTimestampOrganizer {
     private HBaseApplierMutationGenerator hBaseApplierMutationGenerator;
 
     public RowTimestampOrganizer(HBaseApplierMutationGenerator mgen) {
-
+        this.hBaseApplierMutationGenerator = mgen;
     }
 
     private class TimestampTuple {

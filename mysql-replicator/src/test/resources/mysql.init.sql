@@ -1,47 +1,41 @@
 USE replicator;
 
-CREATE TABLE animals (
+CREATE TABLE organisms (
      id INTEGER NOT NULL AUTO_INCREMENT,
      name VARCHAR(30) NOT NULL,
      lifespan INTEGER NOT NULL,
+     kingdom ENUM('animalia', 'plantae') NOT NULL,
      PRIMARY KEY (id)
 );
 
 BEGIN;
 
-INSERT INTO animals (name, lifespan) VALUES ('dog', 20);
-INSERT INTO animals (name, lifespan) VALUES ('cat', 15);
-INSERT INTO animals (name, lifespan) VALUES ('penguin', 20);
-INSERT INTO animals (name, lifespan) VALUES ('whale', 300);
-INSERT INTO animals (name, lifespan) VALUES ('ostrich', 75);
+INSERT INTO organisms (name, lifespan, kingdom) VALUES ('dog', 20, 'animalia');
+INSERT INTO organisms (name, lifespan, kingdom) VALUES ('cat', 15, 'animalia');
+INSERT INTO organisms (name, lifespan, kingdom) VALUES ('penguin', 20, 'animalia');
+INSERT INTO organisms (name, lifespan, kingdom) VALUES ('whale', 300, 'animalia');
+INSERT INTO organisms (name, lifespan, kingdom) VALUES ('ostrich', 75, 'animalia');
 
 COMMIT;
 
-INSERT INTO animals (name, lifespan) VALUES ('horse', 25);
+INSERT INTO organisms (name, lifespan, kingdom) VALUES ('horse', 25, 'animalia');
 
 BEGIN;
 
-UPDATE animals SET name = 'lion' where id = 2;
+UPDATE organisms SET name = 'lion' where id = 2;
 
 COMMIT;
 
 BEGIN;
 
-DELETE FROM animals WHERE id = 1;
-DELETE FROM animals WHERE id = 2;
+DELETE FROM organisms WHERE id = 1;
+DELETE FROM organisms WHERE id = 2;
 
 COMMIT;
 
-CREATE TABLE plants (
-     id INTEGER NOT NULL AUTO_INCREMENT,
-     name VARCHAR(30) NOT NULL,
-     lifespan INTEGER NOT NULL,
-     PRIMARY KEY (id)
-);
-
 BEGIN;
 
-INSERT INTO plants (name, lifespan) VALUES ('tree', 100);
-INSERT INTO plants (name, lifespan) VALUES ('grass', 1);
+INSERT INTO organisms (name, lifespan, kingdom) VALUES ('tree', 100, 'plantae');
+INSERT INTO organisms (name, lifespan, kingdom) VALUES ('grass', 1, 'plantae');
 
 COMMIT;

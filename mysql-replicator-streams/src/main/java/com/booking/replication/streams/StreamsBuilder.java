@@ -26,7 +26,7 @@ public final class StreamsBuilder<Input, Output> implements
     private Predicate<Input> filter;
     private Function<Input, Output> process;
     private Consumer<Output> to;
-    private BiConsumer<Input, Streams.Task> post;
+    private BiConsumer<Input, Integer> post;
 
     private StreamsBuilder(
             int threads,
@@ -37,7 +37,7 @@ public final class StreamsBuilder<Input, Output> implements
             Predicate<Input> filter,
             Function<Input, Output> process,
             Consumer<Output> to,
-            BiConsumer<Input, Streams.Task> post) {
+            BiConsumer<Input, Integer> post) {
         this.threads = threads;
         this.tasks = tasks;
         this.partitioner = partitioner;
@@ -172,11 +172,11 @@ public final class StreamsBuilder<Input, Output> implements
     @Override
     public final StreamsBuilderBuild<Input, Output> post(Consumer<Input> consumer) {
         Objects.requireNonNull(consumer);
-        return this.post((input, executing) -> consumer.accept(input));
+        return this.post((input, task) -> consumer.accept(input));
     }
 
     @Override
-    public final StreamsBuilderBuild<Input, Output> post(BiConsumer<Input, Streams.Task> consumer) {
+    public final StreamsBuilderBuild<Input, Output> post(BiConsumer<Input, Integer> consumer) {
         Objects.requireNonNull(consumer);
         return new StreamsBuilder<>(
                 this.threads,
@@ -187,13 +187,13 @@ public final class StreamsBuilder<Input, Output> implements
                 this.filter,
                 this.process,
                 this.to,
-                (input, tasks) -> {
+                (input, task) -> {
                     if (this.post != null) {
-                        this.post.accept(input, tasks);
+                        this.post.accept(input, task);
                     }
 
                     if (input != null) {
-                        consumer.accept(input, tasks);
+                        consumer.accept(input, task);
                     }
                 }
         );

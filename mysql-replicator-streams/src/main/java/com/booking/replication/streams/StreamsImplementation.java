@@ -28,7 +28,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     private final Predicate<Input> filter;
     private final Function<Input, Output> process;
     private final Consumer<Output> to;
-    private final BiConsumer<Input, Streams.Task> post;
+    private final BiConsumer<Input, Integer> post;
     private final AtomicBoolean running;
     private final AtomicBoolean handling;
 
@@ -36,7 +36,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     private Consumer<Exception> handler;
 
     @SuppressWarnings("unchecked")
-    StreamsImplementation(int threads, int tasks, BiFunction<Input, Integer, Integer> partitioner, Class<? extends Deque> queueType, Function<Integer, Input> from, Predicate<Input> filter, Function<Input, Output> process, Consumer<Output> to, BiConsumer<Input, Streams.Task> post) {
+    StreamsImplementation(int threads, int tasks, BiFunction<Input, Integer, Integer> partitioner, Class<? extends Deque> queueType, Function<Integer, Input> from, Predicate<Input> filter, Function<Input, Output> process, Consumer<Output> to, BiConsumer<Input, Integer> post) {
         this.threads = threads + 1;
         this.tasks = tasks;
 
@@ -80,13 +80,13 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
         this.handler = (exception) -> StreamsImplementation.LOG.log(Level.SEVERE, "error inside streams", exception);
     }
 
-    private void process(int task, Input input) {
+    private void process(Input input, int task) {
         if (input != null && this.filter.test(input)) {
             Output output = this.process.apply(input);
 
             if (output != null) {
                 this.to.accept(output);
-                this.post.accept(input, new Task(task, this.tasks));
+                this.post.accept(input, task);
             }
         }
     }
@@ -111,7 +111,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
                 try {
                     while (this.running.get()) {
                         input = this.from.apply(task);
-                        this.process(task, input);
+                        this.process(input, task);
                         input = null;
                     }
                 } catch (Exception exception) {
@@ -172,7 +172,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     public final boolean push(Input input) {
         if (this.queues == null && this.from == null) {
             try {
-                this.process(0, input);
+                this.process(input, 0);
                 return true;
             } catch (Exception exception) {
                 this.handleException(exception);

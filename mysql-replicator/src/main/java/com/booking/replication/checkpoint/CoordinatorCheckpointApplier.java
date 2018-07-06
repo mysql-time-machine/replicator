@@ -14,6 +14,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -22,30 +23,37 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
 
     private final CheckpointStorage storage;
     private final String path;
-    private final Map<Integer, AugmentedEventTransaction> taskTransactionMap;
-    private final Map<Integer, Checkpoint> taskCheckpointMap;
-    private final AtomicInteger totalTasks;
+    private final AtomicLong lastExecution;
+    private final Map<Integer, Long> lastTimestampMap;
+    private final Map<Integer, AugmentedEventTransaction> lastTransactionMap;
+    private final Map<Integer, Checkpoint> lastCheckpointMap;
     private final ScheduledExecutorService executor;
 
     public CoordinatorCheckpointApplier(CheckpointStorage storage, String path, long period) {
         this.storage = storage;
         this.path = path;
-        this.taskTransactionMap = new ConcurrentHashMap<>();
-        this.taskCheckpointMap = new ConcurrentHashMap<>();
-        this.totalTasks = new AtomicInteger();
+        this.lastExecution = new AtomicLong();
+        this.lastTimestampMap = new ConcurrentHashMap<>();
+        this.lastTransactionMap = new ConcurrentHashMap<>();
+        this.lastCheckpointMap = new ConcurrentHashMap<>();
         this.executor = Executors.newSingleThreadScheduledExecutor();
         this.executor.scheduleAtFixedRate(() -> {
-            if (this.totalTasks.get() > 0 && this.totalTasks.get() == this.taskCheckpointMap.size()) {
-                Checkpoint minimumCheckpoint = null;
+            Checkpoint minimumCheckpoint = null;
 
-                for (Checkpoint taskCheckpoint : this.taskCheckpointMap.values()) {
-                    if (minimumCheckpoint == null || minimumCheckpoint.compareTo(taskCheckpoint) < 0) {
-                        minimumCheckpoint = taskCheckpoint;
+            for (Map.Entry<Integer, Long> entry : this.lastTimestampMap.entrySet()) {
+                if (entry.getValue() > this.lastExecution.get() && this.lastCheckpointMap.containsKey(entry.getKey())) {
+                    Checkpoint checkpoint = this.lastCheckpointMap.get(entry.getKey());
+
+                    if (minimumCheckpoint == null || minimumCheckpoint.compareTo(checkpoint) < 0) {
+                        minimumCheckpoint = checkpoint;
                     }
                 }
+            }
 
+            if (minimumCheckpoint != null) {
                 try {
                     this.storage.saveCheckpoint(this.path, minimumCheckpoint);
+                    this.lastExecution.set(System.currentTimeMillis());
                 } catch (IOException exception) {
                     CoordinatorCheckpointApplier.LOG.log(Level.WARNING, "error saving checkpoint", exception);
                 }
@@ -54,17 +62,15 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
     }
 
     @Override
-    public void accept(AugmentedEvent augmentedEvent, Streams.Task task) {
+    public void accept(AugmentedEvent augmentedEvent, Integer task) {
         Checkpoint checkpoint = augmentedEvent.getHeader().getCheckpoint();
         AugmentedEventTransaction transaction = augmentedEvent.getHeader().getEventTransaction();
 
-        int currentTask = task.getCurrent();
-        int totalTasks = task.getTotal();
+        this.lastTimestampMap.put(task, System.currentTimeMillis());
 
-        if (transaction != null && transaction.compareTo(this.taskTransactionMap.get(currentTask)) > 0) {
-            this.taskCheckpointMap.put(currentTask, checkpoint);
-            this.taskTransactionMap.put(currentTask, transaction);
-            this.totalTasks.set(totalTasks);
+        if (transaction != null && transaction.compareTo(this.lastTransactionMap.get(task)) > 0) {
+            this.lastCheckpointMap.put(task, checkpoint);
+            this.lastTransactionMap.put(task, transaction);
         }
     }
 

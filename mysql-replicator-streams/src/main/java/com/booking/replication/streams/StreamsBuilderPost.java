@@ -8,7 +8,7 @@ public interface StreamsBuilderPost<Input, Output> {
 
     StreamsBuilderBuild<Input, Output> post(Consumer<Input> consumer);
 
-    StreamsBuilderBuild<Input, Output> post(BiConsumer<Input, Streams.Task> consumer);
+    StreamsBuilderBuild<Input, Output> post(BiConsumer<Input, Integer> consumer);
 
     Streams<Input, Output> build();
 }

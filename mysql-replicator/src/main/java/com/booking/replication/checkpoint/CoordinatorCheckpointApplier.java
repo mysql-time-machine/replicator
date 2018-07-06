@@ -55,14 +55,15 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
 
     @Override
     public void accept(AugmentedEvent augmentedEvent, Streams.Task task) {
-        AugmentedEventTransaction transaction = augmentedEvent.getHeader().getEventTransaction();
         Checkpoint checkpoint = augmentedEvent.getHeader().getCheckpoint();
+        AugmentedEventTransaction transaction = augmentedEvent.getHeader().getEventTransaction();
+
         int currentTask = task.getCurrent();
         int totalTasks = task.getTotal();
 
-        if (transaction != null && !transaction.equals(this.taskTransactionMap.get(currentTask))) {
-            this.taskTransactionMap.put(currentTask, transaction);
+        if (transaction != null && transaction.compareTo(this.taskTransactionMap.get(currentTask)) > 0) {
             this.taskCheckpointMap.put(currentTask, checkpoint);
+            this.taskTransactionMap.put(currentTask, transaction);
             this.totalTasks.set(totalTasks);
         }
     }

@@ -3,7 +3,7 @@ package com.booking.replication.augmenter.model;
 import java.io.Serializable;
 
 @SuppressWarnings("unused")
-public class AugmentedEventTransaction implements Serializable {
+public class AugmentedEventTransaction implements Serializable, Comparable<AugmentedEventTransaction> {
     private long timestamp;
     private String identifier;
     private long xxid;
@@ -32,15 +32,22 @@ public class AugmentedEventTransaction implements Serializable {
     @Override
     public boolean equals(Object object) {
         if (AugmentedEventTransaction.class.isInstance(object)) {
-            AugmentedEventTransaction transaction = AugmentedEventTransaction.class.cast(object);
-
-            if (this.timestamp == transaction.timestamp && this.identifier.equals(transaction.identifier) && this.xxid == transaction.xxid) {
-                return true;
-            } else {
-                return false;
-            }
+            return this.compareTo(AugmentedEventTransaction.class.cast(object)) == 0;
         } else {
             return false;
+        }
+    }
+
+    @Override
+    public int compareTo(AugmentedEventTransaction transaction) {
+        if (transaction != null) {
+            if (this.timestamp == transaction.timestamp) {
+                return Long.compare(this.xxid, transaction.xxid);
+            } else {
+                return Long.compare(this.timestamp, transaction.timestamp);
+            }
+        } else {
+            return Integer.MAX_VALUE;
         }
     }
 }

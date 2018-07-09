@@ -25,6 +25,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +50,8 @@ public class AugmenterContext implements Closeable {
         String DDL_VIEW_PATTERN = "augmenter.context.pattern.ddl.view";
         String DDL_ANALYZE_PATTERN = "augmenter.context.pattern.ddl.analyze";
         String PSEUDO_GTID_PATTERN = "augmenter.context.pattern.pseudo.gtid";
+        String ENUM_PATTERN = "augmenter.context.pattern.enum";
+        String SET_PATTERN = "augmenter.context.pattern.set";
         String EXCLUDE_TABLE = "augmenter.context.exclude.table";
     }
 
@@ -64,6 +67,8 @@ public class AugmenterContext implements Closeable {
     private static final String DEFAULT_DDL_VIEW_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(view)\\s+(\\S+)";
     private static final String DEFAULT_DDL_ANALYZE_PATTERN = "^(/\\*.*?\\*/\\s*)?(analyze)\\s+(table)\\s+(\\S+)";
     private static final String DEFAULT_PSEUDO_GTID_PATTERN = "(?<=_pseudo_gtid_hint__asc\\:)(.{8}\\:.{16}\\:.{8})";
+    private static final String DEFAULT_ENUM_PATTERN = "(?<=enum\\()(.*?)(?=\\))";
+    private static final String DEFAULT_SET_PATTERN = "(?<=set\\()(.*?)(?=\\))";
 
     private final Schema schema;
     private final CurrentTransaction transaction;
@@ -76,6 +81,8 @@ public class AugmenterContext implements Closeable {
     private final Pattern ddlViewPattern;
     private final Pattern ddlAnalyzePattern;
     private final Pattern pseudoGTIDPattern;
+    private final Pattern enumPattern;
+    private final Pattern setPattern;
 
     private final List<String> excludeTableList;
 
@@ -113,6 +120,8 @@ public class AugmenterContext implements Closeable {
         this.ddlViewPattern = this.getPattern(configuration, Configuration.DDL_VIEW_PATTERN, AugmenterContext.DEFAULT_DDL_VIEW_PATTERN);
         this.ddlAnalyzePattern = this.getPattern(configuration, Configuration.DDL_ANALYZE_PATTERN, AugmenterContext.DEFAULT_DDL_ANALYZE_PATTERN);
         this.pseudoGTIDPattern = this.getPattern(configuration, Configuration.PSEUDO_GTID_PATTERN, AugmenterContext.DEFAULT_PSEUDO_GTID_PATTERN);
+        this.enumPattern = this.getPattern(configuration, Configuration.ENUM_PATTERN, AugmenterContext.DEFAULT_ENUM_PATTERN);
+        this.setPattern = this.getPattern(configuration, Configuration.SET_PATTERN, AugmenterContext.DEFAULT_SET_PATTERN);
         this.excludeTableList = this.getList(configuration.get(Configuration.EXCLUDE_TABLE));
 
         this.timestamp = new AtomicLong();
@@ -557,9 +566,10 @@ public class AugmenterContext implements Closeable {
         if (eventTable != null) {
             List<Map<String, Serializable>> rowList = new ArrayList<>();
             List<AugmentedEventColumn> columns = this.schema.listColumns(eventTable.getName());
+            Map<String, String[]> cache = this.getCache(columns);
 
             for (Serializable[] row : rows) {
-                rowList.add(this.getRow(columns, includedColumns, row));
+                rowList.add(this.getRow(columns, includedColumns, row, cache));
             }
 
             return rowList;
@@ -574,11 +584,12 @@ public class AugmenterContext implements Closeable {
         if (eventTable != null) {
             List<AugmentedEventUpdatedRow> rowList = new ArrayList<>();
             List<AugmentedEventColumn> columns = this.schema.listColumns(eventTable.getName());
+            Map<String, String[]> cache = this.getCache(columns);
 
             for (Map.Entry<Serializable[], Serializable[]> row : rows) {
                 rowList.add(new AugmentedEventUpdatedRow(
-                        this.getRow(columns, includedColumns, row.getKey()),
-                        this.getRow(columns, includedColumns, row.getValue())
+                        this.getRow(columns, includedColumns, row.getKey(), cache),
+                        this.getRow(columns, includedColumns, row.getValue(), cache)
                 ));
             }
 
@@ -588,16 +599,80 @@ public class AugmenterContext implements Closeable {
         }
     }
 
-    private Map<String, Serializable> getRow(List<AugmentedEventColumn> columns, BitSet includedColumns, Serializable[] row) {
+    private Map<String, Serializable> getRow(List<AugmentedEventColumn> columns, BitSet includedColumns, Serializable[] row, Map<String, String[]> cache) {
         Map<String, Serializable> rowMap = new LinkedHashMap<>();
 
-        for (int columnIndex = 0, rowIndex = 0; columnIndex < columns.size() && rowIndex < row.length; columnIndex++) {
-            if (includedColumns.get(columnIndex)) {
-                rowMap.put(columns.get(columnIndex).getName(), row[rowIndex++]);
+        if (columns != null) {
+            for (int columnIndex = 0, rowIndex = 0; columnIndex < columns.size() && rowIndex < row.length; columnIndex++) {
+                if (includedColumns.get(columnIndex)) {
+                    String columnName = columns.get(columnIndex).getName();
+                    String columnType = columns.get(columnIndex).getType().toLowerCase();
+                    Serializable cellValue = row[rowIndex++];
+
+                    if (cache.containsKey(columnType)) {
+                        if (columnType.startsWith("enum")) {
+                            int index = Number.class.cast(cellValue).intValue();
+
+                            if (index > 0) {
+                                cellValue = cache.get(columnType)[index - 1];
+                            } else {
+                                cellValue = null;
+                            }
+                        } else if (columnType.startsWith("set")) {
+                            long bits = Number.class.cast(cellValue).longValue();
+
+                            if (bits > 0) {
+                                String[] members = cache.get(columnType);
+                                List<String> items = new ArrayList<>();
+
+                                for (int index = 0; index < members.length; index++) {
+                                    if (((bits >> index) & 1) == 1) {
+                                        items.add(members[index]);
+                                    }
+                                }
+
+                                cellValue = items.toArray(new String[0]);
+                            } else {
+                                cellValue = null;
+                            }
+                        }
+                    }
+
+                    rowMap.put(columnName, cellValue);
+                }
+            }
+        } else {
+            for (Serializable cell : row) {
+                rowMap.put("unknown", cell);
             }
         }
 
         return rowMap;
+    }
+
+    private Map<String, String[]> getCache(List<AugmentedEventColumn> columns) {
+        Matcher matcher;
+        Map<String, String[]> cache = new HashMap<>();
+
+        for (AugmentedEventColumn column : columns) {
+            String columnType = column.getType().toLowerCase();
+
+            if (((matcher = this.enumPattern.matcher(columnType)).find() && matcher.groupCount() > 0) || ((matcher = this.setPattern.matcher(columnType)).find() && matcher.groupCount() > 0)) {
+                String[] members = matcher.group(0).split(",");
+
+                if (members.length > 0) {
+                    for (int index = 0; index < members.length; index++) {
+                        if (members[index].startsWith("'") && members[index].endsWith("'")) {
+                            members[index] = members[index].substring(1, members[index].length() - 1);
+                        }
+                    }
+
+                    cache.put(columnType, members);
+                }
+            }
+        }
+
+        return cache;
     }
 
     @Override

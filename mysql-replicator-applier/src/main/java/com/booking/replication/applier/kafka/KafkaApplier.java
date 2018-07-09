@@ -65,6 +65,7 @@ public class KafkaApplier implements Applier {
             ).send(new ProducerRecord<>(
                     this.topic,
                     partition,
+                    augmentedEvent.getHeader().getTimestamp(),
                     KafkaApplier.MAPPER.writeValueAsBytes(augmentedEvent.getHeader()),
                     KafkaApplier.MAPPER.writeValueAsBytes(augmentedEvent.getData())
             ));

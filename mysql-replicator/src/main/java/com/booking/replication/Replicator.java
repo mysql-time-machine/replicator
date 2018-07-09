@@ -199,7 +199,7 @@ public class Replicator {
             this.metricsApplier.close();
 
             Replicator.LOG.log(Level.INFO, "closing checkpoint applier");
-        this.checkpointApplier.close();
+            this.checkpointApplier.close();
         } catch (IOException exception) {
             Replicator.LOG.log(Level.SEVERE, "error stopping coordinator", exception);
         }

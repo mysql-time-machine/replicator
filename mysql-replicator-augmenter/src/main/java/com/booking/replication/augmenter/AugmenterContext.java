@@ -560,11 +560,11 @@ public class AugmenterContext implements Closeable {
         }
     }
 
-    public List<Map<String, Serializable>> getRows(long tableId, BitSet includedColumns, List<Serializable[]> rows) {
+    public List<Map<String, Object>> getRows(long tableId, BitSet includedColumns, List<Serializable[]> rows) {
         AugmentedEventTable eventTable = this.getEventTable(tableId);
 
         if (eventTable != null) {
-            List<Map<String, Serializable>> rowList = new ArrayList<>();
+            List<Map<String, Object>> rowList = new ArrayList<>();
             List<AugmentedEventColumn> columns = this.schema.listColumns(eventTable.getName());
             Map<String, String[]> cache = this.getCache(columns);
 
@@ -599,8 +599,8 @@ public class AugmenterContext implements Closeable {
         }
     }
 
-    private Map<String, Serializable> getRow(List<AugmentedEventColumn> columns, BitSet includedColumns, Serializable[] row, Map<String, String[]> cache) {
-        Map<String, Serializable> rowMap = new LinkedHashMap<>();
+    private Map<String, Object> getRow(List<AugmentedEventColumn> columns, BitSet includedColumns, Serializable[] row, Map<String, String[]> cache) {
+        Map<String, Object> rowMap = new LinkedHashMap<>();
 
         if (columns != null) {
             for (int columnIndex = 0, rowIndex = 0; columnIndex < columns.size() && rowIndex < row.length; columnIndex++) {

@@ -1,6 +1,5 @@
 package com.booking.replication.augmenter.model;
 
-import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
@@ -9,12 +8,12 @@ public class WriteRowsAugmentedEventData implements TableAugmentedEventData {
     private AugmentedEventTable eventTable;
     private List<Boolean> includedColumns;
     private List<AugmentedEventColumn> columns;
-    private List<Map<String, Serializable>> rows;
+    private List<Map<String, Object>> rows;
 
     public WriteRowsAugmentedEventData() {
     }
 
-    public WriteRowsAugmentedEventData(AugmentedEventTable eventTable, List<Boolean> includedColumns, List<AugmentedEventColumn> columns, List<Map<String, Serializable>> rows) {
+    public WriteRowsAugmentedEventData(AugmentedEventTable eventTable, List<Boolean> includedColumns, List<AugmentedEventColumn> columns, List<Map<String, Object>> rows) {
         this.eventTable = eventTable;
         this.includedColumns = includedColumns;
         this.columns = columns;
@@ -34,7 +33,7 @@ public class WriteRowsAugmentedEventData implements TableAugmentedEventData {
         return this.columns;
     }
 
-    public List<Map<String, Serializable>> getRows() {
+    public List<Map<String, Object>> getRows() {
         return this.rows;
     }
 }

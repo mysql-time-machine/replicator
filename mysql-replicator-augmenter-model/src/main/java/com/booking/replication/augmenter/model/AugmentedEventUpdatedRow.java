@@ -5,22 +5,22 @@ import java.util.Map;
 
 @SuppressWarnings("unused")
 public class AugmentedEventUpdatedRow implements Serializable {
-    private Map<String, Serializable> before;
-    private Map<String, Serializable> after;
+    private Map<String, Object> before;
+    private Map<String, Object> after;
 
     public AugmentedEventUpdatedRow() {
     }
 
-    public AugmentedEventUpdatedRow(Map<String, Serializable> before, Map<String, Serializable> after) {
+    public AugmentedEventUpdatedRow(Map<String, Object> before, Map<String, Object> after) {
         this.before = before;
         this.after = after;
     }
 
-    public Map<String, Serializable> getBefore() {
+    public Map<String, Object> getBefore() {
         return this.before;
     }
 
-    public Map<String, Serializable> getAfter() {
+    public Map<String, Object> getAfter() {
         return this.after;
     }
 }

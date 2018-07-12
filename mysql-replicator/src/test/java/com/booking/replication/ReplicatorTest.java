@@ -8,6 +8,7 @@ import com.booking.replication.applier.kafka.KafkaSeeker;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.AugmenterContext;
 import com.booking.replication.augmenter.ActiveSchema;
+import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.augmenter.model.AugmentedEventData;
 import com.booking.replication.augmenter.model.AugmentedEventHeader;
 import com.booking.replication.checkpoint.CheckpointApplier;
@@ -38,7 +39,6 @@ import java.util.logging.Logger;
 
 public class ReplicatorTest {
     private static final Logger LOG = Logger.getLogger(ReplicatorTest.class.getName());
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private static final String ZOOKEEPER_LEADERSHIP_PATH = "/replicator/leadership";
     private static final String ZOOKEEPER_CHECKPOINT_PATH = "/replicator/checkpoint";
@@ -129,14 +129,9 @@ public class ReplicatorTest {
 
             while (!consumed) {
                 for (ConsumerRecord<byte[], byte[]> record : consumer.poll(1000L)) {
-                    AugmentedEventHeader header = ReplicatorTest.MAPPER.readValue(record.key(), AugmentedEventHeader.class);
-                    AugmentedEventData data = ReplicatorTest.MAPPER.readValue(record.value(), header.getEventType().getDefinition());
+                    AugmentedEvent augmentedEvent = AugmentedEvent.fromJSON(record.key(), record.value());
 
-                    ReplicatorTest.LOG.log(Level.INFO, String.format(
-                            "%s:%s",
-                            ReplicatorTest.MAPPER.writeValueAsString(header),
-                            ReplicatorTest.MAPPER.writeValueAsString(data)
-                    ));
+                    ReplicatorTest.LOG.log(Level.INFO, new String(augmentedEvent.toJSON()));
 
                     consumed = true;
                 }

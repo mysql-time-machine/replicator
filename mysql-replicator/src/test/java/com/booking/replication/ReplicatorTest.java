@@ -30,6 +30,8 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -76,6 +78,41 @@ public class ReplicatorTest {
 
     @Test
     public void testReplicator() throws Exception {
+
+        Map<String, Object> configuration = getTestConfiguration();
+
+        Replicator replicator = new Replicator(configuration);
+
+        replicator.start();
+
+        replicator.wait(1L, TimeUnit.MINUTES);
+
+        Map<String, Object> kafkaConfiguration = new HashMap<>();
+
+        kafkaConfiguration.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, ReplicatorTest.kafka.getURL());
+        kafkaConfiguration.put(ConsumerConfig.GROUP_ID_CONFIG, ReplicatorTest.KAFKA_REPLICATOR_IT_GROUP_ID);
+        kafkaConfiguration.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        try (Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(kafkaConfiguration, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
+            consumer.subscribe(Collections.singleton(ReplicatorTest.KAFKA_REPLICATOR_TOPIC_NAME));
+
+            boolean consumed = false;
+
+            while (!consumed) {
+                for (ConsumerRecord<byte[], byte[]> record : consumer.poll(1000L)) {
+                    AugmentedEvent augmentedEvent = AugmentedEvent.fromJSON(record.key(), record.value());
+
+                    ReplicatorTest.LOG.log(Level.INFO, new String(augmentedEvent.toJSON()));
+
+                    consumed = true;
+                }
+            }
+        }
+
+        replicator.stop();
+    }
+
+    private Map<String, Object> getTestConfiguration() throws Exception {
         Map<String, Object> configuration = new HashMap<>();
 
         configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, ReplicatorTest.zookeeper.getURL());
@@ -109,36 +146,7 @@ public class ReplicatorTest {
         configuration.put(Replicator.Configuration.REPLICATOR_TASKS, String.valueOf(ReplicatorTest.KAFKA_TOPIC_PARTITIONS));
 
         ReplicatorTest.LOG.log(Level.INFO, new ObjectMapper(new YAMLFactory()).writeValueAsString(configuration));
-
-        Replicator replicator = new Replicator(configuration);
-
-        replicator.start();
-
-        replicator.wait(1L, TimeUnit.MINUTES);
-
-        Map<String, Object> kafkaConfiguration = new HashMap<>();
-
-        kafkaConfiguration.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, ReplicatorTest.kafka.getURL());
-        kafkaConfiguration.put(ConsumerConfig.GROUP_ID_CONFIG, ReplicatorTest.KAFKA_REPLICATOR_IT_GROUP_ID);
-        kafkaConfiguration.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-
-        try (Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(kafkaConfiguration, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
-            consumer.subscribe(Collections.singleton(ReplicatorTest.KAFKA_REPLICATOR_TOPIC_NAME));
-
-            boolean consumed = false;
-
-            while (!consumed) {
-                for (ConsumerRecord<byte[], byte[]> record : consumer.poll(1000L)) {
-                    AugmentedEvent augmentedEvent = AugmentedEvent.fromJSON(record.key(), record.value());
-
-                    ReplicatorTest.LOG.log(Level.INFO, new String(augmentedEvent.toJSON()));
-
-                    consumed = true;
-                }
-            }
-        }
-
-        replicator.stop();
+        return configuration;
     }
 
     @AfterClass

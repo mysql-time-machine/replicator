@@ -1,6 +1,7 @@
 package com.booking.replication.applier;
 
 import com.booking.replication.applier.console.ConsoleApplier;
+import com.booking.replication.applier.hbase.HBaseApplier;
 import com.booking.replication.applier.kafka.KafkaApplier;
 import com.booking.replication.augmenter.model.AugmentedEvent;
 
@@ -15,6 +16,12 @@ public interface Applier extends Consumer<AugmentedEvent>, Closeable {
             @Override
             protected Applier newInstance(Map<String, Object> configuration) {
                 return new ConsoleApplier(configuration);
+            }
+        },
+        HBASE {
+            @Override
+            protected Applier newInstance(Map<String, Object> configuration) {
+                return new HBaseApplier(configuration);
             }
         },
         KAFKA {
@@ -37,7 +44,7 @@ public interface Applier extends Consumer<AugmentedEvent>, Closeable {
 
     static Applier build(Map<String, Object> configuration) {
         return Type.valueOf(
-                configuration.getOrDefault(Configuration.TYPE, Type.CONSOLE.name()).toString()
+                configuration.getOrDefault(Configuration.TYPE, Type.HBASE.name()).toString()
         ).newInstance(configuration);
     }
 }

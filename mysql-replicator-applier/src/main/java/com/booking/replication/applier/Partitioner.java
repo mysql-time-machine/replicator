@@ -35,6 +35,12 @@ public interface Partitioner extends BiFunction<AugmentedEvent, Integer, Integer
             protected Partitioner newInstance(Map<String, Object> configuration) {
                 return (augmentedEvent, totalPartitions) -> ThreadLocalRandom.current().nextInt(totalPartitions);
             }
+        },
+        NONE {
+            @Override
+            protected  Partitioner newInstance(Map<String, Object> configuration) {
+                return (augmentedEvent, totalPartitions) -> 0;
+            }
         };
 
         protected abstract Partitioner newInstance(Map<String, Object> configuration);

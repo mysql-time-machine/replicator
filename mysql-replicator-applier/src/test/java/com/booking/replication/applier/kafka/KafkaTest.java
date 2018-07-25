@@ -92,7 +92,7 @@ public class KafkaTest {
 
         try (Applier applier = Applier.build(configuration)) {
             for (AugmentedEvent event : KafkaTest.events) {
-                applier.accept(event);
+                applier.apply(event);
             }
         }
     }

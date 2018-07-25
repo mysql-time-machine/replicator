@@ -4,10 +4,9 @@ import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.augmenter.model.AugmentedEventTransaction;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
-import java.util.Queue;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -18,26 +17,28 @@ public class CurrentTransaction {
     private final AtomicBoolean started;
     private final AtomicBoolean resuming;
     private final AtomicReference<UUID> identifier;
-    private final AtomicReference<Queue<AugmentedEvent>> eventQueue;
+    private final AtomicReference<Collection<AugmentedEvent>> buffer;
     private final AtomicLong xxid;
     private final AtomicLong timestamp;
-    private final int sizeLimit;
+    private final Class<?> bufferClass;
+    private final int bufferSizeLimit;
 
-    public CurrentTransaction(int sizeLimit) {
+    public CurrentTransaction(String bufferClass, int bufferSizeLimit) {
         this.started = new AtomicBoolean();
         this.resuming = new AtomicBoolean();
         this.identifier = new AtomicReference<>();
-        this.eventQueue = new AtomicReference<>();
+        this.buffer = new AtomicReference<>();
         this.xxid = new AtomicLong();
         this.timestamp = new AtomicLong();
-        this.sizeLimit = sizeLimit;
+        this.bufferClass = this.getBufferClass(bufferClass);
+        this.bufferSizeLimit = bufferSizeLimit;
     }
 
     public boolean begin() {
         if (!this.started.getAndSet(true)) {
             if (!this.resuming.get()) {
                 this.identifier.set(UUID.randomUUID());
-                this.eventQueue.set(new ConcurrentLinkedQueue<>());
+                this.buffer.set(this.getBufferInstance());
                 this.xxid.set(0L);
                 this.timestamp.set(0L);
             }
@@ -50,15 +51,15 @@ public class CurrentTransaction {
 
     public boolean add(AugmentedEvent event) {
         if (this.started.get() && !this.sizeLimitExceeded()) {
-            return this.eventQueue.get().add(event);
+            return this.buffer.get().add(event);
         } else {
             return false;
         }
     }
 
     public List<AugmentedEvent> clean() {
-        if (this.eventQueue.get() != null) {
-            Queue<AugmentedEvent> augmentedEventQueue = this.eventQueue.getAndSet((this.resuming.get())?(new ConcurrentLinkedQueue<>()):(null));
+        if (this.buffer.get() != null) {
+            Collection<AugmentedEvent> augmentedEventQueue = this.buffer.getAndSet((this.resuming.get())?(this.getBufferInstance()):(null));
             List<AugmentedEvent> augmentedEventList = new ArrayList<>();
 
             for (AugmentedEvent augmentedEvent : augmentedEventQueue) {
@@ -91,7 +92,7 @@ public class CurrentTransaction {
 
     public void rewind() {
         this.resuming.set(true);
-        this.eventQueue.set(new ConcurrentLinkedQueue<>());
+        this.buffer.set(this.getBufferInstance());
     }
 
     public boolean commit(long timestamp) {
@@ -107,10 +108,27 @@ public class CurrentTransaction {
     }
 
     public boolean committed() {
-        return !this.started.get() && !this.resuming.get() && this.eventQueue.get() != null;
+        return !this.started.get() && !this.resuming.get() && this.buffer.get() != null;
     }
 
     public boolean sizeLimitExceeded() {
-        return this.eventQueue.get() != null && this.eventQueue.get().size() >= this.sizeLimit;
+        return this.buffer.get() != null && this.buffer.get().size() >= this.bufferSizeLimit;
+    }
+
+    private Class<?> getBufferClass(String bufferClass) {
+        try {
+            return Class.forName(bufferClass);
+        } catch (ClassNotFoundException exception) {
+            throw new RuntimeException(exception);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Collection<AugmentedEvent> getBufferInstance() {
+        try {
+            return (Collection<AugmentedEvent>) this.bufferClass.newInstance();
+        } catch (ReflectiveOperationException exception) {
+            throw new RuntimeException(exception);
+        }
     }
 }

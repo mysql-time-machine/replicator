@@ -21,7 +21,10 @@ public class StreamsTest {
                     count1.incrementAndGet();
                     return ThreadLocalRandom.current().nextInt();
                 })
-                .to((value) -> count2.incrementAndGet())
+                .to((value) -> {
+                    count2.incrementAndGet();
+                    return true;
+                })
                 .build()
                 .start()
                 .wait(1L, TimeUnit.SECONDS)
@@ -42,6 +45,7 @@ public class StreamsTest {
                 .to((value) -> {
                     count1.incrementAndGet();
                     assertEquals(number, value.intValue());
+                    return true;
                 })
                 .build()
                 .start();
@@ -72,6 +76,7 @@ public class StreamsTest {
                 .to((value) -> {
                     count2.incrementAndGet();
                     assertTrue(value > 0);
+                    return true;
                 })
                 .build()
                 .start()
@@ -96,6 +101,7 @@ public class StreamsTest {
                 .to((value) -> {
                     count2.incrementAndGet();
                     assertTrue(String.class.isInstance(value));
+                    return true;
                 })
                 .build()
                 .start()
@@ -121,6 +127,7 @@ public class StreamsTest {
                 .to((value) -> {
                     count2.incrementAndGet();
                     assertTrue(value.startsWith("value="));
+                    return true;
                 })
                 .build()
                 .start()
@@ -145,7 +152,10 @@ public class StreamsTest {
                 })
                 .process(Object::toString)
                 .process((value) -> String.format("value=%s", value))
-                .to((value) -> count2.incrementAndGet())
+                .to((value) -> {
+                    count2.incrementAndGet();
+                    return true;
+                })
                 .build()
                 .start();
 
@@ -180,10 +190,12 @@ public class StreamsTest {
                 .to((value) -> {
                     count2.incrementAndGet();
                     assertTrue(String.class.isInstance(value));
+                    return true;
                 })
                 .to((value) -> {
                     count3.incrementAndGet();
                     assertTrue(Integer.parseInt(value) > 0);
+                    return true;
                 })
                 .build()
                 .start()
@@ -216,6 +228,7 @@ public class StreamsTest {
                 .to((value) -> {
                     count2.incrementAndGet();
                     assertTrue(String.class.isInstance(value));
+                    return true;
                 })
                 .post((value) -> {
                     count3.incrementAndGet();
@@ -260,7 +273,10 @@ public class StreamsTest {
                 .threads(10)
                 .queue()
                 .fromPush()
-                .to(output -> count3.incrementAndGet())
+                .to(output -> {
+                    count3.incrementAndGet();
+                    return true;
+                })
                 .post(input -> count4.incrementAndGet())
                 .build();
 

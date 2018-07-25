@@ -30,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -40,7 +41,8 @@ import java.util.regex.Pattern;
 
 public class AugmenterContext implements Closeable {
     public interface Configuration {
-        String TRANSACTION_LIMIT = "augmenter.context.transaction.limit";
+        String TRANSACTION_BUFFER_CLASS = "augmenter.context.transaction.buffer.class";
+        String TRANSACTION_BUFFER_LIMIT = "augmenter.context.transaction.buffer.limit";
         String GTID_TYPE = "augmenter.context.gtid.type";
         String BEGIN_PATTERN = "augmenter.context.pattern.begin";
         String COMMIT_PATTERN = "augmenter.context.pattern.commit";
@@ -111,7 +113,10 @@ public class AugmenterContext implements Closeable {
 
     public AugmenterContext(Schema schema, Map<String, Object> configuration) {
         this.schema = schema;
-        this.transaction = new CurrentTransaction(Integer.parseInt(configuration.getOrDefault(Configuration.TRANSACTION_LIMIT, String.valueOf(AugmenterContext.DEFAULT_TRANSACTION_LIMIT)).toString()));
+        this.transaction = new CurrentTransaction(
+                configuration.getOrDefault(Configuration.TRANSACTION_BUFFER_CLASS, ConcurrentLinkedQueue.class.getName()).toString(),
+                Integer.parseInt(configuration.getOrDefault(Configuration.TRANSACTION_BUFFER_LIMIT, String.valueOf(AugmenterContext.DEFAULT_TRANSACTION_LIMIT)).toString())
+        );
         this.beginPattern = this.getPattern(configuration, Configuration.BEGIN_PATTERN, AugmenterContext.DEFAULT_BEGIN_PATTERN);
         this.commitPattern = this.getPattern(configuration, Configuration.COMMIT_PATTERN, AugmenterContext.DEFAULT_COMMIT_PATTERN);
         this.ddlDefinerPattern = this.getPattern(configuration, Configuration.DDL_DEFINER_PATTERN, AugmenterContext.DEFAULT_DDL_DEFINER_PATTERN);

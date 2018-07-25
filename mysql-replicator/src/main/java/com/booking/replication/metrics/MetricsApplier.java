@@ -9,9 +9,9 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
+import java.util.function.Function;
 
-public abstract class MetricsApplier<CloseableReporter extends Closeable & Reporter> implements Consumer<AugmentedEvent>, Closeable {
+public abstract class MetricsApplier<CloseableReporter extends Closeable & Reporter> implements Function<AugmentedEvent, Boolean>, Closeable {
     public enum Type {
         CONSOLE {
             @Override
@@ -65,10 +65,12 @@ public abstract class MetricsApplier<CloseableReporter extends Closeable & Repor
     }
 
     @Override
-    public void accept(AugmentedEvent event) {
+    public Boolean apply(AugmentedEvent event) {
         this.registry.histogram(this.delayName).update(
                 System.currentTimeMillis() - event.getHeader().getTimestamp()
         );
+
+        return true;
     }
 
     @Override

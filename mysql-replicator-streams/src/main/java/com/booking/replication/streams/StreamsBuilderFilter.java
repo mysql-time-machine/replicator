@@ -1,13 +1,12 @@
 package com.booking.replication.streams;
 
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
 public interface StreamsBuilderFilter<Input, Output> {
     StreamsBuilderFilter<Input, Output> filter(Predicate<Input> filter);
 
-    <To> StreamsBuilderTo<Input, To> process(Function<Output, To> processor);
+    <To> StreamsBuilderTo<Input, To> process(Function<Output, To> process);
 
-    StreamsBuilderPost<Input, Output> to(Consumer<Output> consumer);
+    StreamsBuilderPost<Input, Output> to(Function<Output, Boolean> to);
 }

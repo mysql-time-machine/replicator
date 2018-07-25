@@ -97,6 +97,8 @@ public class Replicator {
                     for (AugmentedEvent event : eventList) {
                         this.streamsApplier.push(event);
                     }
+
+                    return true;
                 }).build();
 
         Consumer<Exception> exceptionHandle = (exception) -> {

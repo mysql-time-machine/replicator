@@ -56,7 +56,7 @@ public class KafkaApplier implements Applier {
     }
 
     @Override
-    public void accept(AugmentedEvent augmentedEvent) {
+    public Boolean apply(AugmentedEvent augmentedEvent) {
         try {
             int partition = this.partitioner.apply(augmentedEvent, this.totalPartitions);
 
@@ -69,6 +69,8 @@ public class KafkaApplier implements Applier {
                     KafkaApplier.MAPPER.writeValueAsBytes(augmentedEvent.getHeader()),
                     KafkaApplier.MAPPER.writeValueAsBytes(augmentedEvent.getData())
             ));
+
+            return true;
         } catch (JsonProcessingException exception) {
             throw new UncheckedIOException(exception);
         }

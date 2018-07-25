@@ -21,7 +21,7 @@ public class HBaseApplier implements Applier {
     }
 
     @Override
-    public void accept(AugmentedEvent augmentedEvent) {
+    public Boolean  apply(AugmentedEvent augmentedEvent) {
         try {
             com.booking.replication.applier.hbase.HBaseApplier.LOG.info(
                     com.booking.replication.applier.hbase.HBaseApplier.MAPPER.writeValueAsString(augmentedEvent)
@@ -29,5 +29,7 @@ public class HBaseApplier implements Applier {
         } catch (JsonProcessingException exception) {
             com.booking.replication.applier.hbase.HBaseApplier.LOG.error("error converting to json", exception);
         }
+
+        return true;
     }
 }

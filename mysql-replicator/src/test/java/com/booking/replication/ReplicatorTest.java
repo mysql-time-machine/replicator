@@ -78,10 +78,7 @@ public class ReplicatorTest {
 
     @Test
     public void testReplicator() throws Exception {
-
-        Map<String, Object> configuration = getTestConfiguration();
-
-        Replicator replicator = new Replicator(configuration);
+        Replicator replicator = new Replicator(this.getConfiguration());
 
         replicator.start();
 
@@ -112,7 +109,7 @@ public class ReplicatorTest {
         replicator.stop();
     }
 
-    private Map<String, Object> getTestConfiguration() throws Exception {
+    private Map<String, Object> getConfiguration() {
         Map<String, Object> configuration = new HashMap<>();
 
         configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, ReplicatorTest.zookeeper.getURL());
@@ -127,33 +124,24 @@ public class ReplicatorTest {
         configuration.put(ActiveSchema.Configuration.MYSQL_SCHEMA, ReplicatorTest.MYSQL_ACTIVE_SCHEMA);
         configuration.put(ActiveSchema.Configuration.MYSQL_USERNAME, ReplicatorTest.MYSQL_ROOT_USERNAME);
         configuration.put(ActiveSchema.Configuration.MYSQL_PASSWORD, ReplicatorTest.MYSQL_PASSWORD);
-        configuration.put(AugmenterContext.Configuration.TRANSACTION_LIMIT, String.valueOf(ReplicatorTest.TRANSACTION_LIMIT));
-
-//        configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorTest.kafka.getURL());
-//        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorTest.kafka.getURL());
-//        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.GROUP_ID_CONFIG), ReplicatorTest.KAFKA_REPLICATOR_GROUP_ID);
-//        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.AUTO_OFFSET_RESET_CONFIG), "earliest");
-//        configuration.put(KafkaApplier.Configuration.TOPIC, ReplicatorTest.KAFKA_REPLICATOR_TOPIC_NAME);
-//        configuration.put(Seeker.Configuration.TYPE, Seeker.Type.KAFKA.name());
-
+        configuration.put(AugmenterContext.Configuration.TRANSACTION_BUFFER_LIMIT, String.valueOf(ReplicatorTest.TRANSACTION_LIMIT));
+        configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorTest.kafka.getURL());
+        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorTest.kafka.getURL());
+        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.GROUP_ID_CONFIG), ReplicatorTest.KAFKA_REPLICATOR_GROUP_ID);
+        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.AUTO_OFFSET_RESET_CONFIG), "earliest");
+        configuration.put(KafkaApplier.Configuration.TOPIC, ReplicatorTest.KAFKA_REPLICATOR_TOPIC_NAME);
         configuration.put(Coordinator.Configuration.TYPE, Coordinator.Type.ZOOKEEPER.name());
-
         configuration.put(Supplier.Configuration.TYPE, Supplier.Type.BINLOG.name());
-
         configuration.put(Augmenter.Configuration.SCHEMA_TYPE, Augmenter.SchemaType.ACTIVE.name());
-
+        configuration.put(Seeker.Configuration.TYPE, Seeker.Type.KAFKA.name());
         configuration.put(Partitioner.Configuration.TYPE, Partitioner.Type.TABLE_NAME.name());
-
-        configuration.put(Applier.Configuration.TYPE, Applier.Type.CONSOLE.name());
-
+        configuration.put(Applier.Configuration.TYPE, Applier.Type.KAFKA.name());
         configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name());
-
         configuration.put(Replicator.Configuration.CHECKPOINT_PATH, ReplicatorTest.ZOOKEEPER_CHECKPOINT_PATH);
         configuration.put(Replicator.Configuration.CHECKPOINT_DEFAULT, ReplicatorTest.CHECKPOINT_DEFAULT);
         configuration.put(Replicator.Configuration.REPLICATOR_THREADS, String.valueOf(ReplicatorTest.KAFKA_TOPIC_PARTITIONS));
         configuration.put(Replicator.Configuration.REPLICATOR_TASKS, String.valueOf(ReplicatorTest.KAFKA_TOPIC_PARTITIONS));
 
-        ReplicatorTest.LOG.log(Level.INFO, new ObjectMapper(new YAMLFactory()).writeValueAsString(configuration));
         return configuration;
     }
 

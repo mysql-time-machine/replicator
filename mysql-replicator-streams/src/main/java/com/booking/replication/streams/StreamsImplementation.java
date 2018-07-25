@@ -27,7 +27,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     private final BiConsumer<Integer, Input> requeue;
     private final Predicate<Input> filter;
     private final Function<Input, Output> process;
-    private final Consumer<Output> to;
+    private final Function<Output, Boolean> to;
     private final BiConsumer<Input, Integer> post;
     private final AtomicBoolean running;
     private final AtomicBoolean handling;
@@ -36,7 +36,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     private Consumer<Exception> handler;
 
     @SuppressWarnings("unchecked")
-    StreamsImplementation(int threads, int tasks, BiFunction<Input, Integer, Integer> partitioner, Class<? extends Deque> queueType, Function<Integer, Input> from, Predicate<Input> filter, Function<Input, Output> process, Consumer<Output> to, BiConsumer<Input, Integer> post) {
+    StreamsImplementation(int threads, int tasks, BiFunction<Input, Integer, Integer> partitioner, Class<? extends Deque> queueType, Function<Integer, Input> from, Predicate<Input> filter, Function<Input, Output> process, Function<Output, Boolean> to, BiConsumer<Input, Integer> post) {
         this.threads = threads + 1;
         this.tasks = tasks;
 
@@ -73,7 +73,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
 
         this.filter = (filter != null)?(filter):(input -> true);
         this.process = (process != null)?(process):(input -> (Output) input);
-        this.to = (to != null)?(to):(output -> {});
+        this.to = (to != null)?(to):(output -> true);
         this.post = (post != null)?(post):((output, executing) -> {});
         this.running = new AtomicBoolean();
         this.handling = new AtomicBoolean();
@@ -84,8 +84,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
         if (input != null && this.filter.test(input)) {
             Output output = this.process.apply(input);
 
-            if (output != null) {
-                this.to.accept(output);
+            if (output != null && this.to.apply(output)) {
                 this.post.accept(input, task);
             }
         }

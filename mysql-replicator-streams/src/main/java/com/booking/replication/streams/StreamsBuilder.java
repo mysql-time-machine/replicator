@@ -25,7 +25,7 @@ public final class StreamsBuilder<Input, Output> implements
     private Function<Integer, Input> from;
     private Predicate<Input> filter;
     private Function<Input, Output> process;
-    private Consumer<Output> to;
+    private Function<Output, Boolean> to;
     private BiConsumer<Input, Integer> post;
 
     private StreamsBuilder(
@@ -36,7 +36,7 @@ public final class StreamsBuilder<Input, Output> implements
             Function<Integer, Input> from,
             Predicate<Input> filter,
             Function<Input, Output> process,
-            Consumer<Output> to,
+            Function<Output, Boolean> to,
             BiConsumer<Input, Integer> post) {
         this.threads = threads;
         this.tasks = tasks;
@@ -106,15 +106,15 @@ public final class StreamsBuilder<Input, Output> implements
     }
 
     @Override
-    public final StreamsBuilderFilter<Input, Output> filter(Predicate<Input> predicate) {
-        Objects.requireNonNull(predicate);
+    public final StreamsBuilderFilter<Input, Output> filter(Predicate<Input> filter) {
+        Objects.requireNonNull(filter);
         return new StreamsBuilder<>(
                 this.threads,
                 this.tasks,
                 this.partitioner,
                 this.queueType,
                 this.from,
-                input -> (this.filter == null || this.filter.test(input)) && predicate.test(input),
+                input -> (this.filter == null || this.filter.test(input)) && filter.test(input),
                 null,
                 null,
                 null
@@ -123,8 +123,8 @@ public final class StreamsBuilder<Input, Output> implements
 
     @Override
     @SuppressWarnings("unchecked")
-    public final <To> StreamsBuilderTo<Input, To> process(Function<Output, To> function) {
-        Objects.requireNonNull(function);
+    public final <To> StreamsBuilderTo<Input, To> process(Function<Output, To> process) {
+        Objects.requireNonNull(process);
         return new StreamsBuilder<>(
                 this.threads,
                 this.tasks,
@@ -135,7 +135,7 @@ public final class StreamsBuilder<Input, Output> implements
                 input -> {
                     Output output = (this.process != null)?(this.process.apply(input)):((Output) input);
                     if (output != null) {
-                        return function.apply(output);
+                        return process.apply(output);
                     } else {
                         return null;
                     }
@@ -146,8 +146,8 @@ public final class StreamsBuilder<Input, Output> implements
     }
 
     @Override
-    public final StreamsBuilderPost<Input, Output> to(Consumer<Output> consumer) {
-        Objects.requireNonNull(consumer);
+    public final StreamsBuilderPost<Input, Output> to(Function<Output, Boolean> to) {
+        Objects.requireNonNull(to);
         return new StreamsBuilder<>(
                 this.threads,
                 this.tasks,
@@ -157,27 +157,31 @@ public final class StreamsBuilder<Input, Output> implements
                 this.filter,
                 this.process,
                 output -> {
+                    boolean result = true;
+
                     if (this.to != null) {
-                        this.to.accept(output);
+                        result = this.to.apply(output);
                     }
 
-                    if (output != null) {
-                        consumer.accept(output);
+                    if (output != null && result) {
+                        result = to.apply(output);
                     }
+
+                    return result;
                 },
                 null
         );
     }
 
     @Override
-    public final StreamsBuilderBuild<Input, Output> post(Consumer<Input> consumer) {
-        Objects.requireNonNull(consumer);
-        return this.post((input, task) -> consumer.accept(input));
+    public final StreamsBuilderBuild<Input, Output> post(Consumer<Input> post) {
+        Objects.requireNonNull(post);
+        return this.post((input, task) -> post.accept(input));
     }
 
     @Override
-    public final StreamsBuilderBuild<Input, Output> post(BiConsumer<Input, Integer> consumer) {
-        Objects.requireNonNull(consumer);
+    public final StreamsBuilderBuild<Input, Output> post(BiConsumer<Input, Integer> post) {
+        Objects.requireNonNull(post);
         return new StreamsBuilder<>(
                 this.threads,
                 this.tasks,
@@ -193,7 +197,7 @@ public final class StreamsBuilder<Input, Output> implements
                     }
 
                     if (input != null) {
-                        consumer.accept(input, task);
+                        post.accept(input, task);
                     }
                 }
         );

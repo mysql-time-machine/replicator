@@ -18,11 +18,15 @@ public class ConsoleApplier implements Applier {
     }
 
     @Override
-    public void accept(AugmentedEvent augmentedEvent) {
+    public Boolean apply(AugmentedEvent augmentedEvent) {
         try {
             ConsoleApplier.LOG.info(ConsoleApplier.MAPPER.writeValueAsString(augmentedEvent));
+
+            return true;
         } catch (JsonProcessingException exception) {
             ConsoleApplier.LOG.error("error converting to json", exception);
+
+            return false;
         }
     }
 }

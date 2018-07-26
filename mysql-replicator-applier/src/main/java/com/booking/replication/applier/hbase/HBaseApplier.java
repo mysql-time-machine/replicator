@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.Collection;
 import java.util.Map;
 
 public class HBaseApplier implements Applier {
@@ -21,13 +22,13 @@ public class HBaseApplier implements Applier {
     }
 
     @Override
-    public Boolean  apply(AugmentedEvent augmentedEvent) {
+    public Boolean  apply(Collection<AugmentedEvent> events) {
         try {
-            com.booking.replication.applier.hbase.HBaseApplier.LOG.info(
-                    com.booking.replication.applier.hbase.HBaseApplier.MAPPER.writeValueAsString(augmentedEvent)
-            );
+            for (AugmentedEvent event : events) {
+                HBaseApplier.LOG.info(HBaseApplier.MAPPER.writeValueAsString(event));
+            }
         } catch (JsonProcessingException exception) {
-            com.booking.replication.applier.hbase.HBaseApplier.LOG.error("error converting to json", exception);
+            HBaseApplier.LOG.error("error converting to json", exception);
         }
 
         return true;

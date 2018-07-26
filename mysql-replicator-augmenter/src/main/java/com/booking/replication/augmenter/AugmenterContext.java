@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -104,9 +105,9 @@ public class AugmenterContext implements Closeable {
     private final AtomicReference<String> gtidValue;
     private final AtomicReference<Byte> gtidFlags;
 
-    private final AtomicReference<List<AugmentedEventColumn>> columnsBefore;
+    private final AtomicReference<Collection<AugmentedEventColumn>> columnsBefore;
     private final AtomicReference<String> createTableBefore;
-    private final AtomicReference<List<AugmentedEventColumn>> columnsAfter;
+    private final AtomicReference<Collection<AugmentedEventColumn>> columnsAfter;
     private final AtomicReference<String> createTableAfter;
 
     private final Map<Long, AugmentedEventTable> tableIdEventTableMap;
@@ -545,8 +546,8 @@ public class AugmenterContext implements Closeable {
         return this.tableIdEventTableMap.get(tableId);
     }
 
-    public List<Boolean> getIncludedColumns(BitSet includedColumns) {
-        List<Boolean> includedColumnList = new ArrayList<>(includedColumns.length());
+    public Collection<Boolean> getIncludedColumns(BitSet includedColumns) {
+        Collection<Boolean> includedColumnList = new ArrayList<>(includedColumns.length());
 
         for (int index = 0; index < includedColumns.length(); index++) {
             includedColumnList.add(includedColumns.get(index));
@@ -555,7 +556,7 @@ public class AugmenterContext implements Closeable {
         return includedColumnList;
     }
 
-    public List<AugmentedEventColumn> getColumns(long tableId) {
+    public Collection<AugmentedEventColumn> getColumns(long tableId) {
         AugmentedEventTable eventTable = this.getEventTable(tableId);
 
         if (eventTable != null) {
@@ -565,11 +566,11 @@ public class AugmenterContext implements Closeable {
         }
     }
 
-    public List<Map<String, Object>> getRows(long tableId, BitSet includedColumns, List<Serializable[]> rows) {
+    public Collection<Map<String, Object>> getRows(long tableId, BitSet includedColumns, List<Serializable[]> rows) {
         AugmentedEventTable eventTable = this.getEventTable(tableId);
 
         if (eventTable != null) {
-            List<Map<String, Object>> rowList = new ArrayList<>();
+            Collection<Map<String, Object>> rowList = new ArrayList<>();
             List<AugmentedEventColumn> columns = this.schema.listColumns(eventTable.getName());
             Map<String, String[]> cache = this.getCache(columns);
 
@@ -583,7 +584,7 @@ public class AugmenterContext implements Closeable {
         }
     }
 
-    public List<AugmentedEventUpdatedRow> getUpdatedRows(long tableId, BitSet includedColumns, List<Map.Entry<Serializable[], Serializable[]>> rows) {
+    public Collection<AugmentedEventUpdatedRow> getUpdatedRows(long tableId, BitSet includedColumns, List<Map.Entry<Serializable[], Serializable[]>> rows) {
         AugmentedEventTable eventTable = this.getEventTable(tableId);
 
         if (eventTable != null) {

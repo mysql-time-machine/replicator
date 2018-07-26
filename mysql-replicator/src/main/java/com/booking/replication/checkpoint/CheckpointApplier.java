@@ -5,6 +5,7 @@ import com.booking.replication.commons.checkpoint.CheckpointStorage;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
@@ -33,7 +34,7 @@ public interface CheckpointApplier extends BiConsumer<AugmentedEvent, Integer>, 
     }
 
     @Override
-    default void close() throws IOException {
+    default void close() {
     }
 
     static CheckpointApplier build(Map<String, Object> configuration, CheckpointStorage checkpointStorage, String checkpointPath) {

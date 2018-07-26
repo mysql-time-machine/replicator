@@ -1,22 +1,22 @@
 package com.booking.replication.augmenter.model;
 
 import java.io.Serializable;
-import java.util.List;
+import java.util.Collection;
 
 @SuppressWarnings("unused")
 public class AugmentedEventSchema implements Serializable {
-    private List<AugmentedEventColumn> columns;
+    private Collection<AugmentedEventColumn> columns;
     private String create;
 
     public AugmentedEventSchema() {
     }
 
-    public AugmentedEventSchema(List<AugmentedEventColumn> columns, String create) {
+    public AugmentedEventSchema(Collection<AugmentedEventColumn> columns, String create) {
         this.columns = columns;
         this.create = create;
     }
 
-    public List<AugmentedEventColumn> getColumns() {
+    public Collection<AugmentedEventColumn> getColumns() {
         return this.columns;
     }
 

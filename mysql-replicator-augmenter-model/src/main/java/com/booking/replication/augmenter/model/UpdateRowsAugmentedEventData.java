@@ -1,19 +1,19 @@
 package com.booking.replication.augmenter.model;
 
-import java.util.List;
+import java.util.Collection;
 
 @SuppressWarnings("unused")
 public class UpdateRowsAugmentedEventData implements TableAugmentedEventData {
     private AugmentedEventTable eventTable;
-    private List<Boolean> includedColumnsBeforeUpdate;
-    private List<Boolean> includedColumns;
-    private List<AugmentedEventColumn> columns;
-    private List<AugmentedEventUpdatedRow> rows;
+    private Collection<Boolean> includedColumnsBeforeUpdate;
+    private Collection<Boolean> includedColumns;
+    private Collection<AugmentedEventColumn> columns;
+    private Collection<AugmentedEventUpdatedRow> rows;
 
     public UpdateRowsAugmentedEventData() {
     }
 
-    public UpdateRowsAugmentedEventData(AugmentedEventTable eventTable, List<Boolean> includedColumnsBeforeUpdate, List<Boolean> includedColumns, List<AugmentedEventColumn> columns, List<AugmentedEventUpdatedRow> rows) {
+    public UpdateRowsAugmentedEventData(AugmentedEventTable eventTable, Collection<Boolean> includedColumnsBeforeUpdate, Collection<Boolean> includedColumns, Collection<AugmentedEventColumn> columns, Collection<AugmentedEventUpdatedRow> rows) {
         this.eventTable = eventTable;
         this.includedColumnsBeforeUpdate = includedColumnsBeforeUpdate;
         this.includedColumns = includedColumns;
@@ -26,19 +26,19 @@ public class UpdateRowsAugmentedEventData implements TableAugmentedEventData {
         return this.eventTable;
     }
 
-    public List<Boolean> getIncludedColumnsBeforeUpdate() {
+    public Collection<Boolean> getIncludedColumnsBeforeUpdate() {
         return this.includedColumnsBeforeUpdate;
     }
 
-    public List<Boolean> getIncludedColumns() {
+    public Collection<Boolean> getIncludedColumns() {
         return this.includedColumns;
     }
 
-    public List<AugmentedEventColumn> getColumns() {
+    public Collection<AugmentedEventColumn> getColumns() {
         return this.columns;
     }
 
-    public List<AugmentedEventUpdatedRow> getRows() {
+    public Collection<AugmentedEventUpdatedRow> getRows() {
         return this.rows;
     }
 }

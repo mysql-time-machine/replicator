@@ -15,6 +15,7 @@ import org.apache.kafka.common.serialization.ByteArraySerializer;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,19 +57,21 @@ public class KafkaApplier implements Applier {
     }
 
     @Override
-    public Boolean apply(AugmentedEvent augmentedEvent) {
+    public Boolean apply(Collection<AugmentedEvent> events) {
         try {
-            int partition = this.partitioner.apply(augmentedEvent, this.totalPartitions);
+            for (AugmentedEvent event : events) {
+                int partition = this.partitioner.apply(event, this.totalPartitions);
 
-            this.producers.computeIfAbsent(
-                    partition, key -> this.getProducer()
-            ).send(new ProducerRecord<>(
-                    this.topic,
-                    partition,
-                    augmentedEvent.getHeader().getTimestamp(),
-                    KafkaApplier.MAPPER.writeValueAsBytes(augmentedEvent.getHeader()),
-                    KafkaApplier.MAPPER.writeValueAsBytes(augmentedEvent.getData())
-            ));
+                this.producers.computeIfAbsent(
+                        partition, key -> this.getProducer()
+                ).send(new ProducerRecord<>(
+                        this.topic,
+                        partition,
+                        event.getHeader().getTimestamp(),
+                        KafkaApplier.MAPPER.writeValueAsBytes(event.getHeader()),
+                        KafkaApplier.MAPPER.writeValueAsBytes(event.getData())
+                ));
+            }
 
             return true;
         } catch (JsonProcessingException exception) {

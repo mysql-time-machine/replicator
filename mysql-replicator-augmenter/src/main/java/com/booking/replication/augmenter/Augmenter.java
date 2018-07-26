@@ -11,12 +11,13 @@ import com.booking.replication.supplier.model.RawEventHeaderV4;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-public class Augmenter implements Function<RawEvent, List<AugmentedEvent>>, Closeable {
+public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>, Closeable {
     public enum SchemaType {
         NONE {
             @Override
@@ -69,7 +70,7 @@ public class Augmenter implements Function<RawEvent, List<AugmentedEvent>>, Clos
     }
 
     @Override
-    public List<AugmentedEvent> apply(RawEvent rawEvent) {
+    public Collection<AugmentedEvent> apply(RawEvent rawEvent) {
         try {
             RawEventHeaderV4 eventHeader = rawEvent.getHeader();
             RawEventData eventData = rawEvent.getData();
@@ -84,10 +85,10 @@ public class Augmenter implements Function<RawEvent, List<AugmentedEvent>>, Clos
 
                         throw new ForceRewindException("transaction size limit exceeded");
                     } else {
-                        List<AugmentedEvent> augmentedEventList = this.context.getTransaction().clean();
+                        Collection<AugmentedEvent> augmentedEvents = this.context.getTransaction().clean();
 
-                        if (augmentedEventList.size() > 0) {
-                            return augmentedEventList;
+                        if (augmentedEvents.size() > 0) {
+                            return augmentedEvents;
                         } else {
                             return null;
                         }
@@ -109,11 +110,11 @@ public class Augmenter implements Function<RawEvent, List<AugmentedEvent>>, Clos
 
                     if (this.context.getTransaction().started()) {
                         if (this.context.getTransaction().resuming() && this.context.getTransaction().sizeLimitExceeded()) {
-                            List<AugmentedEvent> augmentedEventList = this.context.getTransaction().clean();
+                            Collection<AugmentedEvent> augmentedEvents = this.context.getTransaction().clean();
 
                             this.context.getTransaction().add(augmentedEvent);
 
-                            return augmentedEventList;
+                            return augmentedEvents;
                         } else {
                             this.context.getTransaction().add(augmentedEvent);
 

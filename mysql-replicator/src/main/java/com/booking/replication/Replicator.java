@@ -25,8 +25,9 @@ import org.apache.commons.cli.Options;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -55,18 +56,17 @@ public class Replicator {
     private final Applier applier;
     private final MetricsApplier<?> metricsApplier;
     private final CheckpointApplier checkpointApplier;
-    private final Streams<AugmentedEvent, AugmentedEvent> streamsApplier;
-    private final Streams<RawEvent, List<AugmentedEvent>> streamsSupplier;
+    private final Streams<Collection<AugmentedEvent>, Collection<AugmentedEvent>> streamsApplier;
+    private final Streams<RawEvent, Collection<AugmentedEvent>> streamsSupplier;
 
     public Replicator(final Map<String, Object> configuration) {
         Object checkpointPath = configuration.get(Configuration.CHECKPOINT_PATH);
         Object checkpointDefault = configuration.get(Configuration.CHECKPOINT_DEFAULT);
-        Object threads = configuration.get(Configuration.REPLICATOR_THREADS);
-        Object tasks = configuration.get(Configuration.REPLICATOR_TASKS);
 
         Objects.requireNonNull(checkpointPath, String.format("Configuration required: %s", Configuration.CHECKPOINT_PATH));
-        Objects.requireNonNull(threads, String.format("Configuration required: %s", Configuration.REPLICATOR_THREADS));
-        Objects.requireNonNull(tasks, String.format("Configuration required: %s", Configuration.REPLICATOR_TASKS));
+
+        int threads = Integer.parseInt(configuration.getOrDefault(Configuration.REPLICATOR_THREADS, "1").toString());
+        int tasks = Integer.parseInt(configuration.getOrDefault(Configuration.REPLICATOR_TASKS, "1").toString());
 
         this.checkpointPath = checkpointPath.toString();
         this.checkpointDefault = (checkpointDefault != null)?(checkpointDefault.toString()):(null);
@@ -79,23 +79,41 @@ public class Replicator {
         this.metricsApplier = MetricsApplier.build(configuration);
         this.checkpointApplier = CheckpointApplier.build(configuration, this.coordinator, this.checkpointPath);
 
-        this.streamsApplier = Streams.<AugmentedEvent>builder()
-                .threads(Integer.parseInt(threads.toString()))
-                .tasks(Integer.parseInt(tasks.toString()))
-                .partitioner(this.partitioner)
+        this.streamsApplier = Streams.<Collection<AugmentedEvent>>builder()
+                .threads(threads)
+                .tasks(tasks)
+                .partitioner((events, totalPartitions) -> this.partitioner.apply(events.iterator().next(), totalPartitions))
                 .queue()
                 .fromPush()
                 .to(this.applier)
-                .to(this.metricsApplier)
-                .post(this.checkpointApplier).build();
+                .to((events) -> {
+                    for (AugmentedEvent event : events) {
+                        this.metricsApplier.apply(event);
+                    }
+
+                    return true;
+                })
+                .post((events, task) -> {
+                    for (AugmentedEvent event : events) {
+                        this.checkpointApplier.accept(event, task);
+                    }
+                }).build();
 
         this.streamsSupplier = Streams.<RawEvent>builder()
                 .fromPush()
                 .process(this.augmenter)
                 .process(this.seeker)
-                .to(eventList -> {
-                    for (AugmentedEvent event : eventList) {
-                        this.streamsApplier.push(event);
+                .to((events) -> {
+                    Map<Integer, Collection<AugmentedEvent>> splitEventsMap = new HashMap<>();
+
+                    for (AugmentedEvent event : events) {
+                        splitEventsMap.computeIfAbsent(
+                                this.partitioner.apply(event, tasks), partition -> new ArrayList<>()
+                        ).add(event);
+                    }
+
+                    for (Collection<AugmentedEvent> splitEvents : splitEventsMap.values()) {
+                        this.streamsApplier.push(splitEvents);
                     }
 
                     return true;

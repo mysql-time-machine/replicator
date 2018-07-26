@@ -4,16 +4,13 @@ import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.augmenter.model.AugmentedEventTransaction;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.CheckpointStorage;
-import com.booking.replication.streams.Streams;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -62,9 +59,9 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
     }
 
     @Override
-    public void accept(AugmentedEvent augmentedEvent, Integer task) {
-        Checkpoint checkpoint = augmentedEvent.getHeader().getCheckpoint();
-        AugmentedEventTransaction transaction = augmentedEvent.getHeader().getEventTransaction();
+    public void accept(AugmentedEvent event, Integer task) {
+        Checkpoint checkpoint = event.getHeader().getCheckpoint();
+        AugmentedEventTransaction transaction = event.getHeader().getEventTransaction();
 
         this.lastTimestampMap.put(task, System.currentTimeMillis());
 

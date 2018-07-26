@@ -7,10 +7,11 @@ import com.booking.replication.augmenter.model.AugmentedEvent;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Map;
 import java.util.function.Function;
 
-public interface Applier extends Function<AugmentedEvent, Boolean>, Closeable {
+public interface Applier extends Function<Collection<AugmentedEvent>, Boolean>, Closeable {
     enum Type {
         CONSOLE {
             @Override

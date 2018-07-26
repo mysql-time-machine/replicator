@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.Collection;
 import java.util.Map;
 
 public class ConsoleApplier implements Applier {
@@ -18,9 +19,11 @@ public class ConsoleApplier implements Applier {
     }
 
     @Override
-    public Boolean apply(AugmentedEvent augmentedEvent) {
+    public Boolean apply(Collection<AugmentedEvent> events) {
         try {
-            ConsoleApplier.LOG.info(ConsoleApplier.MAPPER.writeValueAsString(augmentedEvent));
+            for (AugmentedEvent event : events) {
+                ConsoleApplier.LOG.info(ConsoleApplier.MAPPER.writeValueAsString(event));
+            }
 
             return true;
         } catch (JsonProcessingException exception) {

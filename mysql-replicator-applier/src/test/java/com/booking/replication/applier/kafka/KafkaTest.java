@@ -91,9 +91,7 @@ public class KafkaTest {
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.BOOTSTRAP_SERVERS_CONFIG), KafkaTest.servicesControl.getURL());
 
         try (Applier applier = Applier.build(configuration)) {
-            for (AugmentedEvent event : KafkaTest.events) {
-                applier.apply(event);
-            }
+            applier.apply(KafkaTest.events);
         }
     }
 

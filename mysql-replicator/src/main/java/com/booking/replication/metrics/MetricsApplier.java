@@ -66,9 +66,7 @@ public abstract class MetricsApplier<CloseableReporter extends Closeable & Repor
 
     @Override
     public Boolean apply(AugmentedEvent event) {
-        this.registry.histogram(this.delayName).update(
-                System.currentTimeMillis() - event.getHeader().getTimestamp()
-        );
+        this.registry.histogram(this.delayName).update(System.currentTimeMillis() - event.getHeader().getTimestamp());
 
         return true;
     }

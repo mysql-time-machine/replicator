@@ -2,10 +2,14 @@ package com.booking.replication.applier;
 
 import com.booking.replication.augmenter.model.AugmentedEvent;
 import com.booking.replication.augmenter.model.AugmentedEventTable;
+import com.booking.replication.augmenter.model.AugmentedEventTransaction;
 import com.booking.replication.augmenter.model.TableAugmentedEventData;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiFunction;
@@ -15,9 +19,9 @@ public interface Partitioner extends BiFunction<AugmentedEvent, Integer, Integer
         TABLE_NAME {
             @Override
             protected Partitioner newInstance(Map<String, Object> configuration) {
-                return (augmentedEvent, totalPartitions) -> {
-                    if (TableAugmentedEventData.class.isInstance(augmentedEvent.getData())) {
-                        AugmentedEventTable eventTable = TableAugmentedEventData.class.cast(augmentedEvent.getData()).getEventTable();
+                return (event, totalPartitions) -> {
+                    if (TableAugmentedEventData.class.isInstance(event.getData())) {
+                        AugmentedEventTable eventTable = TableAugmentedEventData.class.cast(event.getData()).getEventTable();
 
                         if (eventTable != null) {
                             return Math.abs(eventTable.toString().hashCode()) % totalPartitions;
@@ -30,16 +34,30 @@ public interface Partitioner extends BiFunction<AugmentedEvent, Integer, Integer
                 };
             }
         },
+        XXID {
+            @Override
+            protected Partitioner newInstance(Map<String, Object> configuration) {
+                return (event, totalPartitions) -> {
+                    if (event.getHeader().getEventTransaction() != null) {
+                        AugmentedEventTransaction transaction = event.getHeader().getEventTransaction();
+
+                        return (int) transaction.getXXID() % totalPartitions;
+                    } else {
+                        return ThreadLocalRandom.current().nextInt(totalPartitions);
+                    }
+                };
+            }
+        },
         RANDOM {
             @Override
             protected Partitioner newInstance(Map<String, Object> configuration) {
-                return (augmentedEvent, totalPartitions) -> ThreadLocalRandom.current().nextInt(totalPartitions);
+                return (event, totalPartitions) -> ThreadLocalRandom.current().nextInt(totalPartitions);
             }
         },
         NONE {
             @Override
             protected  Partitioner newInstance(Map<String, Object> configuration) {
-                return (augmentedEvent, totalPartitions) -> 0;
+                return (event, totalPartitions) -> 0;
             }
         };
 

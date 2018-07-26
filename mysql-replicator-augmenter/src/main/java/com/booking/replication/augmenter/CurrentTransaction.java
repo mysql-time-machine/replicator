@@ -5,7 +5,6 @@ import com.booking.replication.augmenter.model.AugmentedEventTransaction;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -57,10 +56,10 @@ public class CurrentTransaction {
         }
     }
 
-    public List<AugmentedEvent> clean() {
+    public Collection<AugmentedEvent> clean() {
         if (this.buffer.get() != null) {
             Collection<AugmentedEvent> augmentedEventQueue = this.buffer.getAndSet((this.resuming.get())?(this.getBufferInstance()):(null));
-            List<AugmentedEvent> augmentedEventList = new ArrayList<>();
+            Collection<AugmentedEvent> augmentedEventList = new ArrayList<>();
 
             for (AugmentedEvent augmentedEvent : augmentedEventQueue) {
                 augmentedEvent.getHeader().setEventTransaction(new AugmentedEventTransaction(

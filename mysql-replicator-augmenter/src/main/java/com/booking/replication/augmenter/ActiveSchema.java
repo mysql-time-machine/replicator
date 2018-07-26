@@ -88,7 +88,8 @@ public class ActiveSchema implements Schema {
             try (Connection connection = this.dataSource.getConnection();
                  Statement statement = connection.createStatement()) {
                  List<AugmentedEventColumn> columnList = new ArrayList<>();
-                try (ResultSet resultSet = statement.executeQuery(String.format(ActiveSchema.LIST_COLUMNS_SQL, tableName))) {
+
+                 try (ResultSet resultSet = statement.executeQuery(String.format(ActiveSchema.LIST_COLUMNS_SQL, tableName))) {
                     while (resultSet.next()) {
                         columnList.add(new AugmentedEventColumn(
                                 resultSet.getString(1),
@@ -99,7 +100,7 @@ public class ActiveSchema implements Schema {
                                 resultSet.getString(6)
                         ));
                     }
-                }
+                 }
 
                 return columnList;
             } catch (SQLException exception) {

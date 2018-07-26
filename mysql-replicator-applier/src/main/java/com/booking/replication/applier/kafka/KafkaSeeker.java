@@ -23,7 +23,7 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.List;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -112,29 +112,29 @@ public class KafkaSeeker implements Seeker {
     }
 
     @Override
-    public List<AugmentedEvent> apply(List<AugmentedEvent> augmentedEventList) {
+    public Collection<AugmentedEvent> apply(Collection<AugmentedEvent> events) {
         if (this.sought.get()) {
-            return augmentedEventList;
+            return events;
         } else {
-            List<AugmentedEvent> soughtAugmentedEventList = new ArrayList<>();
+            Collection<AugmentedEvent> soughtEvents = new ArrayList<>();
 
-            for (AugmentedEvent augmentedEvent : augmentedEventList) {
-                int partition = this.partitioner.apply(augmentedEvent, this.totalPartitions);
+            for (AugmentedEvent event : events) {
+                int partition = this.partitioner.apply(event, this.totalPartitions);
 
                 if (this.partitionSought.get(partition)) {
-                    soughtAugmentedEventList.add(augmentedEvent);
-                } else if (this.partitionCheckpoint[partition] == null || this.partitionCheckpoint[partition].compareTo(augmentedEvent.getHeader().getCheckpoint()) < 0) {
+                    soughtEvents.add(event);
+                } else if (this.partitionCheckpoint[partition] == null || this.partitionCheckpoint[partition].compareTo(event.getHeader().getCheckpoint()) < 0) {
                     this.partitionSought.set(partition);
                     this.sought.set(this.partitionSought.cardinality() == this.totalPartitions);
 
-                    soughtAugmentedEventList.add(augmentedEvent);
+                    soughtEvents.add(event);
 
                     KafkaSeeker.LOG.log(Level.INFO, String.format("sought partition %d", partition));
                 }
             }
 
-            if (soughtAugmentedEventList.size() > 0) {
-                return soughtAugmentedEventList;
+            if (soughtEvents.size() > 0) {
+                return soughtEvents;
             } else {
                 return null;
             }

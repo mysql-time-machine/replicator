@@ -1,19 +1,19 @@
 package com.booking.replication.augmenter.model;
 
-import java.util.List;
+import java.util.Collection;
 import java.util.Map;
 
 @SuppressWarnings("unused")
 public class WriteRowsAugmentedEventData implements TableAugmentedEventData {
     private AugmentedEventTable eventTable;
-    private List<Boolean> includedColumns;
-    private List<AugmentedEventColumn> columns;
-    private List<Map<String, Object>> rows;
+    private Collection<Boolean> includedColumns;
+    private Collection<AugmentedEventColumn> columns;
+    private Collection<Map<String, Object>> rows;
 
     public WriteRowsAugmentedEventData() {
     }
 
-    public WriteRowsAugmentedEventData(AugmentedEventTable eventTable, List<Boolean> includedColumns, List<AugmentedEventColumn> columns, List<Map<String, Object>> rows) {
+    public WriteRowsAugmentedEventData(AugmentedEventTable eventTable, Collection<Boolean> includedColumns, Collection<AugmentedEventColumn> columns, Collection<Map<String, Object>> rows) {
         this.eventTable = eventTable;
         this.includedColumns = includedColumns;
         this.columns = columns;
@@ -25,15 +25,15 @@ public class WriteRowsAugmentedEventData implements TableAugmentedEventData {
         return this.eventTable;
     }
 
-    public List<Boolean> getIncludedColumns() {
+    public Collection<Boolean> getIncludedColumns() {
         return this.includedColumns;
     }
 
-    public List<AugmentedEventColumn> getColumns() {
+    public Collection<AugmentedEventColumn> getColumns() {
         return this.columns;
     }
 
-    public List<Map<String, Object>> getRows() {
+    public Collection<Map<String, Object>> getRows() {
         return this.rows;
     }
 }

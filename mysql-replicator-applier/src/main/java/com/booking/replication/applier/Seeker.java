@@ -6,16 +6,16 @@ import com.booking.replication.commons.checkpoint.Checkpoint;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.List;
+import java.util.Collection;
 import java.util.Map;
 import java.util.function.Function;
 
-public interface Seeker extends Function<List<AugmentedEvent>, List<AugmentedEvent>>, Closeable {
+public interface Seeker extends Function<Collection<AugmentedEvent>, Collection<AugmentedEvent>>, Closeable {
     enum Type {
         NONE {
             @Override
             public Seeker newInstance(Map<String, Object> configuration) {
-                return event -> event;
+                return eventList -> eventList;
             }
         },
         KAFKA {

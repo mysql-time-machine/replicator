@@ -22,6 +22,7 @@ import com.booking.replication.supplier.model.XIDRawEventData;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.Serializable;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collection;
@@ -614,6 +615,27 @@ public class AugmenterContext implements Closeable {
                     String columnName = columns.get(columnIndex).getName();
                     String columnType = columns.get(columnIndex).getType().toLowerCase();
                     Serializable cellValue = row[rowIndex++];
+
+                    if(columnType.contains("unsigned") && cellValue != null ){
+                        if(columnType.contains("tiny")){
+                            cellValue = Byte.toUnsignedInt(((Integer)cellValue).byteValue());
+                        }else if(columnType.contains("small")){
+                            cellValue = ((Integer)cellValue) & 0xffff;
+                        }else if(columnType.contains("medium")){
+                            cellValue =  ((Integer)cellValue) & 0xffffff;
+                        }else if(columnType.contains("bigint")){
+                            long i = (Long)cellValue;
+                            int upper = (int) (i >>> 32);
+                            int lower = (int) i;
+
+                            cellValue = (BigInteger.valueOf(Integer.toUnsignedLong(upper))).shiftLeft(32).
+                                    add(BigInteger.valueOf(Integer.toUnsignedLong(lower)));
+
+                        }else if(columnType.contains("int")){
+                            cellValue =  Long.valueOf(((Integer)cellValue)) & 0x00000000FFFFFFFFl;
+                        }
+
+                    }
 
                     if (cache.containsKey(columnType)) {
                         if (columnType.startsWith("enum")) {

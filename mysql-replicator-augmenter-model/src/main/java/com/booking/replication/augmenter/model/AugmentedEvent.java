@@ -34,6 +34,10 @@ public class AugmentedEvent implements Serializable {
         return AugmentedEvent.MAPPER.writeValueAsBytes(this);
     }
 
+    public byte[] toJSONPrettyPrint() throws IOException {
+        return AugmentedEvent.MAPPER.writerWithDefaultPrettyPrinter().writeValueAsBytes(this);
+    }
+
     @JsonIgnore
     public static AugmentedEvent fromJSON(byte[] header, byte[] data) throws IOException {
         AugmentedEventHeader augmentedEventHeader = AugmentedEvent.MAPPER.readValue(header, AugmentedEventHeader.class);

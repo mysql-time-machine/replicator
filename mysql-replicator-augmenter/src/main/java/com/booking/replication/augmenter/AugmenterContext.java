@@ -41,6 +41,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.IntStream;
 
 public class AugmenterContext implements Closeable {
     public interface Configuration {
@@ -627,6 +628,13 @@ public class AugmenterContext implements Closeable {
                             // Currently handle all the other character set as UTF8, extend this to handle specific character sets
                             cellValue = new String(bytes, StandardCharsets.UTF_8);
                         }
+                    }
+
+                    if(cellValue instanceof  BitSet){
+                        final BitSet data = (BitSet)cellValue;
+                        final StringBuilder buffer = new StringBuilder(data.length());
+                        IntStream.range(0, data.length()).mapToObj( i -> data.get(i) ? '1': '0').forEach(buffer::append);
+                        cellValue = buffer.reverse().toString();
                     }
 
                     if(columnType.contains("unsigned") && cellValue != null ){

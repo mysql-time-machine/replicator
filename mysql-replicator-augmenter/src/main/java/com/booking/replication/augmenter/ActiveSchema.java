@@ -32,7 +32,7 @@ public class ActiveSchema implements Schema {
     private static final String DEFAULT_MYSQL_DRIVER_CLASS = Driver.class.getName();
 
     private static final String CONNECTION_URL_FORMAT = "jdbc:mysql://%s:%d/%s";
-    private static final String LIST_COLUMNS_SQL = "DESC %s";
+    private static final String LIST_COLUMNS_SQL = "SHOW FULL COLUMNS FROM %s";
     private static final String SHOW_CREATE_TABLE_SQL = "SHOW CREATE TABLE %s";
 
     private final BasicDataSource dataSource;
@@ -94,10 +94,12 @@ public class ActiveSchema implements Schema {
                         columnList.add(new AugmentedEventColumn(
                                 resultSet.getString(1),
                                 resultSet.getString(2),
-                                resultSet.getBoolean(3),
-                                resultSet.getString(4),
+                                resultSet.getString(3),
+                                resultSet.getBoolean(4),
                                 resultSet.getString(5),
-                                resultSet.getString(6)
+                                resultSet.getString(6),
+                                resultSet.getString(7)
+
                         ));
                     }
                  }

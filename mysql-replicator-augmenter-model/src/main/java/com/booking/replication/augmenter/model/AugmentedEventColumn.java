@@ -10,17 +10,20 @@ public class AugmentedEventColumn implements Serializable {
     private String key;
     private String valueDefault;
     private String extra;
+    private String collation;
+
 
     public AugmentedEventColumn() {
     }
 
-    public AugmentedEventColumn(String name, String type, boolean nullable, String key, String valueDefault, String extra) {
+    public AugmentedEventColumn(String name, String type, String collation, boolean nullable, String key, String valueDefault, String extra) {
         this.name = name;
         this.type = type;
         this.nullable = nullable;
         this.key = key;
         this.valueDefault = valueDefault;
         this.extra = extra;
+        this.collation = collation;
     }
 
 
@@ -46,5 +49,9 @@ public class AugmentedEventColumn implements Serializable {
 
     public String getExtra() {
         return this.extra;
+    }
+
+    public String getCollation() {
+        return collation;
     }
 }

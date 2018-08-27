@@ -23,6 +23,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.Serializable;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collection;
@@ -612,9 +613,21 @@ public class AugmenterContext implements Closeable {
         if (columns != null) {
             for (int columnIndex = 0, rowIndex = 0; columnIndex < columns.size() && rowIndex < row.length; columnIndex++) {
                 if (includedColumns.get(columnIndex)) {
-                    String columnName = columns.get(columnIndex).getName();
-                    String columnType = columns.get(columnIndex).getType().toLowerCase();
+                    AugmentedEventColumn column = columns.get(columnIndex);
+                    String columnName = column.getName();
+                    String columnType = column.getType().toLowerCase();
                     Serializable cellValue = row[rowIndex++];
+                    String collation = column.getCollation();
+
+                    if(collation != null && (cellValue instanceof byte[])){
+                        byte[] bytes = (byte[])cellValue;
+                        if(collation.contains("latin1")){
+                            cellValue = new String(bytes,StandardCharsets.ISO_8859_1);
+                        }else{
+                            // Currently handle all the other character set as UTF8, extend this to handle specific character sets
+                            cellValue = new String(bytes, StandardCharsets.UTF_8);
+                        }
+                    }
 
                     if(columnType.contains("unsigned") && cellValue != null ){
                         if(columnType.contains("tiny")){

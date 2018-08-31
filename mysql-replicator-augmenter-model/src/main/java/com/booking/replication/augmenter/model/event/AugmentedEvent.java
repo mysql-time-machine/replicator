@@ -1,4 +1,4 @@
-package com.booking.replication.augmenter.model;
+package com.booking.replication.augmenter.model.event;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,6 +12,8 @@ public class AugmentedEvent implements Serializable {
 
     private AugmentedEventHeader header;
     private AugmentedEventData data;
+
+    private Object optionalPayload;
 
     public AugmentedEvent() {
     }
@@ -44,5 +46,13 @@ public class AugmentedEvent implements Serializable {
         AugmentedEventData augmentedEventData = AugmentedEvent.MAPPER.readValue(data, augmentedEventHeader.getEventType().getDefinition());
 
         return new AugmentedEvent(augmentedEventHeader, augmentedEventData);
+    }
+
+    public Object getOptionalPayload() {
+        return optionalPayload;
+    }
+
+    public void setOptionalPayload(Object optionalPayload) {
+        this.optionalPayload = optionalPayload;
     }
 }

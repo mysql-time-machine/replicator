@@ -1,7 +1,7 @@
 package com.booking.replication.checkpoint;
 
-import com.booking.replication.augmenter.model.AugmentedEvent;
-import com.booking.replication.augmenter.model.AugmentedEventTransaction;
+import com.booking.replication.augmenter.model.event.AugmentedEvent;
+import com.booking.replication.augmenter.model.event.AugmentedEventTransaction;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.CheckpointStorage;
 

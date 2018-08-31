@@ -1,6 +1,6 @@
 package com.booking.replication.metrics;
 
-import com.booking.replication.augmenter.model.AugmentedEvent;
+import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Reporter;
 

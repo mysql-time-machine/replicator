@@ -2,13 +2,17 @@ package com.booking.replication.commons.services;
 
 import com.github.dockerjava.api.model.PortBinding;
 import org.testcontainers.containers.BindMode;
+import org.testcontainers.containers.FixedHostPortGenericContainer;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
 
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
 
 public final class ContainersProvider implements ServicesProvider {
+
     private static final String ZOOKEEPER_DOCKER_IMAGE_KEY = "docker.image.zookeeper";
     private static final String ZOOKEEPER_DOCKER_IMAGE_DEFAULT = "zookeeper:latest";
     private static final String ZOOKEEPER_STARTUP_WAIT_REGEX = ".*binding to port.*\\n";
@@ -36,10 +40,36 @@ public final class ContainersProvider implements ServicesProvider {
     private static final String KAFKA_ADVERTISED_HOST_NAME_KEY = "KAFKA_ADVERTISED_HOST_NAME";
     private static final int KAFKA_PORT = 9092;
 
+    private static final String HBASE_DOCKER_IMAGE_KEY = "docker.image.hbase";
+    private static final String HBASE_CREATE_NAMESPACES = "test,schema_history";
+
+    private static final String HBASE_DOCKER_IMAGE_DEFAULT = "harisekhon/hbase-dev:1.3";
+
+    // this name needs to be manyally added to /etc/hosts. For example if testing
+    // on localhost then add:
+    //
+    // 127.0.0.1       HBASE_HOST
+    //
+    // The reason why we need this is that zookeeper stores the host names for
+    // master and region servers and these names need to be /etc/hosts in order
+    // to be able to talk to hbase in container. This means either dynamically
+    // adding container id/hostname to /etc/hosts when tests are running, or
+    // adding the entry once and use a standard name. Since the /etc/hosts requires
+    // sudo access, it is simpler to edit it only once.
+    private static final String HBASE_HOST_NAME = "HBASE_HOST";
+    private static final String HBASE_CONTAINER_NAME = "HBASE_CONTAINER";
+
+
+    private static final int HBASE_ZK_PORT = 2181;
+    private static final int HBASE_MASTER_PORT = 16000;
+    private static final int HBASE_REGION_SERVER_PORT = 16201;
+
+    // TODO: implement separate classes for different container types (Kafka, Zookeeper, Hbase, MySQL)
     public ContainersProvider() {
     }
 
     private GenericContainer<?> getContainer(String image, int port, Network network, String logWaitRegex, int logWaitTimes, boolean matchExposedPort) {
+
         GenericContainer<?> container = new GenericContainer<>(image)
                 .withExposedPorts(port)
                 .waitingFor(
@@ -55,6 +85,23 @@ public final class ContainersProvider implements ServicesProvider {
                     command -> command.withPortBindings(PortBinding.parse(String.format("%d:%d", port, port)))
             );
         }
+
+        return container;
+    }
+
+    private GenericContainer<?> getContainerHBase(String image, Network network, String logWaitRegex, int logWaitTimes, boolean matchExposedPort) {
+
+        FixedHostPortGenericContainer<?> container = new FixedHostPortGenericContainer<>(image);
+
+        container.withNetwork(network);
+        container.withNetworkAliases("hbase_alias");
+
+        container.withFixedExposedPort(HBASE_ZK_PORT, HBASE_ZK_PORT);
+        container.withFixedExposedPort(16201, HBASE_REGION_SERVER_PORT);
+        container.withFixedExposedPort(16000, HBASE_MASTER_PORT);
+
+        container.withCreateContainerCmdModifier(cmd -> cmd.withName(HBASE_CONTAINER_NAME));
+        container.withCreateContainerCmdModifier(cmd -> cmd.withHostName(HBASE_HOST_NAME));
 
         return container;
     }
@@ -122,6 +169,25 @@ public final class ContainersProvider implements ServicesProvider {
         };
     }
 
+    @Override
+    public ServicesControl startZookeeper(Network network) {
+        GenericContainer<?> zookeeper =  this.getZookeeper(network);
+
+        zookeeper.start();
+
+        return new ServicesControl() {
+            @Override
+            public void close() {
+                zookeeper.stop();
+            }
+
+            @Override
+            public int getPort() {
+                return zookeeper.getMappedPort(ContainersProvider.ZOOKEEPER_PORT);
+            }
+        };
+    }
+
     public ServicesControl startKafka(String topic, int partitions, int replicas) {
         Network network = Network.newNetwork();
 
@@ -159,6 +225,40 @@ public final class ContainersProvider implements ServicesProvider {
             @Override
             public int getPort() {
                 return kafka.getMappedPort(ContainersProvider.KAFKA_PORT);
+            }
+        };
+    }
+
+    @Override
+    public ServicesControl startHbase() {
+
+        Network network = Network.newNetwork();
+
+//        GenericContainer<?> zookeeper = this.getZookeeper(network);
+
+//        zookeeper.start();
+
+        GenericContainer<?> hbase = this.getContainerHBase(
+                ContainersProvider.HBASE_DOCKER_IMAGE_DEFAULT,
+                network,
+                "",
+                0,
+                true
+        );
+
+        hbase.start();
+
+        return new ServicesControl() {
+
+            @Override
+            public void close() {
+                hbase.stop();
+//                zookeeper.stop();
+            }
+
+            @Override
+            public int getPort() {
+                return hbase.getMappedPort(ContainersProvider.HBASE_ZK_PORT);
             }
         };
     }

@@ -1,4 +1,6 @@
-package com.booking.replication.augmenter.model;
+package com.booking.replication.augmenter.model.event;
+
+import com.booking.replication.augmenter.model.event.AugmentedEventData;
 
 @SuppressWarnings("unused")
 public class ByteArrayAugmentedEventData implements AugmentedEventData {

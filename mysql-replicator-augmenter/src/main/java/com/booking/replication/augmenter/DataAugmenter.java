@@ -1,10 +1,10 @@
 package com.booking.replication.augmenter;
 
-import com.booking.replication.augmenter.model.AugmentedEventData;
-import com.booking.replication.augmenter.model.DeleteRowsAugmentedEventData;
-import com.booking.replication.augmenter.model.QueryAugmentedEventData;
-import com.booking.replication.augmenter.model.UpdateRowsAugmentedEventData;
-import com.booking.replication.augmenter.model.WriteRowsAugmentedEventData;
+import com.booking.replication.augmenter.model.event.AugmentedEventData;
+import com.booking.replication.augmenter.model.event.DeleteRowsAugmentedEventData;
+import com.booking.replication.augmenter.model.event.QueryAugmentedEventData;
+import com.booking.replication.augmenter.model.event.UpdateRowsAugmentedEventData;
+import com.booking.replication.augmenter.model.event.WriteRowsAugmentedEventData;
 import com.booking.replication.supplier.model.DeleteRowsRawEventData;
 import com.booking.replication.supplier.model.QueryRawEventData;
 import com.booking.replication.supplier.model.RawEventData;

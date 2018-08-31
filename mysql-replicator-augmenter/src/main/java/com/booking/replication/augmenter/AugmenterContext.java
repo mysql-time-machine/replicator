@@ -1,15 +1,16 @@
 package com.booking.replication.augmenter;
 
-import com.booking.replication.augmenter.model.AugmentedEventColumn;
-import com.booking.replication.augmenter.model.AugmentedEventSchema;
-import com.booking.replication.augmenter.model.AugmentedEventUpdatedRow;
-import com.booking.replication.augmenter.model.AugmentedEventTable;
-import com.booking.replication.augmenter.model.QueryAugmentedEventDataOperationType;
-import com.booking.replication.augmenter.model.QueryAugmentedEventDataType;
+import com.booking.replication.augmenter.model.schema.*;
+import com.booking.replication.augmenter.model.event.AugmentedEventUpdatedRow;
+import com.booking.replication.augmenter.model.schema.FullTableName;
+import com.booking.replication.augmenter.model.event.QueryAugmentedEventDataOperationType;
+import com.booking.replication.augmenter.model.event.QueryAugmentedEventDataType;
+
 import com.booking.replication.commons.checkpoint.Binlog;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.GTID;
 import com.booking.replication.commons.checkpoint.GTIDType;
+
 import com.booking.replication.supplier.model.GTIDRawEventData;
 import com.booking.replication.supplier.model.QueryRawEventData;
 import com.booking.replication.supplier.model.RawEventData;
@@ -33,6 +34,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -44,6 +46,7 @@ import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
 public class AugmenterContext implements Closeable {
+
     public interface Configuration {
         String TRANSACTION_BUFFER_CLASS = "augmenter.context.transaction.buffer.class";
         String TRANSACTION_BUFFER_LIMIT = "augmenter.context.transaction.buffer.limit";
@@ -69,6 +72,7 @@ public class AugmenterContext implements Closeable {
     private static final String DEFAULT_COMMIT_PATTERN = "^(/\\*.*?\\*/\\s*)?(commit)";
     private static final String DEFAULT_DDL_DEFINER_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(definer)\\s*=";
     private static final String DEFAULT_DDL_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(table)\\s+(\\S+)";
+
     private static final String DEFAULT_DDL_TEMPORARY_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(temporary)\\s+(table)\\s+(\\S+)";
     private static final String DEFAULT_DDL_VIEW_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(view)\\s+(\\S+)";
     private static final String DEFAULT_DDL_ANALYZE_PATTERN = "^(/\\*.*?\\*/\\s*)?(analyze)\\s+(table)\\s+(\\S+)";
@@ -76,7 +80,7 @@ public class AugmenterContext implements Closeable {
     private static final String DEFAULT_ENUM_PATTERN = "(?<=enum\\()(.*?)(?=\\))";
     private static final String DEFAULT_SET_PATTERN = "(?<=set\\()(.*?)(?=\\))";
 
-    private final Schema schema;
+    private final SchemaManager schemaManager;
     private final CurrentTransaction transaction;
 
     private final Pattern beginPattern;
@@ -99,7 +103,7 @@ public class AugmenterContext implements Closeable {
     private final AtomicBoolean continueFlag;
     private final AtomicReference<QueryAugmentedEventDataType> queryType;
     private final AtomicReference<QueryAugmentedEventDataOperationType> queryOperationType;
-    private final AtomicReference<AugmentedEventTable> eventTable;
+    private final AtomicReference<FullTableName> eventTable;
 
     private final AtomicReference<String> binlogFilename;
     private final AtomicLong binlogPosition;
@@ -108,15 +112,24 @@ public class AugmenterContext implements Closeable {
     private final AtomicReference<String> gtidValue;
     private final AtomicReference<Byte> gtidFlags;
 
-    private final AtomicReference<Collection<AugmentedEventColumn>> columnsBefore;
+    private final AtomicReference<Collection<ColumnSchema>> columnsBefore;
     private final AtomicReference<String> createTableBefore;
-    private final AtomicReference<Collection<AugmentedEventColumn>> columnsAfter;
+    private final AtomicReference<Collection<ColumnSchema>> columnsAfter;
     private final AtomicReference<String> createTableAfter;
+    private final AtomicReference<SchemaAtPositionCache> schemaAtPositionCache;
 
-    private final Map<Long, AugmentedEventTable> tableIdEventTableMap;
+    private final AtomicBoolean isAtDDL;
+    private final AtomicReference<SchemaSnapshot> schemaSnapshot;
 
-    public AugmenterContext(Schema schema, Map<String, Object> configuration) {
-        this.schema = schema;
+    public AugmenterContext(SchemaManager schemaManager, Map<String, Object> configuration) {
+
+        this.schemaManager = schemaManager;
+
+        this.schemaAtPositionCache = new AtomicReference<>();
+        this.schemaAtPositionCache.set(new SchemaAtPositionCache());
+
+        this.schemaSnapshot = new AtomicReference<>();
+
         this.transaction = new CurrentTransaction(
                 configuration.getOrDefault(Configuration.TRANSACTION_BUFFER_CLASS, ConcurrentLinkedQueue.class.getName()).toString(),
                 Integer.parseInt(configuration.getOrDefault(Configuration.TRANSACTION_BUFFER_LIMIT, String.valueOf(AugmenterContext.DEFAULT_TRANSACTION_LIMIT)).toString())
@@ -154,7 +167,8 @@ public class AugmenterContext implements Closeable {
         this.columnsAfter = new AtomicReference<>();
         this.createTableAfter = new AtomicReference<>();
 
-        this.tableIdEventTableMap = new ConcurrentHashMap<>();
+        this.isAtDDL = new AtomicBoolean();
+        this.isAtDDL.set(false);
     }
 
     private Pattern getPattern(Map<String, Object> configuration, String configurationPath, String configurationDefault) {
@@ -187,7 +201,10 @@ public class AugmenterContext implements Closeable {
                 eventHeader.getNextPosition()
         );
 
+        isAtDDL.set(false);
+
         switch (eventHeader.getEventType()) {
+
             case ROTATE:
                 this.updateCommons(
                         false,
@@ -203,13 +220,14 @@ public class AugmenterContext implements Closeable {
                         rotateRawEventData.getBinlogFilename(),
                         rotateRawEventData.getBinlogPosition()
                 );
-
                 break;
+
             case QUERY:
                 QueryRawEventData queryRawEventData = QueryRawEventData.class.cast(eventData);
                 String query = queryRawEventData.getSQL();
                 Matcher matcher;
 
+                // begin
                 if (this.beginPattern.matcher(query).find()) {
                     this.updateCommons(
                             false,
@@ -222,7 +240,10 @@ public class AugmenterContext implements Closeable {
                     if (!this.transaction.begin()) {
                         AugmenterContext.LOG.log(Level.WARNING, "transaction already started");
                     }
-                } else if (this.commitPattern.matcher(query).find()) {
+
+                }
+                // commit
+                else if (this.commitPattern.matcher(query).find()) {
                     this.updateCommons(
                             true,
                             QueryAugmentedEventDataType.COMMIT,
@@ -232,9 +253,10 @@ public class AugmenterContext implements Closeable {
                     );
 
                     if (!this.transaction.commit(eventHeader.getTimestamp())) {
-                        AugmenterContext.LOG.log(Level.WARNING, "transaction already committed");
+                        AugmenterContext.LOG.log(Level.WARNING, "transaction already markedForCommit");
                     }
                 }
+                // ddl definer
                 else if ((matcher = this.ddlDefinerPattern.matcher(query)).find()) {
                     this.updateCommons(
                             true,
@@ -243,7 +265,10 @@ public class AugmenterContext implements Closeable {
                             queryRawEventData.getDatabase(),
                             null
                     );
-                } else if ((matcher = this.ddlTablePattern.matcher(query)).find()) {
+                }
+                // ddl table
+                else if ((matcher = this.ddlTablePattern.matcher(query)).find()) {
+
                     this.updateCommons(
                             true,
                             QueryAugmentedEventDataType.DDL_TABLE,
@@ -251,7 +276,15 @@ public class AugmenterContext implements Closeable {
                             queryRawEventData.getDatabase(),
                             matcher.group(4)
                     );
-                } else if ((matcher = this.ddlTemporaryTablePattern.matcher(query)).find()) {
+
+                    isAtDDL.set(true);
+
+                    long schemaChangeTimestamp = eventHeader.getTimestamp();
+                    this.updateSchema(query, schemaChangeTimestamp);
+
+                }
+                // ddl temp table
+                else if ((matcher = this.ddlTemporaryTablePattern.matcher(query)).find()) {
                     this.updateCommons(
                             true,
                             QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE,
@@ -259,7 +292,9 @@ public class AugmenterContext implements Closeable {
                             queryRawEventData.getDatabase(),
                             matcher.group(4)
                     );
-                } else if ((matcher = this.ddlViewPattern.matcher(query)).find()) {
+                }
+                // ddl view
+                else if ((matcher = this.ddlViewPattern.matcher(query)).find()) {
                     this.updateCommons(
                             true,
                             QueryAugmentedEventDataType.DDL_VIEW,
@@ -275,7 +310,10 @@ public class AugmenterContext implements Closeable {
                             queryRawEventData.getDatabase(),
                             null
                     );
-                } else if ((matcher = this.pseudoGTIDPattern.matcher(query)).find()) {
+                }
+
+                // pseudoGTID
+                else if ((matcher = this.pseudoGTIDPattern.matcher(query)).find()) {
                     this.updateCommons(
                             false,
                             QueryAugmentedEventDataType.PSEUDO_GTID,
@@ -291,7 +329,6 @@ public class AugmenterContext implements Closeable {
                             0
                     );
                 } else {
-                    query = null;
 
                     this.updateCommons(
                             false,
@@ -302,9 +339,8 @@ public class AugmenterContext implements Closeable {
                     );
                 }
 
-                this.updateSchema(query);
-
                 break;
+
             case XID:
                 XIDRawEventData xidRawEventData = XIDRawEventData.class.cast(eventData);
 
@@ -317,10 +353,10 @@ public class AugmenterContext implements Closeable {
                 );
 
                 if (!this.transaction.commit(xidRawEventData.getXID(), eventHeader.getTimestamp())) {
-                    AugmenterContext.LOG.log(Level.WARNING, "transaction already committed");
+                    AugmenterContext.LOG.log(Level.WARNING, "transaction already markedForCommit");
                 }
-
                 break;
+
             case GTID:
                 GTIDRawEventData gtidRawEventData = GTIDRawEventData.class.cast(eventData);
 
@@ -338,8 +374,8 @@ public class AugmenterContext implements Closeable {
                         gtidRawEventData.getFlags(),
                         0
                 );
-
                 break;
+
             case TABLE_MAP:
                 this.updateCommons(
                         false,
@@ -351,9 +387,9 @@ public class AugmenterContext implements Closeable {
 
                 TableMapRawEventData tableMapRawEventData = TableMapRawEventData.class.cast(eventData);
 
-                this.tableIdEventTableMap.put(
+                this.schemaAtPositionCache.get().getTableIdToTableNameMap().put(
                         tableMapRawEventData.getTableId(),
-                        new AugmentedEventTable(
+                        new FullTableName(
                                 tableMapRawEventData.getDatabase(),
                                 tableMapRawEventData.getTable()
                         )
@@ -367,7 +403,7 @@ public class AugmenterContext implements Closeable {
             case DELETE_ROWS:
             case EXT_DELETE_ROWS:
                 TableIdRawEventData tableIdRawEventData = TableIdRawEventData.class.cast(eventData);
-                AugmentedEventTable eventTable = this.getEventTable(tableIdRawEventData.getTableId());
+                FullTableName eventTable = this.getEventTable(tableIdRawEventData.getTableId());
 
                 this.updateCommons(
                         (eventTable == null) || (!this.excludeTable(eventTable.getName())),
@@ -397,13 +433,19 @@ public class AugmenterContext implements Closeable {
         this.nextPosition.set(nextPosition);
     }
 
-    private void updateCommons(boolean continueFlag, QueryAugmentedEventDataType queryType, QueryAugmentedEventDataOperationType queryOperationType, String database, String table) {
+    private void updateCommons(
+            boolean continueFlag,
+            QueryAugmentedEventDataType queryType,
+            QueryAugmentedEventDataOperationType queryOperationType,
+            String database,
+            String table
+        ) {
         this.continueFlag.set(continueFlag);
         this.queryType.set(queryType);
         this.queryOperationType.set(queryOperationType);
 
         if (table != null) {
-            this.eventTable.set(new AugmentedEventTable(database, table));
+            this.eventTable.set(new FullTableName(database, table));
         }
     }
 
@@ -420,52 +462,91 @@ public class AugmenterContext implements Closeable {
         }
     }
 
-    private void updateSchema(String query) {
-        if (query != null) {
-            if (this.eventTable.get() != null) {
-                String table = this.eventTable.get().getName();
+    /**
+     *  update || create have value_after
+     *  drop || update have value_before
+     * */
+    private void updateSchema(String query, long schemaChangeTimestamp) {
 
-                if ((this.queryType.get() == QueryAugmentedEventDataType.DDL_TABLE ||
-                        this.queryType.get() == QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE) &&
-                        this.getQueryOperationType() != QueryAugmentedEventDataOperationType.CREATE) {
-                    this.columnsBefore.set(this.schema.listColumns(table));
-                    this.createTableBefore.set(this.schema.getCreateTable(table));
+        if (query != null) {
+
+            if (this.eventTable.get() != null) {
+
+                SchemaAtPositionCache schemaPositionCacheBefore = schemaAtPositionCache.get().deepCopy();
+
+                String tableName = this.eventTable.get().getName();
+
+                if (isDDLAndIsNot(QueryAugmentedEventDataOperationType.CREATE)) {
+                    this.columnsBefore.set(this.schemaManager.listColumns(tableName));
+                    this.createTableBefore.set(this.schemaManager.getCreateTable(tableName));
                 } else {
                     this.columnsBefore.set(null);
                     this.createTableBefore.set(null);
                 }
 
-                this.schema.execute(table, query);
+                this.schemaManager.execute(tableName, query);
+                this.schemaAtPositionCache.get().reloadTableSchema(
+                        tableName,
+                        SchemaHelpers.fnComputeTableSchema
+                );
 
-                if ((this.queryType.get() == QueryAugmentedEventDataType.DDL_TABLE ||
-                        this.queryType.get() == QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE) &&
-                        this.getQueryOperationType() != QueryAugmentedEventDataOperationType.DROP) {
-                    this.columnsAfter.set(this.schema.listColumns(table));
-                    this.createTableAfter.set(this.schema.getCreateTable(table));
+                if (isDDLAndIsNot(QueryAugmentedEventDataOperationType.DROP)) {
+                    // Not drop, so create/alter, set after?
+                    this.columnsAfter.set(this.schemaManager.listColumns(tableName));
+                    this.createTableAfter.set(this.schemaManager.getCreateTable(tableName));
                 } else {
+                    //
                     this.columnsAfter.set(null);
                     this.createTableAfter.set(null);
                 }
+
+                SchemaAtPositionCache schemaPositionCacheAfter = schemaAtPositionCache.get().deepCopy();
+                SchemaTransitionSequence schemaTransitionSequence = new SchemaTransitionSequence(
+                        eventTable,
+                        columnsBefore,
+                        createTableBefore,
+                        columnsAfter,
+                        createTableAfter,
+                        query,
+                        schemaChangeTimestamp
+                );
+                SchemaSnapshot newSchemaSnapshot = new SchemaSnapshot(
+                        schemaTransitionSequence,
+                        schemaPositionCacheBefore,
+                        schemaPositionCacheAfter
+                );
+                schemaSnapshot.set(newSchemaSnapshot);
+
             } else {
+                LOG.info("Unrecognised query type: " + query);
+
                 this.columnsBefore.set(null);
                 this.createTableBefore.set(null);
-                this.schema.execute(null, query);
+
+                this.schemaManager.execute(null, query);
+
                 this.columnsAfter.set(null);
                 this.createTableAfter.set(null);
             }
         } else {
-            this.columnsBefore.set(null);
-            this.createTableBefore.set(null);
-            this.columnsAfter.set(null);
-            this.createTableAfter.set(null);
+            throw new RuntimeException("Query cannot be null");
         }
+    }
+
+    private boolean isDDLAndIsNot(QueryAugmentedEventDataOperationType ddlOpType) {
+        return ((this.queryType.get() == QueryAugmentedEventDataType.DDL_TABLE
+                ||
+                this.queryType.get() == QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE
+               )
+               &&
+               this.getQueryOperationType() != ddlOpType);
     }
 
     private boolean excludeTable(String tableName) {
         return this.excludeTableList.contains(tableName);
     }
 
-    public void updatePostion() {
+    public void updatePosition() {
         if (this.nextPosition.get() > 0) {
             this.binlogPosition.set(this.nextPosition.get());
         }
@@ -475,7 +556,7 @@ public class AugmenterContext implements Closeable {
         return this.transaction;
     }
 
-    public boolean process() {
+    public boolean shouldProcess() {
         return this.continueFlag.get();
     }
 
@@ -487,7 +568,7 @@ public class AugmenterContext implements Closeable {
         return this.queryOperationType.get();
     }
 
-    public AugmentedEventTable getEventTable() {
+    public FullTableName getEventTable() {
         return this.eventTable.get();
     }
 
@@ -523,9 +604,9 @@ public class AugmenterContext implements Closeable {
         }
     }
 
-    public AugmentedEventSchema getSchemaBefore() {
+    public TableSchema getSchemaBefore() {
         if (this.columnsBefore.get() != null && this.createTableBefore != null) {
-            return new AugmentedEventSchema(
+            return new TableSchema(
                     this.columnsBefore.get(),
                     this.createTableBefore.get()
             );
@@ -534,9 +615,9 @@ public class AugmenterContext implements Closeable {
         }
     }
 
-    public AugmentedEventSchema getSchemaAfter() {
+    public TableSchema getSchemaAfter() {
         if (this.columnsAfter.get() != null && this.createTableAfter != null) {
-            return new AugmentedEventSchema(
+            return new TableSchema(
                     this.columnsAfter.get(),
                     this.createTableAfter.get()
             );
@@ -545,8 +626,8 @@ public class AugmenterContext implements Closeable {
         }
     }
 
-    public AugmentedEventTable getEventTable(long tableId) {
-        return this.tableIdEventTableMap.get(tableId);
+    public FullTableName getEventTable(long tableId) {
+        return this.schemaAtPositionCache.get().getTableIdToTableNameMap().get(tableId);
     }
 
     public Collection<Boolean> getIncludedColumns(BitSet includedColumns) {
@@ -559,22 +640,22 @@ public class AugmenterContext implements Closeable {
         return includedColumnList;
     }
 
-    public Collection<AugmentedEventColumn> getColumns(long tableId) {
-        AugmentedEventTable eventTable = this.getEventTable(tableId);
+    public Collection<ColumnSchema> getColumns(long tableId) {
+        FullTableName eventTable = this.getEventTable(tableId);
 
         if (eventTable != null) {
-            return this.schema.listColumns(eventTable.getName());
+            return this.schemaManager.listColumns(eventTable.getName());
         } else {
             return null;
         }
     }
 
     public Collection<Map<String, Object>> getRows(long tableId, BitSet includedColumns, List<Serializable[]> rows) {
-        AugmentedEventTable eventTable = this.getEventTable(tableId);
+        FullTableName eventTable = this.getEventTable(tableId);
 
         if (eventTable != null) {
             Collection<Map<String, Object>> rowList = new ArrayList<>();
-            List<AugmentedEventColumn> columns = this.schema.listColumns(eventTable.getName());
+            List<ColumnSchema> columns = this.schemaManager.listColumns(eventTable.getName());
             Map<String, String[]> cache = this.getCache(columns);
 
             for (Serializable[] row : rows) {
@@ -588,11 +669,11 @@ public class AugmenterContext implements Closeable {
     }
 
     public Collection<AugmentedEventUpdatedRow> getUpdatedRows(long tableId, BitSet includedColumns, List<Map.Entry<Serializable[], Serializable[]>> rows) {
-        AugmentedEventTable eventTable = this.getEventTable(tableId);
+        FullTableName eventTable = this.getEventTable(tableId);
 
         if (eventTable != null) {
             List<AugmentedEventUpdatedRow> rowList = new ArrayList<>();
-            List<AugmentedEventColumn> columns = this.schema.listColumns(eventTable.getName());
+            List<ColumnSchema> columns = this.schemaManager.listColumns(eventTable.getName());
             Map<String, String[]> cache = this.getCache(columns);
 
             for (Map.Entry<Serializable[], Serializable[]> row : rows) {
@@ -608,13 +689,13 @@ public class AugmenterContext implements Closeable {
         }
     }
 
-    private Map<String, Object> getRow(List<AugmentedEventColumn> columns, BitSet includedColumns, Serializable[] row, Map<String, String[]> cache) {
+    private Map<String, Object> getRow(List<ColumnSchema> columns, BitSet includedColumns, Serializable[] row, Map<String, String[]> cache) {
         Map<String, Object> rowMap = new LinkedHashMap<>();
 
         if (columns != null) {
             for (int columnIndex = 0, rowIndex = 0; columnIndex < columns.size() && rowIndex < row.length; columnIndex++) {
                 if (includedColumns.get(columnIndex)) {
-                    AugmentedEventColumn column = columns.get(columnIndex);
+                    ColumnSchema column = columns.get(columnIndex);
                     String columnName = column.getName();
                     String columnType = column.getType().toLowerCase();
                     Serializable cellValue = row[rowIndex++];
@@ -699,11 +780,11 @@ public class AugmenterContext implements Closeable {
         return rowMap;
     }
 
-    private Map<String, String[]> getCache(List<AugmentedEventColumn> columns) {
+    private Map<String, String[]> getCache(List<ColumnSchema> columns) {
         Matcher matcher;
         Map<String, String[]> cache = new HashMap<>();
 
-        for (AugmentedEventColumn column : columns) {
+        for (ColumnSchema column : columns) {
             String columnType = column.getType().toLowerCase();
 
             if (((matcher = this.enumPattern.matcher(columnType)).find() && matcher.groupCount() > 0) || ((matcher = this.setPattern.matcher(columnType)).find() && matcher.groupCount() > 0)) {
@@ -726,6 +807,14 @@ public class AugmenterContext implements Closeable {
 
     @Override
     public void close() throws IOException {
-        this.schema.close();
+        this.schemaManager.close();
+    }
+
+    public Boolean isAtDdl() {
+        return isAtDDL.get();
+    }
+
+    public SchemaSnapshot getSchemaSnapshot() {
+        return schemaSnapshot.get();
     }
 }

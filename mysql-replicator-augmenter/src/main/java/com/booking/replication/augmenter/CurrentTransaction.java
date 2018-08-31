@@ -1,7 +1,7 @@
 package com.booking.replication.augmenter;
 
-import com.booking.replication.augmenter.model.AugmentedEvent;
-import com.booking.replication.augmenter.model.AugmentedEventTransaction;
+import com.booking.replication.augmenter.model.event.AugmentedEvent;
+import com.booking.replication.augmenter.model.event.AugmentedEventTransaction;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -56,9 +56,15 @@ public class CurrentTransaction {
         }
     }
 
-    public Collection<AugmentedEvent> clean() {
+    public Collection<AugmentedEvent> getAndClear() {
+
         if (this.buffer.get() != null) {
-            Collection<AugmentedEvent> augmentedEventQueue = this.buffer.getAndSet((this.resuming.get())?(this.getBufferInstance()):(null));
+
+            Collection<AugmentedEvent> augmentedEventQueue = this.buffer.getAndSet(
+                    (this.resuming.get())
+                            ? (this.getBufferInstance())
+                            :(null)
+            );
             Collection<AugmentedEvent> augmentedEventList = new ArrayList<>();
 
             for (AugmentedEvent augmentedEvent : augmentedEventQueue) {
@@ -106,7 +112,7 @@ public class CurrentTransaction {
         return this.resuming.get();
     }
 
-    public boolean committed() {
+    public boolean markedForCommit() {
         return !this.started.get() && !this.resuming.get() && this.buffer.get() != null;
     }
 

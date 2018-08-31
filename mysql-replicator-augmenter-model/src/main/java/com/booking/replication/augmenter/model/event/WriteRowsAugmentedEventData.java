@@ -1,19 +1,22 @@
-package com.booking.replication.augmenter.model;
+package com.booking.replication.augmenter.model.event;
+
+import com.booking.replication.augmenter.model.schema.ColumnSchema;
+import com.booking.replication.augmenter.model.schema.FullTableName;
 
 import java.util.Collection;
 import java.util.Map;
 
 @SuppressWarnings("unused")
 public class WriteRowsAugmentedEventData implements TableAugmentedEventData {
-    private AugmentedEventTable eventTable;
+    private FullTableName eventTable;
     private Collection<Boolean> includedColumns;
-    private Collection<AugmentedEventColumn> columns;
+    private Collection<ColumnSchema> columns;
     private Collection<Map<String, Object>> rows;
 
     public WriteRowsAugmentedEventData() {
     }
 
-    public WriteRowsAugmentedEventData(AugmentedEventTable eventTable, Collection<Boolean> includedColumns, Collection<AugmentedEventColumn> columns, Collection<Map<String, Object>> rows) {
+    public WriteRowsAugmentedEventData(FullTableName eventTable, Collection<Boolean> includedColumns, Collection<ColumnSchema> columns, Collection<Map<String, Object>> rows) {
         this.eventTable = eventTable;
         this.includedColumns = includedColumns;
         this.columns = columns;
@@ -21,7 +24,7 @@ public class WriteRowsAugmentedEventData implements TableAugmentedEventData {
     }
 
     @Override
-    public AugmentedEventTable getEventTable() {
+    public FullTableName getEventTable() {
         return this.eventTable;
     }
 
@@ -29,7 +32,7 @@ public class WriteRowsAugmentedEventData implements TableAugmentedEventData {
         return this.includedColumns;
     }
 
-    public Collection<AugmentedEventColumn> getColumns() {
+    public Collection<ColumnSchema> getColumns() {
         return this.columns;
     }
 

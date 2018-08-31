@@ -1,7 +1,7 @@
 package com.booking.replication.applier;
 
 import com.booking.replication.applier.kafka.KafkaSeeker;
-import com.booking.replication.augmenter.model.AugmentedEvent;
+import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 
 import java.io.Closeable;

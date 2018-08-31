@@ -1,4 +1,4 @@
-package com.booking.replication.augmenter.model;
+package com.booking.replication.augmenter.model.event;
 
 import com.booking.replication.commons.checkpoint.Checkpoint;
 

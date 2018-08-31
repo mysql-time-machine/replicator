@@ -1,11 +1,9 @@
 package com.booking.replication.checkpoint;
 
-import com.booking.replication.augmenter.model.AugmentedEvent;
+import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.commons.checkpoint.CheckpointStorage;
 
 import java.io.Closeable;
-import java.io.IOException;
-import java.util.Collection;
 import java.util.Map;
 import java.util.function.BiConsumer;
 

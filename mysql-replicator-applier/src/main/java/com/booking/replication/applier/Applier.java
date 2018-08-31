@@ -3,7 +3,7 @@ package com.booking.replication.applier;
 import com.booking.replication.applier.console.ConsoleApplier;
 import com.booking.replication.applier.hbase.HBaseApplier;
 import com.booking.replication.applier.kafka.KafkaApplier;
-import com.booking.replication.augmenter.model.AugmentedEvent;
+import com.booking.replication.augmenter.model.event.AugmentedEvent;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -21,7 +21,7 @@ public interface Applier extends Function<Collection<AugmentedEvent>, Boolean>, 
         },
         HBASE {
             @Override
-            protected Applier newInstance(Map<String, Object> configuration) {
+            protected Applier newInstance(Map<String, Object> configuration)  {
                 return new HBaseApplier(configuration);
             }
         },

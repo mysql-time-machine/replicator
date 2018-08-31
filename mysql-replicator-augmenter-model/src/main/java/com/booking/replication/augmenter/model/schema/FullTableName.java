@@ -1,16 +1,17 @@
-package com.booking.replication.augmenter.model;
+package com.booking.replication.augmenter.model.schema;
 
 import java.io.Serializable;
 
 @SuppressWarnings("unused")
-public class AugmentedEventTable implements Serializable {
+public class FullTableName implements Serializable {
+
     private String database;
     private String name;
 
-    public AugmentedEventTable() {
+    public FullTableName() {
     }
 
-    public AugmentedEventTable(String database, String name) {
+    public FullTableName(String database, String name) {
         this.database = database;
         this.name = name;
     }

@@ -10,6 +10,9 @@
     </parent>
     <artifactId>mysql-replicator</artifactId>
     <name>mysql-replicator</name>
+    <properties>
+        <hbase.version>1.2.0</hbase.version>
+    </properties>
     <packaging>jar</packaging>
     <dependencies>
         <dependency>
@@ -61,6 +64,16 @@
         <dependency>
             <groupId>com.booking.replication</groupId>
             <artifactId>mysql-replicator-applier</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hbase</groupId>
+            <artifactId>hbase-client</artifactId>
+            <version>${hbase.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hbase</groupId>
+            <artifactId>hbase-common</artifactId>
+            <version>${hbase.version}</version>
         </dependency>
     </dependencies>
     <build>

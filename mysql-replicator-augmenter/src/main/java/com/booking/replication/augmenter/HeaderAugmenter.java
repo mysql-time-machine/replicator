@@ -1,7 +1,7 @@
 package com.booking.replication.augmenter;
 
-import com.booking.replication.augmenter.model.AugmentedEventHeader;
-import com.booking.replication.augmenter.model.AugmentedEventType;
+import com.booking.replication.augmenter.model.event.AugmentedEventHeader;
+import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.supplier.model.RawEventData;
 import com.booking.replication.supplier.model.RawEventHeaderV4;
 

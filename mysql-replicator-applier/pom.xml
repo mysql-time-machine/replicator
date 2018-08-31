@@ -11,10 +11,28 @@
     <artifactId>mysql-replicator-applier</artifactId>
     <name>mysql-replicator-applier</name>
     <packaging>jar</packaging>
+    <properties>
+        <hbase.version>1.2.0</hbase.version>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka_2.12</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hbase</groupId>
+            <artifactId>hbase-client</artifactId>
+            <version>${hbase.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hbase</groupId>
+            <artifactId>hbase-common</artifactId>
+            <version>${hbase.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hbase</groupId>
+            <artifactId>hbase-server</artifactId>
+            <version>${hbase.version}</version>
         </dependency>
         <dependency>
             <groupId>com.booking.replication</groupId>
@@ -29,6 +47,10 @@
         <dependency>
             <groupId>com.booking.replication</groupId>
             <artifactId>mysql-replicator-augmenter-model</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.booking.replication</groupId>
+            <artifactId>mysql-replicator-augmenter</artifactId>
         </dependency>
     </dependencies>
 </project>

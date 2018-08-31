@@ -11,7 +11,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <tests.arguments>-Djava.util.logging.schema=org.apache.logging.log4j.jul.LogManager</tests.arguments>
+        <tests.arguments>-Djava.util.logging.schemaManager=org.apache.logging.log4j.jul.LogManager</tests.arguments>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <maven.compiler.testSource>1.8</maven.compiler.testSource>
@@ -25,7 +25,7 @@
         <jackson.version>2.9.6</jackson.version>
         <zookeeper.version>3.4.12</zookeeper.version>
         <curator.version>4.0.1</curator.version>
-        <mysql-connector.version>5.1.46</mysql-connector.version>
+        <mysql-connector.version>8.0.12</mysql-connector.version>
         <mysql-binlog-connector.version>0.16.1</mysql-binlog-connector.version>
         <commons-dbcp2.version>2.4.0</commons-dbcp2.version>
         <kafka.version>1.1.0</kafka.version>

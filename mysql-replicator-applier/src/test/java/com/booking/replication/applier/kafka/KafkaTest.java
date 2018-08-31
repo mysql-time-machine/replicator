@@ -2,10 +2,10 @@ package com.booking.replication.applier.kafka;
 
 import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.Seeker;
-import com.booking.replication.augmenter.model.AugmentedEvent;
-import com.booking.replication.augmenter.model.AugmentedEventHeader;
-import com.booking.replication.augmenter.model.AugmentedEventType;
-import com.booking.replication.augmenter.model.ByteArrayAugmentedEventData;
+import com.booking.replication.augmenter.model.event.AugmentedEvent;
+import com.booking.replication.augmenter.model.event.AugmentedEventHeader;
+import com.booking.replication.augmenter.model.event.AugmentedEventType;
+import com.booking.replication.augmenter.model.event.ByteArrayAugmentedEventData;
 import com.booking.replication.commons.checkpoint.Binlog;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.GTID;

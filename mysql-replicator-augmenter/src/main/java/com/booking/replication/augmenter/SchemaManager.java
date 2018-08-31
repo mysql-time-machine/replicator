@@ -1,15 +1,15 @@
 package com.booking.replication.augmenter;
 
-import com.booking.replication.augmenter.model.AugmentedEventColumn;
+import com.booking.replication.augmenter.model.schema.ColumnSchema;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 
-public interface Schema extends Closeable {
+public interface SchemaManager extends Closeable {
     boolean execute(String tableName, String query);
 
-    List<AugmentedEventColumn> listColumns(String tableName);
+    List<ColumnSchema> listColumns(String tableName);
 
     String getCreateTable(String tableName);
 

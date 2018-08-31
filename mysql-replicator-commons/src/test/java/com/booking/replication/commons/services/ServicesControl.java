@@ -7,7 +7,7 @@ public interface ServicesControl extends Closeable {
     void close();
 
     default String getHost() {
-        return "localhost";
+        return "0.0.0.0";
     }
 
     int getPort();

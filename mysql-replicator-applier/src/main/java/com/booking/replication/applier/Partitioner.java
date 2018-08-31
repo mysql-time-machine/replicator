@@ -1,15 +1,12 @@
 package com.booking.replication.applier;
 
-import com.booking.replication.augmenter.model.AugmentedEvent;
-import com.booking.replication.augmenter.model.AugmentedEventTable;
-import com.booking.replication.augmenter.model.AugmentedEventTransaction;
-import com.booking.replication.augmenter.model.TableAugmentedEventData;
+import com.booking.replication.augmenter.model.event.AugmentedEvent;
+import com.booking.replication.augmenter.model.schema.FullTableName;
+import com.booking.replication.augmenter.model.event.AugmentedEventTransaction;
+import com.booking.replication.augmenter.model.event.TableAugmentedEventData;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiFunction;
@@ -21,7 +18,7 @@ public interface Partitioner extends BiFunction<AugmentedEvent, Integer, Integer
             protected Partitioner newInstance(Map<String, Object> configuration) {
                 return (event, totalPartitions) -> {
                     if (TableAugmentedEventData.class.isInstance(event.getData())) {
-                        AugmentedEventTable eventTable = TableAugmentedEventData.class.cast(event.getData()).getEventTable();
+                        FullTableName eventTable = TableAugmentedEventData.class.cast(event.getData()).getEventTable();
 
                         if (eventTable != null) {
                             return Math.abs(eventTable.toString().hashCode()) % totalPartitions;

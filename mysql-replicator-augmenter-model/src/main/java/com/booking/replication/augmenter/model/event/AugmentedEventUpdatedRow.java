@@ -1,4 +1,4 @@
-package com.booking.replication.augmenter.model;
+package com.booking.replication.augmenter.model.event;
 
 import java.io.Serializable;
 import java.util.Map;

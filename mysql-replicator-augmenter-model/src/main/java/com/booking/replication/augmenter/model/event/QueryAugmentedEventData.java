@@ -1,21 +1,28 @@
-package com.booking.replication.augmenter.model;
+package com.booking.replication.augmenter.model.event;
+
+import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
+import com.booking.replication.augmenter.model.schema.TableSchema;
+import com.booking.replication.augmenter.model.schema.FullTableName;
 
 @SuppressWarnings("unused")
 public class QueryAugmentedEventData implements TableAugmentedEventData {
     private QueryAugmentedEventDataType queryType;
     private QueryAugmentedEventDataOperationType operationType;
-    private AugmentedEventTable eventTable;
+    private FullTableName eventTable;
     private long threadId;
     private long executionTime;
     private int errorCode;
     private String sql;
-    private AugmentedEventSchema before;
-    private AugmentedEventSchema after;
+    private TableSchema before;
+    private TableSchema after;
+
+    private boolean isDDL = false;
+    private SchemaSnapshot schemaSnapshotOnDDL = null;
 
     public QueryAugmentedEventData() {
     }
 
-    public QueryAugmentedEventData(QueryAugmentedEventDataType queryType, QueryAugmentedEventDataOperationType operationType, AugmentedEventTable eventTable, long threadId, long executionTime, int errorCode, String sql, AugmentedEventSchema before, AugmentedEventSchema after) {
+    public QueryAugmentedEventData(QueryAugmentedEventDataType queryType, QueryAugmentedEventDataOperationType operationType, FullTableName eventTable, long threadId, long executionTime, int errorCode, String sql, TableSchema before, TableSchema after) {
         this.queryType = queryType;
         this.operationType = operationType;
         this.eventTable = eventTable;
@@ -36,7 +43,7 @@ public class QueryAugmentedEventData implements TableAugmentedEventData {
     }
 
     @Override
-    public AugmentedEventTable getEventTable() {
+    public FullTableName getEventTable() {
         return this.eventTable;
     }
 
@@ -56,11 +63,27 @@ public class QueryAugmentedEventData implements TableAugmentedEventData {
         return this.sql;
     }
 
-    public AugmentedEventSchema getBefore() {
+    public TableSchema getBefore() {
         return this.before;
     }
 
-    public AugmentedEventSchema getAfter() {
+    public TableSchema getAfter() {
         return this.after;
+    }
+
+    public boolean isDDL() {
+        return isDDL;
+    }
+
+    public void setDDL(boolean DDL) {
+        isDDL = DDL;
+    }
+
+    public SchemaSnapshot getSchemaSnapshotOnDDL() {
+        return schemaSnapshotOnDDL;
+    }
+
+    public void setSchemaSnapshotOnDDL(SchemaSnapshot schemaSnapshotOnDDL) {
+        this.schemaSnapshotOnDDL = schemaSnapshotOnDDL;
     }
 }

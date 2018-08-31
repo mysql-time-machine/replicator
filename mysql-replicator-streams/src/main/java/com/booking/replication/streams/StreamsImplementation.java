@@ -36,7 +36,18 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     private Consumer<Exception> handler;
 
     @SuppressWarnings("unchecked")
-    StreamsImplementation(int threads, int tasks, BiFunction<Input, Integer, Integer> partitioner, Class<? extends Deque> queueType, Function<Integer, Input> from, Predicate<Input> filter, Function<Input, Output> process, Function<Output, Boolean> to, BiConsumer<Input, Integer> post) {
+    StreamsImplementation(
+            int threads,
+            int tasks,
+            BiFunction<Input, Integer, Integer> partitioner,
+            Class<? extends Deque> queueType,
+            Function<Integer, Input> from,
+            Predicate<Input> filter,
+            Function<Input, Output> process,
+            Function<Output, Boolean> to,
+            BiConsumer<Input, Integer> post
+    ) {
+
         this.threads = threads + 1;
         this.tasks = tasks;
 

@@ -2,7 +2,7 @@ package com.booking.replication.applier.kafka;
 
 import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.Partitioner;
-import com.booking.replication.augmenter.model.AugmentedEvent;
+import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.commons.map.MapFilter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

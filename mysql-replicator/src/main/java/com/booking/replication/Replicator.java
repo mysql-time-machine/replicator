@@ -4,7 +4,7 @@ import com.booking.replication.applier.Seeker;
 import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.Partitioner;
 import com.booking.replication.augmenter.Augmenter;
-import com.booking.replication.augmenter.model.AugmentedEvent;
+import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.checkpoint.CheckpointApplier;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.ForceRewindException;

@@ -1,19 +1,22 @@
-package com.booking.replication.augmenter.model;
+package com.booking.replication.augmenter.model.event;
+
+import com.booking.replication.augmenter.model.schema.ColumnSchema;
+import com.booking.replication.augmenter.model.schema.FullTableName;
 
 import java.util.Collection;
 
 @SuppressWarnings("unused")
 public class UpdateRowsAugmentedEventData implements TableAugmentedEventData {
-    private AugmentedEventTable eventTable;
+    private FullTableName eventTable;
     private Collection<Boolean> includedColumnsBeforeUpdate;
     private Collection<Boolean> includedColumns;
-    private Collection<AugmentedEventColumn> columns;
+    private Collection<ColumnSchema> columns;
     private Collection<AugmentedEventUpdatedRow> rows;
 
     public UpdateRowsAugmentedEventData() {
     }
 
-    public UpdateRowsAugmentedEventData(AugmentedEventTable eventTable, Collection<Boolean> includedColumnsBeforeUpdate, Collection<Boolean> includedColumns, Collection<AugmentedEventColumn> columns, Collection<AugmentedEventUpdatedRow> rows) {
+    public UpdateRowsAugmentedEventData(FullTableName eventTable, Collection<Boolean> includedColumnsBeforeUpdate, Collection<Boolean> includedColumns, Collection<ColumnSchema> columns, Collection<AugmentedEventUpdatedRow> rows) {
         this.eventTable = eventTable;
         this.includedColumnsBeforeUpdate = includedColumnsBeforeUpdate;
         this.includedColumns = includedColumns;
@@ -22,7 +25,7 @@ public class UpdateRowsAugmentedEventData implements TableAugmentedEventData {
     }
 
     @Override
-    public AugmentedEventTable getEventTable() {
+    public FullTableName getEventTable() {
         return this.eventTable;
     }
 
@@ -34,7 +37,7 @@ public class UpdateRowsAugmentedEventData implements TableAugmentedEventData {
         return this.includedColumns;
     }
 
-    public Collection<AugmentedEventColumn> getColumns() {
+    public Collection<ColumnSchema> getColumns() {
         return this.columns;
     }
 

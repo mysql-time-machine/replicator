@@ -1,5 +1,6 @@
 package com.booking.replication.augmenter;
 
+import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.augmenter.model.schema.*;
 import com.booking.replication.augmenter.model.event.AugmentedEventUpdatedRow;
 import com.booking.replication.augmenter.model.schema.FullTableName;
@@ -687,6 +688,156 @@ public class AugmenterContext implements Closeable {
         } else {
             return null;
         }
+    }
+    // TODO: deprecate getRow in favour of getAugmentedRow
+    private AugmentedRow getAugmentedRow(
+            String eventType, // TODO: use proper type
+            List<ColumnSchema> columns,
+            BitSet includedColumns,
+            Serializable[] row,
+            Map<String, String[]> cache
+    ) {
+
+        Map<String, Map<String, String>> rowColumns = new HashMap<>();
+
+        // TODO: encapsulate in Stringifier class
+        if (columns != null) {
+            for (int columnIndex = 0, rowIndex = 0; columnIndex < columns.size() && rowIndex < row.length; columnIndex++) {
+                if (includedColumns.get(columnIndex)) {
+
+                    ColumnSchema column = columns.get(columnIndex);
+
+                    String columnName = column.getName();
+                    String columnType = column.getType().toLowerCase();
+                    Serializable cellValue = row[rowIndex++];
+                    String collation = column.getCollation();
+
+                    String stringifiedCellValue = null;
+
+                    if(collation != null && (cellValue instanceof byte[])){
+                        byte[] bytes = (byte[])cellValue;
+                        if(collation.contains("latin1")){
+                            stringifiedCellValue = new String(bytes,StandardCharsets.ISO_8859_1);
+                        }else{
+                            // Currently handle all the other character set as UTF8, extend this to handle specific character sets
+                            stringifiedCellValue = new String(bytes, StandardCharsets.UTF_8);
+                        }
+                    }
+
+                    if(cellValue instanceof  BitSet){
+                        final BitSet data = (BitSet)cellValue;
+                        final StringBuilder buffer = new StringBuilder(data.length());
+                        IntStream.range(0, data.length()).mapToObj( i -> data.get(i) ? '1': '0').forEach(buffer::append);
+                        stringifiedCellValue = buffer.reverse().toString();
+                    }
+
+                    if(columnType.contains("unsigned") && cellValue != null ){
+                        if(columnType.contains("tiny")){
+                            stringifiedCellValue = String.valueOf(Byte.toUnsignedInt(((Integer)cellValue).byteValue()));
+                        }else if(columnType.contains("small")){
+                            stringifiedCellValue = String.valueOf(((Integer)cellValue) & 0xffff);
+                        }else if(columnType.contains("medium")){
+                            stringifiedCellValue = String.valueOf(((Integer)cellValue) & 0xffffff);
+                        }else if(columnType.contains("bigint")){
+                            long i = (Long)cellValue;
+                            int upper = (int) (i >>> 32);
+                            int lower = (int) i;
+
+                            stringifiedCellValue = String.valueOf(
+                                    BigInteger.valueOf(
+                                            Integer.toUnsignedLong(upper)
+                                    )
+                                            .shiftLeft(32)
+                                            .add(
+                                                    BigInteger.valueOf(Integer.toUnsignedLong(lower))
+                                            )
+                            );
+
+                        } else if(columnType.contains("int")){
+                            stringifiedCellValue = String.valueOf(Long.valueOf(((Integer)cellValue)) & 0x00000000FFFFFFFFl);
+                        }
+
+                    }
+
+                    if (cache.containsKey(columnType)) {
+                        if (columnType.startsWith("enum")) {
+                            int index = Number.class.cast(cellValue).intValue();
+
+                            if (index > 0) {
+                                stringifiedCellValue = String.valueOf(cache.get(columnType)[index - 1]);
+                            } else {
+                                stringifiedCellValue = null;
+                            }
+                        } else if (columnType.startsWith("set")) {
+                            long bits = Number.class.cast(cellValue).longValue();
+
+                            if (bits > 0) {
+                                String[] members = cache.get(columnType);
+                                List<String> items = new ArrayList<>();
+
+                                for (int index = 0; index < members.length; index++) {
+                                    if (((bits >> index) & 1) == 1) {
+                                        items.add(members[index]);
+                                    }
+                                }
+
+                                stringifiedCellValue = String.valueOf(items.toArray(new String[0]));
+                            } else {
+                                stringifiedCellValue = null;
+                            }
+                        }
+                    }
+
+                    if (eventType.equals("INSERT")) {
+                        rowColumns.put(columnName, new HashMap<>());
+                        rowColumns.get(columnName).put("before", stringifiedCellValue);
+                    } else {
+                        // TODO: implement update/delete
+                    }
+                }
+            }
+        } else {
+            throw new RuntimeException("Invalid data. Columns list cannot be null!");
+        }
+
+        // =============================================================
+
+        TableSchema tableSchema = new TableSchema(); // columns + create
+
+        // TODO: init these
+        String _eventType;
+        String tableName;
+        UUID transactionUUID;
+        Long transactionXid;
+        Long commitTimestamp;
+        Long rowMicrosecondTimestamp;
+        List<String> primaryKeyColumns;
+
+        // TODO: replace with GTID
+        long rowBinlogEventOrdinal;
+        String binlogFileName;
+        String rowBinlogPositionID;
+
+        // TODO: remove
+        String rowUUID;
+
+        AugmentedRow augmentedRow = new AugmentedRow(
+                null,
+                null,
+                0,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                rowColumns
+        );
+
+        return augmentedRow;
     }
 
     private Map<String, Object> getRow(List<ColumnSchema> columns, BitSet includedColumns, Serializable[] row, Map<String, String[]> cache) {

@@ -15,7 +15,6 @@ public class AugmentedRow {
     private String       tableName;
     private long         rowBinlogEventOrdinal;
     private String       binlogFileName;
-    private List<String> primaryKeyColumns = new ArrayList<>();
     private String       rowUUID;
     private String       rowBinlogPositionID;
     private UUID         transactionUUID;
@@ -24,7 +23,8 @@ public class AugmentedRow {
     private Long         rowMicrosecondTimestamp;
     private String       eventType;
 
-    private Map<String, Map<String,String>> eventColumns = new CaseInsensitiveMap<>();
+    private List<String> primaryKeyColumns = new ArrayList<>();
+    private Map<String, Map<String,String>> rowColumns = new CaseInsensitiveMap<>(); // { columnName => { val_before/after => value } }
 
     public AugmentedRow(
             TableSchema tableSchema,
@@ -39,8 +39,8 @@ public class AugmentedRow {
             Long commitTimestamp,
             Long rowMicrosecondTimestamp,
             String eventType,
-            Map<String, Map<String, String>> eventColumns
-        ) {
+            Map<String,Map<String, String>> rowColumns
+    ) {
         this.tableSchema = tableSchema;
         this.tableName = tableName;
         this.rowBinlogEventOrdinal = rowBinlogEventOrdinal;
@@ -53,7 +53,7 @@ public class AugmentedRow {
         this.commitTimestamp = commitTimestamp;
         this.rowMicrosecondTimestamp = rowMicrosecondTimestamp;
         this.eventType = eventType;
-        this.eventColumns = eventColumns;
+        this.rowColumns = rowColumns;
     }
 
     public TableSchema getTableSchema() {
@@ -104,8 +104,8 @@ public class AugmentedRow {
         return eventType;
     }
 
-    public Map<String, Map<String, String>> getEventColumns() {
-        return eventColumns;
+    public Map<String, Map<String, String>> getRowColumns() {
+        return rowColumns;
     }
 
     public static List<AugmentedRow> extractAugmentedRows(AugmentedEvent augmentedEvent) {
@@ -149,17 +149,16 @@ public class AugmentedRow {
     }
 
     private static List<AugmentedRow> extractAugmentedRowsFromWriteRowsEventData(
-        FullTableName eventTable,
-        Collection<ColumnSchema> eventDataColumns,
-        Collection<Boolean> includedColumns,
-        Collection<Map<String, Object>> rows
+            FullTableName eventTable,
+            Collection<ColumnSchema> eventDataColumns,
+            Collection<Boolean> includedColumns,
+            Collection<Map<String, Object>> rows
     ) {
         List<AugmentedRow> augRows = new ArrayList<>();
 
         for (Map<String, Object> row : rows) {
 
-
-        // TODO: get params and call
+            // TODO: get params and call
 //            AugmentedRow ar = new AugmentedRow(
 //                    null,
 //

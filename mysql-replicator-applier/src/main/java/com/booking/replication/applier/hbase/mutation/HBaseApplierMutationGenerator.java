@@ -149,10 +149,10 @@ public class HBaseApplierMutationGenerator {
                 Long columnTimestamp = row.getRowMicrosecondTimestamp();
                 String columnValue;
 
-                for (String columnName : row.getEventColumns().keySet()) {
+                for (String columnName : row.getRowColumns().keySet()) {
 
-                    String valueBefore = row.getEventColumns().get(columnName).get("value_before");
-                    String valueAfter = row.getEventColumns().get(columnName).get("value_after");
+                    String valueBefore = row.getRowColumns().get(columnName).get("value_before");
+                    String valueAfter = row.getRowColumns().get(columnName).get("value_after");
 
                     if ((valueAfter == null) && (valueBefore == null)) {
                         // no change, skip;
@@ -197,9 +197,9 @@ public class HBaseApplierMutationGenerator {
                 Long columnTimestamp = row.getRowMicrosecondTimestamp();
                 String columnValue;
 
-                for (String columnName : row.getEventColumns().keySet()) {
+                for (String columnName : row.getRowColumns().keySet()) {
 
-                    columnValue = row.getEventColumns().get(columnName).get("value");
+                    columnValue = row.getRowColumns().get(columnName).get("value");
                     if (columnValue == null) {
                         columnValue = "NULL";
                     }
@@ -254,7 +254,7 @@ public class HBaseApplierMutationGenerator {
                 .map( column -> {
                     try {
 
-                        String value = row.getEventColumns().get(column).get( "UPDATE".equals(eventType) ? "value_after" : "value" );
+                        String value = row.getRowColumns().get(column).get( "UPDATE".equals(eventType) ? "value_after" : "value" );
 
                         return URLEncoder.encode(column,"UTF-8") + "=" + URLEncoder.encode(value,"UTF-8");
 
@@ -279,7 +279,7 @@ public class HBaseApplierMutationGenerator {
 
         for (String pkColumnName : pkColumnNames) {
 
-            Map<String, String> pkCell = row.getEventColumns().get(pkColumnName);
+            Map<String, String> pkCell = row.getRowColumns().get(pkColumnName);
 
             switch (row.getEventType()) {
                 case "INSERT":

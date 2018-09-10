@@ -15,9 +15,18 @@ public class ColumnSchema implements Serializable {
     public ColumnSchema() {
     }
 
-    public ColumnSchema(String name, String type, boolean nullable, String key, String valueDefault, String extra) {
+    public ColumnSchema(
+            String name,
+            String type,
+            String collation,
+            boolean nullable,
+            String key,
+            String valueDefault,
+            String extra
+        ) {
         this.name = name;
         this.type = type;
+        this.collation = collation;
         this.nullable = nullable;
         this.key = key;
         this.valueDefault = valueDefault;
@@ -57,13 +66,14 @@ public class ColumnSchema implements Serializable {
 
         String name = new String(this.getName());
         String type = new String(this.getType());
+        String collation = (this.getCollation() == null) ? null : new String(this.getCollation());
         boolean nullable = new Boolean(this.isNullable());
         String key = new String(this.getKey());
         String valueDefault = (this.getValueDefault() == null) ? "NULL" : new String(this.getValueDefault());
         String extra = new String(this.getExtra());
 
         ColumnSchema columnSchemaCopy = new ColumnSchema(
-            name,type,nullable,key,valueDefault,extra
+            name, type, collation, nullable, key, valueDefault, extra
         );
 
         return columnSchemaCopy;

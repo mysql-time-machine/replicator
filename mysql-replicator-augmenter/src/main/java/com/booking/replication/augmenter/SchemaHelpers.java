@@ -26,17 +26,25 @@ public class SchemaHelpers {
                     List<ColumnSchema> columnList = new ArrayList<>();
                     String tableCreateStatement = null;
 
+                    // TODO: get this info from information_schema instead of 'show full columns from'
+                    //       to avoid dealing with columns indexes
                     try (ResultSet resultSet = statementListColumns.executeQuery(
                             String.format(ActiveSchemaManager.LIST_COLUMNS_SQL, tableName)
                     )) {
                         while (resultSet.next()) {
+
+                            String collation = resultSet.getString(3);
+
+                            boolean nullable = (resultSet.getString(4).equals("NO") ? false : true);
+
                             columnList.add(new ColumnSchema(
                                     resultSet.getString(1),
                                     resultSet.getString(2),
-                                    (resultSet.getString(3).equals("NO") ? false : true),
-                                    resultSet.getString(4),
+                                    collation,
+                                    nullable,
                                     resultSet.getString(5),
-                                    resultSet.getString(6)
+                                    resultSet.getString(6),
+                                    resultSet.getString(7)
                             ));
                         }
                     }

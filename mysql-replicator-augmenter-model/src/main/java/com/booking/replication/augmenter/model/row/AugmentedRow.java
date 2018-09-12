@@ -13,11 +13,7 @@ public class AugmentedRow {
 
     private TableSchema  tableSchema;
     private String       tableName;
-    private long         rowBinlogEventOrdinal;
-    private String       binlogFileName;
-    private String       rowUUID;
-    private String       rowBinlogPositionID;
-    private UUID         transactionUUID;
+    private UUID       transactionUUID;
     private Long         transactionXid;
     private Long         commitTimestamp;
     private Long         rowMicrosecondTimestamp;
@@ -29,11 +25,7 @@ public class AugmentedRow {
     public AugmentedRow(
             TableSchema tableSchema,
             String tableName,
-            long rowBinlogEventOrdinal,
-            String binlogFileName,
             List<String> primaryKeyColumns,
-            String rowUUID,
-            String rowBinlogPositionID,
             UUID transactionUUID,
             Long transactionXid,
             Long commitTimestamp,
@@ -43,11 +35,7 @@ public class AugmentedRow {
     ) {
         this.tableSchema = tableSchema;
         this.tableName = tableName;
-        this.rowBinlogEventOrdinal = rowBinlogEventOrdinal;
-        this.binlogFileName = binlogFileName;
         this.primaryKeyColumns = primaryKeyColumns;
-        this.rowUUID = rowUUID;
-        this.rowBinlogPositionID = rowBinlogPositionID;
         this.transactionUUID = transactionUUID;
         this.transactionXid = transactionXid;
         this.commitTimestamp = commitTimestamp;
@@ -64,24 +52,8 @@ public class AugmentedRow {
         return tableName;
     }
 
-    public long getRowBinlogEventOrdinal() {
-        return rowBinlogEventOrdinal;
-    }
-
-    public String getBinlogFileName() {
-        return binlogFileName;
-    }
-
     public List<String> getPrimaryKeyColumns() {
         return primaryKeyColumns;
-    }
-
-    public String getRowUUID() {
-        return rowUUID;
-    }
-
-    public String getRowBinlogPositionID() {
-        return rowBinlogPositionID;
     }
 
     public UUID getTransactionUUID() {
@@ -119,17 +91,7 @@ public class AugmentedRow {
                 WriteRowsAugmentedEventData writeRowsAugmentedEventData =
                         ((WriteRowsAugmentedEventData) augmentedEvent.getData());
 
-                FullTableName eventTable = writeRowsAugmentedEventData.getEventTable();
-                Collection<ColumnSchema> eventDataColumns = writeRowsAugmentedEventData.getColumns();
-                Collection<Boolean> includedColumns = writeRowsAugmentedEventData.getIncludedColumns();
-                Collection<Map<String, Object>> rows = writeRowsAugmentedEventData.getRows();
-
-                List<AugmentedRow> extractedAugmentedRows = extractAugmentedRowsFromWriteRowsEventData(
-                        eventTable,
-                        eventDataColumns,
-                        includedColumns,
-                        rows
-                );
+                Collection<AugmentedRow> extractedAugmentedRows = writeRowsAugmentedEventData.getAugmentedRows();
 
                 augmentedRows.addAll(extractedAugmentedRows);
 
@@ -144,39 +106,6 @@ public class AugmentedRow {
             default:
                 break;
         }
-
         return augmentedRows;
     }
-
-    private static List<AugmentedRow> extractAugmentedRowsFromWriteRowsEventData(
-            FullTableName eventTable,
-            Collection<ColumnSchema> eventDataColumns,
-            Collection<Boolean> includedColumns,
-            Collection<Map<String, Object>> rows
-    ) {
-        List<AugmentedRow> augRows = new ArrayList<>();
-
-        for (Map<String, Object> row : rows) {
-
-            // TODO: get params and call
-//            AugmentedRow ar = new AugmentedRow(
-//                    null,
-//
-//                    null,
-//                    0,
-//                    null,
-//                    null,
-//                    null,
-//                    null,
-//                    null,
-//                    null,
-//                    null,
-//                    null,
-//                    null,
-//                    null
-//            );
-        }
-        return augRows;
-    }
-
 }

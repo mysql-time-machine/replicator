@@ -1,5 +1,6 @@
 package com.booking.replication.augmenter.model.event;
 
+import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.FullTableName;
 
@@ -12,15 +13,23 @@ public class WriteRowsAugmentedEventData implements TableAugmentedEventData {
     private Collection<Boolean> includedColumns;
     private Collection<ColumnSchema> columns;
     private Collection<Map<String, Object>> rows;
+    private Collection<AugmentedRow> augmentedRows;
 
     public WriteRowsAugmentedEventData() {
     }
 
-    public WriteRowsAugmentedEventData(FullTableName eventTable, Collection<Boolean> includedColumns, Collection<ColumnSchema> columns, Collection<Map<String, Object>> rows) {
+    public WriteRowsAugmentedEventData(
+            FullTableName eventTable,
+            Collection<Boolean> includedColumns,
+            Collection<ColumnSchema> columns,
+            Collection<Map<String, Object>> rows,
+            Collection<AugmentedRow> augmentedRows
+        ) {
         this.eventTable = eventTable;
         this.includedColumns = includedColumns;
         this.columns = columns;
         this.rows = rows;
+        this.augmentedRows = augmentedRows;
     }
 
     @Override
@@ -39,4 +48,6 @@ public class WriteRowsAugmentedEventData implements TableAugmentedEventData {
     public Collection<Map<String, Object>> getRows() {
         return this.rows;
     }
+
+    public Collection<AugmentedRow> getAugmentedRows() { return this.augmentedRows; }
 }

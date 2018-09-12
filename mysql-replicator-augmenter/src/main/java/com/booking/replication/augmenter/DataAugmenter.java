@@ -25,12 +25,28 @@ public class DataAugmenter {
             case EXT_WRITE_ROWS:
                 WriteRowsRawEventData writeRowsRawEventData = WriteRowsRawEventData.class.cast(eventData);
 
+
+
                 return new WriteRowsAugmentedEventData(
                         this.context.getEventTable(writeRowsRawEventData.getTableId()),
                         this.context.getIncludedColumns(writeRowsRawEventData.getIncludedColumns()),
                         this.context.getColumns(writeRowsRawEventData.getTableId()),
-                        this.context.getRows(writeRowsRawEventData.getTableId(), writeRowsRawEventData.getIncludedColumns(), writeRowsRawEventData.getRows())
+                        this.context.getRows(
+                                writeRowsRawEventData.getTableId(),
+                                writeRowsRawEventData.getIncludedColumns(),
+                                writeRowsRawEventData.getRows()
+                        ),
+                        this.context.getAugmentedRows(
+                                "INSERT",
+                                this.context.getTransaction().getTimestamp(), // TODO: override these timestamps on transaction commit
+                                this.context.getTransaction().getIdentifier().get(),
+                                this.context.getTransaction().getXxid(),
+                                writeRowsRawEventData.getTableId(),
+                                writeRowsRawEventData.getIncludedColumns(),
+                                writeRowsRawEventData.getRows()
+                        )
                 );
+            // TODO: add augmentedRows to update augmented event data
             case UPDATE_ROWS:
             case EXT_UPDATE_ROWS:
                 UpdateRowsRawEventData updateRowsRawEventData = UpdateRowsRawEventData.class.cast(eventData);
@@ -40,8 +56,14 @@ public class DataAugmenter {
                         this.context.getIncludedColumns(updateRowsRawEventData.getIncludedColumnsBeforeUpdate()),
                         this.context.getIncludedColumns(updateRowsRawEventData.getIncludedColumns()),
                         this.context.getColumns(updateRowsRawEventData.getTableId()),
-                        this.context.getUpdatedRows(updateRowsRawEventData.getTableId(), updateRowsRawEventData.getIncludedColumns(), updateRowsRawEventData.getRows())
+                        this.context.getUpdatedRows(
+                                updateRowsRawEventData.getTableId(),
+                                updateRowsRawEventData.getIncludedColumns(),
+                                updateRowsRawEventData.getRows()
+                        )
                 );
+
+            // TODO: add augmentedRows to delete augmented event data
             case DELETE_ROWS:
             case EXT_DELETE_ROWS:
                 DeleteRowsRawEventData deleteRowsRawEventData = DeleteRowsRawEventData.class.cast(eventData);
@@ -50,7 +72,11 @@ public class DataAugmenter {
                         this.context.getEventTable(deleteRowsRawEventData.getTableId()),
                         this.context.getIncludedColumns(deleteRowsRawEventData.getIncludedColumns()),
                         this.context.getColumns(deleteRowsRawEventData.getTableId()),
-                        this.context.getRows(deleteRowsRawEventData.getTableId(), deleteRowsRawEventData.getIncludedColumns(), deleteRowsRawEventData.getRows())
+                        this.context.getRows(
+                                deleteRowsRawEventData.getTableId(),
+                                deleteRowsRawEventData.getIncludedColumns(),
+                                deleteRowsRawEventData.getRows()
+                        )
                 );
             case QUERY:
                 QueryRawEventData queryRawEventData = QueryRawEventData.class.cast(eventData);

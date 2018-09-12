@@ -668,6 +668,43 @@ public class AugmenterContext implements Closeable {
             return null;
         }
     }
+    public Collection<AugmentedRow> getAugmentedRows(
+            String eventType,
+            AtomicLong commitTimestamp,
+            UUID transactionUUID,
+            Long xxid,
+            long tableId,
+            BitSet includedColumns,
+            List<Serializable[]> rows
+    ) {
+
+        FullTableName eventTable = this.getEventTable(tableId);
+
+        if (eventTable != null) {
+
+            Collection<AugmentedRow> augmentedRows = new ArrayList<>();
+            List<ColumnSchema> columns = this.schemaManager.listColumns(eventTable.getName());
+            Map<String, String[]> cache = this.getCache(columns);
+
+            for (Serializable[] row : rows) {
+                augmentedRows.add(
+                        this.getAugmentedRow(
+                                eventType,
+                                commitTimestamp.get(),
+                                transactionUUID,
+                                xxid,
+                                columns,
+                                includedColumns,
+                                row,
+                                cache
+                        )
+                );
+            }
+            return augmentedRows;
+        } else {
+            return null;
+        }
+    }
 
     public Collection<AugmentedEventUpdatedRow> getUpdatedRows(long tableId, BitSet includedColumns, List<Map.Entry<Serializable[], Serializable[]>> rows) {
         FullTableName eventTable = this.getEventTable(tableId);
@@ -689,15 +726,18 @@ public class AugmenterContext implements Closeable {
             return null;
         }
     }
+
     // TODO: deprecate getRow in favour of getAugmentedRow
     private AugmentedRow getAugmentedRow(
-            String eventType, // TODO: use proper type
+            String eventType,
+            Long commitTimestamp,
+            UUID transactionUUID,
+            Long xxid,
             List<ColumnSchema> columns,
             BitSet includedColumns,
             Serializable[] row,
             Map<String, String[]> cache
     ) {
-
         Map<String, Map<String, String>> rowColumns = new HashMap<>();
 
         // TODO: encapsulate in Stringifier class
@@ -756,7 +796,6 @@ public class AugmenterContext implements Closeable {
                         } else if(columnType.contains("int")){
                             stringifiedCellValue = String.valueOf(Long.valueOf(((Integer)cellValue)) & 0x00000000FFFFFFFFl);
                         }
-
                     }
 
                     if (cache.containsKey(columnType)) {
@@ -802,38 +841,20 @@ public class AugmenterContext implements Closeable {
 
         // =============================================================
 
-        TableSchema tableSchema = new TableSchema(); // columns + create
-
-        // TODO: init these
-        String _eventType;
-        String tableName;
-        UUID transactionUUID;
-        Long transactionXid;
-        Long commitTimestamp;
-        Long rowMicrosecondTimestamp;
-        List<String> primaryKeyColumns;
-
-        // TODO: replace with GTID
-        long rowBinlogEventOrdinal;
-        String binlogFileName;
-        String rowBinlogPositionID;
-
-        // TODO: remove
-        String rowUUID;
+        TableSchema tableSchema = new TableSchema(
+                (Collection<ColumnSchema>) rowColumns,
+                null // TODO: ? not really needed for AugmentedRow
+        );
 
         AugmentedRow augmentedRow = new AugmentedRow(
-                null,
-                null,
-                0,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
+                tableSchema,
+                null,        // TODO
+                null, // TODO
+                transactionUUID,
+                xxid,
+                commitTimestamp,
+                null, // TODO
+                eventType,
                 rowColumns
         );
 
@@ -872,11 +893,11 @@ public class AugmenterContext implements Closeable {
                     if(columnType.contains("unsigned") && cellValue != null ){
                         if(columnType.contains("tiny")){
                             cellValue = Byte.toUnsignedInt(((Integer)cellValue).byteValue());
-                        }else if(columnType.contains("small")){
+                        } else if(columnType.contains("small")){
                             cellValue = ((Integer)cellValue) & 0xffff;
-                        }else if(columnType.contains("medium")){
+                        } else if(columnType.contains("medium")){
                             cellValue =  ((Integer)cellValue) & 0xffffff;
-                        }else if(columnType.contains("bigint")){
+                        } else if(columnType.contains("bigint")){
                             long i = (Long)cellValue;
                             int upper = (int) (i >>> 32);
                             int lower = (int) i;
@@ -884,10 +905,9 @@ public class AugmenterContext implements Closeable {
                             cellValue = (BigInteger.valueOf(Integer.toUnsignedLong(upper))).shiftLeft(32).
                                     add(BigInteger.valueOf(Integer.toUnsignedLong(lower)));
 
-                        }else if(columnType.contains("int")){
+                        } else if(columnType.contains("int")){
                             cellValue =  Long.valueOf(((Integer)cellValue)) & 0x00000000FFFFFFFFl;
                         }
-
                     }
 
                     if (cache.containsKey(columnType)) {
@@ -911,14 +931,12 @@ public class AugmenterContext implements Closeable {
                                         items.add(members[index]);
                                     }
                                 }
-
                                 cellValue = items.toArray(new String[0]);
                             } else {
                                 cellValue = null;
                             }
                         }
                     }
-
                     rowMap.put(columnName, cellValue);
                 }
             }
@@ -927,7 +945,6 @@ public class AugmenterContext implements Closeable {
                 rowMap.put("unknown", cell);
             }
         }
-
         return rowMap;
     }
 
@@ -947,7 +964,6 @@ public class AugmenterContext implements Closeable {
                             members[index] = members[index].substring(1, members[index].length() - 1);
                         }
                     }
-
                     cache.put(columnType, members);
                 }
             }

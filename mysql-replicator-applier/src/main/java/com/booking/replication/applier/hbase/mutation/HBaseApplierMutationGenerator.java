@@ -2,10 +2,6 @@ package com.booking.replication.applier.hbase.mutation;
 
 import com.booking.replication.applier.hbase.HBaseApplier;
 
-import com.booking.replication.augmenter.model.event.AugmentedEvent;
-import com.booking.replication.augmenter.model.event.AugmentedEventTransaction;
-import com.booking.replication.augmenter.model.event.AugmentedEventType;
-import com.booking.replication.augmenter.model.event.WriteRowsAugmentedEventData;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.google.common.base.Joiner;
 import org.apache.hadoop.hbase.client.Put;
@@ -22,9 +18,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
-import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -100,30 +94,30 @@ public class HBaseApplierMutationGenerator {
 
     /**
      * Transforms a list of {@link AugmentedRow} to a {@link PutMutation}
-     * @param row
+     * @param augmentedRow
      * @return PutMutation
      */
-    public PutMutation getPutForMirroredTable(AugmentedRow row) {
+    public PutMutation getPutForMirroredTable(AugmentedRow augmentedRow) {
 
         // RowID
-        String hbaseRowID = getHBaseRowKey(row);
+        String hbaseRowID = getHBaseRowKey(augmentedRow);
 
         String namespace = (String) configuration.get(HBaseApplier.Configuration.TARGET_NAMESPACE);
         String prefix = "";
         if (!namespace.isEmpty()) {
             prefix = namespace + ":";
         }
-        String hbaseTableName = prefix.toLowerCase() + row.getTableName().toLowerCase();
+        String hbaseTableName = prefix.toLowerCase() + augmentedRow.getTableName().toLowerCase();
 
         Put put = new Put(Bytes.toBytes(hbaseRowID));
-        UUID uuid = row.getTransactionUUID();
+        UUID uuid = augmentedRow.getTransactionUUID();
 
-        switch (row.getEventType()) {
+        switch (augmentedRow.getEventType()) {
             case "DELETE": {
 
                 // No need to process columns on DELETE. Only write delete marker.
 
-                Long columnTimestamp = row.getRowMicrosecondTimestamp();
+                Long columnTimestamp = augmentedRow.getRowMicrosecondTimestamp();
                 String columnName = "row_status";
                 String columnValue = "D";
                 put.addColumn(
@@ -136,7 +130,7 @@ public class HBaseApplierMutationGenerator {
                     put.addColumn(
                             CF,
                             TID,
-                            row.getCommitTimestamp(),
+                            augmentedRow.getCommitTimestamp(),
                             Bytes.toBytes(uuid.toString())
                     );
                 }
@@ -146,13 +140,13 @@ public class HBaseApplierMutationGenerator {
 
                 // Only write values that have changed
 
-                Long columnTimestamp = row.getRowMicrosecondTimestamp();
+                Long columnTimestamp = augmentedRow.getRowMicrosecondTimestamp();
                 String columnValue;
 
-                for (String columnName : row.getRowColumns().keySet()) {
+                for (String columnName : augmentedRow.getRowColumns().keySet()) {
 
-                    String valueBefore = row.getRowColumns().get(columnName).get("value_before");
-                    String valueAfter = row.getRowColumns().get(columnName).get("value_after");
+                    String valueBefore = augmentedRow.getRowColumns().get(columnName).get("value_before");
+                    String valueAfter = augmentedRow.getRowColumns().get(columnName).get("value_after");
 
                     if ((valueAfter == null) && (valueBefore == null)) {
                         // no change, skip;
@@ -186,7 +180,7 @@ public class HBaseApplierMutationGenerator {
                     put.addColumn(
                             CF,
                             TID,
-                            row.getCommitTimestamp(),
+                            augmentedRow.getCommitTimestamp(),
                             Bytes.toBytes(uuid.toString())
                     );
                 }
@@ -194,12 +188,12 @@ public class HBaseApplierMutationGenerator {
             }
             case "INSERT": {
 
-                Long columnTimestamp = row.getRowMicrosecondTimestamp();
+                Long columnTimestamp = augmentedRow.getRowMicrosecondTimestamp();
                 String columnValue;
 
-                for (String columnName : row.getRowColumns().keySet()) {
+                for (String columnName : augmentedRow.getRowColumns().keySet()) {
 
-                    columnValue = row.getRowColumns().get(columnName).get("value");
+                    columnValue = augmentedRow.getRowColumns().get(columnName).get("value");
                     if (columnValue == null) {
                         columnValue = "NULL";
                     }
@@ -222,16 +216,16 @@ public class HBaseApplierMutationGenerator {
                     put.addColumn(
                             CF,
                             TID,
-                            row.getCommitTimestamp(),
+                            augmentedRow.getCommitTimestamp(),
                             Bytes.toBytes(uuid.toString())
                     );
                 }
                 break;
             }
             default:
-                LOGGER.error("Wrong event type " + row.getEventType() + ". Expected INSERT/UPDATE/DELETE.");
+                LOGGER.error("Wrong event type " + augmentedRow.getEventType() + ". Expected INSERT/UPDATE/DELETE.");
         }
-        return new PutMutation(put,hbaseTableName,getRowUri(row), true);
+        return new PutMutation(put,hbaseTableName,getRowUri(augmentedRow), true);
     }
 
     private String getRowUri(AugmentedRow row){
@@ -272,6 +266,7 @@ public class HBaseApplierMutationGenerator {
     }
 
     public String getHBaseRowKey(AugmentedRow row) {
+
         // RowID
         // This is sorted by column OP (from information schema)
         List<String> pkColumnNames  = row.getPrimaryKeyColumns();
@@ -290,9 +285,7 @@ public class HBaseApplierMutationGenerator {
                     pkColumnValues.add(pkCell.get("value_after"));
                     break;
                 default:
-                    LOGGER.error("Wrong event type. Expected RowType event.");
-                    // TODO: throw WrongEventTypeException
-                    break;
+                    throw new RuntimeException("Wrong event type. Expected RowType event.");
             }
         }
 

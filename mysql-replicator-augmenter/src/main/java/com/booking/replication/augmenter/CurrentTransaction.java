@@ -136,4 +136,16 @@ public class CurrentTransaction {
             throw new RuntimeException(exception);
         }
     }
+
+    public AtomicLong getTimestamp() {
+        return timestamp;
+    }
+
+    public AtomicReference<UUID> getIdentifier() {
+        return identifier;
+    }
+
+    public Long getXxid() {
+        return xxid.get();
+    }
 }

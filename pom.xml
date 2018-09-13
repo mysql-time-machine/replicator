@@ -16,6 +16,11 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <maven.compiler.testSource>1.8</maven.compiler.testSource>
         <maven.compiler.testTarget>1.8</maven.compiler.testTarget>
+
+        <!-- Dependencies Versions -->
+        <metrics.version>3.1.0</metrics.version>
+        <mockito.version>2.18.3</mockito.version>
+        <sparkWebServer.version>2.7.2</sparkWebServer.version>
         <junit.version>4.12</junit.version>
         <testcontainers.version>1.8.0</testcontainers.version>
         <log4j1.version>1.2.17</log4j1.version>
@@ -30,6 +35,7 @@
         <commons-dbcp2.version>2.4.0</commons-dbcp2.version>
         <kafka.version>1.1.0</kafka.version>
         <dropwizard.metrics.version>4.0.2</dropwizard.metrics.version>
+        <hbase.version>1.2.2</hbase.version>
     </properties>
     <modules>
         <module>mysql-replicator-commons</module>

@@ -8,7 +8,7 @@ public class SchemaTransitionSequence {
 
     private final String ddl;
     private final Long schemaTransitionTimestamp;
-    private final String tableName;
+    private final FullTableName tableName;
 
     private final TableSchema tableSchemaBefore;
     private final TableSchema tableSchemaAfter;
@@ -22,12 +22,13 @@ public class SchemaTransitionSequence {
             String ddl,
             Long schemaTransitionTimestamp) {
 
-        this.tableName = new String(tableName.get().getName());
+        this.tableName = tableName.get();
 
         this.schemaTransitionTimestamp = new Long(schemaTransitionTimestamp);
 
         if (columnsBefore.get() != null) { // <- null if table was just created
             this.tableSchemaBefore = new TableSchema(
+                    this.tableName,
                     columnsBefore.get().stream().map(c -> c.deepCopy()).collect(Collectors.toList()),
                     new String(createTableBefore.get())
             );
@@ -37,6 +38,7 @@ public class SchemaTransitionSequence {
 
         if (columnsAfter.get() != null) { // <- null if table was dropped
             this.tableSchemaAfter = new TableSchema(
+                    this.tableName,
                     columnsAfter.get().stream().map(c -> c.deepCopy()).collect(Collectors.toList()),
                     new String(createTableAfter.get()));
         } else {
@@ -47,7 +49,7 @@ public class SchemaTransitionSequence {
     }
 
     public String getTableName() {
-        return tableName;
+        return tableName.getName();
     }
 
     public TableSchema getTableSchemaBefore() {

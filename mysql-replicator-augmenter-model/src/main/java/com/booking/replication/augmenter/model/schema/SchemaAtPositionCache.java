@@ -60,16 +60,21 @@ public class SchemaAtPositionCache {
 
             TableSchema tableSchema = this.getTableSchemaCache().get(tableName);
 
-            List<ColumnSchema> cloned = new ArrayList<>();
+            List<ColumnSchema> clonedColumnSchemaList = new ArrayList<>();
 
             String create = new String(tableSchema.getCreate());
 
+            FullTableName fullTableNameCloned = new FullTableName(
+                    new String(tableSchema.getFullTableName().getDatabase()),
+                    new String(tableSchema.getFullTableName().getName())
+            );
+
             for(ColumnSchema columnSchema : tableSchema.getColumns()) {
                  ColumnSchema columnSchemaCopy = columnSchema.deepCopy();
-                 cloned.add(columnSchemaCopy);
+                 clonedColumnSchemaList.add(columnSchemaCopy);
             }
 
-            TableSchema tableSchemaClone = new TableSchema(cloned, create);
+            TableSchema tableSchemaClone = new TableSchema(fullTableNameCloned, clonedColumnSchemaList, create);
 
             deepCopy.getTableSchemaCache().put(tableName, tableSchemaClone);
         }

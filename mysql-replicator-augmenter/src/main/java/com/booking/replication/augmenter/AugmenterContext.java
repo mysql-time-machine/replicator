@@ -34,7 +34,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -117,7 +116,7 @@ public class AugmenterContext implements Closeable {
     private final AtomicReference<String> createTableBefore;
     private final AtomicReference<Collection<ColumnSchema>> columnsAfter;
     private final AtomicReference<String> createTableAfter;
-    private final AtomicReference<SchemaAtPositionCache> schemaAtPositionCache;
+    private final AtomicReference<SchemaAtPositionCache> schemaCache;
 
     private final AtomicBoolean isAtDDL;
     private final AtomicReference<SchemaSnapshot> schemaSnapshot;
@@ -126,8 +125,8 @@ public class AugmenterContext implements Closeable {
 
         this.schemaManager = schemaManager;
 
-        this.schemaAtPositionCache = new AtomicReference<>();
-        this.schemaAtPositionCache.set(new SchemaAtPositionCache());
+        this.schemaCache = new AtomicReference<>();
+        this.schemaCache.set(new SchemaAtPositionCache());
 
         this.schemaSnapshot = new AtomicReference<>();
 
@@ -388,7 +387,7 @@ public class AugmenterContext implements Closeable {
 
                 TableMapRawEventData tableMapRawEventData = TableMapRawEventData.class.cast(eventData);
 
-                this.schemaAtPositionCache.get().getTableIdToTableNameMap().put(
+                this.schemaCache.get().getTableIdToTableNameMap().put(
                         tableMapRawEventData.getTableId(),
                         new FullTableName(
                                 tableMapRawEventData.getDatabase(),
@@ -473,7 +472,7 @@ public class AugmenterContext implements Closeable {
 
             if (this.eventTable.get() != null) {
 
-                SchemaAtPositionCache schemaPositionCacheBefore = schemaAtPositionCache.get().deepCopy();
+                SchemaAtPositionCache schemaPositionCacheBefore = schemaCache.get().deepCopy();
 
                 String tableName = this.eventTable.get().getName();
 
@@ -486,7 +485,7 @@ public class AugmenterContext implements Closeable {
                 }
 
                 this.schemaManager.execute(tableName, query);
-                this.schemaAtPositionCache.get().reloadTableSchema(
+                this.schemaCache.get().reloadTableSchema(
                         tableName,
                         SchemaHelpers.fnComputeTableSchema
                 );
@@ -501,7 +500,7 @@ public class AugmenterContext implements Closeable {
                     this.createTableAfter.set(null);
                 }
 
-                SchemaAtPositionCache schemaPositionCacheAfter = schemaAtPositionCache.get().deepCopy();
+                SchemaAtPositionCache schemaPositionCacheAfter = schemaCache.get().deepCopy();
                 SchemaTransitionSequence schemaTransitionSequence = new SchemaTransitionSequence(
                         eventTable,
                         columnsBefore,
@@ -607,7 +606,10 @@ public class AugmenterContext implements Closeable {
 
     public TableSchema getSchemaBefore() {
         if (this.columnsBefore.get() != null && this.createTableBefore != null) {
+            String tableName = this.eventTable.get().getName();
+            String schemaName = this.eventTable.get().getDatabase();
             return new TableSchema(
+                    new FullTableName(schemaName,tableName),
                     this.columnsBefore.get(),
                     this.createTableBefore.get()
             );
@@ -618,7 +620,10 @@ public class AugmenterContext implements Closeable {
 
     public TableSchema getSchemaAfter() {
         if (this.columnsAfter.get() != null && this.createTableAfter != null) {
-            return new TableSchema(
+            String tableName = this.eventTable.get().getName();
+            String schemaName = this.eventTable.get().getDatabase();
+            return  new TableSchema(
+                    new FullTableName(schemaName,tableName),
                     this.columnsAfter.get(),
                     this.createTableAfter.get()
             );
@@ -628,7 +633,7 @@ public class AugmenterContext implements Closeable {
     }
 
     public FullTableName getEventTable(long tableId) {
-        return this.schemaAtPositionCache.get().getTableIdToTableNameMap().get(tableId);
+        return this.schemaCache.get().getTableIdToTableNameMap().get(tableId);
     }
 
     public Collection<Boolean> getIncludedColumns(BitSet includedColumns) {
@@ -839,17 +844,19 @@ public class AugmenterContext implements Closeable {
             throw new RuntimeException("Invalid data. Columns list cannot be null!");
         }
 
-        // =============================================================
-
         TableSchema tableSchema = new TableSchema(
+                new FullTableName(
+                    this.eventTable.get().getDatabase(),
+                    this.eventTable.get().getName()
+                ),
                 (Collection<ColumnSchema>) rowColumns,
                 null // TODO: ? not really needed for AugmentedRow
         );
 
         AugmentedRow augmentedRow = new AugmentedRow(
                 tableSchema,
-                null,        // TODO
-                null, // TODO
+                tableSchema.getFullTableName().getName(), // TODO: remove since redundant
+                tableSchema.getPrimaryKeyColumns(),       // TODO: remove since redundant
                 transactionUUID,
                 xxid,
                 commitTimestamp,

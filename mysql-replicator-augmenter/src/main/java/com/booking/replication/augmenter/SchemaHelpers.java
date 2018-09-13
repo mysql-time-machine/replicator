@@ -1,6 +1,7 @@
 package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
+import com.booking.replication.augmenter.model.schema.FullTableName;
 import com.booking.replication.augmenter.model.schema.TableSchema;
 
 import javax.sql.DataSource;
@@ -23,6 +24,7 @@ public class SchemaHelpers {
                      Statement statementListColumns = connection.createStatement();
                      Statement statementShowCreateTable = connection.createStatement()) {
 
+                    String schemaName = connection.getSchema();
                     List<ColumnSchema> columnList = new ArrayList<>();
                     String tableCreateStatement = null;
 
@@ -66,10 +68,15 @@ public class SchemaHelpers {
                         }
                     }
 
-                    return Optional.of(new TableSchema(columnList, tableCreateStatement));
+                    return Optional.of(
+                            new TableSchema(
+                                    new FullTableName(schemaName,tableName),
+                                    columnList,
+                                    tableCreateStatement
+                            ));
 
                 } catch (SQLException exception) {
-                    return Optional.empty(); // TODO: replace Optional with Either
+                    return Optional.empty();
                 }
             };
 }

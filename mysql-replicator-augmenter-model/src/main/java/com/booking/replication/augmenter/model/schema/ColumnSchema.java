@@ -1,6 +1,7 @@
 package com.booking.replication.augmenter.model.schema;
 
 import java.io.Serializable;
+import java.util.List;
 
 @SuppressWarnings("unused")
 public class ColumnSchema implements Serializable {
@@ -77,5 +78,9 @@ public class ColumnSchema implements Serializable {
         );
 
         return columnSchemaCopy;
+    }
+
+    public boolean isPrimary() {
+        return key.equalsIgnoreCase("PRI");
     }
 }

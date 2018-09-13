@@ -1,6 +1,7 @@
 package com.booking.replication.applier.hbase.writer;
 
 import com.booking.replication.applier.hbase.mutation.HBaseApplierMutationGenerator;
+import com.booking.replication.applier.hbase.util.AugmentedEventRowExtractor;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import org.apache.hadoop.conf.Configuration;
@@ -94,7 +95,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
             // extract augmented rows
             for (AugmentedEvent event : events) {
 
-                List<AugmentedRow> augmentedRows = AugmentedRow.extractAugmentedRows(event);
+                List<AugmentedRow> augmentedRows = AugmentedEventRowExtractor.extractAugmentedRows(event);
 
                 List<HBaseApplierMutationGenerator.PutMutation> eventMutations = augmentedRows.stream()
                         .flatMap(

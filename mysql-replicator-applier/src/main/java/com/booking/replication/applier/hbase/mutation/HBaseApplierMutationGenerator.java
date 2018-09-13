@@ -78,6 +78,7 @@ public class HBaseApplierMutationGenerator {
 
     private static final byte[] CF                           = Bytes.toBytes("d");
     private static final byte[] TID                          = Bytes.toBytes("_transaction_uuid");
+    private static final byte[] XID                          = Bytes.toBytes("_transaction_xid");
     private static final String DIGEST_ALGORITHM             = "MD5";
 
     private final Map<String, Object> configuration;
@@ -111,6 +112,7 @@ public class HBaseApplierMutationGenerator {
 
         Put put = new Put(Bytes.toBytes(hbaseRowID));
         UUID uuid = augmentedRow.getTransactionUUID();
+        Long xid = augmentedRow.getTransactionXid();
 
         switch (augmentedRow.getEventType()) {
             case "DELETE": {
@@ -132,6 +134,14 @@ public class HBaseApplierMutationGenerator {
                             TID,
                             augmentedRow.getCommitTimestamp(),
                             Bytes.toBytes(uuid.toString())
+                    );
+                }
+                if (xid != null) {
+                    put.addColumn(
+                            CF,
+                            XID,
+                            augmentedRow.getCommitTimestamp(),
+                            Bytes.toBytes(xid.toString())
                     );
                 }
                 break;
@@ -184,6 +194,15 @@ public class HBaseApplierMutationGenerator {
                             Bytes.toBytes(uuid.toString())
                     );
                 }
+
+                if (xid != null) {
+                    put.addColumn(
+                            CF,
+                            XID,
+                            augmentedRow.getCommitTimestamp(),
+                            Bytes.toBytes(xid.toString())
+                    );
+                }
                 break;
             }
             case "INSERT": {
@@ -218,6 +237,14 @@ public class HBaseApplierMutationGenerator {
                             TID,
                             augmentedRow.getCommitTimestamp(),
                             Bytes.toBytes(uuid.toString())
+                    );
+                }
+                if (xid != null) {
+                    put.addColumn(
+                            CF,
+                            XID,
+                            augmentedRow.getCommitTimestamp(),
+                            Bytes.toBytes(xid.toString())
                     );
                 }
                 break;

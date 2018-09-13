@@ -69,7 +69,7 @@ public class SchemaAtPositionCache {
                     new String(tableSchema.getFullTableName().getName())
             );
 
-            for(ColumnSchema columnSchema : tableSchema.getColumns()) {
+            for(ColumnSchema columnSchema : tableSchema.getColumnSchemas()) {
                  ColumnSchema columnSchemaCopy = columnSchema.deepCopy();
                  clonedColumnSchemaList.add(columnSchemaCopy);
             }

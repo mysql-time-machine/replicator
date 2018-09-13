@@ -86,7 +86,7 @@ Now, in another terminal, you can connect to the replicator container
  ./read_kafka
 ````
 
-In this example we have written rows to mysql, then replicated the binlogs to kafka and then red from Kafka sequentially. However, these processes can be run in parallel as the real life setup would work.
+In this example we have written augmentedRows to mysql, then replicated the binlogs to kafka and then red from Kafka sequentially. However, these processes can be run in parallel as the real life setup would work.
 
 As the replication is running, you can observe the replication statistics at graphite dashboard: http://localhost/dashboard/
 

@@ -22,13 +22,11 @@ public class WriteRowsAugmentedEventData implements TableAugmentedEventData {
             FullTableName eventTable,
             Collection<Boolean> includedColumns,
             Collection<ColumnSchema> columns,
-            Collection<Map<String, Object>> rows,
             Collection<AugmentedRow> augmentedRows
         ) {
         this.eventTable = eventTable;
         this.includedColumns = includedColumns;
         this.columns = columns;
-        this.rows = rows;
         this.augmentedRows = augmentedRows;
     }
 
@@ -43,10 +41,6 @@ public class WriteRowsAugmentedEventData implements TableAugmentedEventData {
 
     public Collection<ColumnSchema> getColumns() {
         return this.columns;
-    }
-
-    public Collection<Map<String, Object>> getRows() {
-        return this.rows;
     }
 
     public Collection<AugmentedRow> getAugmentedRows() { return this.augmentedRows; }

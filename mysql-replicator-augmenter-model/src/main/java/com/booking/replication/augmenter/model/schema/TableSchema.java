@@ -9,23 +9,30 @@ import java.util.stream.Collectors;
 public class TableSchema implements Serializable {
 
     private FullTableName fullTableName;
-    private Collection<ColumnSchema> columns;
+    private Collection<ColumnSchema> columnSchemas;
     private String create;
 
-    public TableSchema(FullTableName fullTableName, Collection<ColumnSchema> columns, String create) {
+    public TableSchema(FullTableName fullTableName, Collection<ColumnSchema> columnSchemas, String create) {
         this.fullTableName = fullTableName;
-        this.columns = columns;
+        this.columnSchemas = columnSchemas;
         this.create = create;
     }
 
-    public  Collection<ColumnSchema> getColumns() {
-        return this.columns;
+    public  Collection<ColumnSchema> getColumnSchemas() {
+        return this.columnSchemas;
     }
 
     public List<String> getPrimaryKeyColumns() {
         return this
-                .columns
+                .columnSchemas
                 .stream()
+                .filter(column -> column.isPrimary())
+                .map(column -> column.getName())
+                .collect(Collectors.toList());
+    }
+
+    public static List<String> getPrimaryKeyColumns(Collection<ColumnSchema> colSchemas) {
+        return colSchemas.stream()
                 .filter(column -> column.isPrimary())
                 .map(column -> column.getName())
                 .collect(Collectors.toList());

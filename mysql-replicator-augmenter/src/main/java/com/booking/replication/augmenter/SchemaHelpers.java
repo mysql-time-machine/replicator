@@ -24,7 +24,11 @@ public class SchemaHelpers {
                      Statement statementListColumns = connection.createStatement();
                      Statement statementShowCreateTable = connection.createStatement()) {
 
-                    String schemaName = connection.getSchema();
+                    //  connection.getSchema() returns null for MySQL, so we do this ugly hack
+                    // TODO: find nicer way
+                    String[] terms = connection.getMetaData().getURL().split("/");
+                    String schemaName = terms[terms.length - 1];
+
                     List<ColumnSchema> columnList = new ArrayList<>();
                     String tableCreateStatement = null;
 

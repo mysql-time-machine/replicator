@@ -12,7 +12,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.*;
-import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -117,7 +116,7 @@ public class ActiveSchemaManager implements SchemaManager {
     public List<ColumnSchema> listColumns(String tableName) {
          TableSchema tableSchema =
                  this.schemaAtPositionCache.getTableColumns(tableName, SchemaHelpers.fnComputeTableSchema);
-        return (List<ColumnSchema>) tableSchema.getColumns();
+        return (List<ColumnSchema>) tableSchema.getColumnSchemas();
     }
 
     @Override

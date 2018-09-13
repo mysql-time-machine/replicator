@@ -1,55 +1,78 @@
 package com.booking.replication.augmenter.model.row;
 
-import com.booking.replication.augmenter.model.event.AugmentedEvent;
-import com.booking.replication.augmenter.model.event.WriteRowsAugmentedEventData;
-import com.booking.replication.augmenter.model.schema.ColumnSchema;
-import com.booking.replication.augmenter.model.schema.FullTableName;
+import com.booking.replication.augmenter.model.AugmenterModel;
 import com.booking.replication.augmenter.model.schema.TableSchema;
 import com.booking.replication.commons.util.CaseInsensitiveMap;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 public class AugmentedRow {
 
-    private TableSchema  tableSchema;
-    private String       tableName;
-    private UUID       transactionUUID;
+    private UUID transactionUUID;
     private Long         transactionXid;
+
     private Long         commitTimestamp;
     private Long         rowMicrosecondTimestamp;
+
+    private List<String> primaryKeyColumns;
+
     private String       eventType;
 
-    private List<String> primaryKeyColumns = new ArrayList<>();
-    private Map<String, Map<String,String>> rowColumns = new CaseInsensitiveMap<>(); // { columnName => { val_before/after => value } }
+    private String       tableName;
+    private String       tableSchema;
+
+    // rowColumns format:
+    // {
+    //      $columnName => {
+    //          value        => $value // <- null for UPDATE op
+    //          value_before => $value // <- null for INSERT op
+    //          value_after  => $value // <- null for DELETE op
+    //      }
+    // }
+    private Map<String, Map<String,String>> rowColumns = new CaseInsensitiveMap<>();
 
     public AugmentedRow(
-            TableSchema tableSchema,
-            String tableName,
-            List<String> primaryKeyColumns,
-            UUID transactionUUID,
-            Long transactionXid,
-            Long commitTimestamp,
-            Long rowMicrosecondTimestamp,
             String eventType,
-            Map<String,Map<String, String>> rowColumns
+            String schemaName, String tableName,
+            UUID transactionUUID, Long transactionXid,
+            Long commitTimestamp, Long rowMicrosecondTimestamp,
+            List<String> primaryKeyColumns,
+            Map<String,Map<String, String>> rowColumnValues
     ) {
-        this.tableSchema = tableSchema;
-        this.tableName = tableName;
+
         this.primaryKeyColumns = primaryKeyColumns;
+
         this.transactionUUID = transactionUUID;
         this.transactionXid = transactionXid;
+
         this.commitTimestamp = commitTimestamp;
         this.rowMicrosecondTimestamp = rowMicrosecondTimestamp;
+
         this.eventType = eventType;
-        this.rowColumns = rowColumns;
+
+        this.rowColumns = rowColumnValues;
+
+        initColumnDataSlots();
     }
 
-    public TableSchema getTableSchema() {
-        return tableSchema;
+    public void initColumnDataSlots() {
+        rowColumns.put(AugmenterModel.Configuration.UUID_FIELD_NAME, new HashMap<String, String>());
+        rowColumns.put(AugmenterModel.Configuration.XID_FIELD_NAME, new HashMap<String, String>());
+    }
+
+    public Map<String, Map<String, String>> getRowColumns() {
+        return rowColumns;
+    }
+
+    public String getTableSchema() {
+        return this.tableSchema;
     }
 
     public String getTableName() {
-        return tableName;
+        return this.tableName;
     }
 
     public List<String> getPrimaryKeyColumns() {
@@ -76,36 +99,5 @@ public class AugmentedRow {
         return eventType;
     }
 
-    public Map<String, Map<String, String>> getRowColumns() {
-        return rowColumns;
-    }
 
-    public static List<AugmentedRow> extractAugmentedRows(AugmentedEvent augmentedEvent) {
-
-        List<AugmentedRow> augmentedRows = new ArrayList<>();
-
-        switch (augmentedEvent.getHeader().getEventType()) {
-
-            case WRITE_ROWS:
-
-                WriteRowsAugmentedEventData writeRowsAugmentedEventData =
-                        ((WriteRowsAugmentedEventData) augmentedEvent.getData());
-
-                Collection<AugmentedRow> extractedAugmentedRows = writeRowsAugmentedEventData.getAugmentedRows();
-
-                augmentedRows.addAll(extractedAugmentedRows);
-
-                break;
-
-            case UPDATE_ROWS:
-                // TODO
-                break;
-            case DELETE_ROWS:
-                // TODO
-                break;
-            default:
-                break;
-        }
-        return augmentedRows;
-    }
 }

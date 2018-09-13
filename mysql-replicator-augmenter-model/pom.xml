@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <artifactId>replicator</artifactId>
+        <groupId>com.booking.replication</groupId>
+        <version>0.16.0-alpha-2-SNAPSHOT</version>
+    </parent>
+    <artifactId>mysql-replicator-augmenter-model</artifactId>
+    <name>mysql-replicator-augmenter-model</name>
+    <packaging>jar</packaging>
+    <dependencies>
+        <dependency>
+            <groupId>com.booking.replication</groupId>
+            <artifactId>mysql-replicator-commons</artifactId>
+        </dependency>
+    </dependencies>
+</project>

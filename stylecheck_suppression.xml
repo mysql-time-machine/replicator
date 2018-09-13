@@ -15,6 +15,6 @@
     <suppress files="com/booking/replication/pipeline/PipelineOrchestrator.java" checks="AvoidStarImport"/>
 
     <!-- Allow * imports due to heavy use of com.google.code.or.common.glossary.column.*in this class -->
-    <suppress files="com/booking/replication/schema/column/types/Converter.java" checks="AvoidStarImport"/>
+    <suppress files="com/booking/replication/schemaManager/column/types/Converter.java" checks="AvoidStarImport"/>
 
 </suppressions>

@@ -1,6 +1,5 @@
 USE replicator;
 
-
 CREATE TABLE organisms (
      id INTEGER NOT NULL AUTO_INCREMENT,
      name VARCHAR(30) CHARACTER SET utf8 NOT NULL,
@@ -13,7 +12,6 @@ CREATE TABLE organisms (
      kingdom ENUM('animalia', 'plantae') NOT NULL,
      PRIMARY KEY (id)
 );
-
 
 BEGIN;
 

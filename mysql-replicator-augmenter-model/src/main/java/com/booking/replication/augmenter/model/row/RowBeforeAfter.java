@@ -12,8 +12,8 @@ public class RowBeforeAfter {
 
     public RowBeforeAfter(BitSet includedColumns, Serializable[] before, Serializable[] after) {
         this.includedColumns = includedColumns;
-        this.before = Optional.ofNullable(before);
-        this.after = Optional.ofNullable(after);
+        this.before = (before != null) ? Optional.of(before) : Optional.empty();
+        this.after = (after != null) ? Optional.of(after) : Optional.empty();
     }
 
     public Optional<Serializable[]> getBefore() {

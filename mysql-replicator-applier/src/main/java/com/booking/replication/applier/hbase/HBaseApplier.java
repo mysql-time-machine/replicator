@@ -60,7 +60,7 @@ public class HBaseApplier implements Applier {
             hbaseSchemaManager = new HBaseSchemaManager(configuration);
             LOG.info("Created HBaseSchemaManager.");
 
-            hBaseApplierWriter = new HBaseTimeMachineWriter(hbaseConfig, configuration);
+            hBaseApplierWriter = new HBaseTimeMachineWriter(hbaseConfig, hbaseSchemaManager,configuration);
             LOG.info("Created HBaseApplierWriter.");
 
         } catch (IOException | NoSuchAlgorithmException e) {

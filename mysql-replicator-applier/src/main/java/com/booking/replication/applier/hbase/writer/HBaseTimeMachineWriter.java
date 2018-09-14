@@ -1,6 +1,7 @@
 package com.booking.replication.applier.hbase.writer;
 
 import com.booking.replication.applier.hbase.mutation.HBaseApplierMutationGenerator;
+import com.booking.replication.applier.hbase.schema.HBaseSchemaManager;
 import com.booking.replication.applier.hbase.util.AugmentedEventRowExtractor;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
@@ -26,14 +27,18 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
 
         private final String HBASE_COLUMN_DEFAULT_FAMILY_NAME = "d";
 
+        private HBaseSchemaManager hbaseSchemaManager;
         Connection connection;
         Admin admin;
         Collection<AugmentedEvent> buffered;
         HBaseApplierMutationGenerator mutationGenerator;
 
-        public HBaseTimeMachineWriter(Configuration hbaseConfig, Map<String, Object> configuration)
+        public HBaseTimeMachineWriter(Configuration hbaseConfig,
+                                      HBaseSchemaManager hbaseSchemaManager,
+                                      Map<String, Object> configuration)
                 throws IOException, NoSuchAlgorithmException {
 
+            this.hbaseSchemaManager = hbaseSchemaManager;
             connection = ConnectionFactory.createConnection(hbaseConfig);
             admin = connection.getAdmin();
             buffered = new ArrayList<>();
@@ -95,8 +100,31 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
             // extract augmented rows
             for (AugmentedEvent event : events) {
 
+                // TODO: implement update/delete in the extractor
                 List<AugmentedRow> augmentedRows = AugmentedEventRowExtractor.extractAugmentedRows(event);
 
+                // TODO: optimize, this is inefficient
+                List<String> tablesInThisEvent = augmentedRows.stream()
+                        .map(ar -> ar.getTableName()).collect(Collectors.toList());
+
+                if (!tablesInThisEvent.isEmpty()) {
+
+                   List<String> tablesToCreate = tablesInThisEvent.stream()
+                            .filter(tn -> tn != null)
+                            .filter(tn -> hbaseSchemaManager.isTableKnownToHBase(tn))
+                            .collect(Collectors.toList());
+
+                    if (!tablesToCreate.isEmpty() && tablesToCreate.get(0) != null) {
+                        tablesToCreate.stream().map(t -> {
+                            try {
+                                hbaseSchemaManager.createMirroredTableIfNotExists(t);
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                            return null;
+                        });
+                    }
+                }
                 List<HBaseApplierMutationGenerator.PutMutation> eventMutations = augmentedRows.stream()
                         .flatMap(
                                 row -> Stream.of(mutationGenerator.getPutForMirroredTable(row))

@@ -118,7 +118,6 @@ public class ReplicatorKafkaTest {
         configuration.put(BinaryLogSupplier.Configuration.MYSQL_USERNAME, ReplicatorKafkaTest.MYSQL_ROOT_USERNAME);
         configuration.put(BinaryLogSupplier.Configuration.MYSQL_PASSWORD, ReplicatorKafkaTest.MYSQL_PASSWORD);
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, ReplicatorKafkaTest.mysqlActiveSchema.getHost());
-        LOG.info("================" + ReplicatorKafkaTest.mysqlActiveSchema.getHost() + ":" + ReplicatorKafkaTest.mysqlActiveSchema.getPort());
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(ReplicatorKafkaTest.mysqlActiveSchema.getPort()));
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_SCHEMA, ReplicatorKafkaTest.MYSQL_ACTIVE_SCHEMA);
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, ReplicatorKafkaTest.MYSQL_ROOT_USERNAME);

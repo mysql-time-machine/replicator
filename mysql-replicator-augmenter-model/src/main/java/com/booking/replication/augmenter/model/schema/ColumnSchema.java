@@ -1,7 +1,8 @@
 package com.booking.replication.augmenter.model.schema;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.io.Serializable;
-import java.util.List;
 
 @SuppressWarnings("unused")
 public class ColumnSchema implements Serializable {
@@ -12,6 +13,9 @@ public class ColumnSchema implements Serializable {
     private String valueDefault;
     private String extra;
     private String collation;
+
+    @JsonIgnore
+    public boolean primary; // temp transition
 
     public ColumnSchema() {
     }

@@ -34,6 +34,9 @@ public class AugmentedRow {
     // }
     private Map<String, Map<String,String>> rowColumns = new CaseInsensitiveMap<>();
 
+    public AugmentedRow() {
+
+    }
     public AugmentedRow(
             String eventType,
             String schemaName, String tableName,
@@ -99,5 +102,39 @@ public class AugmentedRow {
         return eventType;
     }
 
+    public void setTransactionUUID(UUID transactionUUID) {
+        this.transactionUUID = transactionUUID;
+    }
 
+    public void setTransactionXid(Long transactionXid) {
+        this.transactionXid = transactionXid;
+    }
+
+    public void setCommitTimestamp(Long commitTimestamp) {
+        this.commitTimestamp = commitTimestamp;
+    }
+
+    public void setRowMicrosecondTimestamp(Long rowMicrosecondTimestamp) {
+        this.rowMicrosecondTimestamp = rowMicrosecondTimestamp;
+    }
+
+    public void setPrimaryKeyColumns(List<String> primaryKeyColumns) {
+        this.primaryKeyColumns = primaryKeyColumns;
+    }
+
+    public void setEventType(String eventType) {
+        this.eventType = eventType;
+    }
+
+    public void setTableName(String tableName) {
+        this.tableName = tableName;
+    }
+
+    public void setTableSchema(String tableSchema) {
+        this.tableSchema = tableSchema;
+    }
+
+    public void setRowColumns(Map<String, Map<String, String>> rowColumns) {
+        this.rowColumns = rowColumns;
+    }
 }

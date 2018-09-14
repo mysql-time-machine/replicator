@@ -12,6 +12,9 @@ public class TableSchema implements Serializable {
     private Collection<ColumnSchema> columnSchemas;
     private String create;
 
+    public TableSchema() {
+    }
+
     public TableSchema(FullTableName fullTableName, Collection<ColumnSchema> columnSchemas, String create) {
         this.fullTableName = fullTableName;
         this.columnSchemas = columnSchemas;
@@ -44,5 +47,17 @@ public class TableSchema implements Serializable {
 
     public FullTableName getFullTableName() {
         return this.fullTableName;
+    }
+
+    public void setFullTableName(FullTableName fullTableName) {
+        this.fullTableName = fullTableName;
+    }
+
+    public void setColumnSchemas(Collection<ColumnSchema> columnSchemas) {
+        this.columnSchemas = columnSchemas;
+    }
+
+    public void setCreate(String create) {
+        this.create = create;
     }
 }

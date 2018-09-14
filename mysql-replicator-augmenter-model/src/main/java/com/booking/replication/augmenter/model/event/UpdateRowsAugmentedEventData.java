@@ -14,6 +14,10 @@ public class UpdateRowsAugmentedEventData implements TableAugmentedEventData {
     private Collection<ColumnSchema> columns;
     private Collection<AugmentedRow> augmentedRows;
 
+    public UpdateRowsAugmentedEventData() {
+
+    }
+
     public UpdateRowsAugmentedEventData(
             FullTableName eventTable,
             Collection<Boolean> includedColumnsBeforeUpdate,
@@ -48,5 +52,25 @@ public class UpdateRowsAugmentedEventData implements TableAugmentedEventData {
 
     public Collection<AugmentedRow> getAugmentedRows() {
         return this.augmentedRows;
+    }
+
+    public void setEventTable(FullTableName eventTable) {
+        this.eventTable = eventTable;
+    }
+
+    public void setIncludedColumnsBeforeUpdate(Collection<Boolean> includedColumnsBeforeUpdate) {
+        this.includedColumnsBeforeUpdate = includedColumnsBeforeUpdate;
+    }
+
+    public void setIncludedColumns(Collection<Boolean> includedColumns) {
+        this.includedColumns = includedColumns;
+    }
+
+    public void setColumns(Collection<ColumnSchema> columns) {
+        this.columns = columns;
+    }
+
+    public void setAugmentedRows(Collection<AugmentedRow> augmentedRows) {
+        this.augmentedRows = augmentedRows;
     }
 }

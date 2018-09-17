@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.booking.replication</groupId>
         <artifactId>replicator</artifactId>
-        <version>0.16.0-alpha-2-SNAPSHOT</version>
+        <version>0.16.0-alpha-3-SNAPSHOT</version>
     </parent>
     <artifactId>mysql-replicator-applier</artifactId>
     <name>mysql-replicator-applier</name>

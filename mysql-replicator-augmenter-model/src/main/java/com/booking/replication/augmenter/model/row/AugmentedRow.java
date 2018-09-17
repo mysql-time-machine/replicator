@@ -1,7 +1,6 @@
 package com.booking.replication.augmenter.model.row;
 
 import com.booking.replication.augmenter.model.AugmenterModel;
-import com.booking.replication.augmenter.model.schema.TableSchema;
 import com.booking.replication.commons.util.CaseInsensitiveMap;
 
 import java.util.HashMap;
@@ -11,7 +10,7 @@ import java.util.UUID;
 
 public class AugmentedRow {
 
-    private UUID transactionUUID;
+    private UUID         transactionUUID;
     private Long         transactionXid;
 
     private Long         commitTimestamp;
@@ -57,6 +56,9 @@ public class AugmentedRow {
         this.eventType = eventType;
 
         this.rowColumns = rowColumnValues;
+
+        this.tableSchema = schemaName;
+        this.tableName = tableName;
 
         initColumnDataSlots();
     }

@@ -83,7 +83,7 @@ public class HBaseApplier implements Applier {
      * large transactions it will send lists of 1000 rows.
      * <p>
      * The apply() method returns Boolean. If it returns true, this is a signal for
-     * Coordinator that rows are markedForCommit. In case of small transactions, applier
+     * Coordinator that rows are committed. In case of small transactions, applier
      * will internally buffer them and apply will return false until buffer is
      * large enough. Once buffer is large enough it will flush the buffer and
      * return true (on success).
@@ -152,7 +152,7 @@ public class HBaseApplier implements Applier {
                 hBaseApplierWriter.buffer(events);
                 boolean s = hBaseApplierWriter.flush();
                 if (s) {
-                    return true; // <- markedForCommit, will advance safe checkpoint
+                    return true; // <- committed, will advance safe checkpoint
                 } else {
                     throw new IOException("Failed to write buffer to HBase");
                 }
@@ -161,10 +161,6 @@ public class HBaseApplier implements Applier {
                 return false; // buffered
             }
         } catch (Exception e) {
-            // TODO:
-            //      make this nicer -> apply should return Option<Boolean> and the
-            //      caller can handle the empty case explicitly, instead of this hacky
-            //      convert of checked into unchecked exception.
             throw new RuntimeException("Failed to write to HBase, all retries exhausted", e);
         }
     }

@@ -86,6 +86,7 @@ public class ReplicatorIntegrationTestRunner {
 
         // Run tests; TODO: implement test list
         BasicHBaseTransmitSpec testSpec = new BasicHBaseTransmitSpec()
+        testSpec.doMySQLOps(ReplicatorIntegrationTestRunner.mysqlBinaryLog)
         def retrieved = testSpec.retrieveReplicatedData()
         def expected = testSpec.getExpected()
         org.junit.Assert.assertTrue(testSpec.retrievedEqualsExpected(retrieved,expected))
@@ -331,7 +332,7 @@ public class ReplicatorIntegrationTestRunner {
     }
 
     @AfterClass
-    public static void after() {
+    static void after() {
         ReplicatorIntegrationTestRunner.hbase.close();
         ReplicatorIntegrationTestRunner.mysqlBinaryLog.close();
         ReplicatorIntegrationTestRunner.mysqlActiveSchema.close();

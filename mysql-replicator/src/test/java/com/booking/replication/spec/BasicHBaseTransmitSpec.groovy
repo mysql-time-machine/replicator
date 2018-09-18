@@ -1,11 +1,13 @@
 package com.booking.replication.spec
 
 import com.booking.replication.ReplicatorIntegrationTest
-import groovy.sql.Sql;
+import com.booking.replication.commons.services.ServicesControl
+import groovy.sql.Sql
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.util.Bytes
+import org.testcontainers.containers.GenericContainer
 
 import static groovy.json.JsonOutput.prettyPrint
 import static groovy.json.JsonOutput.toJson
@@ -14,10 +16,19 @@ class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
 
     private String HBASE_COLUMN_FAMILY_NAME = "d"
 
-     Sql getReplicantSql(boolean autoCommit) { // TODO: move to ServiceProvider in common; split common to test-utils and common
+    private String SCHEMA_NAME = "replicator"
 
-        def urlReplicant = 'jdbc:mysql://' + getContainerIpAddress() + ":" + getMappedPort(3306) + '/test'
-//        logger.debug("jdbc url: " + urlReplicant);
+    Sql getReplicantSql(boolean autoCommit, ServicesControl mysqlReplicant) { // TODO: move to ServiceProvider in common; split common to test-utils and common
+
+        def urlReplicant =  new StringBuilder()
+                .append("jdbc:mysql://")
+                .append(mysqlReplicant.getHost())
+                .append(":")
+                .append(mysqlReplicant.getPort())
+                .append("/")
+                .append(SCHEMA_NAME)
+                .toString()
+
         def dbReplicant = [
                 url     : urlReplicant,
                 user    : 'root',
@@ -34,13 +45,12 @@ class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
         return replicant;
     }
 
-
     @Override
-    void doMySQLOps() {
-        def replicantMySQLHandle = pipeline.mysql.getReplicantSql(
-                false // <- autoCommit
+    void doMySQLOps(ServicesControl mysqlReplicant) {
+        def replicantMySQLHandle = getReplicantSql(
+                false,
+                mysqlReplicant// <- autoCommit
         )
-
         // CREATE
         def sqlCreate = """
         CREATE TABLE IF NOT EXISTS
@@ -94,17 +104,17 @@ class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
         }
 
 //        // SELECT CHECK
-//        def resultSet = []
-//        replicantMySQLHandle.eachRow('select * from sometable') {
-//            row ->
-//                resultSet.add([
-//                        pk_part_1    : row.pk_part_1,
-//                        pk_part_2    : row.pk_part_2,
-//                        randomInt    : row.randomInt,
-//                        randomVarchar: row.randomVarchar
-//                ])
-//        }
-//        print("retrieved from MySQL: " + prettyPrint(toJson(resultSet)))
+        def resultSet = []
+        replicantMySQLHandle.eachRow('select * from sometable') {
+            row ->
+                resultSet.add([
+                        pk_part_1    : row.pk_part_1,
+                        pk_part_2    : row.pk_part_2,
+                        randomInt    : row.randomInt,
+                        randomVarchar: row.randomVarchar
+                ])
+        }
+        print("retrieved from MySQL: " + prettyPrint(toJson(resultSet)))
 
         replicantMySQLHandle.close()
     }
@@ -113,6 +123,7 @@ class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
     boolean retrievedEqualsExpected(Object expected, Object retrieved) {
         return true // TODO: implement comparison
     }
+
 
     @Override
     List<String> getExpected() {

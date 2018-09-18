@@ -1,10 +1,12 @@
 package com.booking.replication;
 
+import com.booking.replication.commons.services.ServicesControl;
+
 import java.io.IOException;
 
 public interface ReplicatorIntegrationTest {
 
-    public void doMySQLOps();
+    public void doMySQLOps(ServicesControl mysqlReplicant);
 
     public Object getExpected();
 

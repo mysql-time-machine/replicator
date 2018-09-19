@@ -1,6 +1,8 @@
 package com.booking.replication.applier.hbase.util;
 
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
+import com.booking.replication.augmenter.model.event.DeleteRowsAugmentedEventData;
+import com.booking.replication.augmenter.model.event.UpdateRowsAugmentedEventData;
 import com.booking.replication.augmenter.model.event.WriteRowsAugmentedEventData;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 
@@ -17,22 +19,37 @@ public class AugmentedEventRowExtractor {
         switch (augmentedEvent.getHeader().getEventType()) {
 
             case WRITE_ROWS:
-
                 WriteRowsAugmentedEventData writeRowsAugmentedEventData =
                         ((WriteRowsAugmentedEventData) augmentedEvent.getData());
 
-                Collection<AugmentedRow> extractedAugmentedRows = writeRowsAugmentedEventData.getAugmentedRows();
+                Collection<AugmentedRow> extractedAugmentedRowsFromInsert = writeRowsAugmentedEventData.getAugmentedRows();
 
-                augmentedRows.addAll(extractedAugmentedRows);
+                augmentedRows.addAll(extractedAugmentedRowsFromInsert);
 
                 break;
 
             case UPDATE_ROWS:
-                // TODO
+                UpdateRowsAugmentedEventData updateRowsAugmentedEventData =
+                        ((UpdateRowsAugmentedEventData) augmentedEvent.getData());
+
+                Collection<AugmentedRow> extractedAugmentedRowsFromUpdate =
+                        updateRowsAugmentedEventData.getAugmentedRows();
+
+                augmentedRows.addAll(extractedAugmentedRowsFromUpdate);
+
                 break;
+
             case DELETE_ROWS:
-                // TODO
+                DeleteRowsAugmentedEventData deleteRowsAugmentedEventData =
+                        ((DeleteRowsAugmentedEventData) augmentedEvent.getData());
+
+                Collection<AugmentedRow> extractedAugmentedRowsFromDelete =
+                        deleteRowsAugmentedEventData.getAugmentedRows();
+
+                augmentedRows.addAll(extractedAugmentedRowsFromDelete);
+
                 break;
+
             default:
                 break;
         }

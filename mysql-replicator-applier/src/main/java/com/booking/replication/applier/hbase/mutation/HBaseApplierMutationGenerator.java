@@ -254,7 +254,11 @@ public class HBaseApplierMutationGenerator {
             default:
                 LOGGER.error("Wrong event type " + augmentedRow.getEventType() + ". Expected INSERT/UPDATE/DELETE.");
         }
-        return new PutMutation(put,hbaseTableName,getRowUri(augmentedRow), true);
+        return new PutMutation(
+                put,
+                hbaseTableName,
+                null,   // TODO: validator <- getRowUri(augmentedRow),
+                true);
     }
 
     private String getRowUri(AugmentedRow row){
@@ -306,16 +310,27 @@ public class HBaseApplierMutationGenerator {
             Map<String, String> pkCell = row.getRowColumns().get(pkColumnName);
 
             switch (row.getEventType()) {
+
                 case "INSERT":
-                case "DELETE":
                     pkColumnValues.add(pkCell.get("value"));
                     break;
+
+                case "DELETE":
+                    pkColumnValues.add(pkCell.get("value_before"));
+                    break;
+
                 case "UPDATE":
                     pkColumnValues.add(pkCell.get("value_after"));
                     break;
+
                 default:
                     throw new RuntimeException("Wrong event type. Expected RowType event.");
             }
+        }
+
+
+        if (pkColumnValues.stream().filter(v -> v != null).collect(Collectors.toList()).isEmpty()) {
+            throw new RuntimeException("Tables without primary key are not allowed");
         }
 
         String hbaseRowID = Joiner.on(";").join(pkColumnValues);

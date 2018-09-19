@@ -7,10 +7,9 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.util.Bytes
-import org.testcontainers.containers.GenericContainer
 
-import static groovy.json.JsonOutput.prettyPrint
-import static groovy.json.JsonOutput.toJson
+//import static groovy.json.JsonOutput.prettyPrint
+//import static groovy.json.JsonOutput.toJson
 
 class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
 
@@ -18,7 +17,10 @@ class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
 
     private String SCHEMA_NAME = "replicator"
 
-    Sql getReplicantSql(boolean autoCommit, ServicesControl mysqlReplicant) { // TODO: move to ServiceProvider in common; split common to test-utils and common
+    private String TABLE_NAME = "sometable"
+
+    // TODO: move to ServiceProvider in common; split common to test-utils and common
+    Sql getReplicantSql(boolean autoCommit, ServicesControl mysqlReplicant) {
 
         def urlReplicant =  new StringBuilder()
                 .append("jdbc:mysql://")
@@ -35,25 +37,30 @@ class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
                 password: 'replicator',
                 driver  : 'com.mysql.jdbc.Driver'
         ]
+
         def replicant = Sql.newInstance(
                 dbReplicant.url,
                 dbReplicant.user,
                 dbReplicant.password,
                 dbReplicant.driver
-        );
+        )
+
         replicant.connection.autoCommit = autoCommit
-        return replicant;
+        return replicant
     }
 
     @Override
     void doMySQLOps(ServicesControl mysqlReplicant) {
+
+        // get handle
         def replicantMySQLHandle = getReplicantSql(
                 false,
                 mysqlReplicant// <- autoCommit
         )
-        // CREATE
+
+        // create table
         def sqlCreate = """
-        CREATE TABLE IF NOT EXISTS
+        CREATE TABLE
             sometable (
             pk_part_1         varchar(5) NOT NULL DEFAULT '',
             pk_part_2         int(11)    NOT NULL DEFAULT 0,
@@ -77,6 +84,7 @@ class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
                 ['E', '5', '637616', 'ajFNkiZExAiHkKiJePMp']
         ]
 
+        // insert
         testRows.each {
             row ->
                 try {
@@ -90,12 +98,11 @@ class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
                 )
                 values (
                         ${row[0]},
-                ${row[1]},
-                ${row[2]},
-                ${row[3]}
-                                        )
+                        ${row[1]},
+                        ${row[2]},
+                        ${row[3]}
+                )
                 """
-
                     replicantMySQLHandle.execute(sqlString)
                     replicantMySQLHandle.commit()
                 } catch (Exception ex) {
@@ -104,30 +111,34 @@ class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
         }
 
 //        // SELECT CHECK
-        def resultSet = []
-        replicantMySQLHandle.eachRow('select * from sometable') {
-            row ->
-                resultSet.add([
-                        pk_part_1    : row.pk_part_1,
-                        pk_part_2    : row.pk_part_2,
-                        randomInt    : row.randomInt,
-                        randomVarchar: row.randomVarchar
-                ])
-        }
-        print("retrieved from MySQL: " + prettyPrint(toJson(resultSet)))
+//        def resultSet = []
+//        replicantMySQLHandle.eachRow('select * from sometable') {
+//            row ->
+//                resultSet.add([
+//                        pk_part_1    : row.pk_part_1,
+//                        pk_part_2    : row.pk_part_2,
+//                        randomInt    : row.randomInt,
+//                        randomVarchar: row.randomVarchar
+//                ])
+//        }
+//        print("retrieved from MySQL: " + prettyPrint(toJson(resultSet)))
 
         replicantMySQLHandle.close()
     }
 
     @Override
     boolean retrievedEqualsExpected(Object expected, Object retrieved) {
-        return true // TODO: implement comparison
+
+        expected = (Map<Map<Map<String, String>>>) expected;
+
+        retrieved = (Map<Map<Map<String, String>>>) retrieved;
     }
 
 
     @Override
-    List<String> getExpected() {
-        return [
+    Object getExpected() {
+        expected = new HashMap<>()
+        data =  [
                 "0d61f837;C;3|d:pk_part_1|C",
                 "0d61f837;C;3|d:pk_part_2|3",
                 "0d61f837;C;3|d:randomint|437616",
@@ -153,13 +164,18 @@ class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
                 "f623e75a;D;4|d:randomint|537616",
                 "f623e75a;D;4|d:randomvarchar|SjFNkiZExAiHkKiJePMp",
                 "f623e75a;D;4|d:row_status|I"
-        ]
+        ].collect({ x ->
+            def r = x.split("|")
+            expected[r[0]][r[1]] = r[2]
+        })
+
+        return expected
     }
 
      @Override
      Object retrieveReplicatedData() throws IOException {
 
-        String tableName = "organisms"
+        String tableName = TABLE_NAME
         def data = new HashMap<>()
         try {
             // config

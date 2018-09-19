@@ -9,6 +9,7 @@ import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.event.AugmentedEventType;
 
 import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.logging.log4j.LogManager;
@@ -110,7 +111,7 @@ public class HBaseApplier implements Applier {
 
 //        for (AugmentedEvent ev : events) {
 //            try {
-//                HBaseApplier.LOG.info(HBaseApplier.MAPPER.writeValueAsString(ev));
+//                HBaseApplier.LOG.info("--- " + HBaseApplier.MAPPER.writeValueAsString(ev) + " ---");
 //            } catch (JsonProcessingException e) {
 //                e.printStackTrace();
 //            }

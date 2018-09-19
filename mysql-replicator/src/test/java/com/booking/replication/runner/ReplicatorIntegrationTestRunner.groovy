@@ -1,100 +1,137 @@
 package com.booking.replication.runner
 
-import com.booking.replication.Replicator;
-import com.booking.replication.applier.Applier;
-import com.booking.replication.applier.Partitioner;
-import com.booking.replication.applier.Seeker;
-import com.booking.replication.applier.hbase.HBaseApplier;
-import com.booking.replication.augmenter.ActiveSchemaManager;
-import com.booking.replication.augmenter.Augmenter;
-import com.booking.replication.augmenter.AugmenterContext;
-import com.booking.replication.checkpoint.CheckpointApplier;
-import com.booking.replication.commons.services.ServicesControl;
-import com.booking.replication.commons.services.ServicesProvider;
-import com.booking.replication.coordinator.Coordinator;
-import com.booking.replication.coordinator.ZookeeperCoordinator;
-import com.booking.replication.supplier.Supplier;
-import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
+import com.booking.replication.Replicator
+import com.booking.replication.applier.Applier
+import com.booking.replication.applier.Partitioner
+import com.booking.replication.applier.Seeker
+import com.booking.replication.applier.hbase.HBaseApplier
+import com.booking.replication.augmenter.ActiveSchemaManager
+import com.booking.replication.augmenter.Augmenter
+import com.booking.replication.augmenter.AugmenterContext
+import com.booking.replication.checkpoint.CheckpointApplier
+import com.booking.replication.commons.services.ServicesControl
+import com.booking.replication.commons.services.ServicesProvider
+import com.booking.replication.coordinator.Coordinator
+import com.booking.replication.coordinator.ZookeeperCoordinator
+import com.booking.replication.supplier.Supplier
+import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier
 
-import com.booking.replication.spec.BasicHBaseTransmitSpec;
+import com.booking.replication.spec.BasicHBaseTransmitSpec
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mysql.jdbc.Driver;
-import org.apache.commons.dbcp2.BasicDataSource;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.*;
-import org.apache.hadoop.hbase.client.*;
-import org.apache.hadoop.hbase.util.Bytes;
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.mysql.jdbc.Driver
+import org.apache.commons.dbcp2.BasicDataSource
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.hbase.*
+import org.apache.hadoop.hbase.client.*
+import org.apache.hadoop.hbase.util.Bytes
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.testcontainers.containers.Network;
+import org.junit.AfterClass
+import org.junit.BeforeClass
+import org.junit.Test
+import org.testcontainers.containers.Network
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.ResultSet
+import java.sql.SQLException
+import java.sql.Statement
+import java.util.concurrent.Executor
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.logging.Logger
 
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
+class ReplicatorIntegrationTestRunner {
 
-public class ReplicatorIntegrationTestRunner {
-    private static final Logger LOG = Logger.getLogger(ReplicatorIntegrationTestRunner.class.getName());
+    private static final Logger LOG = Logger.getLogger(ReplicatorIntegrationTestRunner.class.getName())
 
-    private static final String ZOOKEEPER_LEADERSHIP_PATH = "/replicator/leadership";
-    private static final String ZOOKEEPER_CHECKPOINT_PATH = "/replicator/checkpoint";
+    private static final String ZOOKEEPER_LEADERSHIP_PATH = "/replicator/leadership"
+    private static final String ZOOKEEPER_CHECKPOINT_PATH = "/replicator/checkpoint"
 
-    private static final String CHECKPOINT_DEFAULT = "{\"timestamp\": 0, \"serverId\": 1, \"gtid\": null, \"binlog\": {\"filename\": \"binlog.000001\", \"position\": 4}}";
+    private static final String CHECKPOINT_DEFAULT = "{\"timestamp\": 0, \"serverId\": 1, \"gtid\": null, \"binlog\": {\"filename\": \"binlog.000001\", \"position\": 4}}"
 
-    private static final String MYSQL_SCHEMA = "replicator";
-    private static final String MYSQL_ROOT_USERNAME = "root";
-    private static final String MYSQL_USERNAME = "replicator";
-    private static final String MYSQL_PASSWORD = "replicator";
-    private static final String MYSQL_ACTIVE_SCHEMA = "active_schema";
-    private static final String MYSQL_INIT_SCRIPT = "mysql.init.sql";
+    private static final String MYSQL_SCHEMA = "replicator"
+    private static final String MYSQL_ROOT_USERNAME = "root"
+    private static final String MYSQL_USERNAME = "replicator"
+    private static final String MYSQL_PASSWORD = "replicator"
+    private static final String MYSQL_ACTIVE_SCHEMA = "active_schema"
+    private static final String MYSQL_INIT_SCRIPT = "mysql.init.sql"
 
-    private static final String ACTIVE_SCHEMA_INIT_SCRIPT = "active_schema.init.sql";
+    private static final String ACTIVE_SCHEMA_INIT_SCRIPT = "active_schema.init.sql"
 
-    private static final int TRANSACTION_LIMIT = 100;
+    private static final int TRANSACTION_LIMIT = 100
 
-    private static final String HBASE_COLUMN_FAMILY_NAME = "d";
+    private static final String HBASE_COLUMN_FAMILY_NAME = "d"
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = new ObjectMapper()
 
-    private static ServicesControl zookeeper;
-    private static ServicesControl mysqlBinaryLog;
-    private static ServicesControl mysqlActiveSchema;
-    private static ServicesControl hbase;
+    private static ServicesControl zookeeper
+    private static ServicesControl mysqlBinaryLog
+    private static ServicesControl mysqlActiveSchema
+    private static ServicesControl hbase
+
+    private TESTS = [
+            new BasicHBaseTransmitSpec()
+    ]
+
+    def pool = Executors.newFixedThreadPool(10)
 
     @BeforeClass
-    public static void before() {
+    static void before() {
 
-        ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS);
+        ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS)
 
-        Network network = Network.newNetwork();
+        Network network = Network.newNetwork()
 
-        ReplicatorIntegrationTestRunner.zookeeper = servicesProvider.startZookeeper(network);
-        ReplicatorIntegrationTestRunner.mysqlBinaryLog = servicesProvider.startMySQL(ReplicatorIntegrationTestRunner.MYSQL_SCHEMA, ReplicatorIntegrationTestRunner.MYSQL_USERNAME, ReplicatorIntegrationTestRunner.MYSQL_PASSWORD, ReplicatorIntegrationTestRunner.MYSQL_INIT_SCRIPT);
-        ReplicatorIntegrationTestRunner.mysqlActiveSchema = servicesProvider.startMySQL(ReplicatorIntegrationTestRunner.MYSQL_ACTIVE_SCHEMA, ReplicatorIntegrationTestRunner.MYSQL_USERNAME, ReplicatorIntegrationTestRunner.MYSQL_PASSWORD, ReplicatorIntegrationTestRunner.ACTIVE_SCHEMA_INIT_SCRIPT);
-        ReplicatorIntegrationTestRunner.hbase = servicesProvider.startHbase();
+        zookeeper = servicesProvider.startZookeeper(network)
+        mysqlBinaryLog = servicesProvider.startMySQL(
+                MYSQL_SCHEMA,
+                MYSQL_USERNAME,
+                MYSQL_PASSWORD,
+                MYSQL_INIT_SCRIPT
+        )
+        ReplicatorIntegrationTestRunner.mysqlActiveSchema = servicesProvider.startMySQL(
+                MYSQL_ACTIVE_SCHEMA,
+                MYSQL_USERNAME,
+                MYSQL_PASSWORD,
+                ACTIVE_SCHEMA_INIT_SCRIPT
+        )
+        hbase = servicesProvider.startHbase()
+    }
+
+    @AfterClass
+    static void after() {
+        hbase.close()
+        mysqlBinaryLog.close()
+        mysqlActiveSchema.close()
+        zookeeper.close()
     }
 
     @Test
     void testReplicator() throws Exception {
 
+        // TODO: run replicator in separate thread, but get a reference to the pipeline for tests
+        // start
         Replicator replicator = startReplicationPipeline()
 
-        // Run tests; TODO: implement test list
-        BasicHBaseTransmitSpec testSpec = new BasicHBaseTransmitSpec()
-        testSpec.doMySQLOps(ReplicatorIntegrationTestRunner.mysqlBinaryLog)
-        def retrieved = testSpec.retrieveReplicatedData()
-        def expected = testSpec.getExpected()
-        org.junit.Assert.assertTrue(testSpec.retrievedEqualsExpected(retrieved,expected))
-        String got = MAPPER.writeValueAsString(retrieved)
-        LOG.info("got from hbase => " + got)
+        // run
+        runTests(replicator)
 
+        LOG.info("mysql ops done")
+        Thread.sleep(1000000)
         // stop
         stopReplicatorPipeline(replicator)
+    }
+
+    private void runTests(Replicator replicator) {
+
+        TESTS.forEach({ testSpec ->
+            testSpec.doMySQLOps(mysqlBinaryLog)
+//            def retrieved = testSpec.retrieveReplicatedData()
+//            def expected = testSpec.getExpected()
+//            org.junit.Assert.assertTrue(testSpec.retrievedEqualsExpected(retrieved,expected))
+//            String got = MAPPER.writeValueAsString(retrieved)
+//            LOG.info("got from hbase => " + got)
+        })
+
     }
 
     private stopReplicatorPipeline(Replicator replicator) {
@@ -102,240 +139,234 @@ public class ReplicatorIntegrationTestRunner {
     }
 
     private Replicator startReplicationPipeline() {
-        LOG.info("waiting for containers to start...");
+        LOG.info("waiting for containers to start...")
         // Active SchemaManager
-        int counter = 60;
+        int counter = 60
         while (counter > 0) {
-            Thread.sleep(1000);
+            Thread.sleep(1000)
             if (activeSchemaIsReady()) {
-                LOG.info("ActiveSchemaManager container is ready.");
-                break;
+                LOG.info("ActiveSchemaManager container is ready.")
+                break
             }
-            counter--;
+            counter--
         }
         // HBase
-        counter = 60;
+        counter = 60
         while (counter > 0) {
-            Thread.sleep(1000);
+            Thread.sleep(1000)
             if (hbaseSanityCheck()) {
-                LOG.info("HBase container is ready.");
-                break;
+                LOG.info("HBase container is ready.")
+                break
             }
-            counter--;
+            counter--
         }
 
-        LOG.info("Starting the Replicator...");
-        Replicator replicator = new Replicator(this.getConfiguration());
+        LOG.info("Starting the Replicator...")
+        Replicator replicator = new Replicator(this.getConfiguration())
 
-        replicator.start();
+        replicator.start()
 
-        replicator.wait(2L, TimeUnit.MINUTES);
+        replicator.wait(5L, TimeUnit.SECONDS)
+
         replicator
     }
 
     private boolean activeSchemaIsReady() {
 
-        Map<String, Object> configuration = getConfiguration();
+        Map<String, Object> configuration = getConfiguration()
 
-        Object hostname = configuration.get(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME);
+        Object hostname = configuration.get(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME)
 
-        Object port = configuration.getOrDefault(ActiveSchemaManager.Configuration.MYSQL_PORT, "3306");
+        Object port = configuration.getOrDefault(ActiveSchemaManager.Configuration.MYSQL_PORT, "3306")
 
-        Object schema = configuration.get(ActiveSchemaManager.Configuration.MYSQL_SCHEMA);
-        Object username = configuration.get(ActiveSchemaManager.Configuration.MYSQL_USERNAME);
-        Object password = configuration.get(ActiveSchemaManager.Configuration.MYSQL_PASSWORD);
+        Object schema = configuration.get(ActiveSchemaManager.Configuration.MYSQL_SCHEMA)
+        Object username = configuration.get(ActiveSchemaManager.Configuration.MYSQL_USERNAME)
+        Object password = configuration.get(ActiveSchemaManager.Configuration.MYSQL_PASSWORD)
 
-        final BasicDataSource dataSource;
+        final BasicDataSource dataSource
 
-        final String DEFAULT_MYSQL_DRIVER_CLASS = Driver.class.getName();
+        final String DEFAULT_MYSQL_DRIVER_CLASS = Driver.class.getName()
         Object driverClass = configuration.getOrDefault(ActiveSchemaManager.Configuration.MYSQL_DRIVER_CLASS,
-                DEFAULT_MYSQL_DRIVER_CLASS);
+                DEFAULT_MYSQL_DRIVER_CLASS)
 
-        dataSource = getDataSource(driverClass.toString(), hostname.toString(), Integer.parseInt(port.toString()), schema.toString(), username.toString(), password.toString());
+        dataSource = getDataSource(driverClass.toString(), hostname.toString(), Integer.parseInt(port.toString()), schema.toString(), username.toString(), password.toString())
 
         try {
-            java.sql.Connection connection = dataSource.getConnection();
+            java.sql.Connection connection = dataSource.getConnection()
             Statement statement = connection.createStatement()
 
-            ResultSet resultSet = statement.executeQuery("select @@server_id");
+            ResultSet resultSet = statement.executeQuery("select @@server_id")
             if (resultSet.next()) {
-                LOG.info("got server id: " + resultSet.getString(1));
-                return true;
+                LOG.info("got server id: " + resultSet.getString(1))
+                return true
             }
 
         } catch (SQLException exception) {
-            return false;
+            return false
         }
-        return false;
+        return false
     }
 
     private BasicDataSource getDataSource(String driverClass, String hostname, int port, String schema, String username, String password) {
-        BasicDataSource dataSource = new BasicDataSource();
-        dataSource.setUrl(String.format("jdbc:mysql://%s:%d/%s", hostname, port, schema));
-        dataSource.setUsername(username);
-        dataSource.setPassword(password);
+        BasicDataSource dataSource = new BasicDataSource()
+        dataSource.setUrl(String.format("jdbc:mysql://%s:%d/%s", hostname, port, schema))
+        dataSource.setUsername(username)
+        dataSource.setPassword(password)
 
-        return dataSource;
+        return dataSource
     }
 
      boolean hbaseSanityCheck() {
 
-        boolean passed = true;
+        boolean passed = true
 
         try {
             // instantiate Configuration class
-            Configuration config = HBaseConfiguration.create();
+            Configuration config = HBaseConfiguration.create()
 
-            Connection connection = ConnectionFactory.createConnection(config);
+            Connection connection = ConnectionFactory.createConnection(config)
 
-            Admin admin = connection.getAdmin();
+            Admin admin = connection.getAdmin()
 
-            String clusterStatus = admin.getClusterStatus().toString();
-            // LOG.info("hbase cluster status => " + clusterStatus);
+            String clusterStatus = admin.getClusterStatus().toString()
+            // LOG.info("hbase cluster status => " + clusterStatus)
 
-            TableName tableName = TableName.valueOf("test1");
+            TableName tableName = TableName.valueOf("test1")
             if (!admin.tableExists(tableName)) {
-                HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);
-                HColumnDescriptor cd = new HColumnDescriptor(HBASE_COLUMN_FAMILY_NAME);
+                HTableDescriptor tableDescriptor = new HTableDescriptor(tableName)
+                HColumnDescriptor cd = new HColumnDescriptor(HBASE_COLUMN_FAMILY_NAME)
 
-                cd.setMaxVersions(1000);
-                tableDescriptor.addFamily(cd);
-                tableDescriptor.setCompactionEnabled(true);
+                cd.setMaxVersions(1000)
+                tableDescriptor.addFamily(cd)
+                tableDescriptor.setCompactionEnabled(true)
 
-                admin.createTable(tableDescriptor);
+                admin.createTable(tableDescriptor)
             }
 
             // write test data
-            HashMap<String,HashMap<String, HashMap<Long, String>>> data = new HashMap<>();
-            Table table = connection.getTable(TableName.valueOf(Bytes.toBytes("test1")));
-            long timestamp = System.currentTimeMillis();
+            HashMap<String,HashMap<String, HashMap<Long, String>>> data = new HashMap<>()
+            Table table = connection.getTable(TableName.valueOf(Bytes.toBytes("test1")))
+            long timestamp = System.currentTimeMillis()
 
             for (int i = 0; i < 10; i++) {
 
-                String rowKey = randString();
+                String rowKey = randString()
 
-                data.put(rowKey, new HashMap<>());
-                data.get(rowKey).put("c1", new HashMap<>());
+                data.put(rowKey, new HashMap<>())
+                data.get(rowKey).put("c1", new HashMap<>())
 
                 for (int v = 0; v < 10; v++) {
 
-                    timestamp++;
+                    timestamp++
 
-                    Put put = new Put(Bytes.toBytes(rowKey));
-                    String value = randString();
+                    Put put = new Put(Bytes.toBytes(rowKey))
+                    String value = randString()
 
-                    data.get(rowKey).get("c1").put(timestamp, value);
+                    data.get(rowKey).get("c1").put(timestamp, value)
 
                     put.addColumn(
                             Bytes.toBytes(HBASE_COLUMN_FAMILY_NAME),
                             Bytes.toBytes("c1"),
                             timestamp,
                             Bytes.toBytes(value)
-                    );
-                    table.put(put);
+                    )
+                    table.put(put)
                 }
             }
 
             // read
-            Scan scan = new Scan();
-            scan.setMaxVersions(1000);
-            ResultScanner scanner = table.getScanner(scan);
+            Scan scan = new Scan()
+            scan.setMaxVersions(1000)
+            ResultScanner scanner = table.getScanner(scan)
             for (Result row : scanner) {
 
                 for (Cell version: row.getColumnCells(Bytes.toBytes(HBASE_COLUMN_FAMILY_NAME), Bytes.toBytes("c1"))) {
 
-                    String retrievedRowKey    = Bytes.toString(row.getRow());
-                    String retrievedValue     = Bytes.toString(version.getValue());
-                    Long   retrievedTimestamp = version.getTimestamp();
+                    String retrievedRowKey    = Bytes.toString(row.getRow())
+                    String retrievedValue     = Bytes.toString(version.getValue())
+                    Long   retrievedTimestamp = version.getTimestamp()
 
                     if (!data.get(retrievedRowKey).get("c1").containsKey(retrievedTimestamp)) {
-                        passed = false;
-                        break;
+                        passed = false
+                        break
                     }
                     if (!data.get(retrievedRowKey).get("c1").get(retrievedTimestamp).equals(retrievedValue)) {
-                        passed = false;
-                        break;
+                        passed = false
+                        break
                     }
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            e.printStackTrace()
         }
-        return passed;
+        return passed
     }
 
-    public static String randString() {
+     static String randString() {
 
-        int leftLimit = 97; // letter 'a'
-        int rightLimit = 122; // letter 'z'
-        int targetStringLength = 3;
-        Random random = new Random();
-        StringBuilder buffer = new StringBuilder(targetStringLength);
+        int leftLimit = 97   // letter 'a'
+        int rightLimit = 122 // letter 'z'
+        int targetStringLength = 3
+        Random random = new Random()
+        StringBuilder buffer = new StringBuilder(targetStringLength)
         for (int i = 0; i < targetStringLength; i++) {
             Number randomLimitedInt = leftLimit + ((Number)
-                    (random.nextFloat() * (rightLimit - leftLimit + 1)));
-            buffer.append((char) randomLimitedInt);
+                    (random.nextFloat() * (rightLimit - leftLimit + 1)))
+            buffer.append((char) randomLimitedInt)
         }
-        String generatedString = buffer.toString();
+        String generatedString = buffer.toString()
 
-        return generatedString;
+        return generatedString
     }
 
     private Map<String, Object> getConfiguration() {
-        Map<String, Object> configuration = new HashMap<>();
+        Map<String, Object> configuration = new HashMap<>()
 
         // Coordinator Configuration
-        configuration.put(Replicator.Configuration.CHECKPOINT_PATH, ReplicatorIntegrationTestRunner.ZOOKEEPER_CHECKPOINT_PATH);
-        configuration.put(Replicator.Configuration.CHECKPOINT_DEFAULT, ReplicatorIntegrationTestRunner.CHECKPOINT_DEFAULT);
-        configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name());
-        configuration.put(Coordinator.Configuration.TYPE, Coordinator.Type.ZOOKEEPER.name());
-        configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, ReplicatorIntegrationTestRunner.zookeeper.getURL());
-        configuration.put(ZookeeperCoordinator.Configuration.LEADERSHIP_PATH, ReplicatorIntegrationTestRunner.ZOOKEEPER_LEADERSHIP_PATH);
+        configuration.put(Replicator.Configuration.CHECKPOINT_PATH, ReplicatorIntegrationTestRunner.ZOOKEEPER_CHECKPOINT_PATH)
+        configuration.put(Replicator.Configuration.CHECKPOINT_DEFAULT, ReplicatorIntegrationTestRunner.CHECKPOINT_DEFAULT)
+        configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name())
+        configuration.put(Coordinator.Configuration.TYPE, Coordinator.Type.ZOOKEEPER.name())
+        configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, ReplicatorIntegrationTestRunner.zookeeper.getURL())
+        configuration.put(ZookeeperCoordinator.Configuration.LEADERSHIP_PATH, ReplicatorIntegrationTestRunner.ZOOKEEPER_LEADERSHIP_PATH)
 
         // Supplier Configuration
-        configuration.put(Supplier.Configuration.TYPE, Supplier.Type.BINLOG.name());
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_HOSTNAME, Collections.singletonList(ReplicatorIntegrationTestRunner.mysqlBinaryLog.getHost()));
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_PORT, String.valueOf(ReplicatorIntegrationTestRunner.mysqlBinaryLog.getPort()));
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_SCHEMA, ReplicatorIntegrationTestRunner.MYSQL_SCHEMA);
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_USERNAME, ReplicatorIntegrationTestRunner.MYSQL_ROOT_USERNAME);
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_PASSWORD, ReplicatorIntegrationTestRunner.MYSQL_PASSWORD);
+        configuration.put(Supplier.Configuration.TYPE, Supplier.Type.BINLOG.name())
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_HOSTNAME, Collections.singletonList(ReplicatorIntegrationTestRunner.mysqlBinaryLog.getHost()))
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_PORT, String.valueOf(ReplicatorIntegrationTestRunner.mysqlBinaryLog.getPort()))
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_SCHEMA, ReplicatorIntegrationTestRunner.MYSQL_SCHEMA)
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_USERNAME, ReplicatorIntegrationTestRunner.MYSQL_ROOT_USERNAME)
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_PASSWORD, ReplicatorIntegrationTestRunner.MYSQL_PASSWORD)
 
         // SchemaManager Manager Configuration
-        configuration.put(Augmenter.Configuration.SCHEMA_TYPE, Augmenter.SchemaType.ACTIVE.name());
+        configuration.put(Augmenter.Configuration.SCHEMA_TYPE, Augmenter.SchemaType.ACTIVE.name())
 
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, ReplicatorIntegrationTestRunner.mysqlActiveSchema.getHost());
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, ReplicatorIntegrationTestRunner.mysqlActiveSchema.getHost())
 
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(ReplicatorIntegrationTestRunner.mysqlActiveSchema.getPort()));
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_SCHEMA, ReplicatorIntegrationTestRunner.MYSQL_ACTIVE_SCHEMA);
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, ReplicatorIntegrationTestRunner.MYSQL_ROOT_USERNAME);
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PASSWORD, ReplicatorIntegrationTestRunner.MYSQL_PASSWORD);
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(ReplicatorIntegrationTestRunner.mysqlActiveSchema.getPort()))
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_SCHEMA, ReplicatorIntegrationTestRunner.MYSQL_ACTIVE_SCHEMA)
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, ReplicatorIntegrationTestRunner.MYSQL_ROOT_USERNAME)
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PASSWORD, ReplicatorIntegrationTestRunner.MYSQL_PASSWORD)
 
-        configuration.put(AugmenterContext.Configuration.TRANSACTION_BUFFER_LIMIT, String.valueOf(ReplicatorIntegrationTestRunner.TRANSACTION_LIMIT));
+        configuration.put(AugmenterContext.Configuration.TRANSACTION_BUFFER_LIMIT, String.valueOf(ReplicatorIntegrationTestRunner.TRANSACTION_LIMIT))
 
         // Applier Configuration
-        configuration.put(Seeker.Configuration.TYPE, Seeker.Type.NONE.name());
-        configuration.put(Partitioner.Configuration.TYPE, Partitioner.Type.XXID.name());
-        configuration.put(Applier.Configuration.TYPE, Applier.Type.HBASE.name());
+        configuration.put(Seeker.Configuration.TYPE, Seeker.Type.NONE.name())
+        configuration.put(Partitioner.Configuration.TYPE, Partitioner.Type.XXID.name())
+        configuration.put(Applier.Configuration.TYPE, Applier.Type.HBASE.name())
 
         // HBase Specifics
-        configuration.put(HBaseApplier.Configuration.HBASE_ZOOKEEPER_QUORUM, "localhost:2181");
-        configuration.put(HBaseApplier.Configuration.REPLICATED_SCHEMA_NAME, ReplicatorIntegrationTestRunner.MYSQL_SCHEMA);
+        configuration.put(HBaseApplier.Configuration.HBASE_ZOOKEEPER_QUORUM, "localhost:2181")
+        configuration.put(HBaseApplier.Configuration.REPLICATED_SCHEMA_NAME, ReplicatorIntegrationTestRunner.MYSQL_SCHEMA)
 
-        configuration.put(HBaseApplier.Configuration.TARGET_NAMESPACE,  "");
-        configuration.put(HBaseApplier.Configuration.SCHEMA_HISTORY_NAMESPACE, "");
+        configuration.put(HBaseApplier.Configuration.TARGET_NAMESPACE,  "")
+        configuration.put(HBaseApplier.Configuration.SCHEMA_HISTORY_NAMESPACE, "")
 
-        configuration.put(HBaseApplier.Configuration.INITIAL_SNAPSHOT_MODE, false);
-        configuration.put(HBaseApplier.Configuration.HBASE_USE_SNAPPY, false);
-        configuration.put(HBaseApplier.Configuration.DRYRUN, false);
+        configuration.put(HBaseApplier.Configuration.INITIAL_SNAPSHOT_MODE, false)
+        configuration.put(HBaseApplier.Configuration.HBASE_USE_SNAPPY, false)
+        configuration.put(HBaseApplier.Configuration.DRYRUN, false)
 
-        return configuration;
+        return configuration
     }
 
-    @AfterClass
-    static void after() {
-        ReplicatorIntegrationTestRunner.hbase.close();
-        ReplicatorIntegrationTestRunner.mysqlBinaryLog.close();
-        ReplicatorIntegrationTestRunner.mysqlActiveSchema.close();
-        ReplicatorIntegrationTestRunner.zookeeper.close();
-    }
 }

@@ -103,19 +103,26 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
             // extract augmented rows
             for (AugmentedEvent event : events) {
 
-                // TODO: implement update/delete in the extractor
                 List<AugmentedRow> augmentedRows = AugmentedEventRowExtractor.extractAugmentedRows(event);
+
+                List<String> tables =  augmentedRows.stream().map(ar -> ar.getTableName()).collect(Collectors.toList());
+                for (String t:tables) {
+                    LOG.info("0000 " + t);
+                }
 
                 String eventTableName;
                 switch (event.getHeader().getEventType()) {
                     case WRITE_ROWS:
                         eventTableName = ((WriteRowsAugmentedEventData) event.getData()).getEventTable().getName();
+                        LOG.info("^^^^" + eventTableName);
                         break;
                     case UPDATE_ROWS:
                         eventTableName = ((UpdateRowsAugmentedEventData) event.getData()).getEventTable().getName();
+                        LOG.info("^^^^" + eventTableName);
                         break;
                     case DELETE_ROWS:
                         eventTableName = ((DeleteRowsAugmentedEventData) event.getData()).getEventTable().getName();
+                        LOG.info("^^^^" + eventTableName);
                         break;
                     default:
                         throw new RuntimeException("Impossible condition!");
@@ -127,7 +134,11 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
+                } else {
+                    LOG.info("eventTableName is NULL!");
+                    throw new RuntimeException("Table name cannot be null");
                 }
+
                 List<HBaseApplierMutationGenerator.PutMutation> eventMutations = augmentedRows.stream()
                         .flatMap(
                                 row -> Stream.of(mutationGenerator.getPutForMirroredTable(row))

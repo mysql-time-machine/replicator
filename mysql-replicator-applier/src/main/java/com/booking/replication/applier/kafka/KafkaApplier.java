@@ -80,6 +80,11 @@ public class KafkaApplier implements Applier {
     }
 
     @Override
+    public boolean forceFlush() {
+        return false;
+    }
+
+    @Override
     public void close() throws IOException {
         this.partitioner.close();
         this.producers.values().forEach(Producer::close);

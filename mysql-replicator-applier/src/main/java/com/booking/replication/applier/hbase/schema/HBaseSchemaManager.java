@@ -56,7 +56,7 @@ public class HBaseSchemaManager {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(HBaseSchemaManager.class);
+    private static final Logger LOG = LoggerFactory.getLogger(HBaseSchemaManager.class);
 
     public HBaseSchemaManager(Map<String, Object> configuration) {
 
@@ -69,9 +69,9 @@ public class HBaseSchemaManager {
         if (!DRY_RUN) {
             try {
                 connection = ConnectionFactory.createConnection(hbaseConf);
-                LOGGER.info("HBaseSchemaManager successfully established connection to HBase.");
+                LOG.info("HBaseSchemaManager successfully established connection to HBase.");
             } catch (IOException e) {
-                LOGGER.error("HBaseSchemaManager could not connect to HBase");
+                LOG.error("HBaseSchemaManager could not connect to HBase");
                 e.printStackTrace();
             }
         }
@@ -100,12 +100,18 @@ public class HBaseSchemaManager {
                     connection = ConnectionFactory.createConnection(hbaseConf);
                 }
 
+                if (knownHBaseTables.containsKey(hbaseTableName)) {
+                    return;
+                }
+
                 Admin admin = connection.getAdmin();
                 TableName tableName = TableName.valueOf(hbaseTableName);
 
-                if (!admin.tableExists(tableName)) {
+                if (admin.tableExists(tableName)) {
 
-                    LOGGER.info("table " + hbaseTableName + " does not exist in HBase. Creating...");
+                    throw  new RuntimeException("table exists in HBase, but not in cache - inner logic broken!");
+
+                } else {
 
                     HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);
                     HColumnDescriptor cd = new HColumnDescriptor("d");
@@ -123,9 +129,13 @@ public class HBaseSchemaManager {
                     byte[][] splitKeys = splitter.split(MIRRORED_TABLE_DEFAULT_REGIONS);
 
                     admin.createTable(tableDescriptor, splitKeys);
+
+                    knownHBaseTables.put(hbaseTableName, 1);
+
+                    LOG.warn("Created hbase table " + hbaseTableName);
+
                 }
 
-                knownHBaseTables.put(hbaseTableName, 1);
             }
         } catch (IOException e) {
             throw new IOException("Failed to create table in HBase", e);
@@ -146,7 +156,7 @@ public class HBaseSchemaManager {
 
                 if (!admin.tableExists(tableName)) {
 
-                    LOGGER.info("table " + hbaseTableName + " does not exist in HBase. Creating...");
+                    LOG.info("table " + hbaseTableName + " does not exist in HBase. Creating...");
 
                     HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);
                     HColumnDescriptor cd = new HColumnDescriptor("d");
@@ -174,7 +184,7 @@ public class HBaseSchemaManager {
 
                     admin.createTable(tableDescriptor);
                 } else {
-                    LOGGER.info("Table " + hbaseTableName + " already exists in HBase. Probably a case of replaying the binlog.");
+                    LOG.info("Table " + hbaseTableName + " already exists in HBase. Probably a case of replaying the binlog.");
                 }
             }
             knownHBaseTables.put(hbaseTableName,1);
@@ -242,7 +252,7 @@ public class HBaseSchemaManager {
 
             if (!admin.tableExists(tableName)) {
 
-                LOGGER.info("table " + hbaseTableName + " does not exist in HBase. Creating...");
+                LOG.info("table " + hbaseTableName + " does not exist in HBase. Creating...");
 
                 HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);
                 HColumnDescriptor cd = new HColumnDescriptor("d");
@@ -256,7 +266,7 @@ public class HBaseSchemaManager {
 
                 admin.createTable(tableDescriptor); // , splitKeys);
             } else {
-                LOGGER.info("Table " + hbaseTableName + " already exists in HBase. Probably a case of replaying the binlog.");
+                LOG.info("Table " + hbaseTableName + " already exists in HBase. Probably a case of replaying the binlog.");
             }
 
             Put put = new Put(Bytes.toBytes(hbaseRowKey));

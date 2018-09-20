@@ -12,6 +12,8 @@ import java.util.Map;
 import java.util.function.Function;
 
 public interface Applier extends Function<Collection<AugmentedEvent>, Boolean>, Closeable {
+    boolean forceFlush();
+
     enum Type {
         CONSOLE {
             @Override

@@ -90,7 +90,6 @@ public class Replicator {
                     for (AugmentedEvent event : events) {
                         this.metricsApplier.apply(event);
                     }
-
                     return true;
                 })
                 .post((events, task) -> {
@@ -105,17 +104,14 @@ public class Replicator {
                 .process(this.seeker)
                 .to((events) -> {
                     Map<Integer, Collection<AugmentedEvent>> splitEventsMap = new HashMap<>();
-
                     for (AugmentedEvent event : events) {
                         splitEventsMap.computeIfAbsent(
                                 this.partitioner.apply(event, tasks), partition -> new ArrayList<>()
                         ).add(event);
                     }
-
                     for (Collection<AugmentedEvent> splitEvents : splitEventsMap.values()) {
                         this.streamsApplier.push(splitEvents);
                     }
-
                     return true;
                 }).build();
 
@@ -173,6 +169,11 @@ public class Replicator {
         this.supplier.onException(exceptionHandle);
         this.streamsSupplier.onException(exceptionHandle);
         this.streamsApplier.onException(exceptionHandle);
+    }
+
+    public synchronized boolean forceFlushApplier() {
+        applier.forceFlush();
+        return true;
     }
 
     private Checkpoint getCheckpoint() throws IOException {

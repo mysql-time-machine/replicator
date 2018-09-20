@@ -15,6 +15,8 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 // Dummy applier for testing: writes raw events, grouped by table name
 // with rowKey as timestamp
@@ -25,23 +27,25 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
 
     private final int FLUSH_RETRY_LIMIT = 30;
     private long bufferClearTime = 0L;
-    private final int DATA_FORMAT = 0;
     private final String HBASE_COLUMN_DEFAULT_FAMILY_NAME = "d";
 
     Connection connection;
     Admin admin;
-    Collection<AugmentedEvent> buffered;
+    ConcurrentHashMap<String, Collection<AugmentedEvent>> buffered;
 
     public HBaseRawEventsWriter(Configuration hbaseConfig, Map<String, Object> configuration) throws IOException {
         connection = ConnectionFactory.createConnection(hbaseConfig);
         admin = connection.getAdmin();
-        buffered = new ArrayList<>();
+        buffered = new ConcurrentHashMap<>();
     }
 
     @Override
-    public void buffer(Collection<AugmentedEvent> events) {
+    public void buffer(String transactionUUID,  Collection<AugmentedEvent> events) {
+        if (buffered.get(transactionUUID) == null) {
+            buffered.put(transactionUUID, new ArrayList<>());
+        }
         for (AugmentedEvent event: events) {
-            buffered.add(event);
+            buffered.get(transactionUUID).add(event);
         }
     }
 
@@ -51,16 +55,33 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
     }
 
     @Override
-    public int getBufferSize() {
-        return  buffered.size();
+    public int getTransactionBufferSize(String transactionUUID) {
+        return 0;
     }
 
     @Override
-    public boolean flush() {
+    public boolean forceFlush() throws IOException {
+        List<String> transactionsBuffered = (List<String>) buffered.keySet();
+
+        Boolean s = transactionsBuffered
+                .stream()
+                .map(tUUID -> flushTransactionBuffer(tUUID))
+                .filter(result -> result == false)
+                .collect(Collectors.toList())
+                .isEmpty();
+        if (s) {
+            return true; // <- markedForCommit, will advance safe checkpoint
+        } else {
+            throw new IOException("Failed to write buffer to HBase");
+        }
+    }
+
+    @Override
+    public boolean flushTransactionBuffer(String transactionUUID) {
         boolean result = false;
         try {
-            result = flushWithRetry(); // false means all retries have failed
-            buffered.clear();
+            result = flushWithRetry(transactionUUID); // false means all retries have failed
+            buffered.remove(transactionUUID);
             bufferClearTime = Instant.now().toEpochMilli();
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -68,7 +89,7 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
         return  result;
     }
 
-    private Boolean flushWithRetry() throws InterruptedException {
+    private Boolean flushWithRetry(String transactionUUID) throws InterruptedException {
 
         int counter = FLUSH_RETRY_LIMIT;
 
@@ -76,7 +97,7 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
             counter--;
 
             try {
-                writeToHBase(buffered);
+                writeToHBase(buffered.get(transactionUUID));
                 return true;
             } catch (IOException e) {
                 LOG.warn("Failed to write to HBase.", e);

@@ -34,7 +34,6 @@ import org.testcontainers.containers.Network
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.sql.Statement
-import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.logging.Logger
@@ -110,7 +109,7 @@ class ReplicatorIntegrationTestRunner {
 
         // TODO: run replicator in separate thread, but get a reference to the pipeline for tests
         // start
-        Replicator replicator = startReplicationPipeline()
+        Replicator replicator = startReplicatorPipeline()
 
         // run
         runTests(replicator)
@@ -124,12 +123,24 @@ class ReplicatorIntegrationTestRunner {
     private void runTests(Replicator replicator) {
 
         TESTS.forEach({ testSpec ->
+
             testSpec.doMySQLOps(mysqlBinaryLog)
-//            def retrieved = testSpec.retrieveReplicatedData()
-//            def expected = testSpec.getExpected()
-//            org.junit.Assert.assertTrue(testSpec.retrievedEqualsExpected(retrieved,expected))
-//            String got = MAPPER.writeValueAsString(retrieved)
-//            LOG.info("got from hbase => " + got)
+
+            sleep(5000) // possible replication delay
+
+            replicator.forceFlushApplier()
+
+            def retrieved = testSpec.retrieveReplicatedData()
+
+            def expected = testSpec.getExpected()
+
+            def ok = testSpec.retrievedEqualsExpected(retrieved,expected)
+
+            String got = MAPPER.writeValueAsString(retrieved)
+            LOG.info("got from hbase => " + got)
+
+            LOG.info("test " + ok)
+
         })
 
     }
@@ -138,7 +149,7 @@ class ReplicatorIntegrationTestRunner {
         replicator.stop()
     }
 
-    private Replicator startReplicationPipeline() {
+    private Replicator startReplicatorPipeline() {
         LOG.info("waiting for containers to start...")
         // Active SchemaManager
         int counter = 60

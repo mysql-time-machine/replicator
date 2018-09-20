@@ -32,4 +32,9 @@ public class ConsoleApplier implements Applier {
             return false;
         }
     }
+
+    @Override
+    public boolean forceFlush() {
+        return false;
+    }
 }

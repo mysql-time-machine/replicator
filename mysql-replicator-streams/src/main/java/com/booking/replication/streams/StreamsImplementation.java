@@ -180,8 +180,6 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
 
     @Override
     public final boolean push(Input input) {
-
-        LOG.info("================" + input.toString());
         if (this.queues == null && this.from == null) {
             try {
                 this.process(input, 0);

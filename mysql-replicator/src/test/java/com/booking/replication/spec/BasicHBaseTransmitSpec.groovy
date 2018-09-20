@@ -8,8 +8,6 @@ import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.util.Bytes
 
-//import static groovy.json.JsonOutput.prettyPrint
-//import static groovy.json.JsonOutput.toJson
 
 class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
 
@@ -132,13 +130,15 @@ class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
         expected = (Map<Map<Map<String, String>>>) expected;
 
         retrieved = (Map<Map<Map<String, String>>>) retrieved;
+
+        return expected.equals(retrieved)
     }
 
 
     @Override
     Object getExpected() {
-        expected = new HashMap<>()
-        data =  [
+        def expected = new HashMap<>()
+        def data =  [
                 "0d61f837;C;3|d:pk_part_1|C",
                 "0d61f837;C;3|d:pk_part_2|3",
                 "0d61f837;C;3|d:randomint|437616",
@@ -165,11 +165,15 @@ class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
                 "f623e75a;D;4|d:randomvarchar|SjFNkiZExAiHkKiJePMp",
                 "f623e75a;D;4|d:row_status|I"
         ].collect({ x ->
-            def r = x.split("|")
+            def r = x.tokenize('|')
+            if (expected[r[0]] == null) { expected[r[0]] = new HashMap() }
+
             expected[r[0]][r[1]] = r[2]
         })
 
-        return expected
+        def grouped = new HashMap()
+        grouped["sometable"] = expected
+        return grouped
     }
 
      @Override
@@ -188,18 +192,25 @@ class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
             scan.setMaxVersions(1000)
             ResultScanner scanner = table.getScanner(scan)
             for (Result row : scanner) {
+
                 CellScanner cs =  row.cellScanner()
                 while (cs.advance()) {
                     Cell cell = cs.current()
+
+                    String rowKey = Bytes.toString(cell.getRow())
+
                     String columnName = Bytes.toString(cell.getQualifier())
 
                     if (data[tableName] == null) {
-                        data[tableName] = new HashMap<>();
+                        data[tableName] = new HashMap<>()
                     }
-                    if (data[tableName][columnName] == null) {
-                        data[tableName][columnName] = new HashMap<>()
+                    if (data[tableName][rowKey] == null) {
+                        data[tableName][rowKey] = new HashMap<>();
                     }
-                    data.get(tableName).get(columnName).put(
+                    if (data[tableName][rowKey][columnName] == null) {
+                        data[tableName][rowKey][columnName] = new HashMap<>()
+                    }
+                    data.get(tableName).get(rowKey).get(columnName).put(
                         cell.getTimestamp(), Bytes.toString(cell.getValue())
                     )
                 }

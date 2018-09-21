@@ -134,12 +134,13 @@ class ReplicatorIntegrationTestRunner {
 
             def expected = testSpec.getExpected()
 
-            def ok = testSpec.retrievedEqualsExpected(retrieved,expected)
+            // def ok = testSpec.retrievedEqualsExpected(retrieved,expected)
 
-            String got = MAPPER.writeValueAsString(retrieved)
-            LOG.info("got from hbase => " + got)
+            String retJSON = MAPPER.writeValueAsString(retrieved)
+            String expJSON = MAPPER.writeValueAsString(expected)
 
-            LOG.info("test " + ok)
+            LOG.info("RetJSON => " + retJSON)
+            LOG.info("ExpJSON => " + expJSON)
 
         })
 

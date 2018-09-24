@@ -2,6 +2,7 @@ package com.booking.replication.applier.hbase.mutation;
 
 import com.booking.replication.applier.hbase.HBaseApplier;
 
+import com.booking.replication.augmenter.model.AugmenterModel;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.google.common.base.Joiner;
 import org.apache.hadoop.hbase.client.Put;
@@ -77,8 +78,8 @@ public class HBaseApplierMutationGenerator {
     }
 
     private static final byte[] CF                           = Bytes.toBytes("d");
-    private static final byte[] TID                          = Bytes.toBytes("_transaction_uuid");
-    private static final byte[] XID                          = Bytes.toBytes("_transaction_xid");
+    private static final byte[] TID                          = Bytes.toBytes(AugmenterModel.Configuration.UUID_FIELD_NAME);
+    private static final byte[] XID                          = Bytes.toBytes(AugmenterModel.Configuration.XID_FIELD_NAME);
     private static final String DIGEST_ALGORITHM             = "MD5";
 
     private final Map<String, Object> configuration;

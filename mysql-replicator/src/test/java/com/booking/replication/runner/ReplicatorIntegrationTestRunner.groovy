@@ -29,6 +29,9 @@ import org.apache.hadoop.hbase.util.Bytes
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
+
+import static org.junit.Assert.assertEquals
+
 import org.testcontainers.containers.Network
 
 import java.sql.ResultSet
@@ -37,6 +40,8 @@ import java.sql.Statement
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.logging.Logger
+
+import static org.junit.Assert.assertTrue
 
 class ReplicatorIntegrationTestRunner {
 
@@ -60,8 +65,6 @@ class ReplicatorIntegrationTestRunner {
 
     private static final String HBASE_COLUMN_FAMILY_NAME = "d"
 
-    private static final ObjectMapper MAPPER = new ObjectMapper()
-
     private static ServicesControl zookeeper
     private static ServicesControl mysqlBinaryLog
     private static ServicesControl mysqlActiveSchema
@@ -70,8 +73,6 @@ class ReplicatorIntegrationTestRunner {
     private TESTS = [
             new BasicHBaseTransmitSpec()
     ]
-
-    def pool = Executors.newFixedThreadPool(10)
 
     @BeforeClass
     static void before() {
@@ -107,15 +108,14 @@ class ReplicatorIntegrationTestRunner {
     @Test
     void testReplicator() throws Exception {
 
-        // TODO: run replicator in separate thread, but get a reference to the pipeline for tests
         // start
         Replicator replicator = startReplicatorPipeline()
 
         // run
         runTests(replicator)
 
-        LOG.info("mysql ops done")
-        Thread.sleep(1000000)
+        LOG.info("tests done")
+
         // stop
         stopReplicatorPipeline(replicator)
     }
@@ -127,20 +127,12 @@ class ReplicatorIntegrationTestRunner {
             testSpec.doMySQLOps(mysqlBinaryLog)
 
             sleep(5000) // possible replication delay
-
             replicator.forceFlushApplier()
 
             def retrieved = testSpec.retrieveReplicatedData()
-
             def expected = testSpec.getExpected()
 
-            // def ok = testSpec.retrievedEqualsExpected(retrieved,expected)
-
-            String retJSON = MAPPER.writeValueAsString(retrieved)
-            String expJSON = MAPPER.writeValueAsString(expected)
-
-            LOG.info("RetJSON => " + retJSON)
-            LOG.info("ExpJSON => " + expJSON)
+            assertTrue("BasicInsertsTransmit", testSpec.retrievedEqualsExpected(retrieved,expected))
 
         })
 

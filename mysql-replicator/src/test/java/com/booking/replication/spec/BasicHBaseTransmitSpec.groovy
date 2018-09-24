@@ -2,12 +2,12 @@ package com.booking.replication.spec
 
 import com.booking.replication.ReplicatorIntegrationTest
 import com.booking.replication.commons.services.ServicesControl
+import com.fasterxml.jackson.databind.ObjectMapper
 import groovy.sql.Sql
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.util.Bytes
-
 
 class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
 
@@ -16,6 +16,8 @@ class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
     private String SCHEMA_NAME = "replicator"
 
     private String TABLE_NAME = "sometable"
+
+    private static final ObjectMapper MAPPER = new ObjectMapper()
 
     // TODO: move to ServiceProvider in common; split common to test-utils and common
     Sql getReplicantSql(boolean autoCommit, ServicesControl mysqlReplicant) {
@@ -127,51 +129,59 @@ class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
     @Override
     boolean retrievedEqualsExpected(Object expected, Object retrieved) {
 
-        expected = (Map<Map<Map<String, String>>>) expected;
+        expected = (Map<Map<Map<String, String>>>) expected
 
-        retrieved = (Map<Map<Map<String, String>>>) retrieved;
+        retrieved = (Map<Map<Map<String, String>>>) retrieved
 
-        return expected.equals(retrieved)
+        String retJSON = MAPPER.writeValueAsString(retrieved)
+        String expJSON = MAPPER.writeValueAsString(expected)
+
+        expJSON.equals(retJSON)
+
     }
 
 
     @Override
     Object getExpected() {
-        def expected = new HashMap<>()
-        def data =  [
-                "0d61f837;C;3|d:pk_part_1|C",
-                "0d61f837;C;3|d:pk_part_2|3",
-                "0d61f837;C;3|d:randomint|437616",
-                "0d61f837;C;3|d:randomvarchar|pjFNkiZExAiHkKiJePMp",
-                "0d61f837;C;3|d:row_status|I",
-                "3a3ea00c;E;5|d:pk_part_1|E",
-                "3a3ea00c;E;5|d:pk_part_2|5",
-                "3a3ea00c;E;5|d:randomint|637616",
-                "3a3ea00c;E;5|d:randomvarchar|ajFNkiZExAiHkKiJePMp",
-                "3a3ea00c;E;5|d:row_status|I",
-                "7fc56270;A;1|d:pk_part_1|A",
-                "7fc56270;A;1|d:pk_part_2|1",
-                "7fc56270;A;1|d:randomint|665726",
-                "7fc56270;A;1|d:randomvarchar|PZBAAQSVoSxxFassQEAQ",
-                "7fc56270;A;1|d:row_status|I",
-                "9d5ed678;B;2|d:pk_part_1|B",
-                "9d5ed678;B;2|d:pk_part_2|2",
-                "9d5ed678;B;2|d:randomint|490705",
-                "9d5ed678;B;2|d:randomvarchar|cvjIXQiWLegvLs kXaKH",
-                "9d5ed678;B;2|d:row_status|I",
-                "f623e75a;D;4|d:pk_part_1|D",
-                "f623e75a;D;4|d:pk_part_2|4",
-                "f623e75a;D;4|d:randomint|537616",
-                "f623e75a;D;4|d:randomvarchar|SjFNkiZExAiHkKiJePMp",
-                "f623e75a;D;4|d:row_status|I"
+        def expected = new TreeMap<>()
+        def timestamp = 0
+        def f = HBASE_COLUMN_FAMILY_NAME
+        def data = [
+                "0d61f837;C;3|${f}:pk_part_1|${timestamp}|C",
+                "0d61f837;C;3|${f}:pk_part_2|${timestamp}|3",
+                "0d61f837;C;3|${f}:randomInt|${timestamp}|437616",
+                "0d61f837;C;3|${f}:randomVarchar|${timestamp}|pjFNkiZExAiHkKiJePMp",
+                "0d61f837;C;3|${f}:row_status|${timestamp}|I",
+                "3a3ea00c;E;5|${f}:pk_part_1|${timestamp}|E",
+                "3a3ea00c;E;5|${f}:pk_part_2|${timestamp}|5",
+                "3a3ea00c;E;5|${f}:randomInt|${timestamp}|637616",
+                "3a3ea00c;E;5|${f}:randomVarchar|${timestamp}|ajFNkiZExAiHkKiJePMp",
+                "3a3ea00c;E;5|${f}:row_status|${timestamp}|I",
+                "7fc56270;A;1|${f}:pk_part_1|${timestamp}|A",
+                "7fc56270;A;1|${f}:pk_part_2|${timestamp}|1",
+                "7fc56270;A;1|${f}:randomInt|${timestamp}|665726",
+                "7fc56270;A;1|${f}:randomVarchar|${timestamp}|PZBAAQSVoSxxFassQEAQ",
+                "7fc56270;A;1|${f}:row_status|${timestamp}|I",
+                "9d5ed678;B;2|${f}:pk_part_1|${timestamp}|B",
+                "9d5ed678;B;2|${f}:pk_part_2|${timestamp}|2",
+                "9d5ed678;B;2|${f}:randomInt|${timestamp}|490705",
+                "9d5ed678;B;2|${f}:randomVarchar|${timestamp}|cvjIXQiWLegvLs kXaKH",
+                "9d5ed678;B;2|${f}:row_status|${timestamp}|I",
+                "f623e75a;D;4|${f}:pk_part_1|${timestamp}|D",
+                "f623e75a;D;4|${f}:pk_part_2|${timestamp}|4",
+                "f623e75a;D;4|${f}:randomInt|${timestamp}|537616",
+                "f623e75a;D;4|${f}:randomVarchar|${timestamp}|SjFNkiZExAiHkKiJePMp",
+                "f623e75a;D;4|${f}:row_status|${timestamp}|I"
         ].collect({ x ->
             def r = x.tokenize('|')
-            if (expected[r[0]] == null) { expected[r[0]] = new HashMap() }
+            if (expected[r[0]] == null) { expected[r[0]] = new TreeMap<>() }
 
-            expected[r[0]][r[1]] = r[2]
+            if (expected[r[0]][r[1]] == null) { expected[r[0]][r[1]] = new TreeMap() }
+
+            expected[r[0]][r[1]][r[2]] = r[3]
         })
 
-        def grouped = new HashMap()
+        def grouped = new TreeMap()
         grouped["sometable"] = expected
         return grouped
     }
@@ -180,7 +190,7 @@ class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
      Object retrieveReplicatedData() throws IOException {
 
         String tableName = TABLE_NAME
-        def data = new HashMap<>()
+        def data = new TreeMap<>()
         try {
             // config
             Configuration config = HBaseConfiguration.create()
@@ -199,18 +209,25 @@ class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
 
                     String rowKey = Bytes.toString(cell.getRow())
 
-                    String columnName = Bytes.toString(cell.getQualifier())
+                    String columnName =  Bytes.toString(cell.getQualifier())
+
+                    if (columnName == "transaction_uuid" || columnName == "transaction_xid") {
+                        continue
+                    }
+
+                    String fullColumnName = Bytes.toString(cell.getFamily()) + ":" + columnName
 
                     if (data[tableName] == null) {
-                        data[tableName] = new HashMap<>()
+                        data[tableName] = new TreeMap<>()
                     }
                     if (data[tableName][rowKey] == null) {
-                        data[tableName][rowKey] = new HashMap<>();
+                        data[tableName][rowKey] = new TreeMap<>()
                     }
-                    if (data[tableName][rowKey][columnName] == null) {
-                        data[tableName][rowKey][columnName] = new HashMap<>()
+                    if (data[tableName][rowKey][fullColumnName] == null) {
+                        data[tableName][rowKey][fullColumnName] = new TreeMap<>()
                     }
-                    data.get(tableName).get(rowKey).get(columnName).put(
+
+                    data.get(tableName).get(rowKey).get(fullColumnName).put(
                         cell.getTimestamp(), Bytes.toString(cell.getValue())
                     )
                 }

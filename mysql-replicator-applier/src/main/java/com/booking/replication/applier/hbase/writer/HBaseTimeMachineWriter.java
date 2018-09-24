@@ -24,7 +24,7 @@ import java.util.stream.Stream;
 
 public class HBaseTimeMachineWriter implements HBaseApplierWriter {
 
-        private static final Logger LOG = LogManager.getLogger(HBaseRawEventsWriter.class);
+        private static final Logger LOG = LogManager.getLogger(HBaseTimeMachineWriter.class);
 
         private final int FLUSH_RETRY_LIMIT = 30;
         private long bufferClearTime = 0L;
@@ -139,9 +139,6 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                 List<AugmentedRow> augmentedRows = AugmentedEventRowExtractor.extractAugmentedRows(event);
 
                 List<String> tables =  augmentedRows.stream().map(ar -> ar.getTableName()).collect(Collectors.toList());
-                for (String t:tables) {
-                    LOG.info("0000 " + t);
-                }
 
                 List<HBaseApplierMutationGenerator.PutMutation> eventMutations = augmentedRows.stream()
                         .flatMap(

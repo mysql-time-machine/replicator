@@ -13,12 +13,11 @@ import com.booking.replication.commons.services.ServicesControl
 import com.booking.replication.commons.services.ServicesProvider
 import com.booking.replication.coordinator.Coordinator
 import com.booking.replication.coordinator.ZookeeperCoordinator
+import com.booking.replication.spec.HBaseMicrosecondValidationSpec
 import com.booking.replication.supplier.Supplier
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier
 
-import com.booking.replication.spec.BasicHBaseTransmitSpec
-
-import com.fasterxml.jackson.databind.ObjectMapper
+import com.booking.replication.spec.HBaseTransmitInsertsSpec
 import com.mysql.jdbc.Driver
 import org.apache.commons.dbcp2.BasicDataSource
 import org.apache.hadoop.conf.Configuration
@@ -29,15 +28,11 @@ import org.apache.hadoop.hbase.util.Bytes
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
-
-import static org.junit.Assert.assertEquals
-
 import org.testcontainers.containers.Network
 
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.sql.Statement
-import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.logging.Logger
 
@@ -71,7 +66,8 @@ class ReplicatorIntegrationTestRunner {
     private static ServicesControl hbase
 
     private TESTS = [
-            new BasicHBaseTransmitSpec()
+            new HBaseTransmitInsertsSpec(),
+            new HBaseMicrosecondValidationSpec()
     ]
 
     @BeforeClass
@@ -124,16 +120,17 @@ class ReplicatorIntegrationTestRunner {
 
         TESTS.forEach({ testSpec ->
 
-            testSpec.doMySQLOps(mysqlBinaryLog)
+            testSpec.doAction(mysqlBinaryLog)
 
-            sleep(5000) // possible replication delay
+            sleep(10000) // possible replication delay
             replicator.forceFlushApplier()
 
-            def retrieved = testSpec.retrieveReplicatedData()
-            def expected = testSpec.getExpected()
+            def retrieved = testSpec.getActualState()
+            def expected = testSpec.getExpectedState()
 
-            assertTrue("BasicInsertsTransmit", testSpec.retrievedEqualsExpected(retrieved,expected))
+            LOG.info("done with " + testSpec.testName())
 
+            assertTrue(testSpec.testName(), testSpec.actualEqualsExpected(retrieved,expected))
         })
 
     }

@@ -9,7 +9,7 @@ import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.util.Bytes
 
-class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
+class HBaseTransmitInsertsSpec implements ReplicatorIntegrationTest {
 
     private String HBASE_COLUMN_FAMILY_NAME = "d"
 
@@ -50,7 +50,7 @@ class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
     }
 
     @Override
-    void doMySQLOps(ServicesControl mysqlReplicant) {
+    void doAction(ServicesControl mysqlReplicant) {
 
         // get handle
         def replicantMySQLHandle = getReplicantSql(
@@ -121,13 +121,13 @@ class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
 //                        randomVarchar: row.randomVarchar
 //                ])
 //        }
-//        print("retrieved from MySQL: " + prettyPrint(toJson(resultSet)))
+//        print("retrieved from Replicant: " + prettyPrint(toJson(resultSet)))
 
         replicantMySQLHandle.close()
     }
 
     @Override
-    boolean retrievedEqualsExpected(Object expected, Object retrieved) {
+    boolean actualEqualsExpected(Object expected, Object retrieved) {
 
         expected = (Map<Map<Map<String, String>>>) expected
 
@@ -140,13 +140,17 @@ class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
 
     }
 
+    @Override
+    String testName() {
+        return "HBaseTransmitInserts"
+    }
 
     @Override
-    Object getExpected() {
+    Object getExpectedState() {
         def expected = new TreeMap<>()
         def timestamp = 0
         def f = HBASE_COLUMN_FAMILY_NAME
-        def data = [
+        [
                 "0d61f837;C;3|${f}:pk_part_1|${timestamp}|C",
                 "0d61f837;C;3|${f}:pk_part_2|${timestamp}|3",
                 "0d61f837;C;3|${f}:randomInt|${timestamp}|437616",
@@ -187,7 +191,7 @@ class BasicHBaseTransmitSpec implements ReplicatorIntegrationTest {
     }
 
      @Override
-     Object retrieveReplicatedData() throws IOException {
+     Object getActualState() throws IOException {
 
         String tableName = TABLE_NAME
         def data = new TreeMap<>()

@@ -6,12 +6,14 @@ import java.io.IOException;
 
 public interface ReplicatorIntegrationTest {
 
-    public void doMySQLOps(ServicesControl mysqlReplicant);
+    String testName();
 
-    public Object getExpected();
+    void doAction(ServicesControl service);
 
-    public Object retrieveReplicatedData() throws IOException;
+    Object getExpectedState();
 
-    public boolean retrievedEqualsExpected(Object expected, Object retrieved);
+    Object getActualState() throws IOException;
+
+    boolean actualEqualsExpected(Object expected, Object actual);
 
 }

@@ -59,7 +59,6 @@ public class HBaseApplier implements Applier {
         hbaseConfig = getHBaseConfig(configuration);
 
         try {
-
             hbaseSchemaManager = new HBaseSchemaManager(configuration);
             LOG.info("Created HBaseSchemaManager.");
 
@@ -111,7 +110,6 @@ public class HBaseApplier implements Applier {
     @Override
     public synchronized Boolean apply(Collection<AugmentedEvent> events) {
 
-        checkSchema(events);
         checkIfBufferExpired();
 
         try {
@@ -169,6 +167,15 @@ public class HBaseApplier implements Applier {
                 LOG.info("AugmentedEvent contains optionalPayload");
                 SchemaSnapshot schemaSnapshot = ((SchemaSnapshot)ev.getOptionalPayload());
                 hbaseSchemaManager.writeSchemaSnapshot(schemaSnapshot, this.configuration);
+
+                String tableName = schemaSnapshot.getSchemaTransitionSequence().getTableName();
+
+                LOG.info("got from payload ===========> " + tableName);
+                synchronized (hbaseSchemaManager) {
+                    hbaseSchemaManager.createMirroredTableIfNotExists(tableName);
+                    LOG.info("created hbase table " + tableName);
+                }
+
                 LOG.debug(HBaseApplier.MAPPER.writeValueAsString(schemaSnapshot.getSchemaAfter().getTableSchemaCache()));
             }
         }
@@ -198,6 +205,8 @@ public class HBaseApplier implements Applier {
             try {
                 String tableName = extractTableName(ev);
                 if (tableName != null) {
+                    LOG.info("got table name ===========> " + tableName);
+
                     synchronized (hbaseSchemaManager) {
                         hbaseSchemaManager.createMirroredTableIfNotExists(tableName);
                     }

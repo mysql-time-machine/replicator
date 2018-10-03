@@ -83,10 +83,9 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
 
             if (this.context.shouldProcess()) {
 
-                if (this.context.getTransaction().markedForCommit()) {
+                if (this.context.getTransaction().markedForCommit()) { // <- commit reached?
 
-                    // marked for commit
-                    if (this.context.getTransaction().sizeLimitExceeded()) {
+                    if (this.context.getTransaction().sizeLimitExceeded()) { // <- rewind?
 
                         // size limit exceeded, drop current transaction & rewind
                         this.context.getTransaction().getAndClear();

@@ -31,8 +31,6 @@ public class RawEventDataInvocationHandler implements InvocationHandler {
         return this.methodMap.computeIfAbsent(
                 method.getName().toLowerCase(),
                 (key) -> {
-                    System.out.println(key);
-
                     try {
                         return this.eventData.getClass().getMethod(method.getName());
                     } catch (NoSuchMethodException exception) {

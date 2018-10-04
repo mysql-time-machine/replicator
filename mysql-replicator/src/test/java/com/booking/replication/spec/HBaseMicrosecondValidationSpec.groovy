@@ -10,6 +10,11 @@ import org.apache.hadoop.hbase.*
 import org.apache.hadoop.hbase.client.*
 import org.apache.hadoop.hbase.util.Bytes
 
+/**
+ * Inserts multiple rows and verifies that the order of
+ * microsecond timestamps in HBase is the same as
+ * the order in which the rows were inserted
+ */
 class HBaseMicrosecondValidationSpec implements ReplicatorIntegrationTest {
 
     private String HBASE_COLUMN_FAMILY_NAME = "d"
@@ -49,7 +54,7 @@ class HBaseMicrosecondValidationSpec implements ReplicatorIntegrationTest {
 
         // CREATE
         def sqlCreate = sprintf("""
-        CREATE TABLE IF NOT EXISTS
+        CREATE TABLE
             %s (
             pk_part_1         varchar(5) NOT NULL DEFAULT '',
             pk_part_2         int(11)    NOT NULL DEFAULT 0,

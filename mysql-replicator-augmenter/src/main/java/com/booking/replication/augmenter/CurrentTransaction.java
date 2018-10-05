@@ -68,11 +68,14 @@ public class CurrentTransaction {
             Collection<AugmentedEvent> augmentedEventList = new ArrayList<>();
 
             for (AugmentedEvent augmentedEvent : augmentedEventQueue) {
-                augmentedEvent.getHeader().setEventTransaction(new AugmentedEventTransaction(
-                        this.timestamp.get(),
-                        this.identifier.get().toString(),
-                        this.xxid.get()
-                ));
+
+                augmentedEvent.getHeader().setEventTransaction(
+                        new AugmentedEventTransaction(
+                            this.timestamp.get(),
+                            this.identifier.get().toString(),
+                            this.xxid.get()
+                        )
+                );
 
                 augmentedEventList.add(augmentedEvent);
             }
@@ -84,6 +87,7 @@ public class CurrentTransaction {
     }
 
     public boolean commit(long xxid, long timestamp) {
+
         if (this.started.getAndSet(false)) {
             this.resuming.set(false);
             this.xxid.set(xxid);

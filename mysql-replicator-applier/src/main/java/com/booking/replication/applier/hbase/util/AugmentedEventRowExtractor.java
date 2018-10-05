@@ -14,6 +14,8 @@ public class AugmentedEventRowExtractor {
 
     public static List<AugmentedRow> extractAugmentedRows(AugmentedEvent augmentedEvent) {
 
+        Long commitTimestamp = augmentedEvent.getHeader().getEventTransaction().getTimestamp();
+
         List<AugmentedRow> augmentedRows = new ArrayList<>();
 
         switch (augmentedEvent.getHeader().getEventType()) {
@@ -22,8 +24,13 @@ public class AugmentedEventRowExtractor {
                 WriteRowsAugmentedEventData writeRowsAugmentedEventData =
                         ((WriteRowsAugmentedEventData) augmentedEvent.getData());
 
-                Collection<AugmentedRow> extractedAugmentedRowsFromInsert = writeRowsAugmentedEventData.getAugmentedRows();
+                Collection<AugmentedRow> extractedAugmentedRowsFromInsert =
+                        writeRowsAugmentedEventData.getAugmentedRows();
 
+                for (AugmentedRow ar : extractedAugmentedRowsFromInsert) {
+                    ar.setCommitTimestamp(commitTimestamp);
+                    ar.setRowMicrosecondTimestamp(commitTimestamp);
+                }
                 augmentedRows.addAll(extractedAugmentedRowsFromInsert);
 
                 break;
@@ -34,6 +41,11 @@ public class AugmentedEventRowExtractor {
 
                 Collection<AugmentedRow> extractedAugmentedRowsFromUpdate =
                         updateRowsAugmentedEventData.getAugmentedRows();
+
+                for (AugmentedRow ar : extractedAugmentedRowsFromUpdate) {
+                    ar.setCommitTimestamp(commitTimestamp);
+                    ar.setRowMicrosecondTimestamp(commitTimestamp);
+                }
 
                 augmentedRows.addAll(extractedAugmentedRowsFromUpdate);
 
@@ -46,6 +58,10 @@ public class AugmentedEventRowExtractor {
                 Collection<AugmentedRow> extractedAugmentedRowsFromDelete =
                         deleteRowsAugmentedEventData.getAugmentedRows();
 
+                for (AugmentedRow ar : extractedAugmentedRowsFromDelete) {
+                    ar.setCommitTimestamp(commitTimestamp);
+                    ar.setRowMicrosecondTimestamp(commitTimestamp);
+                }
                 augmentedRows.addAll(extractedAugmentedRowsFromDelete);
 
                 break;

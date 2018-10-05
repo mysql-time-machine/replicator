@@ -40,9 +40,15 @@ public class AugmentedRow {
 
     public AugmentedRow(
             String eventType,
-            String schemaName, String tableName,
-            UUID transactionUUID, Long transactionXid,
-            Long commitTimestamp, Long rowMicrosecondTimestamp,
+            String schemaName,
+            String tableName,
+
+            UUID transactionUUID,
+            Long transactionXid,
+
+            Long commitTimestamp,
+            Long rowMicrosecondTimestamp,
+
             List<String> primaryKeyColumns,
             Map<String,Map<String, String>> rowColumnValues
     ) {

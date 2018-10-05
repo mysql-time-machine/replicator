@@ -132,7 +132,9 @@ class ReplicatorIntegrationTestRunner {
 
             LOG.info("done with " + testSpec.testName())
 
-            assertTrue(testSpec.testName(), testSpec.actualEqualsExpected(retrieved,expected))
+            testSpec.actualEqualsExpected(retrieved,expected)
+
+           //assertTrue(testSpec.testName(), testSpec.actualEqualsExpected(retrieved,expected))
         })
 
     }

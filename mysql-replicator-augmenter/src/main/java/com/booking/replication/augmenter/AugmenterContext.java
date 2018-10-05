@@ -430,6 +430,7 @@ public class AugmenterContext implements Closeable {
 
     private void updateHeader(long timestamp, long serverId, long nextPosition) {
         this.timestamp.set(timestamp);
+
         this.serverId.set(serverId);
         this.nextPosition.set(nextPosition);
     }

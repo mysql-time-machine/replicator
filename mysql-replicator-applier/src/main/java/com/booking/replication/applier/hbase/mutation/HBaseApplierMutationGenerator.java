@@ -110,7 +110,6 @@ public class HBaseApplierMutationGenerator {
             prefix = namespace + ":";
         }
 
-
         String hbaseTableName = prefix.toLowerCase() + augmentedRow.getTableName().toLowerCase();
 
         Put put = new Put(Bytes.toBytes(hbaseRowID));

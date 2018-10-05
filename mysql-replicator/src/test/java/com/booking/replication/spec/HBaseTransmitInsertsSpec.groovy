@@ -136,6 +136,9 @@ class HBaseTransmitInsertsSpec implements ReplicatorIntegrationTest {
         String retJSON = MAPPER.writeValueAsString(retrieved)
         String expJSON = MAPPER.writeValueAsString(expected)
 
+        System.out.println("ret => " + retJSON);
+        System.out.println("exp => " + expJSON);
+
         expJSON.equals(retJSON)
 
     }

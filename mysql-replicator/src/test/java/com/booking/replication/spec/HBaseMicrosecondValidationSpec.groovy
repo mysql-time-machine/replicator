@@ -38,6 +38,8 @@ class HBaseMicrosecondValidationSpec implements ReplicatorIntegrationTest {
 
         String expJSON = MAPPER.writeValueAsString(exp)
         String retJSON = MAPPER.writeValueAsString(act)
+        System.out.println("ret => " + retJSON);
+        System.out.println("exp => " + expJSON);
 
         expJSON.equals(retJSON)
     }

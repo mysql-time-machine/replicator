@@ -29,7 +29,7 @@ public class AugmentedEventRowExtractor {
 
                 for (AugmentedRow ar : extractedAugmentedRowsFromInsert) {
                     ar.setCommitTimestamp(commitTimestamp);
-                    ar.setRowMicrosecondTimestamp(commitTimestamp);
+                    ar.setRowMicrosecondTimestamp(commitTimestamp * 1000);
                 }
                 augmentedRows.addAll(extractedAugmentedRowsFromInsert);
 
@@ -44,7 +44,7 @@ public class AugmentedEventRowExtractor {
 
                 for (AugmentedRow ar : extractedAugmentedRowsFromUpdate) {
                     ar.setCommitTimestamp(commitTimestamp);
-                    ar.setRowMicrosecondTimestamp(commitTimestamp);
+                    ar.setRowMicrosecondTimestamp(commitTimestamp  * 1000);
                 }
 
                 augmentedRows.addAll(extractedAugmentedRowsFromUpdate);
@@ -60,7 +60,7 @@ public class AugmentedEventRowExtractor {
 
                 for (AugmentedRow ar : extractedAugmentedRowsFromDelete) {
                     ar.setCommitTimestamp(commitTimestamp);
-                    ar.setRowMicrosecondTimestamp(commitTimestamp);
+                    ar.setRowMicrosecondTimestamp(commitTimestamp * 1000);
                 }
                 augmentedRows.addAll(extractedAugmentedRowsFromDelete);
 

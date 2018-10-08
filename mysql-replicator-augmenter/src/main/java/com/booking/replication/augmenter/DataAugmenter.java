@@ -51,8 +51,7 @@ public class DataAugmenter {
 
                         this.context.getAugmentedRows(
                                 "INSERT",
-                                this.context.getTransaction().getTimestamp(),  // TODO: commit override
-                                this.context.getTransaction().getTimestamp(),  // TODO: microseconds
+                                this.context.getTransaction().getTimestamp(),
                                 this.context.getTransaction().getIdentifier().get(),
                                 this.context.getTransaction().getXxid(),
                                 writeRowsRawEventData.getTableId(),
@@ -83,8 +82,7 @@ public class DataAugmenter {
 
                         this.context.getAugmentedRows(
                                 "UPDATE",
-                                this.context.getTransaction().getTimestamp(), // TODO: commit time override
-                                this.context.getTransaction().getTimestamp(), // TODO: microseconds
+                                this.context.getTransaction().getTimestamp(),
                                 this.context.getTransaction().getIdentifier().get(),
                                 this.context.getTransaction().getXxid(),
                                 updateRowsRawEventData.getTableId(),
@@ -113,8 +111,7 @@ public class DataAugmenter {
                         this.context.getColumns(deleteRowsRawEventData.getTableId()),
                         this.context.getAugmentedRows(
                                 "DELETE",
-                                this.context.getTransaction().getTimestamp(), // TODO: commit time override
-                                this.context.getTransaction().getTimestamp(), // TODO: microseconds feature
+                                this.context.getTransaction().getTimestamp(),
                                 this.context.getTransaction().getIdentifier().get(),
                                 this.context.getTransaction().getXxid(),
                                 deleteRowsRawEventData.getTableId(),

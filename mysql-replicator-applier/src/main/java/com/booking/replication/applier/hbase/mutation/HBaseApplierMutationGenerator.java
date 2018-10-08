@@ -16,15 +16,11 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Created by bosko on 4/18/16.
- * Created by bosko on 4/18/16.
+ * This class generates HBase mutations and keys
  */
 public class HBaseApplierMutationGenerator {
 
@@ -83,7 +79,7 @@ public class HBaseApplierMutationGenerator {
     private static final String DIGEST_ALGORITHM             = "MD5";
 
     private final Map<String, Object> configuration;
-    private final MessageDigest md;
+    private static MessageDigest md;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HBaseApplierMutationGenerator.class);
 
@@ -298,7 +294,7 @@ public class HBaseApplierMutationGenerator {
         return String.format("mysql://%s/%s?%s", sourceDomain, table, keys  );
     }
 
-    public String getHBaseRowKey(AugmentedRow row) {
+    public static String getHBaseRowKey(AugmentedRow row) {
 
         // RowID
         // This is sorted by column OP (from information schema)
@@ -328,7 +324,6 @@ public class HBaseApplierMutationGenerator {
             }
         }
 
-
         if (pkColumnValues.stream().filter(v -> v != null).collect(Collectors.toList()).isEmpty()) {
             throw new RuntimeException("Tables without primary key are not allowed");
         }
@@ -354,7 +349,7 @@ public class HBaseApplierMutationGenerator {
      *
      * <p>hbaseRowID = md5(hbaseRowID)[0] + md5(hbaseRowID)[1] + "-" + hbaseRowID;</p>
      */
-    private String saltRowKey(String hbaseRowID, String firstPartOfRowKey) {
+    private static String saltRowKey(String hbaseRowID, String firstPartOfRowKey) {
 
         byte[] bytesOfSaltingPartOfRowKey = firstPartOfRowKey.getBytes(StandardCharsets.US_ASCII);
 

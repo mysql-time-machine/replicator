@@ -35,7 +35,6 @@ public class AugmentedRow {
     private Map<String, Map<String,String>> rowColumns = new CaseInsensitiveMap<>();
 
     public AugmentedRow() {
-
     }
 
     public AugmentedRow(
@@ -47,7 +46,6 @@ public class AugmentedRow {
             Long transactionXid,
 
             Long commitTimestamp,
-            Long rowMicrosecondTimestamp,
 
             List<String> primaryKeyColumns,
             Map<String,Map<String, String>> rowColumnValues
@@ -59,7 +57,8 @@ public class AugmentedRow {
         this.transactionXid = transactionXid;
 
         this.commitTimestamp = commitTimestamp;
-        this.rowMicrosecondTimestamp = rowMicrosecondTimestamp;
+
+        this.rowMicrosecondTimestamp = commitTimestamp * 1000;
 
         this.eventType = eventType;
 

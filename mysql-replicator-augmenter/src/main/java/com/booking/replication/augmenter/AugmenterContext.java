@@ -662,7 +662,7 @@ public class AugmenterContext implements Closeable {
 
             String eventType,
 
-            AtomicLong commitTimestamp, AtomicLong microsecondsTimestamp,
+            AtomicLong commitTimestamp,
 
             UUID transactionUUID,
             Long xxid,
@@ -686,7 +686,7 @@ public class AugmenterContext implements Closeable {
                 augmentedRows.add(
                         this.getAugmentedRow(
                                 eventType,
-                                commitTimestamp.get(), microsecondsTimestamp.get(),
+                                commitTimestamp.get(),
                                 transactionUUID,
                                 xxid,
                                 columns,
@@ -704,7 +704,7 @@ public class AugmenterContext implements Closeable {
 
     private AugmentedRow getAugmentedRow (
             String eventType,
-            Long commitTimestamp, Long microsecondsTimestamp,
+            Long commitTimestamp,
             UUID transactionUUID,
             Long transactionXid,
             List<ColumnSchema> columnSchemas,
@@ -725,7 +725,7 @@ public class AugmenterContext implements Closeable {
                 eventType,
                 schemaName, tableName,
                 transactionUUID, transactionXid,
-                commitTimestamp, microsecondsTimestamp,
+                commitTimestamp,
                 primaryKeyColumns, stringifiedCellValues
         );
 

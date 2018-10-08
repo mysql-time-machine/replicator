@@ -2,11 +2,9 @@ package com.booking.replication.applier.hbase.writer;
 
 import com.booking.replication.applier.hbase.mutation.HBaseApplierMutationGenerator;
 import com.booking.replication.applier.hbase.schema.HBaseSchemaManager;
+import com.booking.replication.applier.hbase.time.RowTimestampOrganizer;
 import com.booking.replication.applier.hbase.util.AugmentedEventRowExtractor;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
-import com.booking.replication.augmenter.model.event.DeleteRowsAugmentedEventData;
-import com.booking.replication.augmenter.model.event.UpdateRowsAugmentedEventData;
-import com.booking.replication.augmenter.model.event.WriteRowsAugmentedEventData;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
@@ -32,23 +30,24 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
         private final String HBASE_COLUMN_DEFAULT_FAMILY_NAME = "d";
 
         private HBaseSchemaManager hbaseSchemaManager;
+        private RowTimestampOrganizer timestampOrganizer;
+        HBaseApplierMutationGenerator mutationGenerator;
+
         Connection connection;
         Admin admin;
 
         ConcurrentHashMap<String,Collection<AugmentedEvent>> buffered;
 
-        HBaseApplierMutationGenerator mutationGenerator;
-
         public HBaseTimeMachineWriter(Configuration hbaseConfig,
                                       HBaseSchemaManager hbaseSchemaManager,
                                       Map<String, Object> configuration)
                 throws IOException, NoSuchAlgorithmException {
-
             this.hbaseSchemaManager = hbaseSchemaManager;
             connection = ConnectionFactory.createConnection(hbaseConfig);
             admin = connection.getAdmin();
             buffered = new ConcurrentHashMap<>();
             mutationGenerator = new HBaseApplierMutationGenerator(configuration);
+            timestampOrganizer = new RowTimestampOrganizer(); // <- TODO: if not initial_snapshot_mode()
         }
 
         @Override
@@ -119,7 +118,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                 counter--;
 
                 try {
-                    writeToHBase(buffered.get(transactionUUID));
+                    writeToHBase(transactionUUID);
                     return true;
                 } catch (IOException e) {
                     LOG.warn("Failed to write to HBase.", e);
@@ -129,8 +128,22 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
             return false;
         }
 
-        private void writeToHBase(Collection<AugmentedEvent> events) throws IOException {
+        private String extractTableName(List<AugmentedRow> augmentedRows) {
+            List<String> tables = augmentedRows.stream().map(ar -> ar.getTableName()).collect(Collectors.toList());
+            if (tables != null) {
+                if (tables.size() > 1) {
+                    throw new RuntimeException("More than one table in binlog event not allowed!");
+                }
+                String mySqlTableName = tables.get(0);
+                return  mySqlTableName;
+            } else {
+                throw new RuntimeException("No table found in AugmentedRow list!");
+            }
+        }
 
+        private void writeToHBase(String transactionUUID) throws IOException {
+
+            Collection<AugmentedEvent> events = buffered.get(transactionUUID);
             List<HBaseApplierMutationGenerator.PutMutation> mutations = new ArrayList<>();
 
             // extract augmented rows
@@ -138,7 +151,10 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
 
                 List<AugmentedRow> augmentedRows = AugmentedEventRowExtractor.extractAugmentedRows(event);
 
-                List<String> tables =  augmentedRows.stream().map(ar -> ar.getTableName()).collect(Collectors.toList());
+                if (timestampOrganizer != null) {
+                    String mySqlTableName = extractTableName(augmentedRows); // TODO: optimize, can be pre-calculated
+                    timestampOrganizer.organizeTimestamps(augmentedRows, mySqlTableName, transactionUUID);
+                }
 
                 List<HBaseApplierMutationGenerator.PutMutation> eventMutations = augmentedRows.stream()
                         .flatMap(

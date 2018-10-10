@@ -170,7 +170,6 @@ public class HBaseApplier implements Applier {
 
                 String tableName = schemaSnapshot.getSchemaTransitionSequence().getTableName();
 
-                LOG.info("got from payload ===========> " + tableName);
                 synchronized (hbaseSchemaManager) {
                     hbaseSchemaManager.createMirroredTableIfNotExists(tableName);
                     LOG.info("created hbase table " + tableName);

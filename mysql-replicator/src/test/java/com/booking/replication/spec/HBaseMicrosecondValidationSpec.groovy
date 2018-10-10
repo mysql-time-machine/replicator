@@ -1,6 +1,7 @@
 package com.booking.replication.spec;
 
 import com.booking.replication.ReplicatorIntegrationTest
+import com.booking.replication.applier.hbase.time.RowTimestampOrganizer
 import com.booking.replication.commons.services.ServicesControl
 import com.booking.replication.util.Replicant
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -23,6 +24,8 @@ class HBaseMicrosecondValidationSpec implements ReplicatorIntegrationTest {
 
     private String TABLE_NAME = "tbl_microseconds_test"
 
+    private Integer NR_ABOVE_MAX_VERSIONS = 5
+
     private static final ObjectMapper MAPPER = new ObjectMapper()
 
     @Override
@@ -33,15 +36,24 @@ class HBaseMicrosecondValidationSpec implements ReplicatorIntegrationTest {
     @Override
     boolean actualEqualsExpected(Object actual, Object expected) {
 
-        def exp = (List<String>) expected
-        def act = (List<String>) actual
+        def exp = (List<List<String>>) expected
+        def act = (List<List<String>>) actual
 
-        String expJSON = MAPPER.writeValueAsString(exp)
-        String retJSON = MAPPER.writeValueAsString(act)
-        System.out.println("ret => " + retJSON);
-        System.out.println("exp => " + expJSON);
+        def retrievedIntVal = act.get(0)
+        def expectedIntVal = exp.get(0)
 
-        expJSON.equals(retJSON)
+        // sorted decs, so first item is last version
+        def retFirst = retrievedIntVal.remove(0)
+        def expFirst = expectedIntVal.remove(0)
+
+        // all should be equal except the last version
+        return(
+            retrievedIntVal
+                    .join("|")
+                    .equals(expectedIntVal.join("|"))
+            &&
+            (retFirst != expFirst)
+        )
     }
 
     @Override
@@ -74,28 +86,84 @@ class HBaseMicrosecondValidationSpec implements ReplicatorIntegrationTest {
         def columns = "(pk_part_1,pk_part_2,randomInt,randomVarchar)"
 
         replicant.execute(sprintf(
-                "insert into %s %s values ('user',42,1,'zz')", TABLE_NAME, columns
+                "insert into %s %s values ('user',42,0,'c0')", TABLE_NAME, columns
         ))
 
         def where = " where pk_part_1 = 'user' and pk_part_2 = 42"
-        replicant.execute(sprintf(
-                "update %s set randomInt = 2, randomVarchar = 'yy' %s", TABLE_NAME, where
-        ))
-        replicant.execute(sprintf(
-                "update %s set randomInt = 3, randomVarchar = 'xx' %s", TABLE_NAME, where
-        ))
+
+        def cap = RowTimestampOrganizer.TIMESTAMP_SPAN_MICROSECONDS + NR_ABOVE_MAX_VERSIONS + 1
+
+        for (int i=1; i < cap; i ++) {
+            replicant.execute(sprintf(
+                    "update %s set randomInt = %d, randomVarchar = 'c%s' %s", TABLE_NAME, i, i, where
+            ))
+        }
+
         replicant.commit()
         replicant.close()
     }
 
     @Override
     Object getExpectedState() {
-        return ["1|2|3","zz|yy|xx"]
+
+        def range = (RowTimestampOrganizer.TIMESTAMP_SPAN_MICROSECONDS..0)
+
+        def l = range.toList()
+        def r = range.toList().collect({ x -> "c${x}"})
+
+        return [
+            l,
+            r
+        ]
     }
 
     @Override
     Object getActualState() throws IOException {
-        return ["1|2|3","zz|yy|xx"]
+
+        String tableName = TABLE_NAME
+
+        def l = []
+        def r = []
+
+        try {
+            // config
+            Configuration config = HBaseConfiguration.create()
+            Connection connection = ConnectionFactory.createConnection(config)
+            Table table = connection.getTable(TableName.valueOf(Bytes.toBytes(tableName)))
+
+            // read
+            Scan scan = new Scan()
+            scan.setMaxVersions(1000)
+            ResultScanner scanner = table.getScanner(scan)
+            for (Result row : scanner) {
+                CellScanner cs =  row.cellScanner()
+                while (cs.advance()) {
+                    Cell cell = cs.current()
+                    String rowKey = Bytes.toString(cell.getRow())
+                    String columnName =  Bytes.toString(cell.getQualifier())
+
+                    if (rowKey != 'ee11cbb1;user;42') {
+                        continue
+                    }
+
+                    if (columnName == "transaction_uuid" || columnName == "transaction_xid") {
+                        continue
+                    }
+
+                    if (columnName == "randomInt") {
+                        l.add(Bytes.toString(cell.getValue()))
+                        r.add(cell.getTimestamp())
+                    }
+
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace()
+        }
+        return [
+                l,
+                r
+        ]
     }
 }
 

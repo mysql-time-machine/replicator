@@ -112,7 +112,7 @@ class ReplicatorIntegrationTestRunner {
 
         LOG.info("tests done")
 
-        sleep(10000000)
+        // sleep(10000000)
 
         // stop
         stopReplicatorPipeline(replicator)
@@ -130,11 +130,10 @@ class ReplicatorIntegrationTestRunner {
             def retrieved = testSpec.getActualState()
             def expected = testSpec.getExpectedState()
 
-            LOG.info("done with " + testSpec.testName())
-
             testSpec.actualEqualsExpected(retrieved,expected)
 
-           //assertTrue(testSpec.testName(), testSpec.actualEqualsExpected(retrieved,expected))
+            assertTrue(testSpec.testName(), testSpec.actualEqualsExpected(retrieved,expected))
+
         })
 
     }

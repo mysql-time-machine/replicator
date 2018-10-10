@@ -52,7 +52,7 @@ public class RowTimestampOrganizer {
         }
     }
 
-    private static final long TIMESTAMP_SPAN_MISCROSECONDS = 50;
+    public static final long TIMESTAMP_SPAN_MICROSECONDS = 50;
     private String currentTransactionUUID = null;
     private Map<String, TimestampTuple> timestampsCache;
 
@@ -73,7 +73,7 @@ public class RowTimestampOrganizer {
                 }
             } else {
                 v = new TimestampTuple(
-                        row.getRowMicrosecondTimestamp() - TIMESTAMP_SPAN_MISCROSECONDS,
+                        row.getRowMicrosecondTimestamp() - TIMESTAMP_SPAN_MICROSECONDS,
                         row.getRowMicrosecondTimestamp() // <- maximumTimestamp
                 );
                 timestampsCache.put(key, v);

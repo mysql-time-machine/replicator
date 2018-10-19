@@ -28,6 +28,8 @@ public interface ServicesProvider {
 
     ServicesControl startMySQL(String schema, String username, String password, String... initScripts);
 
+    ServicesControl startZookeeper(Network network, String zkImageTag);
+
     ServicesControl startKafka(String topic, int partitions, int replicas);
 
     ServicesControl startHbase();

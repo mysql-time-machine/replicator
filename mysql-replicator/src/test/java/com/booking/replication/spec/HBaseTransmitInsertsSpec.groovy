@@ -5,7 +5,7 @@ import com.booking.replication.commons.services.ServicesControl
 import com.fasterxml.jackson.databind.ObjectMapper
 import groovy.sql.Sql
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.*;
+import org.apache.hadoop.hbase.*
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.util.Bytes
 

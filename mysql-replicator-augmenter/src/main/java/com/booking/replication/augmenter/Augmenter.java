@@ -20,8 +20,11 @@ import java.util.Map;
 import java.util.function.Function;
 
 public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>, Closeable {
+
     public enum SchemaType {
+
         NONE {
+
             @Override
             protected SchemaManager newInstance(Map<String, Object> configuration)
             {
@@ -47,6 +50,7 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
                 };
             }
         },
+
         ACTIVE {
             @Override
             protected SchemaManager newInstance(Map<String, Object> configuration) {

@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+// TODO: move to augmenter.util
 public class AugmentedEventRowExtractor {
 
     public static List<AugmentedRow> extractAugmentedRows(AugmentedEvent augmentedEvent) {
@@ -27,10 +28,12 @@ public class AugmentedEventRowExtractor {
                 Collection<AugmentedRow> extractedAugmentedRowsFromInsert =
                         writeRowsAugmentedEventData.getAugmentedRows();
 
-                for (AugmentedRow ar : extractedAugmentedRowsFromInsert) {
-                    ar.setCommitTimestamp(commitTimestamp);
-                    ar.setRowMicrosecondTimestamp(commitTimestamp * 1000);
-                }
+                // This part overrides the:
+                //      - commitTimestamp of all rows in transaction to the
+                //        transaction commit time.
+                //      - microsecondsTimestamp
+                overrideRowsCommitTimeAndSetMicroseconds(commitTimestamp, extractedAugmentedRowsFromInsert);
+
                 augmentedRows.addAll(extractedAugmentedRowsFromInsert);
 
                 break;
@@ -42,10 +45,8 @@ public class AugmentedEventRowExtractor {
                 Collection<AugmentedRow> extractedAugmentedRowsFromUpdate =
                         updateRowsAugmentedEventData.getAugmentedRows();
 
-                for (AugmentedRow ar : extractedAugmentedRowsFromUpdate) {
-                    ar.setCommitTimestamp(commitTimestamp);
-                    ar.setRowMicrosecondTimestamp(commitTimestamp  * 1000);
-                }
+                overrideRowsCommitTimeAndSetMicroseconds(
+                        commitTimestamp, extractedAugmentedRowsFromUpdate);
 
                 augmentedRows.addAll(extractedAugmentedRowsFromUpdate);
 
@@ -58,10 +59,9 @@ public class AugmentedEventRowExtractor {
                 Collection<AugmentedRow> extractedAugmentedRowsFromDelete =
                         deleteRowsAugmentedEventData.getAugmentedRows();
 
-                for (AugmentedRow ar : extractedAugmentedRowsFromDelete) {
-                    ar.setCommitTimestamp(commitTimestamp);
-                    ar.setRowMicrosecondTimestamp(commitTimestamp * 1000);
-                }
+                overrideRowsCommitTimeAndSetMicroseconds(
+                        commitTimestamp, extractedAugmentedRowsFromDelete);
+
                 augmentedRows.addAll(extractedAugmentedRowsFromDelete);
 
                 break;
@@ -70,5 +70,12 @@ public class AugmentedEventRowExtractor {
                 break;
         }
         return augmentedRows;
+    }
+
+    private static void overrideRowsCommitTimeAndSetMicroseconds(Long commitTimestamp, Collection<AugmentedRow> extractedAugmentedRowsFromInsert) {
+        for (AugmentedRow ar : extractedAugmentedRowsFromInsert) {
+            ar.setCommitTimestamp(commitTimestamp);
+            ar.setRowMicrosecondTimestamp(commitTimestamp * 1000 + ar.getFakeMicrosecondCounter());
+        }
     }
 }

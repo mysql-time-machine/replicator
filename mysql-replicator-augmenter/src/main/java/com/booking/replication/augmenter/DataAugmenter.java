@@ -14,7 +14,6 @@ import com.booking.replication.supplier.model.UpdateRowsRawEventData;
 import com.booking.replication.supplier.model.WriteRowsRawEventData;
 
 import java.util.BitSet;
-import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,6 +28,7 @@ public class DataAugmenter {
     public AugmentedEventData apply(RawEventHeaderV4 eventHeader, RawEventData eventData) {
 
         switch (eventHeader.getEventType()) {
+
             case WRITE_ROWS:
             case EXT_WRITE_ROWS:
 
@@ -36,12 +36,12 @@ public class DataAugmenter {
 
                 final BitSet includedColumnsInsert = writeRowsRawEventData.getIncludedColumns();
 
-                List<RowBeforeAfter> rowsBeforeAfter = writeRowsRawEventData
+                List<RowBeforeAfter> eventRowsBeforeAfter = writeRowsRawEventData
                         .getRows()
                         .stream()
                         .map(
                                 r -> new RowBeforeAfter(includedColumnsInsert, null, r)
-                        ).collect(Collectors.toList());
+                            ).collect(Collectors.toList());
 
                 return new WriteRowsAugmentedEventData(
 
@@ -49,14 +49,15 @@ public class DataAugmenter {
                         this.context.getIncludedColumns(writeRowsRawEventData.getIncludedColumns()),
                         this.context.getColumns(writeRowsRawEventData.getTableId()),
 
-                        this.context.getAugmentedRows(
+                        this.context.computeAugmentedEventRows(
                                 "INSERT",
                                 this.context.getTransaction().getTimestamp(),
+                                this.context.getBinlogEventCounter().get(),
                                 this.context.getTransaction().getIdentifier().get(),
                                 this.context.getTransaction().getXxid(),
                                 writeRowsRawEventData.getTableId(),
                                 includedColumnsInsert,
-                                rowsBeforeAfter
+                                eventRowsBeforeAfter
                         )
                 );
 
@@ -80,9 +81,10 @@ public class DataAugmenter {
                         this.context.getIncludedColumns(updateRowsRawEventData.getIncludedColumns()),
                         this.context.getColumns(updateRowsRawEventData.getTableId()),
 
-                        this.context.getAugmentedRows(
+                        this.context.computeAugmentedEventRows(
                                 "UPDATE",
                                 this.context.getTransaction().getTimestamp(),
+                                this.context.getBinlogEventCounter().get(),
                                 this.context.getTransaction().getIdentifier().get(),
                                 this.context.getTransaction().getXxid(),
                                 updateRowsRawEventData.getTableId(),
@@ -109,9 +111,10 @@ public class DataAugmenter {
                         this.context.getEventTable(deleteRowsRawEventData.getTableId()),
                         this.context.getIncludedColumns(deleteRowsRawEventData.getIncludedColumns()),
                         this.context.getColumns(deleteRowsRawEventData.getTableId()),
-                        this.context.getAugmentedRows(
+                        this.context.computeAugmentedEventRows(
                                 "DELETE",
                                 this.context.getTransaction().getTimestamp(),
+                                this.context.getBinlogEventCounter().get(),
                                 this.context.getTransaction().getIdentifier().get(),
                                 this.context.getTransaction().getXxid(),
                                 deleteRowsRawEventData.getTableId(),

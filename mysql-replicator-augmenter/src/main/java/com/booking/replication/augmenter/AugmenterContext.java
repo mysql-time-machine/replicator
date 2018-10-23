@@ -24,15 +24,11 @@ import com.booking.replication.supplier.model.XIDRawEventData;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.Serializable;
-import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.*;
@@ -44,7 +40,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.IntStream;
 
 public class AugmenterContext implements Closeable {
 
@@ -98,6 +93,8 @@ public class AugmenterContext implements Closeable {
     private final List<String> excludeTableList;
 
     private final AtomicLong timestamp;
+    private final AtomicLong previousTimestamp;
+    private final AtomicLong binlogEventCounter;
     private final AtomicLong serverId;
     private final AtomicLong nextPosition;
 
@@ -148,8 +145,15 @@ public class AugmenterContext implements Closeable {
         this.excludeTableList = this.getList(configuration.get(Configuration.EXCLUDE_TABLE));
 
         this.timestamp = new AtomicLong();
+
+        this.previousTimestamp = new AtomicLong();
+        previousTimestamp.set(0L);
+
         this.serverId = new AtomicLong();
         this.nextPosition = new AtomicLong();
+
+        binlogEventCounter = new AtomicLong();
+        binlogEventCounter.set(0L);
 
         this.continueFlag = new AtomicBoolean();
         this.queryType = new AtomicReference<>();
@@ -170,6 +174,10 @@ public class AugmenterContext implements Closeable {
 
         this.isAtDDL = new AtomicBoolean();
         this.isAtDDL.set(false);
+    }
+
+    public AtomicLong getBinlogEventCounter() {
+        return binlogEventCounter;
     }
 
     private Pattern getPattern(Map<String, Object> configuration, String configurationPath, String configurationDefault) {
@@ -196,6 +204,22 @@ public class AugmenterContext implements Closeable {
     }
 
     public void updateContext(RawEventHeaderV4 eventHeader, RawEventData eventData) {
+
+        binlogEventCounter.incrementAndGet();
+
+        if (binlogEventCounter.get() > 999998L) {
+            binlogEventCounter.set(0L);
+            LOG.warning("Fake microsecond counter's overflowed, resetting to 0.");
+        }
+
+        synchronized (this) {
+            if (timestamp.get() > previousTimestamp.get()) {
+                binlogEventCounter.set(0L);
+                previousTimestamp.set(timestamp.get());
+                LOG.info("Fake microsecond counter back to 0, next second in the stream has arrived.");
+            }
+        }
+
         this.updateHeader(
                 eventHeader.getTimestamp(),
                 eventHeader.getServerId(),
@@ -658,18 +682,22 @@ public class AugmenterContext implements Closeable {
         }
     }
 
-    public Collection<AugmentedRow> getAugmentedRows(
+    public Collection<AugmentedRow> computeAugmentedEventRows(
 
             String eventType,
 
             AtomicLong commitTimestamp,
 
+            Long binlogEventCounter,
+
             UUID transactionUUID,
+
             Long xxid,
 
             long tableId,
 
             BitSet includedColumns,
+
             List<RowBeforeAfter> rows
     ) {
 
@@ -687,6 +715,7 @@ public class AugmenterContext implements Closeable {
                         this.getAugmentedRow(
                                 eventType,
                                 commitTimestamp.get(),
+                                binlogEventCounter,
                                 transactionUUID,
                                 xxid,
                                 columns,
@@ -702,9 +731,10 @@ public class AugmenterContext implements Closeable {
         }
     }
 
-    private AugmentedRow getAugmentedRow (
+    private AugmentedRow getAugmentedRow(
             String eventType,
             Long commitTimestamp,
+            long binlogEventCounter,
             UUID transactionUUID,
             Long transactionXid,
             List<ColumnSchema> columnSchemas,
@@ -725,7 +755,7 @@ public class AugmenterContext implements Closeable {
                 eventType,
                 schemaName, tableName,
                 transactionUUID, transactionXid,
-                commitTimestamp,
+                commitTimestamp, binlogEventCounter,
                 primaryKeyColumns, stringifiedCellValues
         );
 

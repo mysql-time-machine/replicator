@@ -112,7 +112,7 @@ class ReplicatorIntegrationTestRunner {
 
         LOG.info("tests done")
 
-        // sleep(10000000)
+        sleep(10000000)
 
         // stop
         stopReplicatorPipeline(replicator)

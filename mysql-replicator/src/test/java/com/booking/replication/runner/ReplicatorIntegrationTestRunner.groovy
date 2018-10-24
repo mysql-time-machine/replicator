@@ -14,6 +14,7 @@ import com.booking.replication.commons.services.ServicesProvider
 import com.booking.replication.coordinator.Coordinator
 import com.booking.replication.coordinator.ZookeeperCoordinator
 import com.booking.replication.spec.HBaseMicrosecondValidationSpec
+import com.booking.replication.spec.LongTransactionHBaseTest
 import com.booking.replication.supplier.Supplier
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier
 
@@ -67,7 +68,8 @@ class ReplicatorIntegrationTestRunner {
 
     private TESTS = [
             new HBaseTransmitInsertsSpec(),
-            new HBaseMicrosecondValidationSpec()
+            new HBaseMicrosecondValidationSpec(),
+            new LongTransactionHBaseTest()
     ]
 
     @BeforeClass
@@ -111,8 +113,6 @@ class ReplicatorIntegrationTestRunner {
         runTests(replicator)
 
         LOG.info("tests done")
-
-        sleep(10000000)
 
         // stop
         stopReplicatorPipeline(replicator)

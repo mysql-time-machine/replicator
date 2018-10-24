@@ -2,6 +2,7 @@ package com.booking.replication.spec
 
 import com.booking.replication.ReplicatorIntegrationTest
 import com.booking.replication.commons.services.ServicesControl
+import com.booking.replication.util.Replicant
 import com.fasterxml.jackson.databind.ObjectMapper
 import groovy.sql.Sql
 import org.apache.hadoop.conf.Configuration;
@@ -19,43 +20,14 @@ class HBaseTransmitInsertsSpec implements ReplicatorIntegrationTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper()
 
-    // TODO: move to ServiceProvider in common; split common to test-utils and common
-    Sql getReplicantSql(boolean autoCommit, ServicesControl mysqlReplicant) {
-
-        def urlReplicant =  new StringBuilder()
-                .append("jdbc:mysql://")
-                .append(mysqlReplicant.getHost())
-                .append(":")
-                .append(mysqlReplicant.getPort())
-                .append("/")
-                .append(SCHEMA_NAME)
-                .toString()
-
-        def dbReplicant = [
-                url     : urlReplicant,
-                user    : 'root',
-                password: 'replicator',
-                driver  : 'com.mysql.jdbc.Driver'
-        ]
-
-        def replicant = Sql.newInstance(
-                dbReplicant.url,
-                dbReplicant.user,
-                dbReplicant.password,
-                dbReplicant.driver
-        )
-
-        replicant.connection.autoCommit = autoCommit
-        return replicant
-    }
-
     @Override
     void doAction(ServicesControl mysqlReplicant) {
 
         // get handle
-        def replicantMySQLHandle = getReplicantSql(
+        def replicantMySQLHandle = Replicant.getReplicantSql(
                 false,
-                mysqlReplicant// <- autoCommit
+                SCHEMA_NAME,
+                mysqlReplicant
         )
 
         // create table
@@ -223,9 +195,6 @@ class HBaseTransmitInsertsSpec implements ReplicatorIntegrationTest {
                     if (data[tableName][rowKey] == null) {
                         data[tableName][rowKey] = new TreeMap<>()
                     }
-//                    if (data[tableName][rowKey][fullColumnName] == null) {
-//                        data[tableName][rowKey][fullColumnName] = new TreeMap<>()
-//                    }
 
                     data.get(tableName).get(rowKey).put(fullColumnName, Bytes.toString(cell.getValue())
                     )

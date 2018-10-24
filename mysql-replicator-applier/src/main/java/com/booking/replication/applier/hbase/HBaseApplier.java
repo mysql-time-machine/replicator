@@ -204,8 +204,6 @@ public class HBaseApplier implements Applier {
             try {
                 String tableName = extractTableName(ev);
                 if (tableName != null) {
-                    LOG.info("got table name ===========> " + tableName);
-
                     synchronized (hbaseSchemaManager) {
                         hbaseSchemaManager.createMirroredTableIfNotExists(tableName);
                     }

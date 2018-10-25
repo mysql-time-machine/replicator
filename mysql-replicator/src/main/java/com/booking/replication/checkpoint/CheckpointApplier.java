@@ -12,8 +12,10 @@ public interface CheckpointApplier extends BiConsumer<AugmentedEvent, Integer>, 
         NONE {
             @Override
             protected CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath, long period) {
-                return (event, map) -> {
+                BiConsumer<AugmentedEvent, Integer> cap =  (event, map) -> {
+
                 };
+                return (CheckpointApplier) cap;
             }
         },
         COORDINATOR {

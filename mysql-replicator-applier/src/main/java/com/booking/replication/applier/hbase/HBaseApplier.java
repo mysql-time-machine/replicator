@@ -49,6 +49,7 @@ public class HBaseApplier implements Applier {
         String INITIAL_SNAPSHOT_MODE    = "applier.hbase.initial.snapshot";
         String HBASE_USE_SNAPPY         = "applier.hbase.snappy";
         String DRYRUN                   = "applier.hbase.dryrun";
+        String PAYLOAD_TABLE_NAME       = "applier.hbase.payload.table.name";
     }
 
     @SuppressWarnings("unused")
@@ -109,6 +110,7 @@ public class HBaseApplier implements Applier {
      */
     @Override
     public synchronized Boolean apply(Collection<AugmentedEvent> events) {
+
 
         checkIfBufferExpired();
 

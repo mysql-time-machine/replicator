@@ -156,6 +156,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                     timestampOrganizer.organizeTimestamps(augmentedRows, mySqlTableName, transactionUUID);
                 }
 
+
                 List<HBaseApplierMutationGenerator.PutMutation> eventMutations = augmentedRows.stream()
                         .flatMap(
                                 row -> Stream.of(mutationGenerator.getPutForMirroredTable(row))

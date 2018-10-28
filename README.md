@@ -10,7 +10,7 @@
 ## MySQL Replicator
 Replicates data changes from MySQL binlog to HBase or Kafka. In case of HBase, preserves the previous data versions. HBase storage is intended for auditing and analysis of historical data. In addition, special daily-changes tables can be maintained in HBase, which are convenient for fast and cheap imports from HBase to Hive. Replication to Kafka is intended for easy real-time access to a stream of data changes.
 
-### Documentation
+## Intro
 This readme file provides some basic documentation on how to get started. For more details, refer to official documentation at [mysql-time-machine](https://mysql-time-machine.github.io/).
 
 ### Building required Docker images

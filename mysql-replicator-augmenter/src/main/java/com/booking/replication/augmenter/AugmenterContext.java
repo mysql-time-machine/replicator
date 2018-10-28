@@ -721,7 +721,8 @@ public class AugmenterContext implements Closeable {
                                 columns,
                                 includedColumns,
                                 row,
-                                cache
+                                cache,
+                                eventTable
                         )
                 );
             }
@@ -740,14 +741,15 @@ public class AugmenterContext implements Closeable {
             List<ColumnSchema> columnSchemas,
             BitSet includedColumns,
             RowBeforeAfter row,
-            Map<String, String[]> cache
+            Map<String, String[]> cache,
+            FullTableName eventTable
     ) {
         Map<String, Map<String, String>> stringifiedCellValues =
                 Stringifier.stringifyRowCellsValues(eventType, columnSchemas, includedColumns, row, cache);
 
 
-        String schemaName = this.eventTable.get().getDatabase();
-        String tableName = this.eventTable.get().getName();
+        String schemaName = eventTable.getDatabase();
+        String tableName = eventTable.getName();
 
         List<String> primaryKeyColumns = TableSchema.getPrimaryKeyColumns(columnSchemas);
 

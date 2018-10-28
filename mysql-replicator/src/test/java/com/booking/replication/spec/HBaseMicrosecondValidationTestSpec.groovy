@@ -16,7 +16,7 @@ import org.apache.hadoop.hbase.util.Bytes
  * microsecond timestamps in HBase is the same as
  * the order in which the rows were inserted
  */
-class HBaseMicrosecondValidationSpec implements ReplicatorIntegrationTest {
+class HBaseMicrosecondValidationTestSpec implements ReplicatorIntegrationTest {
 
     private String HBASE_COLUMN_FAMILY_NAME = "d"
 

@@ -10,7 +10,7 @@ import org.apache.hadoop.hbase.*
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.util.Bytes
 
-class HBaseTransmitInsertsSpec implements ReplicatorIntegrationTest {
+class HBaseTransmitInsertsTestSpec implements ReplicatorIntegrationTest {
 
     private String HBASE_COLUMN_FAMILY_NAME = "d"
 

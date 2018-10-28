@@ -100,6 +100,12 @@ public class HBaseApplierMutationGenerator {
         // RowID
         String hbaseRowID = getHBaseRowKey(augmentedRow);
 
+        // Context Payload Table
+        String payloadTableName =  (String) configuration.get(HBaseApplier.Configuration.PAYLOAD_TABLE_NAME);
+        if (payloadTableName != null && payloadTableName.equals(augmentedRow.getTableName())) {
+            hbaseRowID = getPayloadTableHBaseRowKey(augmentedRow);
+        }
+
         String namespace = (String) configuration.get(HBaseApplier.Configuration.TARGET_NAMESPACE);
         String prefix = "";
         if (!namespace.isEmpty()) {
@@ -112,25 +118,26 @@ public class HBaseApplierMutationGenerator {
         UUID uuid = augmentedRow.getTransactionUUID();
         Long xid = augmentedRow.getTransactionXid();
 
+        Long microsecondsTimestamp = augmentedRow.getRowMicrosecondTimestamp();
+
         switch (augmentedRow.getEventType()) {
+
             case "DELETE": {
 
                 // No need to process columns on DELETE. Only write delete marker.
-
-                Long columnTimestamp = augmentedRow.getRowMicrosecondTimestamp();
                 String columnName = "row_status";
                 String columnValue = "D";
                 put.addColumn(
                         CF,
                         Bytes.toBytes(columnName),
-                        columnTimestamp,
+                        microsecondsTimestamp,
                         Bytes.toBytes(columnValue)
                 );
                 if (uuid != null) {
                     put.addColumn(
                             CF,
                             TID,
-                            augmentedRow.getCommitTimestamp(),
+                            microsecondsTimestamp,
                             Bytes.toBytes(uuid.toString())
                     );
                 }
@@ -138,7 +145,7 @@ public class HBaseApplierMutationGenerator {
                     put.addColumn(
                             CF,
                             XID,
-                            augmentedRow.getCommitTimestamp(),
+                            microsecondsTimestamp,
                             Bytes.toBytes(xid.toString())
                     );
                 }
@@ -147,8 +154,6 @@ public class HBaseApplierMutationGenerator {
             case "UPDATE": {
 
                 // Only write values that have changed
-
-                Long columnTimestamp = augmentedRow.getRowMicrosecondTimestamp();
                 String columnValue;
 
                 for (String columnName : augmentedRow.getRowColumns().keySet()) {
@@ -169,7 +174,7 @@ public class HBaseApplierMutationGenerator {
                         put.addColumn(
                                 CF,
                                 Bytes.toBytes(columnName),
-                                columnTimestamp,
+                                microsecondsTimestamp,
                                 Bytes.toBytes(columnValue)
                         );
                     } else {
@@ -180,7 +185,7 @@ public class HBaseApplierMutationGenerator {
                 put.addColumn(
                         CF,
                         Bytes.toBytes("row_status"),
-                        columnTimestamp,
+                        microsecondsTimestamp,
                         Bytes.toBytes("U")
                 );
 
@@ -188,7 +193,7 @@ public class HBaseApplierMutationGenerator {
                     put.addColumn(
                             CF,
                             TID,
-                            augmentedRow.getCommitTimestamp(),
+                            microsecondsTimestamp,
                             Bytes.toBytes(uuid.toString())
                     );
                 }
@@ -197,7 +202,7 @@ public class HBaseApplierMutationGenerator {
                     put.addColumn(
                             CF,
                             XID,
-                            augmentedRow.getCommitTimestamp(),
+                            microsecondsTimestamp,
                             Bytes.toBytes(xid.toString())
                     );
                 }
@@ -205,7 +210,6 @@ public class HBaseApplierMutationGenerator {
             }
             case "INSERT": {
 
-                Long columnTimestamp = augmentedRow.getRowMicrosecondTimestamp();
                 String columnValue;
 
                 for (String columnName : augmentedRow.getRowColumns().keySet()) {
@@ -218,7 +222,7 @@ public class HBaseApplierMutationGenerator {
                     put.addColumn(
                             CF,
                             Bytes.toBytes(columnName),
-                            columnTimestamp,
+                            microsecondsTimestamp,
                             Bytes.toBytes(columnValue)
                     );
                 }
@@ -226,14 +230,14 @@ public class HBaseApplierMutationGenerator {
                 put.addColumn(
                         CF,
                         Bytes.toBytes("row_status"),
-                        columnTimestamp,
+                        microsecondsTimestamp,
                         Bytes.toBytes("I")
                 );
                 if (uuid != null) {
                     put.addColumn(
                             CF,
                             TID,
-                            augmentedRow.getCommitTimestamp(),
+                            microsecondsTimestamp,
                             Bytes.toBytes(uuid.toString())
                     );
                 }
@@ -241,7 +245,7 @@ public class HBaseApplierMutationGenerator {
                     put.addColumn(
                             CF,
                             XID,
-                            augmentedRow.getCommitTimestamp(),
+                            microsecondsTimestamp,
                             Bytes.toBytes(xid.toString())
                     );
                 }

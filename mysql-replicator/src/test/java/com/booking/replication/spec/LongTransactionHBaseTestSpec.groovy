@@ -79,7 +79,7 @@ import org.slf4j.LoggerFactory
  *  the values would be spread in time to far away from the actual commit
  *  time that matters.
  */
-class LongTransactionHBaseTest implements ReplicatorIntegrationTest  {
+class LongTransactionHBaseTestSpec implements ReplicatorIntegrationTest  {
 
     private static final ObjectMapper MAPPER = new ObjectMapper()
 
@@ -89,7 +89,7 @@ class LongTransactionHBaseTest implements ReplicatorIntegrationTest  {
 
     @Override
     String testName() {
-        return "LongTransactionHBaseTest"
+        return "LongTransactionHBaseTestSpec"
     }
 
     @Override

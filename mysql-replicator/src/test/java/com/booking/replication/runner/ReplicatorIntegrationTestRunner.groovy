@@ -13,12 +13,13 @@ import com.booking.replication.commons.services.ServicesControl
 import com.booking.replication.commons.services.ServicesProvider
 import com.booking.replication.coordinator.Coordinator
 import com.booking.replication.coordinator.ZookeeperCoordinator
-import com.booking.replication.spec.HBaseMicrosecondValidationSpec
-import com.booking.replication.spec.LongTransactionHBaseTest
+import com.booking.replication.spec.HBaseMicrosecondValidationTestSpec
+import com.booking.replication.spec.HBasePayloadTableSpec
+import com.booking.replication.spec.LongTransactionHBaseTestSpec
 import com.booking.replication.supplier.Supplier
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier
 
-import com.booking.replication.spec.HBaseTransmitInsertsSpec
+import com.booking.replication.spec.HBaseTransmitInsertsTestSpec
 import com.mysql.jdbc.Driver
 import org.apache.commons.dbcp2.BasicDataSource
 import org.apache.hadoop.conf.Configuration
@@ -60,6 +61,7 @@ class ReplicatorIntegrationTestRunner {
     private static final int TRANSACTION_LIMIT = 100
 
     private static final String HBASE_COLUMN_FAMILY_NAME = "d"
+    public static final String HBASE_TEST_PAYLOAD_TABLE_NAME = "tbl_payload_context"
 
     private static ServicesControl zookeeper
     private static ServicesControl mysqlBinaryLog
@@ -67,9 +69,10 @@ class ReplicatorIntegrationTestRunner {
     private static ServicesControl hbase
 
     private TESTS = [
-            new HBaseTransmitInsertsSpec(),
-            new HBaseMicrosecondValidationSpec(),
-            new LongTransactionHBaseTest()
+            new HBaseTransmitInsertsTestSpec(),
+            new HBaseMicrosecondValidationTestSpec(),
+            new LongTransactionHBaseTestSpec(),
+            new HBasePayloadTableSpec()
     ]
 
     @BeforeClass
@@ -369,6 +372,7 @@ class ReplicatorIntegrationTestRunner {
         configuration.put(HBaseApplier.Configuration.INITIAL_SNAPSHOT_MODE, false)
         configuration.put(HBaseApplier.Configuration.HBASE_USE_SNAPPY, false)
         configuration.put(HBaseApplier.Configuration.DRYRUN, false)
+        configuration.put(HBaseApplier.Configuration.PAYLOAD_TABLE_NAME, HBASE_TEST_PAYLOAD_TABLE_NAME)
 
         return configuration
     }

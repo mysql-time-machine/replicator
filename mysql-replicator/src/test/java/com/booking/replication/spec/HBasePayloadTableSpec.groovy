@@ -7,6 +7,7 @@ import com.booking.replication.util.HBase
 import com.booking.replication.util.Replicant
 import groovy.sql.Sql
 
+
 /**
  * This test verifies that we get the payloads injected into transactions and
  * that we get them in the same order (when sorted by timestamp) in which
@@ -139,7 +140,7 @@ class HBasePayloadTableSpec implements ReplicatorIntegrationTest {
                 if (!entry.equals(act[i])) { ok = false }
         }
 
-        return ok
+        ok
     }
 
     void createPayloadTable(Sql replicantMySQLHandle) {

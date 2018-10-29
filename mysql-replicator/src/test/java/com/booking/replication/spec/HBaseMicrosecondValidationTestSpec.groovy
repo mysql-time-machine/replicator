@@ -111,10 +111,14 @@ class HBaseMicrosecondValidationTestSpec implements ReplicatorIntegrationTest {
         def l = range.toList()
         def r = range.toList().collect({ x -> "c${x}"})
 
+        // all should be equal except the last version
+        l.remove(0)
+        r.remove(0)
+
         return [
-            l,
-            r
-        ]
+            l.join("|"),
+            r.join("|")
+        ].join("|")
     }
 
     @Override
@@ -152,7 +156,10 @@ class HBaseMicrosecondValidationTestSpec implements ReplicatorIntegrationTest {
 
                     if (columnName == "randomInt") {
                         l.add(Bytes.toString(cell.getValue()))
-                        r.add(cell.getTimestamp())
+                    }
+
+                    if (columnName == "randomVarchar") {
+                        r.add(Bytes.toString(cell.getValue()))
                     }
 
                 }
@@ -160,10 +167,14 @@ class HBaseMicrosecondValidationTestSpec implements ReplicatorIntegrationTest {
         } catch (IOException e) {
             e.printStackTrace()
         }
+
+        l.remove(0)
+        r.remove(0)
+
         return [
-                l,
-                r
-        ]
+                l.join("|"),
+                r.join("|")
+        ].join("|")
     }
 }
 

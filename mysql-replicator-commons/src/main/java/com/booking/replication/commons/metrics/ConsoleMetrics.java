@@ -1,4 +1,4 @@
-package com.booking.replication.metrics;
+package com.booking.replication.commons.metrics;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Slf4jReporter;
@@ -7,9 +7,18 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public class ConsoleMetricsApplier extends MetricsApplier<Slf4jReporter> {
-    public ConsoleMetricsApplier(Map<String, Object> configuration) {
+public class ConsoleMetrics extends Metrics<Slf4jReporter> {
+    private static ConsoleMetrics instance;
+
+    public ConsoleMetrics(Map<String, Object> configuration) {
         super(configuration);
+    }
+
+    public static synchronized ConsoleMetrics getInstance(Map<String, Object> configuration){
+        if(instance == null){
+            instance = new ConsoleMetrics(configuration);
+        }
+        return instance;
     }
 
     @Override

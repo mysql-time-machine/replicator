@@ -1,4 +1,4 @@
-package com.booking.replication.metrics;
+package com.booking.replication.commons.metrics;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.ScheduledReporter;
@@ -15,15 +15,24 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-public class GraphicMetricsApplier extends MetricsApplier<ScheduledReporter> {
+public class GraphicMetrics extends Metrics<ScheduledReporter> {
     public interface Configuration {
         String GRAPHITE_NAMESPACE = "metrics.applier.graphite.namespace";
         String GRAPHITE_HOSTNAME = "metrics.applier.graphite.hostname";
         String GRAPHITE_PORT = "metrics.applier.graphite.port";
     }
 
-    public GraphicMetricsApplier(Map<String, Object> configuration) {
+    private static GraphicMetrics instance;
+
+    public GraphicMetrics(Map<String, Object> configuration) {
         super(configuration);
+    }
+
+    public static synchronized GraphicMetrics getInstance(Map<String, Object> configuration){
+        if(instance == null){
+            instance = new GraphicMetrics(configuration);
+        }
+        return instance;
     }
 
     @Override

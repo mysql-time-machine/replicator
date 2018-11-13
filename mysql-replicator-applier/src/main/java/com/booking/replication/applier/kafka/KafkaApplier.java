@@ -4,6 +4,8 @@ import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.Partitioner;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.commons.map.MapFilter;
+import com.booking.replication.commons.metrics.Metrics;
+import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -15,9 +17,7 @@ import org.apache.kafka.common.serialization.ByteArraySerializer;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class KafkaApplier implements Applier {
@@ -26,6 +26,7 @@ public class KafkaApplier implements Applier {
     public interface Configuration {
         String TOPIC = "kafka.topic";
         String PRODUCER_PREFIX = "kafka.producer.";
+        String BASE_PATH = "events";
     }
 
     private final Map<Integer, Producer<byte[], byte[]>> producers;
@@ -33,6 +34,8 @@ public class KafkaApplier implements Applier {
     private final String topic;
     private final int totalPartitions;
     private final Partitioner partitioner;
+    private final Metrics<?> metrics;
+    private final String delayName;
 
     public KafkaApplier(Map<String, Object> configuration) {
         Object topic = configuration.get(Configuration.TOPIC);
@@ -44,6 +47,11 @@ public class KafkaApplier implements Applier {
         this.topic = topic.toString();
         this.totalPartitions = this.getTotalPartitions();
         this.partitioner = Partitioner.build(configuration);
+        this.metrics = Metrics.build(configuration);
+        this.delayName = MetricRegistry.name(
+                Configuration.BASE_PATH,
+                this.getList(configuration.getOrDefault(Metrics.Configuration.PATH, "delay")).toArray(new String[0])
+        );
     }
 
     private Producer<byte[], byte[]> getProducer() {
@@ -53,6 +61,14 @@ public class KafkaApplier implements Applier {
     private int getTotalPartitions() {
         try (Producer<byte[], byte[]> producer = this.getProducer()) {
             return producer.partitionsFor(this.topic).stream().mapToInt(PartitionInfo::partition).max().orElseThrow(() -> new InvalidPartitionsException("partitions not found")) + 1;
+        }
+    }
+
+    private List<String> getList(Object object) {
+        if (List.class.isInstance(object)) {
+            return (List<String>) object;
+        } else {
+            return Collections.singletonList(object.toString());
         }
     }
 
@@ -71,6 +87,7 @@ public class KafkaApplier implements Applier {
                         KafkaApplier.MAPPER.writeValueAsBytes(event.getHeader()),
                         KafkaApplier.MAPPER.writeValueAsBytes(event.getData())
                 ));
+                this.metrics.getRegistry().histogram(this.delayName).update(System.currentTimeMillis() - event.getHeader().getTimestamp());
             }
 
             return true;

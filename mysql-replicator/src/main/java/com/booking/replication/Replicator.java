@@ -10,7 +10,7 @@ import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.ForceRewindException;
 import com.booking.replication.commons.map.MapFlatter;
 import com.booking.replication.coordinator.Coordinator;
-import com.booking.replication.metrics.MetricsApplier;
+import com.booking.replication.commons.metrics.Metrics;
 import com.booking.replication.supplier.model.RawEvent;
 import com.booking.replication.streams.Streams;
 import com.booking.replication.supplier.Supplier;
@@ -54,7 +54,7 @@ public class Replicator {
     private final Seeker seeker;
     private final Partitioner partitioner;
     private final Applier applier;
-    private final MetricsApplier<?> metricsApplier;
+    private final Metrics<?> metrics;
     private final CheckpointApplier checkpointApplier;
     private final Streams<Collection<AugmentedEvent>, Collection<AugmentedEvent>> streamsApplier;
     private final Streams<RawEvent, Collection<AugmentedEvent>> streamsSupplier;
@@ -70,13 +70,13 @@ public class Replicator {
 
         this.checkpointPath = checkpointPath.toString();
         this.checkpointDefault = (checkpointDefault != null)?(checkpointDefault.toString()):(null);
+        this.metrics = Metrics.build(configuration);
         this.coordinator = Coordinator.build(configuration);
         this.supplier = Supplier.build(configuration);
         this.augmenter = Augmenter.build(configuration);
         this.seeker = Seeker.build(configuration);
         this.partitioner = Partitioner.build(configuration);
         this.applier = Applier.build(configuration);
-        this.metricsApplier = MetricsApplier.build(configuration);
         this.checkpointApplier = CheckpointApplier.build(configuration, this.coordinator, this.checkpointPath);
 
         this.streamsApplier = Streams.<Collection<AugmentedEvent>>builder()
@@ -86,12 +86,6 @@ public class Replicator {
                 .queue()
                 .fromPush()
                 .to(this.applier)
-                .to((events) -> {
-                    for (AugmentedEvent event : events) {
-                        this.metricsApplier.apply(event);
-                    }
-                    return true;
-                })
                 .post((events, task) -> {
                     for (AugmentedEvent event : events) {
                         this.checkpointApplier.accept(event, task);
@@ -217,7 +211,7 @@ public class Replicator {
             this.applier.close();
 
             Replicator.LOG.log(Level.INFO, "closing metrics applier");
-            this.metricsApplier.close();
+            this.metrics.close();
 
             Replicator.LOG.log(Level.INFO, "closing checkpoint applier");
             this.checkpointApplier.close();

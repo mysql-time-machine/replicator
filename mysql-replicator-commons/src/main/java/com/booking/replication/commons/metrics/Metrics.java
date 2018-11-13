@@ -1,6 +1,5 @@
-package com.booking.replication.metrics;
+package com.booking.replication.commons.metrics;
 
-import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Reporter;
 
@@ -9,30 +8,29 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
-public abstract class MetricsApplier<CloseableReporter extends Closeable & Reporter> implements Function<AugmentedEvent, Boolean>, Closeable {
+public abstract class Metrics<CloseableReporter extends Closeable & Reporter> implements Closeable {
     public enum Type {
         CONSOLE {
             @Override
-            protected MetricsApplier<?> newInstance(Map<String, Object> configuration) {
-                return new ConsoleMetricsApplier(configuration);
+            protected Metrics<?> newInstance(Map<String, Object> configuration) {
+                return ConsoleMetrics.getInstance(configuration);
             }
         },
         JMX {
             @Override
-            protected MetricsApplier<?> newInstance(Map<String, Object> configuration) {
-                return new JMXMetricsApplier(configuration);
+            protected Metrics<?> newInstance(Map<String, Object> configuration) {
+                return JMXMetrics.getInstance(configuration);
             }
         },
         GRAPHITE {
             @Override
-            protected MetricsApplier<?> newInstance(Map<String, Object> configuration) {
-                return new GraphicMetricsApplier(configuration);
+            protected Metrics<?> newInstance(Map<String, Object> configuration) {
+                return GraphicMetrics.getInstance(configuration);
             }
         };
 
-        protected abstract MetricsApplier<?> newInstance(Map<String, Object> configuration);
+        protected abstract Metrics<?> newInstance(Map<String, Object> configuration);
     }
 
     public interface Configuration {
@@ -46,13 +44,17 @@ public abstract class MetricsApplier<CloseableReporter extends Closeable & Repor
     private final CloseableReporter reporter;
     private final String delayName;
 
-    public MetricsApplier(Map<String, Object> configuration) {
+    public Metrics(Map<String, Object> configuration) {
         this.registry = new MetricRegistry();
         this.reporter = this.getReporter(configuration, this.registry);
         this.delayName = MetricRegistry.name(
-                MetricsApplier.BASE_PATH,
+                Metrics.BASE_PATH,
                 this.getList(configuration.getOrDefault(Configuration.PATH, "delay")).toArray(new String[0])
         );
+    }
+
+    public MetricRegistry getRegistry() {
+        return registry;
     }
 
     @SuppressWarnings("unchecked")
@@ -65,21 +67,14 @@ public abstract class MetricsApplier<CloseableReporter extends Closeable & Repor
     }
 
     @Override
-    public Boolean apply(AugmentedEvent event) {
-        this.registry.histogram(this.delayName).update(System.currentTimeMillis() - event.getHeader().getTimestamp());
-
-        return true;
-    }
-
-    @Override
     public void close() throws IOException  {
         this.reporter.close();
     }
 
     protected abstract CloseableReporter getReporter(Map<String, Object> configuration, MetricRegistry registry);
 
-    public static MetricsApplier<?> build(Map<String, Object> configuration) {
-        return MetricsApplier.Type.valueOf(
+    public static Metrics<?> build(Map<String, Object> configuration) {
+        return Metrics.Type.valueOf(
                 configuration.getOrDefault(Configuration.TYPE, Type.CONSOLE.name()).toString()
         ).newInstance(configuration);
     }

@@ -153,26 +153,6 @@ class ReplicatorIntegrationTestRunner extends  Specification {
 
     }
 
-//    private void runTests(Replicator replicator) {
-//
-//        TESTS.forEach({ testSpec ->
-//
-//            testSpec.doAction(mysqlBinaryLog)
-//
-//            sleep(10000) // possible replication delay
-//            replicator.forceFlushApplier()
-//
-//            def retrieved = testSpec.getActualState()
-//            def expected = testSpec.getExpectedState()
-//
-//            testSpec.actualEqualsExpected(retrieved,expected)
-//
-//            assertTrue(testSpec.testName(), testSpec.actualEqualsExpected(retrieved,expected))
-//
-//        })
-//
-//    }
-
     private stopReplicatorPipeline(Replicator replicator) {
         replicator.stop()
     }

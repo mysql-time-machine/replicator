@@ -50,11 +50,15 @@ class HBasePayloadTableSpec implements ReplicatorIntegrationTest {
         replicantMySQLHandle.execute(sqlCreate)
         replicantMySQLHandle.commit()
 
-        // begin 1, insert & update
+        // begin 1:
+        //  - insert data
+        //  - update data
+        //  - insert context
         def columns = "(pk,val)"
         replicantMySQLHandle.execute(sprintf(
                 "insert into %s %s values ('first',1)", tableName, columns
         ))
+
         def where = " where pk = 'first'"
         replicantMySQLHandle.execute(sprintf(
                 "update %s set val = 2 %s", tableName, where

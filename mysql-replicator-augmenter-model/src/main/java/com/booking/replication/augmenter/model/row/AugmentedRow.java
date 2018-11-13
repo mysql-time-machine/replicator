@@ -54,6 +54,7 @@ public class AugmentedRow {
             Map<String,Map<String, String>> rowColumnValues
     ) {
 
+
         this.primaryKeyColumns = primaryKeyColumns;
 
         this.transactionUUID = transactionUUID;

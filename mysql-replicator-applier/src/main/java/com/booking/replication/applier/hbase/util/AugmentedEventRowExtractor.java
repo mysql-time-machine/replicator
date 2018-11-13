@@ -75,7 +75,9 @@ public class AugmentedEventRowExtractor {
     private static void overrideRowsCommitTimeAndSetMicroseconds(Long commitTimestamp, Collection<AugmentedRow> extractedAugmentedRowsFromInsert) {
         for (AugmentedRow ar : extractedAugmentedRowsFromInsert) {
             ar.setCommitTimestamp(commitTimestamp);
-            ar.setRowMicrosecondTimestamp(commitTimestamp * 1000 + ar.getFakeMicrosecondCounter());
+
+            Long microsOverride = commitTimestamp * 1000 + ar.getFakeMicrosecondCounter();
+            ar.setRowMicrosecondTimestamp(microsOverride);
         }
     }
 }

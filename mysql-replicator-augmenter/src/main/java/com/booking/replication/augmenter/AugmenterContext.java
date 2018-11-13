@@ -94,7 +94,7 @@ public class AugmenterContext implements Closeable {
 
     private final AtomicLong timestamp;
     private final AtomicLong previousTimestamp;
-    private final AtomicLong binlogEventCounter;
+    private final AtomicLong transactionCounter;
     private final AtomicLong serverId;
     private final AtomicLong nextPosition;
 
@@ -128,9 +128,21 @@ public class AugmenterContext implements Closeable {
 
         this.schemaSnapshot = new AtomicReference<>();
 
+
+        transactionCounter = new AtomicLong();
+        transactionCounter.set(0L);
+
         this.transaction = new CurrentTransaction(
-                configuration.getOrDefault(Configuration.TRANSACTION_BUFFER_CLASS, ConcurrentLinkedQueue.class.getName()).toString(),
-                Integer.parseInt(configuration.getOrDefault(Configuration.TRANSACTION_BUFFER_LIMIT, String.valueOf(AugmenterContext.DEFAULT_TRANSACTION_LIMIT)).toString())
+                configuration.getOrDefault(
+                        Configuration.TRANSACTION_BUFFER_CLASS,
+                        ConcurrentLinkedQueue.class.getName()
+                ).toString(),
+                Integer.parseInt(
+                        configuration.getOrDefault(
+                                Configuration.TRANSACTION_BUFFER_LIMIT,
+                                String.valueOf(AugmenterContext.DEFAULT_TRANSACTION_LIMIT)
+                        ).toString()
+                )
         );
         this.beginPattern = this.getPattern(configuration, Configuration.BEGIN_PATTERN, AugmenterContext.DEFAULT_BEGIN_PATTERN);
         this.commitPattern = this.getPattern(configuration, Configuration.COMMIT_PATTERN, AugmenterContext.DEFAULT_COMMIT_PATTERN);
@@ -152,9 +164,6 @@ public class AugmenterContext implements Closeable {
         this.serverId = new AtomicLong();
         this.nextPosition = new AtomicLong();
 
-        binlogEventCounter = new AtomicLong();
-        binlogEventCounter.set(0L);
-
         this.continueFlag = new AtomicBoolean();
         this.queryType = new AtomicReference<>();
         this.queryOperationType = new AtomicReference<>();
@@ -174,10 +183,6 @@ public class AugmenterContext implements Closeable {
 
         this.isAtDDL = new AtomicBoolean();
         this.isAtDDL.set(false);
-    }
-
-    public AtomicLong getBinlogEventCounter() {
-        return binlogEventCounter;
     }
 
     private Pattern getPattern(Map<String, Object> configuration, String configurationPath, String configurationDefault) {
@@ -203,22 +208,11 @@ public class AugmenterContext implements Closeable {
         }
     }
 
-    public void updateContext(RawEventHeaderV4 eventHeader, RawEventData eventData) {
+    public AtomicLong getTransactionCounter() {
+        return  transactionCounter;
+    }
 
-        binlogEventCounter.incrementAndGet();
-
-        if (binlogEventCounter.get() > 999998L) {
-            binlogEventCounter.set(0L);
-            LOG.warning("Fake microsecond counter's overflowed, resetting to 0.");
-        }
-
-        synchronized (this) {
-            if (timestamp.get() > previousTimestamp.get()) {
-                binlogEventCounter.set(0L);
-                previousTimestamp.set(timestamp.get());
-                LOG.info("Fake microsecond counter back to 0, next second in the stream has arrived.");
-            }
-        }
+    public synchronized void updateContext(RawEventHeaderV4 eventHeader, RawEventData eventData) {
 
         this.updateHeader(
                 eventHeader.getTimestamp(),
@@ -248,12 +242,14 @@ public class AugmenterContext implements Closeable {
                 break;
 
             case QUERY:
+
                 QueryRawEventData queryRawEventData = QueryRawEventData.class.cast(eventData);
                 String query = queryRawEventData.getSQL();
                 Matcher matcher;
 
                 // begin
                 if (this.beginPattern.matcher(query).find()) {
+
                     this.updateCommons(
                             false,
                             QueryAugmentedEventDataType.BEGIN,
@@ -269,6 +265,7 @@ public class AugmenterContext implements Closeable {
                 }
                 // commit
                 else if (this.commitPattern.matcher(query).find()) {
+
                     this.updateCommons(
                             true,
                             QueryAugmentedEventDataType.COMMIT,
@@ -283,6 +280,7 @@ public class AugmenterContext implements Closeable {
                 }
                 // ddl definer
                 else if ((matcher = this.ddlDefinerPattern.matcher(query)).find()) {
+
                     this.updateCommons(
                             true,
                             QueryAugmentedEventDataType.DDL_DEFINER,
@@ -293,7 +291,6 @@ public class AugmenterContext implements Closeable {
                 }
                 // ddl table
                 else if ((matcher = this.ddlTablePattern.matcher(query)).find()) {
-
                     this.updateCommons(
                             true,
                             QueryAugmentedEventDataType.DDL_TABLE,
@@ -367,11 +364,12 @@ public class AugmenterContext implements Closeable {
                 break;
 
             case XID:
+
                 XIDRawEventData xidRawEventData = XIDRawEventData.class.cast(eventData);
 
                 this.updateCommons(
                         true,
-                        QueryAugmentedEventDataType.COMMIT,
+                         QueryAugmentedEventDataType.COMMIT,
                         null,
                         null,
                         null
@@ -384,7 +382,6 @@ public class AugmenterContext implements Closeable {
 
             case GTID:
                 GTIDRawEventData gtidRawEventData = GTIDRawEventData.class.cast(eventData);
-
                 this.updateCommons(
                         false,
                         QueryAugmentedEventDataType.GTID,
@@ -402,15 +399,16 @@ public class AugmenterContext implements Closeable {
                 break;
 
             case TABLE_MAP:
-                this.updateCommons(
-                        false,
-                        QueryAugmentedEventDataType.COMMIT,
-                        null,
-                        null,
-                        null
-                );
 
                 TableMapRawEventData tableMapRawEventData = TableMapRawEventData.class.cast(eventData);
+                this.updateCommons(
+                        false,
+                        null,
+                        null,
+                        null,
+                        tableMapRawEventData.getTable()
+                );
+
 
                 this.schemaCache.get().getTableIdToTableNameMap().put(
                         tableMapRawEventData.getTableId(),
@@ -419,14 +417,15 @@ public class AugmenterContext implements Closeable {
                                 tableMapRawEventData.getTable()
                         )
                 );
-
                 break;
+
             case WRITE_ROWS:
             case EXT_WRITE_ROWS:
             case UPDATE_ROWS:
             case EXT_UPDATE_ROWS:
             case DELETE_ROWS:
             case EXT_DELETE_ROWS:
+
                 TableIdRawEventData tableIdRawEventData = TableIdRawEventData.class.cast(eventData);
                 FullTableName eventTable = this.getEventTable(tableIdRawEventData.getTableId());
 
@@ -437,8 +436,8 @@ public class AugmenterContext implements Closeable {
                         null,
                         null
                 );
-
                 break;
+
             default:
                 this.updateCommons(
                         false,
@@ -447,9 +446,27 @@ public class AugmenterContext implements Closeable {
                         null,
                         null
                 );
-
                 break;
         }
+    }
+
+    private synchronized void updateTransactionCounter() {
+
+        transactionCounter.incrementAndGet();
+
+        if (transactionCounter.get() > 999998L) {
+            transactionCounter.set(0L);
+            LOG.warning("Fake microsecond counter's overflowed, resetting to 0.");
+        }
+
+        if (timestamp.get() > previousTimestamp.get()) {
+            if (transactionCounter.get() != 0) {
+                transactionCounter.set(0);
+                previousTimestamp.set(timestamp.get());
+                LOG.info("Fake microsecond counter back to 0, next second in the stream has arrived.");
+            }
+        }
+
     }
 
     private void updateHeader(long timestamp, long serverId, long nextPosition) {
@@ -472,6 +489,12 @@ public class AugmenterContext implements Closeable {
 
         if (table != null) {
             this.eventTable.set(new FullTableName(database, table));
+        }
+
+        if(queryType != null) {
+            if (queryType.equals(QueryAugmentedEventDataType.BEGIN)) {
+                updateTransactionCounter();
+            }
         }
     }
 
@@ -688,7 +711,7 @@ public class AugmenterContext implements Closeable {
 
             AtomicLong commitTimestamp,
 
-            Long binlogEventCounter,
+            Long transactionCounter,
 
             UUID transactionUUID,
 
@@ -715,7 +738,7 @@ public class AugmenterContext implements Closeable {
                         this.getAugmentedRow(
                                 eventType,
                                 commitTimestamp.get(),
-                                binlogEventCounter,
+                                transactionCounter,
                                 transactionUUID,
                                 xxid,
                                 columns,
@@ -735,7 +758,7 @@ public class AugmenterContext implements Closeable {
     private AugmentedRow getAugmentedRow(
             String eventType,
             Long commitTimestamp,
-            long binlogEventCounter,
+            long transactionCounter,
             UUID transactionUUID,
             Long transactionXid,
             List<ColumnSchema> columnSchemas,
@@ -747,7 +770,6 @@ public class AugmenterContext implements Closeable {
         Map<String, Map<String, String>> stringifiedCellValues =
                 Stringifier.stringifyRowCellsValues(eventType, columnSchemas, includedColumns, row, cache);
 
-
         String schemaName = eventTable.getDatabase();
         String tableName = eventTable.getName();
 
@@ -757,7 +779,7 @@ public class AugmenterContext implements Closeable {
                 eventType,
                 schemaName, tableName,
                 transactionUUID, transactionXid,
-                commitTimestamp, binlogEventCounter,
+                commitTimestamp, transactionCounter,
                 primaryKeyColumns, stringifiedCellValues
         );
 

@@ -78,6 +78,7 @@ public class RowTimestampOrganizer {
                 );
                 timestampsCache.put(key, v);
             }
+
             row.setRowMicrosecondTimestamp(v.timestamp);
         }
     }

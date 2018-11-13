@@ -52,7 +52,7 @@ public class DataAugmenter {
                         this.context.computeAugmentedEventRows(
                                 "INSERT",
                                 this.context.getTransaction().getTimestamp(),
-                                this.context.getBinlogEventCounter().get(),
+                                this.context.getTransactionCounter().get(),
                                 this.context.getTransaction().getIdentifier().get(),
                                 this.context.getTransaction().getXxid(),
                                 writeRowsRawEventData.getTableId(),
@@ -84,7 +84,7 @@ public class DataAugmenter {
                         this.context.computeAugmentedEventRows(
                                 "UPDATE",
                                 this.context.getTransaction().getTimestamp(),
-                                this.context.getBinlogEventCounter().get(),
+                                this.context.getTransactionCounter().get(),
                                 this.context.getTransaction().getIdentifier().get(),
                                 this.context.getTransaction().getXxid(),
                                 updateRowsRawEventData.getTableId(),
@@ -114,7 +114,7 @@ public class DataAugmenter {
                         this.context.computeAugmentedEventRows(
                                 "DELETE",
                                 this.context.getTransaction().getTimestamp(),
-                                this.context.getBinlogEventCounter().get(),
+                                this.context.getTransactionCounter().get(),
                                 this.context.getTransaction().getIdentifier().get(),
                                 this.context.getTransaction().getXxid(),
                                 deleteRowsRawEventData.getTableId(),

@@ -89,6 +89,7 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
 
                 if (this.context.getTransaction().markedForCommit()) { // <- commit reached?
 
+
                     if (this.context.getTransaction().sizeLimitExceeded()) { // <- rewind?
 
                         // size limit exceeded, drop current transaction & rewind
@@ -98,6 +99,7 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
                         throw new ForceRewindException("transaction size limit exceeded");
 
                     } else {
+
                         // transaction size ok, extract & return augmented events
                         Collection<AugmentedEvent> augmentedEvents = this.context.getTransaction().getAndClear();
 
@@ -109,6 +111,7 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
                     }
 
                 } else { // commit not reached
+
 
                     // Augment the event
                     AugmentedEventHeader augmentedEventHeader = this.headerAugmenter.apply(eventHeader, eventData);

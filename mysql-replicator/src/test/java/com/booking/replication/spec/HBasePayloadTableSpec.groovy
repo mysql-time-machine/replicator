@@ -90,7 +90,9 @@ class HBasePayloadTableSpec implements ReplicatorIntegrationTest {
     @Override
     Object getExpectedState() {
         return ["d:event_id|aabbcc}{d:server_role|admin}{d:strange_int|7",
-                "d:event_id|aabbdd}{d:server_role|client}{d:strange_int|17"]
+                "d:event_id|aabbdd}{d:server_role|client}{d:strange_int|17",
+                "tdiff|100"
+        ]
     }
 
     @Override
@@ -127,9 +129,26 @@ class HBasePayloadTableSpec implements ReplicatorIntegrationTest {
             r
         }
 
-        return payloadVals.collect {
+        def timestampsSorted = sortedUnique.collect { transactionUUID ->
+            payload[transactionUUID]["d:row_status"].keySet() as List
+        }
+
+        // This tests the correctness of transactionCounter impact on the
+        // microsecond part of the timestamp; To be able to reconstruct the
+        // ordering Replicator will add a microsecond suffix to the original
+        // timestamp.
+        // The rule is that two transactions that happen in consecutive
+        // order during the same second will differ by 100 microseconds.
+        // TODO: extract as a separate test
+        def tdiff = (Long.parseLong(timestampsSorted[1][0]) - Long.parseLong(timestampsSorted[0][0]))
+
+        def result = payloadVals.collect {
             it["d:event_id"]+"}{"+it["d:server_role"]+"}{"+it["d:strange_int"]
         }
+
+        result.add("tdiff|" + tdiff)
+
+        return result
 
     }
 

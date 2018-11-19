@@ -15,22 +15,23 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-public class GraphicMetrics extends Metrics<ScheduledReporter> {
+public class graphiteMetrics extends Metrics<ScheduledReporter> {
+
     public interface Configuration {
         String GRAPHITE_NAMESPACE = "metrics.applier.graphite.namespace";
         String GRAPHITE_HOSTNAME = "metrics.applier.graphite.hostname";
         String GRAPHITE_PORT = "metrics.applier.graphite.port";
     }
 
-    private static GraphicMetrics instance;
+    private static graphiteMetrics instance;
 
-    public GraphicMetrics(Map<String, Object> configuration) {
+    public graphiteMetrics(Map<String, Object> configuration) {
         super(configuration);
     }
 
-    public static synchronized GraphicMetrics getInstance(Map<String, Object> configuration){
+    public static synchronized graphiteMetrics getInstance(Map<String, Object> configuration){
         if(instance == null){
-            instance = new GraphicMetrics(configuration);
+            instance = new graphiteMetrics(configuration);
         }
         return instance;
     }

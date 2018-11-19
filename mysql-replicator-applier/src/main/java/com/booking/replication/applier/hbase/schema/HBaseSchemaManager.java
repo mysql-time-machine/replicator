@@ -108,9 +108,7 @@ public class HBaseSchemaManager {
                 TableName tableName = TableName.valueOf(hbaseTableName);
 
                 if (admin.tableExists(tableName)) {
-
                     throw  new RuntimeException("table exists in HBase, but not in cache - inner logic broken!");
-
                 } else {
 
                     HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);
@@ -139,57 +137,6 @@ public class HBaseSchemaManager {
             }
         } catch (IOException e) {
             throw new IOException("Failed to create table in HBase", e);
-        }
-    }
-
-    public void createDeltaTableIfNotExists(String hbaseTableName, boolean isInitialSnapshotMode) throws IOException {
-
-        try {
-            if (! DRY_RUN) {
-
-                if (connection == null) {
-                    connection = ConnectionFactory.createConnection(hbaseConf);
-                }
-
-                Admin admin = connection.getAdmin();
-                TableName tableName = TableName.valueOf(hbaseTableName);
-
-                if (!admin.tableExists(tableName)) {
-
-                    LOG.info("table " + hbaseTableName + " does not exist in HBase. Creating...");
-
-                    HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);
-                    HColumnDescriptor cd = new HColumnDescriptor("d");
-
-                    if (USE_SNAPPY) {
-                        cd.setCompressionType(Compression.Algorithm.SNAPPY);
-                    }
-                    cd.setMaxVersions(DELTA_TABLE_MAX_VERSIONS);
-                    tableDescriptor.addFamily(cd);
-                    tableDescriptor.setCompactionEnabled(true);
-
-                    // TODO 1: make this more configurable
-                    // TODO 2: no splits for BigTable
-                    // if daily table pre-split to 16 regions;
-                    // if initial snapshot pre-split to 256 regions
-                    /*if (isInitialSnapshotMode) {
-                        RegionSplitter.HexStringSplit splitter = new RegionSplitter.HexStringSplit();
-                        byte[][] splitKeys = splitter.split(INITIAL_SNAPSHOT_DEFAULT_REGIONS);
-                        admin.createTable(tableDescriptor, splitKeys);
-                    } else {
-                        RegionSplitter.HexStringSplit splitter = new RegionSplitter.HexStringSplit();
-                        byte[][] splitKeys = splitter.split(DAILY_DELTA_TABLE_DEFAULT_REGIONS);
-                        admin.createTable(tableDescriptor, splitKeys);
-                    }*/
-
-                    admin.createTable(tableDescriptor);
-                } else {
-                    LOG.info("Table " + hbaseTableName + " already exists in HBase. Probably a case of replaying the binlog.");
-                }
-            }
-            knownHBaseTables.put(hbaseTableName,1);
-        } catch (IOException e) {
-            throw new IOException("Failed to create table in HBase.", e);
         }
     }
 

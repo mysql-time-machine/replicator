@@ -112,27 +112,36 @@ public class ReplicatorKafkaTest {
 
         configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, ReplicatorKafkaTest.zookeeper.getURL());
         configuration.put(ZookeeperCoordinator.Configuration.LEADERSHIP_PATH, ReplicatorKafkaTest.ZOOKEEPER_LEADERSHIP_PATH);
+
         configuration.put(BinaryLogSupplier.Configuration.MYSQL_HOSTNAME, Collections.singletonList(ReplicatorKafkaTest.mysqlBinaryLog.getHost()));
         configuration.put(BinaryLogSupplier.Configuration.MYSQL_PORT, String.valueOf(ReplicatorKafkaTest.mysqlBinaryLog.getPort()));
         configuration.put(BinaryLogSupplier.Configuration.MYSQL_SCHEMA, ReplicatorKafkaTest.MYSQL_SCHEMA);
         configuration.put(BinaryLogSupplier.Configuration.MYSQL_USERNAME, ReplicatorKafkaTest.MYSQL_ROOT_USERNAME);
         configuration.put(BinaryLogSupplier.Configuration.MYSQL_PASSWORD, ReplicatorKafkaTest.MYSQL_PASSWORD);
+
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, ReplicatorKafkaTest.mysqlActiveSchema.getHost());
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(ReplicatorKafkaTest.mysqlActiveSchema.getPort()));
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_SCHEMA, ReplicatorKafkaTest.MYSQL_ACTIVE_SCHEMA);
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, ReplicatorKafkaTest.MYSQL_ROOT_USERNAME);
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PASSWORD, ReplicatorKafkaTest.MYSQL_PASSWORD);
+
         configuration.put(AugmenterContext.Configuration.TRANSACTION_BUFFER_LIMIT, String.valueOf(ReplicatorKafkaTest.TRANSACTION_LIMIT));
+
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorKafkaTest.kafka.getURL());
         configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorKafkaTest.kafka.getURL());
         configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.GROUP_ID_CONFIG), ReplicatorKafkaTest.KAFKA_REPLICATOR_GROUP_ID);
         configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.AUTO_OFFSET_RESET_CONFIG), "earliest");
         configuration.put(KafkaApplier.Configuration.TOPIC, ReplicatorKafkaTest.KAFKA_REPLICATOR_TOPIC_NAME);
+
         configuration.put(Coordinator.Configuration.TYPE, Coordinator.Type.ZOOKEEPER.name());
+
         configuration.put(Supplier.Configuration.TYPE, Supplier.Type.BINLOG.name());
+
         configuration.put(Augmenter.Configuration.SCHEMA_TYPE, Augmenter.SchemaType.ACTIVE.name());
         configuration.put(Seeker.Configuration.TYPE, Seeker.Type.KAFKA.name());
+
         configuration.put(Partitioner.Configuration.TYPE, Partitioner.Type.TABLE_NAME.name());
+
         configuration.put(Applier.Configuration.TYPE, Applier.Type.KAFKA.name());
         configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name());
         configuration.put(Replicator.Configuration.CHECKPOINT_PATH, ReplicatorKafkaTest.ZOOKEEPER_CHECKPOINT_PATH);

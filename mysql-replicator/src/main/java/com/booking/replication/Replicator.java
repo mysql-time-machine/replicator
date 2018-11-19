@@ -6,6 +6,7 @@ import com.booking.replication.applier.Partitioner;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.checkpoint.CheckpointApplier;
+import com.booking.replication.commons.checkpoint.Binlog;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.ForceRewindException;
 import com.booking.replication.commons.map.MapFlatter;
@@ -60,6 +61,7 @@ public class Replicator {
     private final Streams<RawEvent, Collection<AugmentedEvent>> streamsSupplier;
 
     public Replicator(final Map<String, Object> configuration) {
+
         Object checkpointPath = configuration.get(Configuration.CHECKPOINT_PATH);
         Object checkpointDefault = configuration.get(Configuration.CHECKPOINT_DEFAULT);
 
@@ -69,14 +71,23 @@ public class Replicator {
         int tasks = Integer.parseInt(configuration.getOrDefault(Configuration.REPLICATOR_TASKS, "1").toString());
 
         this.checkpointPath = checkpointPath.toString();
-        this.checkpointDefault = (checkpointDefault != null)?(checkpointDefault.toString()):(null);
+
+        this.checkpointDefault = (checkpointDefault != null) ? (checkpointDefault.toString()) : (null);
+
         this.metrics = Metrics.build(configuration);
+
         this.coordinator = Coordinator.build(configuration);
+
         this.supplier = Supplier.build(configuration);
+
         this.augmenter = Augmenter.build(configuration);
+
         this.seeker = Seeker.build(configuration);
+
         this.partitioner = Partitioner.build(configuration);
+
         this.applier = Applier.build(configuration);
+
         this.checkpointApplier = CheckpointApplier.build(configuration, this.coordinator, this.checkpointPath);
 
         this.streamsApplier = Streams.<Collection<AugmentedEvent>>builder()
@@ -112,11 +123,9 @@ public class Replicator {
         Consumer<Exception> exceptionHandle = (exception) -> {
             if (ForceRewindException.class.isInstance(exception)) {
                 Replicator.LOG.log(Level.WARNING, exception.getMessage());
-
                 this.rewind();
             } else {
                 Replicator.LOG.log(Level.SEVERE, "error", exception);
-
                 this.stop();
             }
         };
@@ -132,7 +141,9 @@ public class Replicator {
                 this.streamsSupplier.start();
 
                 Replicator.LOG.log(Level.INFO, "starting supplier");
-                this.supplier.start(this.seeker.seek(this.getCheckpoint()));
+                this.supplier.start(new Checkpoint(
+                        new Binlog("binlog.000001", 4)
+                )); //this.seeker.seek(this.getCheckpoint()));
 
                 Replicator.LOG.log(Level.INFO, "replicator started");
             } catch (IOException | InterruptedException exception) {
@@ -160,9 +171,11 @@ public class Replicator {
         });
 
         this.supplier.onEvent(this.streamsSupplier::push);
+
         this.supplier.onException(exceptionHandle);
         this.streamsSupplier.onException(exceptionHandle);
         this.streamsApplier.onException(exceptionHandle);
+
     }
 
     public synchronized boolean forceFlushApplier() {

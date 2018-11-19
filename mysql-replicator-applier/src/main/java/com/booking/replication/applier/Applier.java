@@ -46,8 +46,13 @@ public interface Applier extends Function<Collection<AugmentedEvent>, Boolean>, 
     }
 
     static Applier build(Map<String, Object> configuration) {
-        return Type.valueOf(
-                configuration.getOrDefault(Configuration.TYPE, Type.HBASE.name()).toString()
-        ).newInstance(configuration);
+        try {
+            return Type.valueOf(
+                    configuration.getOrDefault(Configuration.TYPE, Type.HBASE.name()).toString()
+            ).newInstance(configuration);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

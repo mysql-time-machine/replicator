@@ -9,8 +9,11 @@ import com.booking.replication.augmenter.model.event.*;
 
 import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
 
+import com.booking.replication.commons.metrics.Metrics;
+import com.codahale.metrics.Counter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -25,12 +28,16 @@ import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toList;
 
+import com.booking.replication.commons.metrics.Metrics;
+import com.booking.replication.commons.metrics.Metrics;
+import com.codahale.metrics.MetricRegistry;
+
 public class HBaseApplier implements Applier {
 
     private static final Logger LOG = LogManager.getLogger(com.booking.replication.applier.hbase.HBaseApplier.class);
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
-
+    private final Metrics<?> metrics;
     private int FLUSH_BUFFER_SIZE       = 5;
     private int BUFFER_FLUSH_TIME_LIMIT = 5;
 
@@ -57,6 +64,8 @@ public class HBaseApplier implements Applier {
 
         this.configuration = configuration;
 
+        this.metrics = Metrics.build(configuration);
+
         hbaseConfig = getHBaseConfig(configuration);
 
         try {
@@ -69,11 +78,20 @@ public class HBaseApplier implements Applier {
         } catch (IOException | NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
+
     }
 
     private  org.apache.hadoop.conf.Configuration getHBaseConfig(Map<String, Object> configuration) {
-        // TODO: read BigTable specifics from configuration & setup hbaseConfig accordingly
-        return HBaseConfiguration.create();
+
+        org.apache.hadoop.conf.Configuration hbConf = HBaseConfiguration.create();
+
+        // TODO: adapt to BigTable (no zookeeper, impl class properties)
+        String ZOOKEEPER_QUORUM =
+            (String) configuration.get(HBaseApplier.Configuration.HBASE_ZOOKEEPER_QUORUM);
+
+            hbConf.set("hbase.zookeeper.quorum", ZOOKEEPER_QUORUM);
+
+        return hbConf;
     }
 
     /**
@@ -111,6 +129,8 @@ public class HBaseApplier implements Applier {
     @Override
     public synchronized Boolean apply(Collection<AugmentedEvent> events) {
 
+        this.metrics.getRegistry()
+                .counter("hbase.applier.events.received").inc(1L);
 
         checkIfBufferExpired();
 

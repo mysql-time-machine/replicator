@@ -26,7 +26,7 @@ public abstract class Metrics<CloseableReporter extends Closeable & Reporter> im
         GRAPHITE {
             @Override
             protected Metrics<?> newInstance(Map<String, Object> configuration) {
-                return GraphicMetrics.getInstance(configuration);
+                return graphiteMetrics.getInstance(configuration);
             }
         };
 

@@ -20,9 +20,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.booking.replication.commons.metrics.Metrics;
+import com.booking.replication.commons.metrics.Metrics;
+import com.codahale.metrics.MetricRegistry;
+
 public class HBaseTimeMachineWriter implements HBaseApplierWriter {
 
         private static final Logger LOG = LogManager.getLogger(HBaseTimeMachineWriter.class);
+        private final Metrics<?> metrics;
 
         private final int FLUSH_RETRY_LIMIT = 30;
         private long bufferClearTime = 0L;
@@ -42,11 +47,19 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                                       HBaseSchemaManager hbaseSchemaManager,
                                       Map<String, Object> configuration)
                 throws IOException, NoSuchAlgorithmException {
+
+            this.metrics = Metrics.build(configuration);
+
             this.hbaseSchemaManager = hbaseSchemaManager;
+
             connection = ConnectionFactory.createConnection(hbaseConfig);
+
             admin = connection.getAdmin();
+
             buffered = new ConcurrentHashMap<>();
+
             mutationGenerator = new HBaseApplierMutationGenerator(configuration);
+
             timestampOrganizer = new RowTimestampOrganizer(); // <- TODO: if not initial_snapshot_mode()
         }
 
@@ -131,7 +144,8 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
         private String extractTableName(List<AugmentedRow> augmentedRows) {
             List<String> tables = augmentedRows.stream().map(ar -> ar.getTableName()).collect(Collectors.toList());
             if (tables != null) {
-                if (tables.size() > 1) {
+                Set unique = new HashSet(tables);
+                if (unique.size() > 1) {
                     throw new RuntimeException("More than one table in binlog event not allowed!");
                 }
                 String mySqlTableName = tables.get(0);
@@ -151,11 +165,13 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
 
                 List<AugmentedRow> augmentedRows = AugmentedEventRowExtractor.extractAugmentedRows(event);
 
+                this.metrics.getRegistry()
+                        .counter("hbase.applier.rows.received.count").inc(augmentedRows.size());
+
                 if (timestampOrganizer != null) {
                     String mySqlTableName = extractTableName(augmentedRows); // TODO: optimize, can be pre-calculated
                     timestampOrganizer.organizeTimestamps(augmentedRows, mySqlTableName, transactionUUID);
                 }
-
 
                 List<HBaseApplierMutationGenerator.PutMutation> eventMutations = augmentedRows.stream()
                         .flatMap(
@@ -163,6 +179,10 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                         )
                         .collect(Collectors.toList());
                 mutations.addAll(eventMutations);
+
+                this.metrics.getRegistry()
+                        .counter("hbase.applier.mutations.generate.count").inc(eventMutations.size());
+
             }
 
             // group by table
@@ -172,6 +192,10 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                             .collect(
                                     Collectors.groupingBy( mutation -> mutation.getTable() )
                             );
+
+            for (String table: mutationsByTable.keySet()) {
+                hbaseSchemaManager.createMirroredTableIfNotExists(table); // TODO: optimize this
+            }
 
             // write to hbase
             for (Map.Entry<String, List<HBaseApplierMutationGenerator.PutMutation>> entry : mutationsByTable.entrySet()){

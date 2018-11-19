@@ -84,11 +84,20 @@ public class BinaryLogSupplier implements Supplier {
     }
 
     private BinaryLogClient getClient(String hostname) {
+
         // TODO: Implement status variable parser: https://github.com/shyiko/mysql-binlog-connector-java/issues/174
-        BinaryLogClient client = new BinaryLogClient(hostname, this.port, this.schema, this.username, this.password);
+        BinaryLogClient client = new BinaryLogClient(
+                hostname,
+                this.port,
+                this.schema,
+                this.username,
+                this.password
+        );
+
         EventDeserializer eventDeserializer = new EventDeserializer();
         eventDeserializer.setCompatibilityMode(EventDeserializer.CompatibilityMode.CHAR_AND_BINARY_AS_BYTE_ARRAY);
         client.setEventDeserializer(eventDeserializer);
+
         return client;
     }
 

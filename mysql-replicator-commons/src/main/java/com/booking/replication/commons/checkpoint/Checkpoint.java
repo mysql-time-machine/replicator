@@ -19,6 +19,10 @@ public class Checkpoint implements Serializable, Comparable<Checkpoint> {
         this.binlog = binlog;
     }
 
+    public Checkpoint( Binlog binlog) {
+        this.binlog = binlog;
+    }
+
     public long getTimestamp() {
         return this.timestamp;
     }

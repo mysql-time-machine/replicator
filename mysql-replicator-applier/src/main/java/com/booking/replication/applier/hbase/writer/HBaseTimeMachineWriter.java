@@ -58,7 +58,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
 
             buffered = new ConcurrentHashMap<>();
 
-            mutationGenerator = new HBaseApplierMutationGenerator(configuration);
+            mutationGenerator = new HBaseApplierMutationGenerator(configuration, metrics);
 
             timestampOrganizer = new RowTimestampOrganizer(); // <- TODO: if not initial_snapshot_mode()
         }
@@ -181,7 +181,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                 mutations.addAll(eventMutations);
 
                 this.metrics.getRegistry()
-                        .counter("hbase.applier.mutations.generate.count").inc(eventMutations.size());
+                        .counter("hbase.applier.put.count").inc(eventMutations.size());
 
             }
 

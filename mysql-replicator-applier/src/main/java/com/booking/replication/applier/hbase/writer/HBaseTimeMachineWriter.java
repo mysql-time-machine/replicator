@@ -193,10 +193,6 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                                     Collectors.groupingBy( mutation -> mutation.getTable() )
                             );
 
-            for (String table: mutationsByTable.keySet()) {
-                hbaseSchemaManager.createMirroredTableIfNotExists(table); // TODO: optimize this
-            }
-
             // write to hbase
             for (Map.Entry<String, List<HBaseApplierMutationGenerator.PutMutation>> entry : mutationsByTable.entrySet()){
 

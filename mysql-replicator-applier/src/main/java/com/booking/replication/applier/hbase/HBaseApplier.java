@@ -192,14 +192,22 @@ public class HBaseApplier implements Applier {
 
                 String tableName = schemaSnapshot.getSchemaTransitionSequence().getTableName();
 
+                String hbaseTableName = getHBaseTableName(tableName);
+
                 synchronized (hbaseSchemaManager) {
-                    hbaseSchemaManager.createMirroredTableIfNotExists(tableName);
-                    LOG.info("created hbase table " + tableName);
+                    hbaseSchemaManager.createMirroredTableIfNotExists(hbaseTableName);
+                    LOG.info("created hbase table " + hbaseTableName);
                 }
 
                 LOG.debug(HBaseApplier.MAPPER.writeValueAsString(schemaSnapshot.getSchemaAfter().getTableSchemaCache()));
             }
         }
+    }
+
+    private String getHBaseTableName(String tableName) {
+        // TODO: add name transform pattern support in configuration
+        String hbaseTableName = configuration.get(Configuration.TARGET_NAMESPACE) + ":" + tableName;
+        return hbaseTableName;
     }
 
     private List<AugmentedEvent> extractDataEventsOnly(Collection<AugmentedEvent> events) {
@@ -217,24 +225,6 @@ public class HBaseApplier implements Applier {
         long now = Instant.now().toEpochMilli();
         if(now - hBaseApplierWriter.getBufferClearTime() > BUFFER_FLUSH_TIME_LIMIT) {
             forceFlush();
-        }
-    }
-
-    private void checkSchema(Collection<AugmentedEvent> events) {
-        // schema check
-        for (AugmentedEvent ev : events) {
-            try {
-                String tableName = extractTableName(ev);
-                if (tableName != null) {
-                    synchronized (hbaseSchemaManager) {
-                        hbaseSchemaManager.createMirroredTableIfNotExists(tableName);
-                    }
-                }
-            } catch (JsonProcessingException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                throw  new RuntimeException("Can't create table in HBase");
-            }
         }
     }
 

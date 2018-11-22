@@ -108,7 +108,7 @@ public class HBaseSchemaManager {
                 TableName tableName = TableName.valueOf(hbaseTableName);
 
                 if (admin.tableExists(tableName)) {
-                    throw  new RuntimeException("table exists in HBase, but not in cache - inner logic broken!");
+                    LOG.warn("Table exists in HBase, but not in schema cache. Probably a case of a table that was dropped and than created again");
                 } else {
 
                     HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);

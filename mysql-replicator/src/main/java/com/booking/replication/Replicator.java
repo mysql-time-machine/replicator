@@ -141,9 +141,13 @@ public class Replicator {
                 this.streamsSupplier.start();
 
                 Replicator.LOG.log(Level.INFO, "starting supplier");
-                this.supplier.start(new Checkpoint(
-                        new Binlog("binlog.000001", 4)
-                )); //this.seeker.seek(this.getCheckpoint()));
+
+                // TODO: add fixed start pos to cmd line params
+//                Checkpoint from = new Checkpoint(
+//                        new Binlog("binlog.000001", 4)
+//                );
+                Checkpoint from = this.seeker.seek(this.getCheckpoint());
+                this.supplier.start(from);
 
                 Replicator.LOG.log(Level.INFO, "replicator started");
             } catch (IOException | InterruptedException exception) {

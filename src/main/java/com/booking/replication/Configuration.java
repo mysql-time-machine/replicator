@@ -181,6 +181,9 @@ public class Configuration {
     public static final int PARTITIONING_METHOD_HASH_TABLE_NAME = 1;
     public static final int PARTITIONING_METHOD_HASH_PRIMARY_COLUMN = 2;
     public static final int PARTITIONING_METHOD_HASH_CUSTOM_COLUMN = 3;
+    public static final int PARTITIONING_METHOD_UNIVERSAL_COLUMN = 4;
+
+    public static final String UNIVERSAL_COLUMN_CONFIG_KEY = "for_all_tables_try_partition_by";
 
     public static class ValidationConfiguration {
         private String broker;

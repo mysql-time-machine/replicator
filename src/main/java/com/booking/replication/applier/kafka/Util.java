@@ -44,4 +44,25 @@ public class Util {
 
         return hashCode;
     }
+
+    public static int getHashCode_HashUniversalColumn(
+            String eventType,
+            String tableName,
+            Map<String, Map<String, String>> eventColumns,
+            String columnName) {
+        int hashCode;
+        if (columnName != null) {
+            Map<String, String> column = eventColumns.get(columnName);
+            if (column != null) { // if table has this column
+                hashCode = column.get(
+                        eventType.equals("UPDATE") ? "value_after" : "value"
+                ).hashCode();
+            } else { // no such columns, default to partition by table name
+                hashCode = tableName.hashCode();
+            }
+        } else {
+            hashCode = tableName.hashCode();
+        }
+        return hashCode;
+    }
 }

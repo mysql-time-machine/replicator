@@ -33,6 +33,7 @@ import java.util.regex.Pattern;
 
 import static com.booking.replication.applier.kafka.Util.getHashCode_HashCustomColumn;
 import static com.booking.replication.applier.kafka.Util.getHashCode_HashPrimaryKeyValuesMethod;
+import static com.booking.replication.applier.kafka.Util.getHashCode_HashUniversalColumn;
 import static com.codahale.metrics.MetricRegistry.name;
 
 public class KafkaApplier implements Applier {
@@ -429,6 +430,14 @@ public class KafkaApplier implements Applier {
                 case Configuration.PARTITIONING_METHOD_HASH_CUSTOM_COLUMN:
                     hashCode = getHashCode_HashCustomColumn(
                         eventType, tableName, eventColumns, partitionColumns
+                    );
+                    break;
+                case Configuration.PARTITIONING_METHOD_UNIVERSAL_COLUMN:
+                    hashCode = getHashCode_HashUniversalColumn(
+                            eventType,
+                            tableName,
+                            eventColumns,
+                            partitionColumns.get(Configuration.UNIVERSAL_COLUMN_CONFIG_KEY)
                     );
                     break;
                 default:

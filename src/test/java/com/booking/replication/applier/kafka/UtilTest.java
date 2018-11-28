@@ -16,6 +16,7 @@ import java.util.Map;
 
 import static com.booking.replication.applier.kafka.Util.getHashCode_HashCustomColumn;
 import static com.booking.replication.applier.kafka.Util.getHashCode_HashPrimaryKeyValuesMethod;
+import static com.booking.replication.applier.kafka.Util.getHashCode_HashUniversalColumn;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -144,5 +145,146 @@ public class UtilTest {
                 eventType, "TestTable", eventColumns, partitionColumns
         );
         assertTrue(hashCode == 87417);
+    }
+
+    @Test
+    public void testGetHashCode_HashCustomColumn_TryAllTables() throws Exception {
+
+        ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+
+        // TODO: move to separate configuration tests
+        String config = "replication_schema:\n" +
+                "    name:      'test'\n" +
+                "    username:  '__USER__'\n" +
+                "    password:  '__PASS__'\n" +
+                "    host_pool: ['localhost2', 'localhost']\n" +
+                "\n" +
+                "metadata_store:\n" +
+                "    username: '__USER__'\n" +
+                "    password: '__PASS__'\n" +
+                "    host:     'localhost'\n" +
+                "    database: 'test_active_schema'\n" +
+                "    file:\n" +
+                "        path: '/opt/replicator/replicator_metadata'\n" +
+                "kafka:\n" +
+                "    broker: \"kafka-1:9092,kafka-2:9092,kafka-3:9092,kafka-4:9092\"\n" +
+                "    topic:  test\n" +
+                "    tables: [\"sometable\"]\n" +
+                "\n" +
+                "    partitioning_method: 4\n" +
+                "    partition_columns:\n" +
+                "        for_all_tables_try_partition_by: UniversalColumn\n" +
+                "mysql_failover:\n" +
+                "    pgtid:\n" +
+                "        p_gtid_pattern: '(?<=_pseudo_gtid_hint__asc\\:)(.{8}\\:.{16}\\:.{8})'\n" +
+                "        p_gtid_prefix: \"use `pgtid_meta`;\"\n";
+
+        InputStream in = new ByteArrayInputStream(config.getBytes(StandardCharsets.UTF_8.name()));
+        Configuration configuration = mapper.readValue(in, Configuration.class);
+
+        int partitioningMethod = configuration.getKafkaPartitioningMethod();
+        assertTrue(partitioningMethod == Configuration.PARTITIONING_METHOD_UNIVERSAL_COLUMN);
+
+        HashMap<String, String> partitionColumns = configuration.getKafkaPartitionColumns();
+
+        assertTrue(partitionColumns.
+                get(Configuration.UNIVERSAL_COLUMN_CONFIG_KEY)
+                .equals("UniversalColumn"));
+
+        List<String> pkColumns = new ArrayList<>();
+        pkColumns.add("id");
+
+        Map<String,Map<String,String>> eventColumns = new CaseInsensitiveMap<>();
+
+        eventColumns.put("UniversalColumn", new HashMap<>());
+        eventColumns.get("UniversalColumn").put("value", "XYZ");
+        eventColumns.get("UniversalColumn").put("type", "VARCHAR");
+
+        eventColumns.put("id", new HashMap<>());
+        eventColumns.get("id").put("value", "789");
+        eventColumns.get("id").put("type", "INT");
+
+        String eventType = "INSERT";
+
+        String tableName = "SomeTable";
+
+        int hashCode = getHashCode_HashUniversalColumn(
+                eventType,
+                tableName,
+                eventColumns,
+                "UniversalColumn"
+        );
+
+        assertTrue(hashCode == 87417);
+    }
+
+    @Test
+    public void testGetHashCode_HashCustomColumn_TryAllTables_Fallback() throws Exception {
+
+        ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+
+        // TODO: move to separate configuration tests
+        String config = "replication_schema:\n" +
+                "    name:      'test'\n" +
+                "    username:  '__USER__'\n" +
+                "    password:  '__PASS__'\n" +
+                "    host_pool: ['localhost2', 'localhost']\n" +
+                "\n" +
+                "metadata_store:\n" +
+                "    username: '__USER__'\n" +
+                "    password: '__PASS__'\n" +
+                "    host:     'localhost'\n" +
+                "    database: 'test_active_schema'\n" +
+                "    file:\n" +
+                "        path: '/opt/replicator/replicator_metadata'\n" +
+                "kafka:\n" +
+                "    broker: \"kafka-1:9092,kafka-2:9092,kafka-3:9092,kafka-4:9092\"\n" +
+                "    topic:  test\n" +
+                "    tables: [\"sometable\"]\n" +
+                "\n" +
+                "    partitioning_method: 4\n" +
+                "    partition_columns:\n" +
+                "        for_all_tables_try_partition_by: UniversalColumn\n" +
+                "mysql_failover:\n" +
+                "    pgtid:\n" +
+                "        p_gtid_pattern: '(?<=_pseudo_gtid_hint__asc\\:)(.{8}\\:.{16}\\:.{8})'\n" +
+                "        p_gtid_prefix: \"use `pgtid_meta`;\"\n";
+
+        InputStream in = new ByteArrayInputStream(config.getBytes(StandardCharsets.UTF_8.name()));
+        Configuration configuration = mapper.readValue(in, Configuration.class);
+
+        int partitioningMethod = configuration.getKafkaPartitioningMethod();
+        assertTrue(partitioningMethod == Configuration.PARTITIONING_METHOD_UNIVERSAL_COLUMN);
+
+        HashMap<String, String> partitionColumns = configuration.getKafkaPartitionColumns();
+        assertTrue(partitionColumns.
+                get(Configuration.UNIVERSAL_COLUMN_CONFIG_KEY)
+                .equals("UniversalColumn"));
+
+        List<String> pkColumns = new ArrayList<>();
+        pkColumns.add("id");
+
+        Map<String,Map<String,String>> eventColumns = new CaseInsensitiveMap<>();
+
+        eventColumns.put("NonexistentColumn", new HashMap<>());
+        eventColumns.get("NonexistentColumn").put("value", "XYZ");
+        eventColumns.get("NonexistentColumn").put("type", "VARCHAR");
+
+        eventColumns.put("id", new HashMap<>());
+        eventColumns.get("id").put("value", "789");
+        eventColumns.get("id").put("type", "INT");
+
+        String eventType = "INSERT";
+
+        String tableName = "SomeTable";
+
+        int hashCode = getHashCode_HashUniversalColumn(
+                eventType,
+                tableName,
+                eventColumns,
+                "UniversalColumn"
+        );
+
+        assertTrue(hashCode == 1409314586);
     }
 }

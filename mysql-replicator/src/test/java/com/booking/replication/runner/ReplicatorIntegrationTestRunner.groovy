@@ -1,3 +1,4 @@
+
 package com.booking.replication.runner
 
 import com.booking.replication.Replicator
@@ -18,6 +19,7 @@ import com.booking.replication.spec.HBasePayloadTableSpec
 import com.booking.replication.spec.LongTransactionHBaseTestSpec
 import com.booking.replication.supplier.Supplier
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier
+import org.apache.hadoop.hbase.NamespaceDescriptor;
 
 import com.booking.replication.spec.HBaseTransmitInsertsTestSpec
 import com.mysql.jdbc.Driver
@@ -64,13 +66,11 @@ class ReplicatorIntegrationTestRunner extends  Specification {
 
     @Shared private static final int TRANSACTION_LIMIT = 100
 
+
+    @Shared public static final String HBASE_TARGET_NAMESPACE = "replicator_test"
+    @Shared public static final String HBASE_SCHEMA_HISTORY_NAMESPACE = "schema_history"
     @Shared private static final String HBASE_COLUMN_FAMILY_NAME = "d"
     @Shared public static final String HBASE_TEST_PAYLOAD_TABLE_NAME = "tbl_payload_context"
-
-//    @Shared private static ServicesControl zookeeper
-//    @Shared private static ServicesControl mysqlBinaryLog
-//    @Shared private static ServicesControl mysqlActiveSchema
-//    @Shared private static ServicesControl hbase
 
     @Shared private TESTS = [
             new HBaseTransmitInsertsTestSpec(),
@@ -79,40 +79,26 @@ class ReplicatorIntegrationTestRunner extends  Specification {
             new HBasePayloadTableSpec()
     ]
 
-//    @BeforeClass
-//    static void before() {
-
     @Shared ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS)
 
     @Shared Network network = Network.newNetwork()
 
     @Shared  ServicesControl zookeeper = servicesProvider.startZookeeper(network)
     @Shared  ServicesControl mysqlBinaryLog = servicesProvider.startMySQL(
-                MYSQL_SCHEMA,
-                MYSQL_USERNAME,
-                MYSQL_PASSWORD,
-                MYSQL_INIT_SCRIPT
-        )
+            MYSQL_SCHEMA,
+            MYSQL_USERNAME,
+            MYSQL_PASSWORD,
+            MYSQL_INIT_SCRIPT
+    )
     @Shared  ServicesControl mysqlActiveSchema = servicesProvider.startMySQL(
-                MYSQL_ACTIVE_SCHEMA,
-                MYSQL_USERNAME,
-                MYSQL_PASSWORD,
-                ACTIVE_SCHEMA_INIT_SCRIPT
-        )
+            MYSQL_ACTIVE_SCHEMA,
+            MYSQL_USERNAME,
+            MYSQL_PASSWORD,
+            ACTIVE_SCHEMA_INIT_SCRIPT
+    )
     @Shared ServicesControl hbase = servicesProvider.startHbase()
 
     @Shared  Replicator replicator
-
-
-//    }
-
-//    @AfterClass
-//    static void after() {
-//        hbase.close()
-//        mysqlBinaryLog.close()
-//        mysqlActiveSchema.close()
-//        zookeeper.close()
-//    }
 
     void setupSpec() throws Exception {
         // start
@@ -144,7 +130,7 @@ class ReplicatorIntegrationTestRunner extends  Specification {
         where:
         testName << TESTS.collect({ test ->
             test.doAction(mysqlBinaryLog)
-            sleep(10000)
+            sleep(30000)
             replicator.forceFlushApplier()
             test.testName()}
         )
@@ -235,7 +221,7 @@ class ReplicatorIntegrationTestRunner extends  Specification {
         return dataSource
     }
 
-     boolean hbaseSanityCheck() {
+    boolean hbaseSanityCheck() {
 
         boolean passed = true
 
@@ -247,10 +233,19 @@ class ReplicatorIntegrationTestRunner extends  Specification {
 
             Admin admin = connection.getAdmin()
 
+            NamespaceDescriptor replicationNamespace =
+                    NamespaceDescriptor.create(HBASE_TARGET_NAMESPACE).build()
+            admin.createNamespace(replicationNamespace)
+
+            NamespaceDescriptor schemaNamespace =
+                    NamespaceDescriptor.create(HBASE_SCHEMA_HISTORY_NAMESPACE).build()
+            admin.createNamespace(schemaNamespace)
+
             String clusterStatus = admin.getClusterStatus().toString()
             // LOG.info("hbase cluster status => " + clusterStatus)
 
             TableName tableName = TableName.valueOf("test1")
+
             if (!admin.tableExists(tableName)) {
                 HTableDescriptor tableDescriptor = new HTableDescriptor(tableName)
                 HColumnDescriptor cd = new HColumnDescriptor(HBASE_COLUMN_FAMILY_NAME)
@@ -260,6 +255,8 @@ class ReplicatorIntegrationTestRunner extends  Specification {
                 tableDescriptor.setCompactionEnabled(true)
 
                 admin.createTable(tableDescriptor)
+
+                //LOG.info("Created table " + tableName);
             }
 
             // write test data
@@ -321,7 +318,7 @@ class ReplicatorIntegrationTestRunner extends  Specification {
         return passed
     }
 
-     static String randString() {
+    static String randString() {
 
         int leftLimit = 97   // letter 'a'
         int rightLimit = 122 // letter 'z'
@@ -378,8 +375,8 @@ class ReplicatorIntegrationTestRunner extends  Specification {
         configuration.put(HBaseApplier.Configuration.HBASE_ZOOKEEPER_QUORUM, "localhost:2181")
         configuration.put(HBaseApplier.Configuration.REPLICATED_SCHEMA_NAME, MYSQL_SCHEMA)
 
-        configuration.put(HBaseApplier.Configuration.TARGET_NAMESPACE,  "")
-        configuration.put(HBaseApplier.Configuration.SCHEMA_HISTORY_NAMESPACE, "")
+        configuration.put(HBaseApplier.Configuration.TARGET_NAMESPACE,  HBASE_TARGET_NAMESPACE)
+        configuration.put(HBaseApplier.Configuration.SCHEMA_HISTORY_NAMESPACE, HBASE_SCHEMA_HISTORY_NAMESPACE)
 
         configuration.put(HBaseApplier.Configuration.INITIAL_SNAPSHOT_MODE, false)
         configuration.put(HBaseApplier.Configuration.HBASE_USE_SNAPPY, false)
@@ -388,5 +385,4 @@ class ReplicatorIntegrationTestRunner extends  Specification {
 
         return configuration
     }
-
 }

@@ -3,6 +3,7 @@ package com.booking.replication.spec;
 import com.booking.replication.ReplicatorIntegrationTest
 import com.booking.replication.applier.hbase.time.RowTimestampOrganizer
 import com.booking.replication.commons.services.ServicesControl
+import com.booking.replication.runner.ReplicatorIntegrationTestRunner
 import com.booking.replication.util.Replicant
 import com.fasterxml.jackson.databind.ObjectMapper
 
@@ -133,7 +134,12 @@ class HBaseMicrosecondValidationTestSpec implements ReplicatorIntegrationTest {
             // config
             Configuration config = HBaseConfiguration.create()
             Connection connection = ConnectionFactory.createConnection(config)
-            Table table = connection.getTable(TableName.valueOf(Bytes.toBytes(tableName)))
+
+
+            Table table = connection.getTable(TableName.valueOf(
+                    Bytes.toBytes(ReplicatorIntegrationTestRunner.HBASE_TARGET_NAMESPACE),
+                    Bytes.toBytes(tableName))
+            )
 
             // read
             Scan scan = new Scan()

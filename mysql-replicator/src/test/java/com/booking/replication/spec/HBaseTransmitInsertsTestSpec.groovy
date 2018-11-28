@@ -1,7 +1,10 @@
+
 package com.booking.replication.spec
 
 import com.booking.replication.ReplicatorIntegrationTest
+import com.booking.replication.applier.hbase.HBaseApplier
 import com.booking.replication.commons.services.ServicesControl
+import com.booking.replication.runner.ReplicatorIntegrationTestRunner
 import com.booking.replication.util.Replicant
 import com.fasterxml.jackson.databind.ObjectMapper
 import groovy.sql.Sql
@@ -82,19 +85,6 @@ class HBaseTransmitInsertsTestSpec implements ReplicatorIntegrationTest {
                 }
         }
 
-//        // SELECT CHECK
-//        def resultSet = []
-//        replicantMySQLHandle.eachRow('select * from sometable') {
-//            row ->
-//                resultSet.add([
-//                        pk_part_1    : row.pk_part_1,
-//                        pk_part_2    : row.pk_part_2,
-//                        randomInt    : row.randomInt,
-//                        randomVarchar: row.randomVarchar
-//                ])
-//        }
-//        print("retrieved from Replicant: " + prettyPrint(toJson(resultSet)))
-
         replicantMySQLHandle.close()
     }
 
@@ -158,17 +148,24 @@ class HBaseTransmitInsertsTestSpec implements ReplicatorIntegrationTest {
         return grouped
     }
 
-     @Override
-     Object getActualState() throws IOException {
+    @Override
+    Object getActualState() throws IOException {
 
+        String NAMESPACE = ReplicatorIntegrationTestRunner.HBASE_TARGET_NAMESPACE
         String tableName = TABLE_NAME
+
         def data = new TreeMap<>()
         try {
             // config
             Configuration config = HBaseConfiguration.create()
             Connection connection = ConnectionFactory.createConnection(config)
-            Table table = connection.getTable(TableName.valueOf(Bytes.toBytes(tableName)))
 
+            Table table = connection.getTable(
+                    TableName.valueOf(
+                            Bytes.toBytes(NAMESPACE),
+                            Bytes.toBytes(tableName)
+                    )
+            )
             // read
             Scan scan = new Scan()
             scan.setMaxVersions(1000)

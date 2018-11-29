@@ -6,6 +6,8 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.leader.LeaderLatch;
 import org.apache.curator.framework.recipes.leader.LeaderLatchListener;
+import org.apache.curator.framework.state.ConnectionState;
+import org.apache.curator.framework.state.ConnectionStateListener;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.CreateMode;
 
@@ -53,6 +55,17 @@ public class ZookeeperCoordinator extends Coordinator {
             @Override
             public void notLeader() {
                 ZookeeperCoordinator.this.loseLeadership();
+            }
+        });
+
+        this.client.getConnectionStateListenable().addListener(new ConnectionStateListener() {
+            @Override
+            public void stateChanged(CuratorFramework client, ConnectionState newState) {
+                switch(newState) {
+                    case LOST:
+                    case SUSPENDED:
+                        ZookeeperCoordinator.this.loseLeadership();
+                }
             }
         });
     }

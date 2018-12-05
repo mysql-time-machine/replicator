@@ -1,19 +1,17 @@
 
-package com.booking.replication.spec
+package com.booking.replication.it.hbase.impl
 
-import com.booking.replication.ReplicatorIntegrationTest
-import com.booking.replication.applier.hbase.HBaseApplier
+import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
 import com.booking.replication.commons.services.ServicesControl
-import com.booking.replication.runner.ReplicatorIntegrationTestRunner
-import com.booking.replication.util.Replicant
+import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTestRunner
+import com.booking.replication.it.util.MySQL
 import com.fasterxml.jackson.databind.ObjectMapper
-import groovy.sql.Sql
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.*
-import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.client.*
 import org.apache.hadoop.hbase.util.Bytes
 
-class HBaseTransmitInsertsTestSpec implements ReplicatorIntegrationTest {
+class TransmitInsertsTestImpl implements ReplicatorHBasePipelineIntegrationTest {
 
     private String HBASE_COLUMN_FAMILY_NAME = "d"
 
@@ -27,7 +25,7 @@ class HBaseTransmitInsertsTestSpec implements ReplicatorIntegrationTest {
     void doAction(ServicesControl mysqlReplicant) {
 
         // get handle
-        def replicantMySQLHandle = Replicant.getReplicantSql(
+        def replicantMySQLHandle = MySQL.getSqlHandle(
                 false,
                 SCHEMA_NAME,
                 mysqlReplicant
@@ -151,7 +149,7 @@ class HBaseTransmitInsertsTestSpec implements ReplicatorIntegrationTest {
     @Override
     Object getActualState() throws IOException {
 
-        String NAMESPACE = ReplicatorIntegrationTestRunner.HBASE_TARGET_NAMESPACE
+        String NAMESPACE = ReplicatorHBasePipelineIntegrationTestRunner.HBASE_TARGET_NAMESPACE
         String tableName = TABLE_NAME
 
         def data = new TreeMap<>()

@@ -1,9 +1,9 @@
-package com.booking.replication.spec
+package com.booking.replication.it.hbase.impl
 
-import com.booking.replication.ReplicatorIntegrationTest
+import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
 import com.booking.replication.commons.services.ServicesControl
-import com.booking.replication.runner.ReplicatorIntegrationTestRunner
-import com.booking.replication.util.Replicant
+import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTestRunner
+import com.booking.replication.it.util.MySQL
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hbase.Cell
@@ -17,8 +17,6 @@ import org.apache.hadoop.hbase.client.ResultScanner
 import org.apache.hadoop.hbase.client.Scan
 import org.apache.hadoop.hbase.client.Table
 import org.apache.hadoop.hbase.util.Bytes
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 
 /**
  * Inserts multiple rows in a long transaction and verifies
@@ -80,7 +78,7 @@ import org.slf4j.LoggerFactory
  *  the values would be spread in time to far away from the actual commit
  *  time that matters.
  */
-class LongTransactionHBaseTestSpec implements ReplicatorIntegrationTest  {
+class LongTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest  {
 
     private static final ObjectMapper MAPPER = new ObjectMapper()
 
@@ -90,14 +88,14 @@ class LongTransactionHBaseTestSpec implements ReplicatorIntegrationTest  {
 
     @Override
     String testName() {
-        return "LongTransactionHBaseTestSpec"
+        return "LongTransactionTestImpl"
     }
 
     @Override
     void doAction(ServicesControl mysqlReplicant) {
 
         // get handle
-        def replicantMySQLHandle = Replicant.getReplicantSql(
+        def replicantMySQLHandle = MySQL.getSqlHandle(
                 false,
                 SCHEMA_NAME,
                 mysqlReplicant
@@ -167,7 +165,7 @@ class LongTransactionHBaseTestSpec implements ReplicatorIntegrationTest  {
             Configuration config = HBaseConfiguration.create()
             Connection connection = ConnectionFactory.createConnection(config)
             Table table = connection.getTable(TableName.valueOf(
-                    Bytes.toBytes(ReplicatorIntegrationTestRunner.HBASE_TARGET_NAMESPACE),
+                    Bytes.toBytes(ReplicatorHBasePipelineIntegrationTestRunner.HBASE_TARGET_NAMESPACE),
                     Bytes.toBytes(tableName)))
 
             // read
@@ -258,7 +256,6 @@ class LongTransactionHBaseTestSpec implements ReplicatorIntegrationTest  {
 
     @Override
     boolean actualEqualsExpected(Object expected, Object actual) {
-
         List<String> exp = (List<String>) expected;
         List<String> act = (List<String>) actual;
 
@@ -266,6 +263,5 @@ class LongTransactionHBaseTestSpec implements ReplicatorIntegrationTest  {
         String actJSON = MAPPER.writeValueAsString(act)
 
         expJSON.equals(actJSON)
-
     }
 }

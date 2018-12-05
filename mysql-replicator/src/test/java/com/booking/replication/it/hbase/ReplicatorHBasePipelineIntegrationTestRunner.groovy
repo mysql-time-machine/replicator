@@ -1,5 +1,4 @@
-
-package com.booking.replication.runner
+package com.booking.replication.it.hbase
 
 import com.booking.replication.Replicator
 import com.booking.replication.applier.Applier
@@ -14,24 +13,18 @@ import com.booking.replication.commons.services.ServicesControl
 import com.booking.replication.commons.services.ServicesProvider
 import com.booking.replication.coordinator.Coordinator
 import com.booking.replication.coordinator.ZookeeperCoordinator
-import com.booking.replication.spec.HBaseMicrosecondValidationTestSpec
-import com.booking.replication.spec.HBasePayloadTableSpec
-import com.booking.replication.spec.LongTransactionHBaseTestSpec
+import com.booking.replication.it.hbase.impl.MicrosecondValidationTestImpl
+import com.booking.replication.it.hbase.impl.LongTransactionTestImpl
+import com.booking.replication.it.hbase.impl.PayloadTableTestImpl
 import com.booking.replication.supplier.Supplier
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier
-import org.apache.hadoop.hbase.NamespaceDescriptor;
-
-import com.booking.replication.spec.HBaseTransmitInsertsTestSpec
+import com.booking.replication.it.hbase.impl.TransmitInsertsTestImpl
 import com.mysql.jdbc.Driver
 import org.apache.commons.dbcp2.BasicDataSource
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hbase.*
 import org.apache.hadoop.hbase.client.*
 import org.apache.hadoop.hbase.util.Bytes
-
-import org.junit.AfterClass
-import org.junit.BeforeClass
-import org.junit.Test
 import org.testcontainers.containers.Network
 
 import java.sql.ResultSet
@@ -40,15 +33,13 @@ import java.sql.Statement
 import java.util.concurrent.TimeUnit
 import java.util.logging.Logger
 
-import static org.junit.Assert.assertTrue
-
 import spock.lang.Shared
 import spock.lang.Specification
 import spock.lang.Unroll
 
-class ReplicatorIntegrationTestRunner extends  Specification {
+class ReplicatorHBasePipelineIntegrationTestRunner extends  Specification {
 
-    @Shared private static final Logger LOG = Logger.getLogger(ReplicatorIntegrationTestRunner.class.getName())
+    @Shared private static final Logger LOG = Logger.getLogger(ReplicatorHBasePipelineIntegrationTestRunner.class.getName())
 
     @Shared private static final String ZOOKEEPER_LEADERSHIP_PATH = "/replicator/leadership"
     @Shared private static final String ZOOKEEPER_CHECKPOINT_PATH = "/replicator/checkpoint"
@@ -66,17 +57,16 @@ class ReplicatorIntegrationTestRunner extends  Specification {
 
     @Shared private static final int TRANSACTION_LIMIT = 100
 
-
     @Shared public static final String HBASE_TARGET_NAMESPACE = "replicator_test"
     @Shared public static final String HBASE_SCHEMA_HISTORY_NAMESPACE = "schema_history"
     @Shared private static final String HBASE_COLUMN_FAMILY_NAME = "d"
     @Shared public static final String HBASE_TEST_PAYLOAD_TABLE_NAME = "tbl_payload_context"
 
     @Shared private TESTS = [
-            new HBaseTransmitInsertsTestSpec(),
-            new HBaseMicrosecondValidationTestSpec(),
-            new LongTransactionHBaseTestSpec(),
-            new HBasePayloadTableSpec()
+            new TransmitInsertsTestImpl(),
+            new MicrosecondValidationTestImpl(),
+            new LongTransactionTestImpl(),
+            new PayloadTableTestImpl()
     ]
 
     @Shared ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS)
@@ -102,7 +92,7 @@ class ReplicatorIntegrationTestRunner extends  Specification {
 
     void setupSpec() throws Exception {
         // start
-        replicator = startReplicatorPipeline()
+        replicator = startReplicator()
     }
 
     def cleanupSpec() {
@@ -110,7 +100,7 @@ class ReplicatorIntegrationTestRunner extends  Specification {
         LOG.info("tests done, shutting down replicator pipeline")
 
         // stop
-        stopReplicatorPipeline(replicator)
+        stopReplicator(replicator)
 
         hbase.close()
         mysqlBinaryLog.close()
@@ -139,12 +129,14 @@ class ReplicatorIntegrationTestRunner extends  Specification {
 
     }
 
-    private stopReplicatorPipeline(Replicator replicator) {
+    private stopReplicator(Replicator replicator) {
         replicator.stop()
     }
 
-    private Replicator startReplicatorPipeline() {
+    private Replicator startReplicator() {
+
         LOG.info("waiting for containers to start...")
+
         // Active SchemaManager
         int counter = 60
         while (counter > 0) {
@@ -155,6 +147,7 @@ class ReplicatorIntegrationTestRunner extends  Specification {
             }
             counter--
         }
+
         // HBase
         counter = 60
         while (counter > 0) {
@@ -225,6 +218,8 @@ class ReplicatorIntegrationTestRunner extends  Specification {
 
         boolean passed = true
 
+        String sanityCheckTableName = "sanity_check"
+
         try {
             // instantiate Configuration class
             Configuration config = HBaseConfiguration.create()
@@ -242,9 +237,9 @@ class ReplicatorIntegrationTestRunner extends  Specification {
             admin.createNamespace(schemaNamespace)
 
             String clusterStatus = admin.getClusterStatus().toString()
-            // LOG.info("hbase cluster status => " + clusterStatus)
+            LOG.info("hbase cluster status => " + clusterStatus)
 
-            TableName tableName = TableName.valueOf("test1")
+            TableName tableName = TableName.valueOf(sanityCheckTableName)
 
             if (!admin.tableExists(tableName)) {
                 HTableDescriptor tableDescriptor = new HTableDescriptor(tableName)
@@ -256,12 +251,12 @@ class ReplicatorIntegrationTestRunner extends  Specification {
 
                 admin.createTable(tableDescriptor)
 
-                //LOG.info("Created table " + tableName);
+                LOG.info("Created table " + tableName)
             }
 
             // write test data
             HashMap<String,HashMap<String, HashMap<Long, String>>> data = new HashMap<>()
-            Table table = connection.getTable(TableName.valueOf(Bytes.toBytes("test1")))
+            Table table = connection.getTable(TableName.valueOf(Bytes.toBytes(sanityCheckTableName)))
             long timestamp = System.currentTimeMillis()
 
             for (int i = 0; i < 10; i++) {

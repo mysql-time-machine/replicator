@@ -483,6 +483,10 @@
                 <version>3.0.0-M1</version>
                 <configuration>
                     <argLine>${tests.arguments}</argLine>
+		    <includes>
+		   	<include>**/*Test.java</include>
+		   	<include>**/*Test*.java</include>
+                    </includes>
                     <systemProperties>
                         <property>
                             <name>docker.image.zookeeper</name>

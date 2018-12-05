@@ -1,10 +1,10 @@
-package com.booking.replication;
+package com.booking.replication.it.hbase;
 
 import com.booking.replication.commons.services.ServicesControl;
 
 import java.io.IOException;
 
-public interface ReplicatorIntegrationTest {
+public interface ReplicatorHBasePipelineIntegrationTest {
 
     String testName();
 

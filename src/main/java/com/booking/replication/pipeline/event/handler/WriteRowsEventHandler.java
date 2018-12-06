@@ -9,6 +9,7 @@ import com.booking.replication.schema.exception.TableMapException;
 import com.codahale.metrics.Meter;
 import com.google.code.or.binlog.BinlogEventV4;
 import com.google.code.or.binlog.impl.event.AbstractRowEvent;
+import com.google.code.or.binlog.impl.event.WriteRowsEventV2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,11 +21,12 @@ import static com.codahale.metrics.MetricRegistry.name;
  * Created by edmitriev on 7/12/17.
  */
 public class WriteRowsEventHandler implements BinlogEventV4Handler {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(WriteRowsEventHandler.class);
+
     private final EventHandlerConfiguration eventHandlerConfiguration;
     private final Meter counter = Metrics.registry.meter(name("events", "insertEventCounter"));;
     private final PipelineOrchestrator pipelineOrchestrator;
-
 
     public WriteRowsEventHandler(EventHandlerConfiguration eventHandlerConfiguration) {
         this.eventHandlerConfiguration = eventHandlerConfiguration;
@@ -44,6 +46,13 @@ public class WriteRowsEventHandler implements BinlogEventV4Handler {
                 .removeRowsWithoutPrimaryKey();
 
         if (!augmentedRowsEvent.getSingleRowEvents().isEmpty()) {
+
+            // TODO: add payload to augmented event
+            //    - make this configurable
+            //    - then:
+            //          if (addPayloadToAugmentedEven == true) {
+            //              augmentedRowsEvent.addPayload(augmentedPayload)
+            //          }
             eventHandlerConfiguration.getApplier().applyAugmentedRowsEvent(
                 augmentedRowsEvent,
                 currentTransaction
@@ -55,6 +64,18 @@ public class WriteRowsEventHandler implements BinlogEventV4Handler {
     @Override
     public void handle(BinlogEventV4 binlogEventV4) throws TransactionException, TransactionSizeLimitException {
         final AbstractRowEvent event = (AbstractRowEvent) binlogEventV4;
+
         pipelineOrchestrator.addEventIntoTransaction(event);
+        try {
+            if (pipelineOrchestrator
+                    .currentTransaction
+                    .getTableNameFromID(event.getTableId())
+                    .equals(pipelineOrchestrator.configuration.getPayloadTableName()))
+            {
+                pipelineOrchestrator.currentTransaction.setPayloadEvent((WriteRowsEventV2) event);
+            }
+        } catch (TableMapException e) {
+            LOGGER.error("TableMapException", e);
+        }
     }
 }

@@ -137,6 +137,11 @@ public class HBaseApplier implements Applier {
             final AugmentedRowsEvent augmentedRowsEvent,
             final CurrentTransaction currentTransaction) throws ApplierException, IOException {
 
+        String mysqlTableName = augmentedRowsEvent.getMysqlTableName();
+        if (configuration.getTablesToSkip().contains(mysqlTableName)) {
+            return;
+        }
+
         String hbaseNamespace = getHBaseNamespace(currentTransaction);
         if (hbaseNamespace == null) {
             return;

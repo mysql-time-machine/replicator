@@ -81,7 +81,6 @@ public class PipelineOrchestrator extends Thread {
     private volatile boolean running = false;
     private volatile boolean replicatorShutdownRequested = false;
 
-
     private HashMap<String, Boolean> rotateEventAllreadySeenForBinlogFile = new HashMap<>();
 
     /**
@@ -104,8 +103,6 @@ public class PipelineOrchestrator extends Thread {
     private boolean isRewinding = false;
 
     private Long replDelay = 0L;
-
-
 
     public PipelineOrchestrator(
             ReplicatorQueues repQueues,

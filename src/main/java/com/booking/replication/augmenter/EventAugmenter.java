@@ -325,6 +325,13 @@ public class EventAugmenter {
             tableMetrics.processed.inc();
         }
 
+
+        /**
+         * TODO: cache augmented payload:
+         *          if (tableName.equals(payloadTableName) {
+         *                  currentTransaction.addAugmentedPayload()
+         *          }
+         */
         return augEventGroup;
     }
 

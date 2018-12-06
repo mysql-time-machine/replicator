@@ -14,7 +14,7 @@ public class ColumnSchema {
     private String dataType;
     private String columnType;
     private int ordinalPosition; // ColumnSchema position in the table
-    private int characterMaximumLength;
+    private long characterMaximumLength;
     private boolean isNullable;
 
     public ColumnSchema() {
@@ -29,7 +29,7 @@ public class ColumnSchema {
         this.setNullable(tableInfoResultSet.getBoolean("IS_NULLABLE"));
         this.setOrdinalPosition(tableInfoResultSet.getInt("ORDINAL_POSITION"));
         this.setCharacterSetName(tableInfoResultSet.getString("CHARACTER_SET_NAME"));
-        this.setCharacterMaximumLength(tableInfoResultSet.getInt("CHARACTER_MAXIMUM_LENGTH"));
+        this.setCharacterMaximumLength(tableInfoResultSet.getLong("CHARACTER_MAXIMUM_LENGTH"));
     }
 
     public String getColumnKey() {
@@ -56,11 +56,11 @@ public class ColumnSchema {
         this.dataType = dataType;
     }
 
-    public int getCharacterMaximumLength() {
+    public long getCharacterMaximumLength() {
         return characterMaximumLength;
     }
 
-    public void setCharacterMaximumLength(int characterMaximumLength) {
+    public void setCharacterMaximumLength(long characterMaximumLength) {
         this.characterMaximumLength = characterMaximumLength;
     }
 

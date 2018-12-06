@@ -6,10 +6,7 @@ import com.booking.replication.pipeline.event.handler.TransactionException;
 import com.booking.replication.schema.exception.TableMapException;
 import com.booking.replication.sql.QueryInspector;
 import com.google.code.or.binlog.BinlogEventV4;
-import com.google.code.or.binlog.impl.event.BinlogEventV4HeaderImpl;
-import com.google.code.or.binlog.impl.event.QueryEvent;
-import com.google.code.or.binlog.impl.event.TableMapEvent;
-import com.google.code.or.binlog.impl.event.XidEvent;
+import com.google.code.or.binlog.impl.event.*;
 import com.google.common.base.Joiner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +32,8 @@ public class CurrentTransaction {
 
     private TableMapEvent firstMapEventInTransaction = null;
     private Queue<BinlogEventV4> events = new LinkedList<>();
+
+    private WriteRowsEventV2 transactionContextPayloadEvent;
 
     private final Map<String, TableMapEvent> currentTransactionTableMapEvents = new HashMap<>();
 
@@ -80,6 +79,9 @@ public class CurrentTransaction {
         return beginEvent;
     }
 
+    public void setPayloadEvent(WriteRowsEventV2 payloadEvent) {
+        this.transactionContextPayloadEvent = payloadEvent;
+    }
 
     void setFinishEvent(XidEvent finishEvent) throws TransactionException {
         // xa-capable engines block (InnoDB)

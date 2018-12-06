@@ -114,6 +114,13 @@ public class Configuration {
         private static class HiveImports {
             public List<String> tables = Collections.emptyList();
         }
+
+        @JsonDeserialize
+        public SkipTables skip_tables = new SkipTables();
+
+        private static class SkipTables {
+            public List<String> skip_list = Collections.emptyList();
+        }
     }
 
     @JsonDeserialize
@@ -416,6 +423,9 @@ public class Configuration {
                         .append("\n")
                         .append("\ttablesForWhichToTrackDailyChanges : ")
                         .append(joiner.join(hbaseConfiguration.hive_imports.tables))
+                        .append("\n")
+                        .append("\tskip_list                        : ")
+                        .append(joiner.join(hbaseConfiguration.skip_tables.skip_list))
                         .append("\n");
             }
         }
@@ -613,6 +623,14 @@ public class Configuration {
     public List<String> getTablesForWhichToTrackDailyChanges() {
         if (hbaseConfiguration != null) {
             return hbaseConfiguration.hive_imports.tables;
+        } else {
+            return null;
+        }
+    }
+
+    public List<String> getTablesToSkip() {
+        if (hbaseConfiguration != null) {
+            return hbaseConfiguration.skip_tables.skip_list;
         } else {
             return null;
         }

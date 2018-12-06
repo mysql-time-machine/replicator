@@ -7,6 +7,9 @@ import org.junit.Test;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -364,5 +367,55 @@ public class ConfigurationTest {
         boolean useSnappy = configuration.useSnappyForHBaseTables();
 
         assertEquals(true, useSnappy);
+    }
+
+    @Test
+    public void testHBaseConfigurationSkipTables() throws Exception {
+
+        ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+
+        String config =
+                "replication_schema:\n" +
+                        "    name:      'test'\n" +
+                        "    username:  '__USER__'\n" +
+                        "    password:  '__PASS__'\n" +
+                        "    host_pool: ['localhost2', 'localhost']\n" +
+
+                        "metadata_store:\n" +
+                        "    username: '__USER__'\n" +
+                        "    password: '__PASS__'\n" +
+                        "    host:     'localhost'\n" +
+                        "    database: 'test_active_schema'\n" +
+                        "    file:\n" +
+                        "        path: '/opt/replicator/replicator_metadata'\n" +
+
+                        "hbase:\n" +
+                        "    namespace: \"test\"\n" +
+                        "    zookeeper_quorum: [\"hbase\"]\n" +
+                        "    use_snappy: false\n" +
+                        "    hive_imports:\n" +
+                        "        tables: ['test1','test2','test3']\n" +
+                        "    skip_tables:\n" +
+                        "        skip_list: ['skip1','skip2','skip3']\n" +
+
+                        "orchestrator:\n" +
+                        "    rewinding_enabled: false\n" +
+                        "converter:\n" +
+                        "    stringify_null: 1\n" +
+                        "mysql_failover:\n" +
+                        "    pgtid:\n" +
+                        "        p_gtid_pattern: '(?<=_pseudo_gtid_hint__asc\\:)(.{8}\\:.{16}\\:.{8})'\n" +
+                        "        p_gtid_prefix: \"use `pgtid_meta`;\"\n";
+
+        InputStream in = new ByteArrayInputStream(config.getBytes(StandardCharsets.UTF_8.name()));
+        Configuration configuration = mapper.readValue(in, Configuration.class);
+
+        List<String> tablesToSkip = configuration.getTablesToSkip();
+
+        List<String> expected = Arrays.asList("skip1", "skip2", "skip3");
+
+        for (int i = 0; i < 3; i++) {
+            assertEquals(expected.get(i), tablesToSkip.get(i));
+        }
     }
 }

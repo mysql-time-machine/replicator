@@ -4,6 +4,7 @@ import com.booking.replication.applier.Seeker;
 import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.Partitioner;
 import com.booking.replication.augmenter.Augmenter;
+import com.booking.replication.augmenter.AugmenterFilter;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.checkpoint.CheckpointApplier;
 import com.booking.replication.commons.checkpoint.Binlog;
@@ -53,6 +54,7 @@ public class Replicator {
     private final Coordinator coordinator;
     private final Supplier supplier;
     private final Augmenter augmenter;
+    private final AugmenterFilter augmenterFilter;
     private final Seeker seeker;
     private final Partitioner partitioner;
     private final Applier applier;
@@ -83,6 +85,8 @@ public class Replicator {
 
         this.augmenter = Augmenter.build(configuration);
 
+        this.augmenterFilter = AugmenterFilter.build(configuration);
+
         this.seeker = Seeker.build(configuration);
 
         this.partitioner = Partitioner.build(configuration);
@@ -108,6 +112,7 @@ public class Replicator {
                 .fromPush()
                 .process(this.augmenter)
                 .process(this.seeker)
+                .process(this.augmenterFilter)
                 .to((events) -> {
                     Map<Integer, Collection<AugmentedEvent>> splitEventsMap = new HashMap<>();
                     for (AugmentedEvent event : events) {

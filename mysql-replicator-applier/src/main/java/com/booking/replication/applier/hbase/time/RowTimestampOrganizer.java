@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.booking.replication.applier.hbase.mutation.HBaseApplierMutationGenerator.getHBaseRowKey;
+import static com.booking.replication.applier.hbase.schema.HBaseRowKeyMapper.getHBaseRowKey;
 
 /**
  * class: RowTimestampOrganizer

@@ -8,6 +8,7 @@ import com.booking.replication.applier.hbase.HBaseApplier
 import com.booking.replication.augmenter.ActiveSchemaManager
 import com.booking.replication.augmenter.Augmenter
 import com.booking.replication.augmenter.AugmenterContext
+import com.booking.replication.augmenter.AugmenterFilter
 import com.booking.replication.checkpoint.CheckpointApplier
 import com.booking.replication.commons.services.ServicesControl
 import com.booking.replication.commons.services.ServicesProvider
@@ -57,10 +58,17 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends  Specification {
 
     @Shared private static final int TRANSACTION_LIMIT = 100
 
+    @Shared public static final String AUGMENTER_FILTER_TYPE = "TABLE_MERGE_PATTERN"
+    @Shared public static final String AUGMENTER_FILTER_CONFIGURATION = "([_][12]\\d{3}(0[1-9]|1[0-2]))"
+
     @Shared public static final String HBASE_TARGET_NAMESPACE = "replicator_test"
     @Shared public static final String HBASE_SCHEMA_HISTORY_NAMESPACE = "schema_history"
     @Shared private static final String HBASE_COLUMN_FAMILY_NAME = "d"
     @Shared public static final String HBASE_TEST_PAYLOAD_TABLE_NAME = "tbl_payload_context"
+
+    // @Shared public static final String HBASE_TABLE_MERGE_STRATEGY = "TABLE_NAME_AS_KEY_PREFIX"
+    @Shared public static final String HBASE_TABLE_MERGE_STRATEGY = null; // "TABLE_NAME_SUFFIX_REMOVE"
+    @Shared public static final String HBASE_TABLE_MERGE_PATTERN = null; // "([_][12]\\d{3}(0[1-9]|1[0-2]))"
 
     @Shared private TESTS = [
             new TransmitInsertsTestImpl(),
@@ -351,15 +359,17 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends  Specification {
 
         // SchemaManager Manager Configuration
         configuration.put(Augmenter.Configuration.SCHEMA_TYPE, Augmenter.SchemaType.ACTIVE.name())
-
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, mysqlActiveSchema.getHost())
-
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(mysqlActiveSchema.getPort()))
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_SCHEMA, MYSQL_ACTIVE_SCHEMA)
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, MYSQL_ROOT_USERNAME)
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PASSWORD, MYSQL_PASSWORD)
 
+        // Augmenter
         configuration.put(AugmenterContext.Configuration.TRANSACTION_BUFFER_LIMIT, String.valueOf(TRANSACTION_LIMIT))
+
+        configuration.put(AugmenterFilter.Configuration.FILTER_TYPE, AUGMENTER_FILTER_TYPE)
+        configuration.put(AugmenterFilter.Configuration.FILTER_CONFIGURATION, AUGMENTER_FILTER_CONFIGURATION)
 
         // Applier Configuration
         configuration.put(Seeker.Configuration.TYPE, Seeker.Type.NONE.name())
@@ -376,7 +386,11 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends  Specification {
         configuration.put(HBaseApplier.Configuration.INITIAL_SNAPSHOT_MODE, false)
         configuration.put(HBaseApplier.Configuration.HBASE_USE_SNAPPY, false)
         configuration.put(HBaseApplier.Configuration.DRYRUN, false)
+
         configuration.put(HBaseApplier.Configuration.PAYLOAD_TABLE_NAME, HBASE_TEST_PAYLOAD_TABLE_NAME)
+
+        configuration.put(HBaseApplier.Configuration.TABLE_MERGE_STRATEGY, HBASE_TABLE_MERGE_STRATEGY)
+        configuration.put(HBaseApplier.Configuration.TABLE_MERGE_PATTERN, HBASE_TABLE_MERGE_PATTERN)
 
         return configuration
     }

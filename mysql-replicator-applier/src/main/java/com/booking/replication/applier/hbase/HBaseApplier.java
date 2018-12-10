@@ -57,6 +57,8 @@ public class HBaseApplier implements Applier {
         String HBASE_USE_SNAPPY         = "applier.hbase.snappy";
         String DRYRUN                   = "applier.hbase.dryrun";
         String PAYLOAD_TABLE_NAME       = "applier.hbase.payload.table.name";
+        String TABLE_MERGE_STRATEGY     = "applier.hbase.table.merge.strategy";
+        String TABLE_MERGE_PATTERN     = "applier.hbase.table.merge.pattern";
     }
 
     @SuppressWarnings("unused")

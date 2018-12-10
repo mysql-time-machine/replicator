@@ -35,6 +35,10 @@ public class WriteRowsAugmentedEventData implements TableAugmentedEventData {
         return this.eventTable;
     }
 
+    public void overrideEventTableName(String tableName) {
+        this.eventTable.setName(tableName);
+    }
+
     public Collection<Boolean> getIncludedColumns() {
         return this.includedColumns;
     }

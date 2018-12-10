@@ -176,7 +176,7 @@ public class HBaseSchemaManager {
         // get event timestamp
         Long eventTimestamp = schemaSnapshot.getSchemaTransitionSequence().getSchemaTransitionTimestamp();
 
-        String hbaseTableName = TableNameMapper.getSchemaSnapshotHistoryHBaseTableName(configuration);
+        String hbaseTableName = HBaseTableNameMapper.getSchemaSnapshotHistoryHBaseTableName(configuration);
 
         String hbaseRowKey = eventTimestamp.toString();
         if ((boolean)configuration.get(HBaseApplier.Configuration.INITIAL_SNAPSHOT_MODE)) {

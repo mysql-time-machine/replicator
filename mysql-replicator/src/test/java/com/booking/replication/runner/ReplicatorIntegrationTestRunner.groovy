@@ -72,6 +72,10 @@ class ReplicatorIntegrationTestRunner extends  Specification {
     @Shared private static final String HBASE_COLUMN_FAMILY_NAME = "d"
     @Shared public static final String HBASE_TEST_PAYLOAD_TABLE_NAME = "tbl_payload_context"
 
+    // @Shared public static final String HBASE_TABLE_MERGE_STRATEGY = "TABLE_NAME_AS_KEY_PREFIX"
+    @Shared public static final String HBASE_TABLE_MERGE_STRATEGY = null; // "TABLE_NAME_SUFFIX_REMOVE"
+    @Shared public static final String HBASE_TABLE_MERGE_PATTERN = null; // "([_][12]\\d{3}(0[1-9]|1[0-2]))"
+
     @Shared private TESTS = [
             new HBaseTransmitInsertsTestSpec(),
             new HBaseMicrosecondValidationTestSpec(),
@@ -381,7 +385,11 @@ class ReplicatorIntegrationTestRunner extends  Specification {
         configuration.put(HBaseApplier.Configuration.INITIAL_SNAPSHOT_MODE, false)
         configuration.put(HBaseApplier.Configuration.HBASE_USE_SNAPPY, false)
         configuration.put(HBaseApplier.Configuration.DRYRUN, false)
+
         configuration.put(HBaseApplier.Configuration.PAYLOAD_TABLE_NAME, HBASE_TEST_PAYLOAD_TABLE_NAME)
+
+        configuration.put(HBaseApplier.Configuration.TABLE_MERGE_STRATEGY, HBASE_TABLE_MERGE_STRATEGY)
+        configuration.put(HBaseApplier.Configuration.TABLE_MERGE_PATTERN, HBASE_TABLE_MERGE_PATTERN)
 
         return configuration
     }

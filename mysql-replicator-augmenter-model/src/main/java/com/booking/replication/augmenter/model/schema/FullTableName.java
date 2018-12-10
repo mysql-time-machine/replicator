@@ -24,6 +24,10 @@ public class FullTableName implements Serializable {
         return this.name;
     }
 
+    public void setName(String tableName) {
+        this.name = tableName;
+    }
+
     @Override
     public String toString() {
         return String.format("%s.%s", this.database, this.name);

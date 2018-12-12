@@ -1,11 +1,11 @@
-package com.booking.replication.util
+package com.booking.replication.it.util
 
 import com.booking.replication.commons.services.ServicesControl
 import groovy.sql.Sql
 
-class Replicant {
+class MySQL {
 
-     static Sql getReplicantSql(
+     static Sql getSqlHandle(
             boolean autoCommit,
             String schemaName,
             ServicesControl mysqlReplicant

@@ -37,7 +37,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Replicator {
-    interface Configuration {
+
+    public interface Configuration {
         String CHECKPOINT_PATH = "checkpoint.path";
         String CHECKPOINT_DEFAULT = "checkpoint.default";
         String REPLICATOR_THREADS = "replicator.threads";

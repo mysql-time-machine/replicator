@@ -1,10 +1,10 @@
-package com.booking.replication.spec
+package com.booking.replication.it.hbase.impl
 
-import com.booking.replication.ReplicatorIntegrationTest
+import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
 import com.booking.replication.commons.services.ServicesControl
-import com.booking.replication.runner.ReplicatorIntegrationTestRunner
-import com.booking.replication.util.HBase
-import com.booking.replication.util.Replicant
+import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTestRunner
+import com.booking.replication.it.util.HBase
+import com.booking.replication.it.util.MySQL
 import groovy.sql.Sql
 
 
@@ -13,23 +13,23 @@ import groovy.sql.Sql
  * that we get them in the same order (when sorted by timestamp) in which
  * transactions were made
  * */
-class HBasePayloadTableSpec implements ReplicatorIntegrationTest {
+class PayloadTableTestImpl implements ReplicatorHBasePipelineIntegrationTest {
 
     private tableName = "tbl_payload_data"
     private payloadTableName =
-            ReplicatorIntegrationTestRunner.HBASE_TEST_PAYLOAD_TABLE_NAME
+            ReplicatorHBasePipelineIntegrationTestRunner.HBASE_TEST_PAYLOAD_TABLE_NAME
 
     private String SCHEMA_NAME = "replicator"
 
     @Override
     String testName() {
-        return "HBasePayloadTableSpec"
+        return "PayloadTableTestImpl"
     }
 
     @Override
     void doAction(ServicesControl mysqlReplicant) {
 
-        def replicantMySQLHandle = Replicant.getReplicantSql(
+        def replicantMySQLHandle = MySQL.getSqlHandle(
             false,
             SCHEMA_NAME,
             mysqlReplicant
@@ -156,13 +156,11 @@ class HBasePayloadTableSpec implements ReplicatorIntegrationTest {
     boolean actualEqualsExpected(Object actual, Object expected) {
         def exp = (List<String>) expected
         def act = (List<String>) actual
-
         boolean ok = true
         exp.eachWithIndex{
             String entry, int i ->
                 if (!entry.equals(act[i])) { ok = false }
         }
-
         ok
     }
 

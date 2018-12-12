@@ -1,10 +1,10 @@
-package com.booking.replication.spec;
+package com.booking.replication.it.hbase.impl;
 
-import com.booking.replication.ReplicatorIntegrationTest
+import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
 import com.booking.replication.applier.hbase.time.RowTimestampOrganizer
 import com.booking.replication.commons.services.ServicesControl
-import com.booking.replication.runner.ReplicatorIntegrationTestRunner
-import com.booking.replication.util.Replicant
+import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTestRunner
+import com.booking.replication.it.util.MySQL
 import com.fasterxml.jackson.databind.ObjectMapper
 
 import org.apache.hadoop.conf.Configuration
@@ -17,7 +17,7 @@ import org.apache.hadoop.hbase.util.Bytes
  * microsecond timestamps in HBase is the same as
  * the order in which the rows were inserted
  */
-class HBaseMicrosecondValidationTestSpec implements ReplicatorIntegrationTest {
+class MicrosecondValidationTestImpl implements ReplicatorHBasePipelineIntegrationTest {
 
     private String HBASE_COLUMN_FAMILY_NAME = "d"
 
@@ -61,7 +61,7 @@ class HBaseMicrosecondValidationTestSpec implements ReplicatorIntegrationTest {
     void doAction(ServicesControl mysqlReplicant) {
 
         // get handle
-        def replicant = Replicant.getReplicantSql(
+        def replicant = MySQL.getSqlHandle(
                 false,
                 SCHEMA_NAME,
                 mysqlReplicant
@@ -137,7 +137,7 @@ class HBaseMicrosecondValidationTestSpec implements ReplicatorIntegrationTest {
 
 
             Table table = connection.getTable(TableName.valueOf(
-                    Bytes.toBytes(ReplicatorIntegrationTestRunner.HBASE_TARGET_NAMESPACE),
+                    Bytes.toBytes(ReplicatorHBasePipelineIntegrationTestRunner.HBASE_TARGET_NAMESPACE),
                     Bytes.toBytes(tableName))
             )
 

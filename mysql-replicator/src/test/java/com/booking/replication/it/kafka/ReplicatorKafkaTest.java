@@ -1,5 +1,6 @@
-package com.booking.replication;
+package com.booking.replication.it.kafka;
 
+import com.booking.replication.Replicator;
 import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.Partitioner;
 import com.booking.replication.applier.Seeker;
@@ -25,8 +26,6 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
-
 
 import java.util.Collections;
 import java.util.HashMap;

@@ -1,8 +1,6 @@
 package com.booking.replication.augmenter;
 
-import com.booking.replication.augmenter.filters.TableNameBlackListFilter;
 import com.booking.replication.augmenter.filters.TableNameMergePatternFilter;
-import com.booking.replication.augmenter.filters.TableNameWhiteListFilter;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import java.util.Collection;
 import java.util.Map;
@@ -16,19 +14,6 @@ public interface AugmenterFilter extends Function<Collection<AugmentedEvent>,Col
             @Override
             protected AugmenterFilter newInstance(Map<String, Object> configuration) {
                 return (augmentedEvents) -> augmentedEvents;
-            }
-        },
-
-        TABLE_WHITE_LIST {
-            @Override
-            protected AugmenterFilter newInstance(Map<String, Object> configuration) {
-                return new TableNameWhiteListFilter(configuration);
-            }
-        },
-
-        TABLE_BLACK_LIST {
-            protected AugmenterFilter newInstance(Map<String, Object> configuration) {
-                return new TableNameBlackListFilter(configuration);
             }
         },
 

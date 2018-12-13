@@ -27,21 +27,27 @@ public class TableNameWhiteListFilter implements AugmenterFilter {
                                 WriteRowsAugmentedEventData writeEv = ((WriteRowsAugmentedEventData) ev.getData());
                                 if (tableWhiteList.contains(writeEv.getEventTable())) {
                                     return ev;
+                                } else {
+                                    return null;
                                 }
                             }
                             if (ev.getHeader().getEventType() == AugmentedEventType.UPDATE_ROWS) {
                                 UpdateRowsAugmentedEventData updateEv = ((UpdateRowsAugmentedEventData) ev.getData());
                                 if (tableWhiteList.contains(updateEv.getEventTable())) {
                                     return ev;
+                                } else {
+                                    return null;
                                 }
                             }
                             if (ev.getHeader().getEventType() == AugmentedEventType.DELETE_ROWS) {
                                 DeleteRowsAugmentedEventData deleteEv = ((DeleteRowsAugmentedEventData) ev.getData());
                                 if (tableWhiteList.contains(deleteEv.getEventTable())) {
                                     return ev;
+                                } else {
+                                    return null;
                                 }
                             }
-                            return null;
+                            return ev;
                         }
 
                 )

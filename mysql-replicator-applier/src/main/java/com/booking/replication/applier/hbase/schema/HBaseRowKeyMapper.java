@@ -1,6 +1,5 @@
 package com.booking.replication.applier.hbase.schema;
 
-import com.booking.replication.applier.hbase.HBaseApplier;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.google.common.base.Joiner;
 import org.apache.logging.log4j.LogManager;
@@ -12,11 +11,10 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class HBaseRowKeyMapper {
+
     public static final String DIGEST_ALGORITHM             = "MD5";
     private static MessageDigest md;
 
@@ -28,12 +26,9 @@ public class HBaseRowKeyMapper {
         }
     }
 
-    private static final String pattern = "([_][12]\\d{3}(0[1-9]|1[0-2]))";
-    private static final Pattern tableNameMergePattern = Pattern.compile(pattern);
-
     private static final Logger LOG = LogManager.getLogger(HBaseRowKeyMapper.class);
 
-    public static String getHBaseRowKey(AugmentedRow row) {
+    public static String getSaltedHBaseRowKey(AugmentedRow row) {
 
         // RowID
         // This is sorted by column OP (from information schema)
@@ -106,37 +101,5 @@ public class HBaseRowKeyMapper {
                 + ("00" + byte4hex).substring(byte4hex.length())
                 ;
         return salt + ";" + hbaseRowID;
-    }
-
-    public static String getHBaseRowKeyWithMergeStrategyApplied(
-            AugmentedRow augmentedRow,
-            Map<String, Object> configuration
-    ) {
-
-        String mergeStrategy = (String) configuration.get(HBaseApplier.Configuration.TABLE_MERGE_STRATEGY);
-
-        if (mergeStrategy == null) {
-            return  HBaseRowKeyMapper.getHBaseRowKey(augmentedRow);
-        }
-
-        if (mergeStrategy.equals("TABLE_NAME_AS_KEY_PREFIX")) {
-            return  augmentedRow.getTableName().toLowerCase()
-                        + "|"
-                        + HBaseRowKeyMapper.getHBaseRowKey(augmentedRow);
-        }
-
-        if (mergeStrategy.equals("TABLE_NAME_SUFFIX_REMOVE")) {
-            String tableName = augmentedRow.getTableName();
-            Matcher m = tableNameMergePattern.matcher(tableName);
-            if (m.find()) {
-                // TODO: add more advanced rewrite options
-                String mergedTableName = tableName.replaceAll(pattern, "");
-                return mergedTableName;
-            } else {
-                return  augmentedRow.getTableName();
-            }
-        }
-        LOG.warn("Failed to match table name against supported patterns. Default to base table name.");
-        return augmentedRow.getTableName();
     }
 }

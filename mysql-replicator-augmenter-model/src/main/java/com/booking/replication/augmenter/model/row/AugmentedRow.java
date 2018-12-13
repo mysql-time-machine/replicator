@@ -162,4 +162,6 @@ public class AugmentedRow {
     public Long getRowMicrosecondTimestamp() {
         return this.rowMicrosecondTimestamp;
     }
+
+
 }

@@ -3,7 +3,6 @@ package com.booking.replication.applier.hbase.mutation;
 import com.booking.replication.applier.hbase.HBaseApplier;
 
 import com.booking.replication.applier.hbase.schema.HBaseRowKeyMapper;
-import com.booking.replication.applier.hbase.schema.HBaseTableNameMapper;
 import com.booking.replication.augmenter.model.AugmenterModel;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.commons.metrics.Metrics;
@@ -15,7 +14,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -32,13 +30,11 @@ public class HBaseApplierMutationGenerator {
         private final Put put;
         private final String table;
         private final String sourceRowUri;
-        private final boolean isTableMirrored;
 
-        public PutMutation(Put put, String table, String sourceRowUri, boolean isTableMirrored) {
+        public PutMutation(Put put, String table, String sourceRowUri) {
             this.put = put;
             this.sourceRowUri = sourceRowUri;
             this.table = table;
-            this.isTableMirrored = isTableMirrored;
         }
 
         public Put getPut() {
@@ -99,7 +95,7 @@ public class HBaseApplierMutationGenerator {
     public PutMutation getPutForMirroredTable(AugmentedRow augmentedRow) {
 
         // Base RowID
-        String hbaseRowID = HBaseRowKeyMapper.getHBaseRowKey(augmentedRow);
+        String hbaseRowID = HBaseRowKeyMapper.getSaltedHBaseRowKey(augmentedRow);
 
         // Base Table Name
         String namespace = (String) configuration.get(HBaseApplier.Configuration.TARGET_NAMESPACE);
@@ -110,28 +106,9 @@ public class HBaseApplierMutationGenerator {
         String hbaseTableName = prefix.toLowerCase() + augmentedRow.getTableName().toLowerCase();
 
         // Context Payload Table
-        Boolean isPayloadTable = false;
         String payloadTableName =  (String) configuration.get(HBaseApplier.Configuration.PAYLOAD_TABLE_NAME);
         if (payloadTableName != null && payloadTableName.equals(augmentedRow.getTableName())) {
             hbaseRowID = HBaseRowKeyMapper.getPayloadTableHBaseRowKey(augmentedRow);
-            isPayloadTable = true;
-        }
-
-        // Table name merge strategy
-        String mergeStrategy = (String) configuration.get(HBaseApplier.Configuration.TABLE_MERGE_STRATEGY);
-        if (mergeStrategy != null && !isPayloadTable) { // payload table is invariant to name merge strategies
-
-            String rewrittenTableName = HBaseTableNameMapper.getHBaseTableNameWithMergeStrategyApplied(
-                    augmentedRow.getTableName(),
-                    configuration
-            );
-            hbaseTableName = rewrittenTableName;
-
-            String rewrittenHbaseRowID = HBaseRowKeyMapper.getHBaseRowKeyWithMergeStrategyApplied(
-                    augmentedRow,
-                    configuration
-            );
-            hbaseRowID = rewrittenHbaseRowID;
         }
 
         // Mutation
@@ -331,8 +308,8 @@ public class HBaseApplierMutationGenerator {
         return new PutMutation(
                 put,
                 hbaseTableName,
-                null,   // TODO: validator <- getRowUri(augmentedRow),
-                true);
+                null  // TODO: validator <- getRowUri(augmentedRow),
+        );
     }
 
     private String getRowUri(AugmentedRow row){

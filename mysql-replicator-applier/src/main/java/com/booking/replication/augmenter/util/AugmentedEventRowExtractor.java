@@ -1,4 +1,4 @@
-package com.booking.replication.applier.hbase.util;
+package com.booking.replication.augmenter.util;
 
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.event.DeleteRowsAugmentedEventData;
@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-// TODO: move to augmenter.util
 public class AugmentedEventRowExtractor {
 
     public static List<AugmentedRow> extractAugmentedRows(AugmentedEvent augmentedEvent) {

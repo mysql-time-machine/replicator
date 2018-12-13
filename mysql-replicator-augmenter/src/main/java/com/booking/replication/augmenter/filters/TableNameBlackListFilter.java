@@ -2,6 +2,7 @@ package com.booking.replication.augmenter.filters;
 
 import com.booking.replication.augmenter.AugmenterFilter;
 import com.booking.replication.augmenter.model.event.*;
+import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -26,21 +27,27 @@ public class TableNameBlackListFilter implements AugmenterFilter {
                                 WriteRowsAugmentedEventData writeEv = ((WriteRowsAugmentedEventData) ev.getData());
                                 if (!tableBlackList.contains(writeEv.getEventTable())) {
                                     return ev;
+                                } else {
+                                    return null;
                                 }
                             }
                             if (ev.getHeader().getEventType() == AugmentedEventType.UPDATE_ROWS) {
                                 UpdateRowsAugmentedEventData updateEv = ((UpdateRowsAugmentedEventData) ev.getData());
                                 if (!tableBlackList.contains(updateEv.getEventTable())) {
                                     return ev;
+                                } else {
+                                    return null;
                                 }
                             }
                             if (ev.getHeader().getEventType() == AugmentedEventType.DELETE_ROWS) {
                                 DeleteRowsAugmentedEventData deleteEv = ((DeleteRowsAugmentedEventData) ev.getData());
                                 if (!tableBlackList.contains(deleteEv.getEventTable())) {
                                     return ev;
+                                } else {
+                                    return null;
                                 }
                             }
-                            return null;
+                            return ev; // non-row events are not filtered
                         }
                 )
                 .filter(Objects::nonNull)

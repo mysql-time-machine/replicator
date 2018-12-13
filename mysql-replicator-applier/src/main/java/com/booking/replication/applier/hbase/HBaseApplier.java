@@ -24,6 +24,7 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toList;
@@ -57,8 +58,6 @@ public class HBaseApplier implements Applier {
         String HBASE_USE_SNAPPY         = "applier.hbase.snappy";
         String DRYRUN                   = "applier.hbase.dryrun";
         String PAYLOAD_TABLE_NAME       = "applier.hbase.payload.table.name";
-        String TABLE_MERGE_STRATEGY     = "applier.hbase.table.merge.strategy";
-        String TABLE_MERGE_PATTERN     = "applier.hbase.table.merge.pattern";
     }
 
     @SuppressWarnings("unused")
@@ -188,28 +187,16 @@ public class HBaseApplier implements Applier {
         // schema snapshot (DLL log)
         for (AugmentedEvent ev : events) {
             if (ev.getOptionalPayload() != null) {
+
                 LOG.info("AugmentedEvent contains optionalPayload");
+
                 SchemaSnapshot schemaSnapshot = ((SchemaSnapshot)ev.getOptionalPayload());
+
                 hbaseSchemaManager.writeSchemaSnapshot(schemaSnapshot, this.configuration);
-
-                String tableName = schemaSnapshot.getSchemaTransitionSequence().getTableName();
-
-                String hbaseTableName = getHBaseTableName(tableName);
-
-                synchronized (hbaseSchemaManager) {
-                    hbaseSchemaManager.createMirroredTableIfNotExists(hbaseTableName);
-                    LOG.info("created hbase table " + hbaseTableName);
-                }
 
                 LOG.debug(HBaseApplier.MAPPER.writeValueAsString(schemaSnapshot.getSchemaAfter().getTableSchemaCache()));
             }
         }
-    }
-
-    private String getHBaseTableName(String tableName) {
-        // TODO: add name transform pattern support in configuration
-        String hbaseTableName = configuration.get(Configuration.TARGET_NAMESPACE) + ":" + tableName;
-        return hbaseTableName;
     }
 
     private List<AugmentedEvent> extractDataEventsOnly(Collection<AugmentedEvent> events) {
@@ -230,27 +217,9 @@ public class HBaseApplier implements Applier {
         }
     }
 
-    private String extractTableName(AugmentedEvent event) {
-        String eventTableName;
-        switch (event.getHeader().getEventType()) {
-            case WRITE_ROWS:
-                eventTableName = ((WriteRowsAugmentedEventData) event.getData()).getEventTable().getName();
-                break;
-            case UPDATE_ROWS:
-                eventTableName = ((UpdateRowsAugmentedEventData) event.getData()).getEventTable().getName();
-                break;
-            case DELETE_ROWS:
-                eventTableName = ((DeleteRowsAugmentedEventData) event.getData()).getEventTable().getName();
-                break;
-            default:
-                return null;
-        }
-        return eventTableName;
-    }
-
     @Override
     public boolean forceFlush() {
-        boolean s = false;
+        boolean s;
         try {
             s = hBaseApplierWriter.forceFlush();
         } catch (IOException e) {

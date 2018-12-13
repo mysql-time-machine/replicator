@@ -1,14 +1,15 @@
 package com.booking.replication.augmenter.filters;
 
 import com.booking.replication.augmenter.AugmenterFilter;
-import com.booking.replication.augmenter.model.event.AugmentedEvent;
+import com.booking.replication.augmenter.model.event.*;
+import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
 
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Table name rewrite filter - removes part of the table name that
@@ -25,22 +26,53 @@ import java.util.regex.Pattern;
 public class TableNameMergePatternFilter implements AugmenterFilter {
 
     private final String pattern;
-    private final Pattern tableNameMergePattern;
+    private final Pattern tableNameSufixPattern;
 
     public TableNameMergePatternFilter(Map<String, Object> configuration) {
         pattern = (String) configuration.get(Configuration.FILTER_CONFIGURATION);
-        tableNameMergePattern = Pattern.compile(pattern);
+        tableNameSufixPattern = Pattern.compile(pattern);
     }
 
     @Override
     public Collection<AugmentedEvent> apply(Collection<AugmentedEvent> augmentedEvents) {
 
-      // TODO
-        return null;
+        return augmentedEvents.stream()
+                .map(
+                        ev -> {
+                            if (ev.getHeader().getEventType() == AugmentedEventType.WRITE_ROWS) {
+                                WriteRowsAugmentedEventData writeEv = ((WriteRowsAugmentedEventData) ev.getData());
+                                String originalName = writeEv.getEventTable().getName();
+                                String rewrittenName = getRewrittenName(originalName);
+                                // override
+                                writeEv.getEventTable().setName(rewrittenName);
+                                writeEv.getAugmentedRows().stream().forEach(au -> au.setTableName(rewrittenName));
+                            }
+                            if (ev.getHeader().getEventType() == AugmentedEventType.UPDATE_ROWS) {
+                                UpdateRowsAugmentedEventData updateEv = ((UpdateRowsAugmentedEventData) ev.getData());
+                                String originalName = updateEv.getEventTable().getName();
+                                String rewrittenName = getRewrittenName(originalName);
+                                // override
+                                updateEv.getEventTable().setName(rewrittenName);
+                                updateEv.getEventTable().setName(rewrittenName);
+                                updateEv.getAugmentedRows().stream().forEach(au -> au.setTableName(rewrittenName));
+                            }
+                            if (ev.getHeader().getEventType() == AugmentedEventType.DELETE_ROWS) {
+                                DeleteRowsAugmentedEventData deleteEv = ((DeleteRowsAugmentedEventData) ev.getData());
+                                String originalName = deleteEv.getEventTable().getName();
+                                String rewrittenName = getRewrittenName(originalName);
+                                // override
+                                deleteEv.getEventTable().setName(rewrittenName);
+                                deleteEv.getEventTable().setName(rewrittenName);
+                                deleteEv.getAugmentedRows().stream().forEach(au -> au.setTableName(rewrittenName));
+                            }
+                            return ev;
+                        }
+                )
+                .collect(Collectors.toList());
     }
 
     private String getRewrittenName(String originalTableName) {
-        Matcher m = tableNameMergePattern.matcher(originalTableName); // TODO: <- cache this
+        Matcher m = tableNameSufixPattern.matcher(originalTableName); // TODO: <- cache this
         if (m.find()) {
             String mergedTableName = originalTableName.replaceAll(pattern, "");
             return mergedTableName;

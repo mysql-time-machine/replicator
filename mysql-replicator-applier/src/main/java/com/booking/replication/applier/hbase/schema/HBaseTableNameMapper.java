@@ -2,23 +2,26 @@
 package com.booking.replication.applier.hbase.schema;
 
 import com.booking.replication.applier.hbase.HBaseApplier;
+import com.booking.replication.augmenter.model.row.AugmentedRow;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.Map;
-import java.util.TimeZone;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Created by bosko on 3/29/16.
  */
-public class TableNameMapper {
+public class HBaseTableNameMapper {
+
+    private static final Logger LOG = LogManager.getLogger(HBaseTableNameMapper.class);
 
     public static String getSchemaSnapshotHistoryHBaseTableName(Map<String, Object> configuration) {
         String schemaHistoryTableName =
                 configuration.get(HBaseApplier.Configuration.SCHEMA_HISTORY_NAMESPACE)
                         + ":" +
                         configuration.get(HBaseApplier.Configuration.REPLICATED_SCHEMA_NAME).toString().toLowerCase();
-        // TODO: make schema history namespace configurable
         return schemaHistoryTableName + "_schema_history";
     }
 }

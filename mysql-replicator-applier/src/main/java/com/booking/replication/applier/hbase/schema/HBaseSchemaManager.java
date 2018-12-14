@@ -35,7 +35,7 @@ public class HBaseSchemaManager {
 
     private Connection connection;
 
-    private final Map<String, Integer> knownHBaseTables = new ConcurrentHashMap<>();
+    private final Map<String, Integer> seenHBaseTables = new ConcurrentHashMap<>();
 
     private final Map<String, Object> configuration;
 
@@ -91,26 +91,34 @@ public class HBaseSchemaManager {
 
     }
 
-    public void createMirroredTableIfNotExists(String hbaseTableName) throws IOException {
+    public void createHBaseTableIfNotExists(String hbaseTableName) throws IOException {
 
         try {
 
             if (!DRY_RUN) {
+
+                if (seenHBaseTables.containsKey(hbaseTableName)) {
+                    return;
+                }
+
                 if (connection == null) {
                     connection = ConnectionFactory.createConnection(hbaseConf);
                 }
 
-                if (knownHBaseTables.containsKey(hbaseTableName)) {
-                    return;
-                }
-
                 Admin admin = connection.getAdmin();
-                TableName tableName = TableName.valueOf(hbaseTableName);
+
+                TableName tableName;
+
+                String namespace = (String) configuration.get(HBaseApplier.Configuration.TARGET_NAMESPACE);
+                if (namespace.isEmpty()) {
+                    tableName = TableName.valueOf(hbaseTableName);
+                } else {
+                    tableName = TableName.valueOf(namespace, hbaseTableName);
+                }
 
                 if (admin.tableExists(tableName)) {
                     LOG.warn("Table exists in HBase, but not in schema cache. Probably a case of a table that was dropped and than created again");
                 } else {
-
                     HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);
                     HColumnDescriptor cd = new HColumnDescriptor("d");
 
@@ -128,27 +136,18 @@ public class HBaseSchemaManager {
 
                     admin.createTable(tableDescriptor, splitKeys);
 
-                    knownHBaseTables.put(hbaseTableName, 1);
+                    seenHBaseTables.put(hbaseTableName, 1);
 
                     LOG.warn("Created hbase table " + hbaseTableName);
-
                 }
-
             }
         } catch (IOException e) {
             throw new IOException("Failed to create table in HBase", e);
         }
     }
 
-    public boolean isTableKnownToHBase(String tableName) {
-        return knownHBaseTables.get(tableName) != null;
-    }
-
     public void writeSchemaSnapshot(SchemaSnapshot schemaSnapshot, Map<String, Object> configuration)
             throws IOException, SchemaTransitionException {
-
-        String mySqlDbName =
-                (String) configuration.get(HBaseApplier.Configuration.REPLICATED_SCHEMA_NAME);
 
         // get sql_statement
         String ddl = schemaSnapshot.getSchemaTransitionSequence().getDdl();
@@ -176,7 +175,7 @@ public class HBaseSchemaManager {
         // get event timestamp
         Long eventTimestamp = schemaSnapshot.getSchemaTransitionSequence().getSchemaTransitionTimestamp();
 
-        String hbaseTableName = TableNameMapper.getSchemaSnapshotHistoryHBaseTableName(configuration);
+        String hbaseTableName = HBaseTableNameMapper.getSchemaSnapshotHistoryHBaseTableName(configuration);
 
         String hbaseRowKey = eventTimestamp.toString();
         if ((boolean)configuration.get(HBaseApplier.Configuration.INITIAL_SNAPSHOT_MODE)) {

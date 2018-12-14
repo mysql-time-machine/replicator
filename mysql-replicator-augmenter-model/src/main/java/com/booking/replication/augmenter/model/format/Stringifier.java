@@ -108,6 +108,7 @@ public class Stringifier {
         return stringifiedCellValues;
     }
 
+    // todo use cellValueDeserializer
     public static String stringifyCellValue(Map<String, String[]> cache, String columnType, Serializable cellValue, String collation) {
         String stringifiedCellValue = null;
 
@@ -122,6 +123,7 @@ public class Stringifier {
                     // Currently handle all the other character set as UTF8, extend this to handle specific character sets
                     stringifiedCellValue = new String(bytes, StandardCharsets.UTF_8);
                 }
+                return stringifiedCellValue;
             }
 
             if (cellValue instanceof BitSet) {
@@ -131,7 +133,7 @@ public class Stringifier {
                 stringifiedCellValue = buffer.reverse().toString();
             }
 
-            if (columnType.contains("tiny")) {
+            if (columnType.contains("tinyint")) {
                 if (columnType.contains("unsigned")) {
                     stringifiedCellValue = String.valueOf(
                             Byte.toUnsignedLong(
@@ -141,7 +143,7 @@ public class Stringifier {
                 } else {
                     stringifiedCellValue = String.valueOf(Number.class.cast(cellValue).longValue());
                 }
-            } else if (columnType.contains("small")) {
+            } else if (columnType.contains("smallint")) {
                 if (columnType.contains("unsigned")) {
                     stringifiedCellValue = String.valueOf(
                             (Integer.parseInt(cellValue.toString()) & 0xffff)
@@ -149,7 +151,7 @@ public class Stringifier {
                 } else {
                     stringifiedCellValue = String.valueOf(Number.class.cast(cellValue).longValue());
                 }
-            } else if (columnType.contains("medium")) {
+            } else if (columnType.contains("mediumint")) {
                 if (columnType.contains("unsigned")) {
                     stringifiedCellValue = String.valueOf(
                             ((Integer) cellValue) & 0xffffff

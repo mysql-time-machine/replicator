@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.booking.replication.applier.hbase.mutation.HBaseApplierMutationGenerator.getHBaseRowKey;
+import static com.booking.replication.applier.hbase.schema.HBaseRowKeyMapper.getSaltedHBaseRowKey;
 
 /**
  * class: RowTimestampOrganizer
@@ -64,7 +64,7 @@ public class RowTimestampOrganizer {
         }
 
         for (AugmentedRow row : rows) {
-            String key = mysqlTableName + ":" + getHBaseRowKey(row);
+            String key = mysqlTableName + ":" + getSaltedHBaseRowKey(row);
             TimestampTuple v;
             if (timestampsCache.containsKey(key)) {
                 v = timestampsCache.get(key);

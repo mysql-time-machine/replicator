@@ -10,10 +10,7 @@ import com.booking.replication.augmenter.model.event.*;
 import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
 
 import com.booking.replication.commons.metrics.Metrics;
-import com.codahale.metrics.Counter;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -24,13 +21,10 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toList;
-
-import com.booking.replication.commons.metrics.Metrics;
-import com.booking.replication.commons.metrics.Metrics;
-import com.codahale.metrics.MetricRegistry;
 
 public class HBaseApplier implements Applier {
 
@@ -64,7 +58,7 @@ public class HBaseApplier implements Applier {
 
         this.configuration = configuration;
 
-        this.metrics = Metrics.build(configuration);
+        this.metrics = Metrics.getInstance(configuration);
 
         hbaseConfig = getHBaseConfig(configuration);
 
@@ -186,28 +180,16 @@ public class HBaseApplier implements Applier {
         // schema snapshot (DLL log)
         for (AugmentedEvent ev : events) {
             if (ev.getOptionalPayload() != null) {
+
                 LOG.info("AugmentedEvent contains optionalPayload");
+
                 SchemaSnapshot schemaSnapshot = ((SchemaSnapshot)ev.getOptionalPayload());
+
                 hbaseSchemaManager.writeSchemaSnapshot(schemaSnapshot, this.configuration);
-
-                String tableName = schemaSnapshot.getSchemaTransitionSequence().getTableName();
-
-                String hbaseTableName = getHBaseTableName(tableName);
-
-                synchronized (hbaseSchemaManager) {
-                    hbaseSchemaManager.createMirroredTableIfNotExists(hbaseTableName);
-                    LOG.info("created hbase table " + hbaseTableName);
-                }
 
                 LOG.debug(HBaseApplier.MAPPER.writeValueAsString(schemaSnapshot.getSchemaAfter().getTableSchemaCache()));
             }
         }
-    }
-
-    private String getHBaseTableName(String tableName) {
-        // TODO: add name transform pattern support in configuration
-        String hbaseTableName = configuration.get(Configuration.TARGET_NAMESPACE) + ":" + tableName;
-        return hbaseTableName;
     }
 
     private List<AugmentedEvent> extractDataEventsOnly(Collection<AugmentedEvent> events) {
@@ -228,27 +210,9 @@ public class HBaseApplier implements Applier {
         }
     }
 
-    private String extractTableName(AugmentedEvent event) {
-        String eventTableName;
-        switch (event.getHeader().getEventType()) {
-            case WRITE_ROWS:
-                eventTableName = ((WriteRowsAugmentedEventData) event.getData()).getEventTable().getName();
-                break;
-            case UPDATE_ROWS:
-                eventTableName = ((UpdateRowsAugmentedEventData) event.getData()).getEventTable().getName();
-                break;
-            case DELETE_ROWS:
-                eventTableName = ((DeleteRowsAugmentedEventData) event.getData()).getEventTable().getName();
-                break;
-            default:
-                return null;
-        }
-        return eventTableName;
-    }
-
     @Override
     public boolean forceFlush() {
-        boolean s = false;
+        boolean s;
         try {
             s = hBaseApplierWriter.forceFlush();
         } catch (IOException e) {

@@ -1,5 +1,6 @@
 package com.booking.replication.checkpoint;
 
+import com.booking.replication.augmenter.AugmenterContext;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.commons.checkpoint.CheckpointStorage;
 
@@ -11,21 +12,22 @@ public interface CheckpointApplier extends BiConsumer<AugmentedEvent, Integer>, 
     enum Type {
         NONE {
             @Override
-            protected CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath, long period) {
-                BiConsumer<AugmentedEvent, Integer> cap =  (event, map) -> {
-
-                };
-                return (CheckpointApplier) cap;
+            protected CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath, long period, boolean transactionEnabled) {
+//                BiConsumer<AugmentedEvent, Integer> cap =  (event, map) -> {
+//
+//                };
+//                return (CheckpointApplier) cap;
+                return new DummyCheckPointApplier();
             }
         },
         COORDINATOR {
             @Override
-            protected CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath, long period) {
-                return new CoordinatorCheckpointApplier(checkpointStorage, checkpointPath, period);
+            protected CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath, long period, boolean transactionEnabled) {
+                return new CoordinatorCheckpointApplier(checkpointStorage, checkpointPath, period, transactionEnabled);
             }
         };
 
-        protected abstract CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath, long period);
+        protected abstract CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath, long period, boolean transactionEnabled);
     }
 
     interface Configuration {
@@ -38,12 +40,14 @@ public interface CheckpointApplier extends BiConsumer<AugmentedEvent, Integer>, 
     }
 
     static CheckpointApplier build(Map<String, Object> configuration, CheckpointStorage checkpointStorage, String checkpointPath) {
+        boolean transactionEnabled = Boolean.parseBoolean(configuration.getOrDefault(AugmenterContext.Configuration.TRANSACTIONS_ENABLED, "true").toString());
         return CheckpointApplier.Type.valueOf(
                 configuration.getOrDefault(Configuration.TYPE, Type.NONE.name()).toString()
         ).newInstance(
                 checkpointStorage,
                 checkpointPath,
-                Long.parseLong(configuration.getOrDefault(Configuration.PERIOD, "60000").toString())
+                Long.parseLong(configuration.getOrDefault(Configuration.PERIOD, "60000").toString()),
+                transactionEnabled
         );
     }
 }

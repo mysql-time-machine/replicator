@@ -13,7 +13,12 @@ public class FullTableName implements Serializable {
 
     public FullTableName(String database, String name) {
         this.database = database;
-        this.name = name;
+        this.name = this.cleaned(name);
+    }
+
+    private String cleaned(String name) {
+        if(name == null) return name;
+        return name.replaceAll("`", "");
     }
 
     public String getDatabase() {
@@ -22,6 +27,10 @@ public class FullTableName implements Serializable {
 
     public String getName() {
         return this.name;
+    }
+
+    public void setName(String tableName) {
+        this.name = tableName;
     }
 
     @Override

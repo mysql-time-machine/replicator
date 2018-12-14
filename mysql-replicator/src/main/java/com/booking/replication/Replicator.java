@@ -1,40 +1,37 @@
 package com.booking.replication;
 
-import com.booking.replication.applier.Seeker;
 import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.Partitioner;
+import com.booking.replication.applier.Seeker;
 import com.booking.replication.augmenter.Augmenter;
+import com.booking.replication.augmenter.AugmenterFilter;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.checkpoint.CheckpointApplier;
 import com.booking.replication.commons.checkpoint.Binlog;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.ForceRewindException;
 import com.booking.replication.commons.map.MapFlatter;
-import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.commons.metrics.Metrics;
-import com.booking.replication.supplier.model.RawEvent;
+import com.booking.replication.controller.WebServer;
+import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.streams.Streams;
 import com.booking.replication.supplier.Supplier;
+import com.booking.replication.supplier.model.RawEvent;
+import com.booking.utils.BootstrapReplicator;
+import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
+import org.apache.commons.cli.*;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 
 public class Replicator {
 
@@ -43,6 +40,11 @@ public class Replicator {
         String CHECKPOINT_DEFAULT = "checkpoint.default";
         String REPLICATOR_THREADS = "replicator.threads";
         String REPLICATOR_TASKS = "replicator.tasks";
+        String REPLICATOR_QUEUE_SIZE = "replicator.queue.size";
+        String REPLICATOR_QUEUE_TIMEOUT = "replicator.queue.timeout";
+        String OVERRIDE_CHECKPOINT_START_POSITION = "override.checkpoint.start.position";
+        String OVERRIDE_CHECKPOINT_BINLOG_FILENAME = "override.checkpoint.binLog.filename";
+        String OVERRIDE_CHECKPOINT_BINLOG_POSITION = "override.checkpoint.binLog.position";
     }
 
     private static final Logger LOG = Logger.getLogger(Replicator.class.getName());
@@ -53,11 +55,15 @@ public class Replicator {
     private final Coordinator coordinator;
     private final Supplier supplier;
     private final Augmenter augmenter;
+    private final AugmenterFilter augmenterFilter;
     private final Seeker seeker;
     private final Partitioner partitioner;
     private final Applier applier;
     private final Metrics<?> metrics;
+    private final String errorCounter;
     private final CheckpointApplier checkpointApplier;
+    private final WebServer webServer;
+
     private final Streams<Collection<AugmentedEvent>, Collection<AugmentedEvent>> streamsApplier;
     private final Streams<RawEvent, Collection<AugmentedEvent>> streamsSupplier;
 
@@ -70,18 +76,34 @@ public class Replicator {
 
         int threads = Integer.parseInt(configuration.getOrDefault(Configuration.REPLICATOR_THREADS, "1").toString());
         int tasks = Integer.parseInt(configuration.getOrDefault(Configuration.REPLICATOR_TASKS, "1").toString());
+        int queueSize = Integer.parseInt(configuration.getOrDefault(Configuration.REPLICATOR_QUEUE_SIZE, "10000").toString());
+        long queueTimeout = Long.parseLong(configuration.getOrDefault(Configuration.REPLICATOR_QUEUE_TIMEOUT, "300").toString());
+
+        boolean overrideCheckpointStartPosition = Boolean.parseBoolean(configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_START_POSITION, false).toString());
+        String overrideCheckpointBinLogFileName = configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_BINLOG_FILENAME, "").toString();
+        long overrideCheckpointBinlogPosition = Long.parseLong(configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_BINLOG_POSITION, "0").toString());
+
 
         this.checkpointPath = checkpointPath.toString();
 
         this.checkpointDefault = (checkpointDefault != null) ? (checkpointDefault.toString()) : (null);
 
-        this.metrics = Metrics.build(configuration);
+        this.webServer = WebServer.build(configuration);
+
+        this.metrics = Metrics.build(configuration, webServer.getServer());
+
+        this.errorCounter = MetricRegistry.name(
+                String.valueOf(configuration.getOrDefault(Metrics.Configuration.BASE_PATH, "replicator")),
+                "error"
+        );
 
         this.coordinator = Coordinator.build(configuration);
 
         this.supplier = Supplier.build(configuration);
 
         this.augmenter = Augmenter.build(configuration);
+
+        this.augmenterFilter = AugmenterFilter.build(configuration);
 
         this.seeker = Seeker.build(configuration);
 
@@ -96,6 +118,8 @@ public class Replicator {
                 .tasks(tasks)
                 .partitioner((events, totalPartitions) -> this.partitioner.apply(events.iterator().next(), totalPartitions))
                 .queue()
+                .queueSize(queueSize)
+                .queueTimeout(queueTimeout, TimeUnit.SECONDS)
                 .fromPush()
                 .to(this.applier)
                 .post((events, task) -> {
@@ -108,6 +132,7 @@ public class Replicator {
                 .fromPush()
                 .process(this.augmenter)
                 .process(this.seeker)
+                .process(this.augmenterFilter)
                 .to((events) -> {
                     Map<Integer, Collection<AugmentedEvent>> splitEventsMap = new HashMap<>();
                     for (AugmentedEvent event : events) {
@@ -122,6 +147,7 @@ public class Replicator {
                 }).build();
 
         Consumer<Exception> exceptionHandle = (exception) -> {
+            this.metrics.incrementCounter(this.errorCounter, 1);
             if (ForceRewindException.class.isInstance(exception)) {
                 Replicator.LOG.log(Level.WARNING, exception.getMessage());
                 this.rewind();
@@ -143,11 +169,12 @@ public class Replicator {
 
                 Replicator.LOG.log(Level.INFO, "starting supplier");
 
-                // TODO: add fixed start pos to cmd line params
-//                Checkpoint from = new Checkpoint(
-//                        new Binlog("binlog.000001", 4)
-//                );
                 Checkpoint from = this.seeker.seek(this.getCheckpoint());
+
+                if(overrideCheckpointStartPosition){
+                    from = new Checkpoint(new Binlog(overrideCheckpointBinLogFileName, overrideCheckpointBinlogPosition));
+                }
+
                 this.supplier.start(from);
 
                 Replicator.LOG.log(Level.INFO, "replicator started");
@@ -168,6 +195,9 @@ public class Replicator {
 
                 Replicator.LOG.log(Level.INFO, "stopping streams applier");
                 this.streamsApplier.stop();
+
+                Replicator.LOG.log(Level.INFO, "stopping web server");
+                this.webServer.stop();
 
                 Replicator.LOG.log(Level.INFO, "replicator stopped");
             } catch (IOException | InterruptedException exception) {
@@ -199,6 +229,14 @@ public class Replicator {
     }
 
     public void start() {
+
+        Replicator.LOG.log(Level.INFO, "starting webserver");
+        try {
+            this.webServer.start();
+        } catch (IOException e) {
+            Replicator.LOG.log(Level.SEVERE, "error starting webserver", e);
+        }
+
         Replicator.LOG.log(Level.INFO, "starting coordinator");
         this.coordinator.start();
     }
@@ -227,6 +265,9 @@ public class Replicator {
 
             Replicator.LOG.log(Level.INFO, "closing applier");
             this.applier.close();
+
+            Replicator.LOG.log(Level.INFO, "stopping web server");
+            this.webServer.stop();
 
             Replicator.LOG.log(Level.INFO, "closing metrics applier");
             this.metrics.close();
@@ -260,6 +301,8 @@ public class Replicator {
         options.addOption(Option.builder().longOpt("config-file").argName("filename").desc("the configuration file to be used (YAML)").hasArg().build());
         options.addOption(Option.builder().longOpt("supplier").argName("supplier").desc("the supplier to be used").hasArg().build());
         options.addOption(Option.builder().longOpt("applier").argName("applier").desc("the applier to be used").hasArg().build());
+        options.addOption(Option.builder().longOpt("secret-file").argName("filename").desc("the secret file which has Mysql user/password config (JSON)").hasArg().build());
+
 
         try {
             CommandLine line = new DefaultParser().parse(options, arguments);
@@ -291,6 +334,14 @@ public class Replicator {
                     )));
                 }
 
+                if (line.hasOption("secret-file")) {
+                    configuration.putAll(new ObjectMapper().readValue(
+                            new File(line.getOptionValue("secret-file")),
+                            new TypeReference<Map<String, String>>() {
+
+                    }));
+                }
+
                 if (line.hasOption("supplier")) {
                     configuration.put(Supplier.Configuration.TYPE, line.getOptionValue("supplier").toUpperCase());
                 }
@@ -299,6 +350,9 @@ public class Replicator {
                     configuration.put(Applier.Configuration.TYPE, line.getOptionValue("applier").toUpperCase());
                 }
 
+
+                new BootstrapReplicator(configuration).run();
+
                 Replicator replicator = new Replicator(configuration);
 
                 Runtime.getRuntime().addShutdownHook(new Thread(replicator::stop));
@@ -306,6 +360,7 @@ public class Replicator {
                 replicator.start();
             }
         } catch (Exception exception) {
+            LOG.log(Level.SEVERE, "Error in replicator", exception);
             new HelpFormatter().printHelp(Replicator.COMMAND_LINE_SYNTAX, null, options, exception.getMessage());
         }
     }

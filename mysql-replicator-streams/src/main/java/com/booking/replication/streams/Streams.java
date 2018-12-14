@@ -15,7 +15,7 @@ public interface Streams<Input, Output> {
 
     void onException(Consumer<Exception> handler);
 
-    boolean push(Input input);
+    void push(Input input);
 
     int size();
 

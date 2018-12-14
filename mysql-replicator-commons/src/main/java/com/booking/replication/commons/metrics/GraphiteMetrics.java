@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-public class graphiteMetrics extends Metrics<ScheduledReporter> {
+public class GraphiteMetrics extends Metrics<ScheduledReporter> {
 
     public interface Configuration {
         String GRAPHITE_NAMESPACE = "metrics.applier.graphite.namespace";
@@ -23,17 +23,8 @@ public class graphiteMetrics extends Metrics<ScheduledReporter> {
         String GRAPHITE_PORT = "metrics.applier.graphite.port";
     }
 
-    private static graphiteMetrics instance;
-
-    public graphiteMetrics(Map<String, Object> configuration) {
+    public GraphiteMetrics(Map<String, Object> configuration) {
         super(configuration);
-    }
-
-    public static synchronized graphiteMetrics getInstance(Map<String, Object> configuration){
-        if(instance == null){
-            instance = new graphiteMetrics(configuration);
-        }
-        return instance;
     }
 
     @Override

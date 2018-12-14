@@ -2,6 +2,7 @@ package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.model.event.AugmentedEventHeader;
 import com.booking.replication.augmenter.model.event.AugmentedEventType;
+import com.booking.replication.augmenter.model.schema.FullTableName;
 import com.booking.replication.supplier.model.RawEventData;
 import com.booking.replication.supplier.model.RawEventHeaderV4;
 
@@ -18,8 +19,14 @@ public class HeaderAugmenter {
         if (type == null) {
             return null;
         }
-
-        return new AugmentedEventHeader(eventHeader.getTimestamp(), this.context.getCheckpoint(), type);
+        FullTableName eventTable = this.context.getEventTable();
+        String dbName = null;
+        String tableName = null;
+        if (eventTable != null) {
+            dbName = eventTable.getDatabase();
+            tableName = eventTable.getName();
+        }
+        return new AugmentedEventHeader(eventHeader.getTimestamp(), this.context.getCheckpoint(), type, dbName, tableName);
     }
 
     private AugmentedEventType getAugmentedEventType(RawEventHeaderV4 eventHeader) {

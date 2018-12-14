@@ -1,36 +1,22 @@
 package com.booking.replication.augmenter;
 
+import com.booking.replication.augmenter.model.deserializer.RowValueDeserializer;
+import com.booking.replication.augmenter.model.event.QueryAugmentedEventDataOperationType;
+import com.booking.replication.augmenter.model.event.QueryAugmentedEventDataType;
 import com.booking.replication.augmenter.model.format.Stringifier;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.augmenter.model.row.RowBeforeAfter;
 import com.booking.replication.augmenter.model.schema.*;
-import com.booking.replication.augmenter.model.schema.FullTableName;
-import com.booking.replication.augmenter.model.event.QueryAugmentedEventDataOperationType;
-import com.booking.replication.augmenter.model.event.QueryAugmentedEventDataType;
-
 import com.booking.replication.commons.checkpoint.Binlog;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.GTID;
 import com.booking.replication.commons.checkpoint.GTIDType;
-
-import com.booking.replication.supplier.model.GTIDRawEventData;
-import com.booking.replication.supplier.model.QueryRawEventData;
-import com.booking.replication.supplier.model.RawEventData;
-import com.booking.replication.supplier.model.RawEventHeaderV4;
-import com.booking.replication.supplier.model.RotateRawEventData;
-import com.booking.replication.supplier.model.TableIdRawEventData;
-import com.booking.replication.supplier.model.TableMapRawEventData;
-import com.booking.replication.supplier.model.XIDRawEventData;
+import com.booking.replication.commons.metrics.Metrics;
+import com.booking.replication.supplier.model.*;
+import com.codahale.metrics.MetricRegistry;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -58,6 +44,7 @@ public class AugmenterContext implements Closeable {
         String ENUM_PATTERN = "augmenter.context.pattern.enum";
         String SET_PATTERN = "augmenter.context.pattern.set";
         String EXCLUDE_TABLE = "augmenter.context.exclude.table";
+        String TRANSACTIONS_ENABLED = "augmenter.context.transactions.enabled";
     }
 
     private static final Logger LOG = Logger.getLogger(AugmenterContext.class.getName());
@@ -67,7 +54,7 @@ public class AugmenterContext implements Closeable {
     private static final String DEFAULT_BEGIN_PATTERN = "^(/\\*.*?\\*/\\s*)?(begin)";
     private static final String DEFAULT_COMMIT_PATTERN = "^(/\\*.*?\\*/\\s*)?(commit)";
     private static final String DEFAULT_DDL_DEFINER_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(definer)\\s*=";
-    private static final String DEFAULT_DDL_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(table)\\s+(\\S+)";
+    private static final String DEFAULT_DDL_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(table)\\s+(?:if not exists\\s+|if exists\\s+)?(\\S+)";
 
     private static final String DEFAULT_DDL_TEMPORARY_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(temporary)\\s+(table)\\s+(\\S+)";
     private static final String DEFAULT_DDL_VIEW_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(view)\\s+(\\S+)";
@@ -89,6 +76,9 @@ public class AugmenterContext implements Closeable {
     private final Pattern pseudoGTIDPattern;
     private final Pattern enumPattern;
     private final Pattern setPattern;
+    private final boolean transactionsEnabled;
+    private final Metrics<?> metrics;
+    private final String binlogsBasePath;
 
     private final List<String> excludeTableList;
 
@@ -127,6 +117,8 @@ public class AugmenterContext implements Closeable {
         this.schemaCache.set(new SchemaAtPositionCache());
 
         this.schemaSnapshot = new AtomicReference<>();
+        this.metrics = Metrics.getInstance(configuration);
+        this.binlogsBasePath = MetricRegistry.name(this.metrics.basePath(), "binlogs");
 
 
         transactionCounter = new AtomicLong();
@@ -154,6 +146,7 @@ public class AugmenterContext implements Closeable {
         this.pseudoGTIDPattern = this.getPattern(configuration, Configuration.PSEUDO_GTID_PATTERN, AugmenterContext.DEFAULT_PSEUDO_GTID_PATTERN);
         this.enumPattern = this.getPattern(configuration, Configuration.ENUM_PATTERN, AugmenterContext.DEFAULT_ENUM_PATTERN);
         this.setPattern = this.getPattern(configuration, Configuration.SET_PATTERN, AugmenterContext.DEFAULT_SET_PATTERN);
+        this.transactionsEnabled = Boolean.parseBoolean(configuration.getOrDefault(Configuration.TRANSACTIONS_ENABLED, "true").toString());
         this.excludeTableList = this.getList(configuration.get(Configuration.EXCLUDE_TABLE));
 
         this.timestamp = new AtomicLong();
@@ -209,7 +202,7 @@ public class AugmenterContext implements Closeable {
     }
 
     public AtomicLong getTransactionCounter() {
-        return  transactionCounter;
+        return transactionCounter;
     }
 
     public synchronized void updateContext(RawEventHeaderV4 eventHeader, RawEventData eventData) {
@@ -369,7 +362,7 @@ public class AugmenterContext implements Closeable {
 
                 this.updateCommons(
                         true,
-                         QueryAugmentedEventDataType.COMMIT,
+                        QueryAugmentedEventDataType.COMMIT,
                         null,
                         null,
                         null
@@ -428,13 +421,18 @@ public class AugmenterContext implements Closeable {
 
                 TableIdRawEventData tableIdRawEventData = TableIdRawEventData.class.cast(eventData);
                 FullTableName eventTable = this.getEventTable(tableIdRawEventData.getTableId());
-
+                String dbName = null;
+                String tblName = null;
+                if (eventTable != null) {
+                    dbName = eventTable.getDatabase();
+                    tblName = eventTable.getName();
+                }
                 this.updateCommons(
                         (eventTable == null) || (!this.excludeTable(eventTable.getName())),
                         null,
                         null,
-                        null,
-                        null
+                        dbName,
+                        tblName
                 );
                 break;
 
@@ -463,7 +461,7 @@ public class AugmenterContext implements Closeable {
             if (transactionCounter.get() != 0) {
                 transactionCounter.set(0);
                 previousTimestamp.set(timestamp.get());
-                LOG.info("Fake microsecond counter back to 0, next second in the stream has arrived.");
+                LOG.fine("Fake microsecond counter back to 0, next second in the stream has arrived.");
             }
         }
 
@@ -482,7 +480,7 @@ public class AugmenterContext implements Closeable {
             QueryAugmentedEventDataOperationType queryOperationType,
             String database,
             String table
-        ) {
+    ) {
         this.continueFlag.set(continueFlag);
         this.queryType.set(queryType);
         this.queryOperationType.set(queryOperationType);
@@ -491,7 +489,7 @@ public class AugmenterContext implements Closeable {
             this.eventTable.set(new FullTableName(database, table));
         }
 
-        if(queryType != null) {
+        if (queryType != null) {
             if (queryType.equals(QueryAugmentedEventDataType.BEGIN)) {
                 updateTransactionCounter();
             }
@@ -512,9 +510,9 @@ public class AugmenterContext implements Closeable {
     }
 
     /**
-     *  update || create have value_after
-     *  drop || update have value_before
-     * */
+     * update || create have value_after
+     * drop || update have value_before
+     */
     private void updateSchema(String query, long schemaChangeTimestamp) {
 
         if (query != null) {
@@ -536,7 +534,7 @@ public class AugmenterContext implements Closeable {
                 this.schemaManager.execute(tableName, query);
                 this.schemaCache.get().reloadTableSchema(
                         tableName,
-                        SchemaHelpers.fnComputeTableSchema
+                        this.schemaManager.getComputeTableSchemaLambda()
                 );
 
                 if (isDDLAndIsNot(QueryAugmentedEventDataOperationType.DROP)) {
@@ -566,6 +564,7 @@ public class AugmenterContext implements Closeable {
                 );
                 schemaSnapshot.set(newSchemaSnapshot);
 
+
             } else {
                 LOG.info("Unrecognised query type: " + query);
 
@@ -586,9 +585,9 @@ public class AugmenterContext implements Closeable {
         return ((this.queryType.get() == QueryAugmentedEventDataType.DDL_TABLE
                 ||
                 this.queryType.get() == QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE
-               )
-               &&
-               this.getQueryOperationType() != ddlOpType);
+        )
+                &&
+                this.getQueryOperationType() != ddlOpType);
     }
 
     private boolean excludeTable(String tableName) {
@@ -630,6 +629,10 @@ public class AugmenterContext implements Closeable {
         );
     }
 
+    public boolean isTransactionsEnabled() {
+        return transactionsEnabled;
+    }
+
     private GTID getGTID() {
         if (this.gtidValue.get() != null) {
             return new GTID(
@@ -658,7 +661,7 @@ public class AugmenterContext implements Closeable {
             String tableName = this.eventTable.get().getName();
             String schemaName = this.eventTable.get().getDatabase();
             return new TableSchema(
-                    new FullTableName(schemaName,tableName),
+                    new FullTableName(schemaName, tableName),
                     this.columnsBefore.get(),
                     this.createTableBefore.get()
             );
@@ -671,8 +674,8 @@ public class AugmenterContext implements Closeable {
         if (this.columnsAfter.get() != null && this.createTableAfter != null) {
             String tableName = this.eventTable.get().getName();
             String schemaName = this.eventTable.get().getDatabase();
-            return  new TableSchema(
-                    new FullTableName(schemaName,tableName),
+            return new TableSchema(
+                    new FullTableName(schemaName, tableName),
                     this.columnsAfter.get(),
                     this.createTableAfter.get()
             );
@@ -693,6 +696,13 @@ public class AugmenterContext implements Closeable {
         }
 
         return includedColumnList;
+    }
+
+    public void incrementRowCounterMetrics(RawEventType eventType, int rows) {
+        FullTableName eventTable = this.getEventTable();
+        String tblName = eventTable == null ? "null" : eventTable.getName();
+        String name = MetricRegistry.name(binlogsBasePath, tblName, eventType.name());
+        this.metrics.incrementCounter(name, rows);
     }
 
     public Collection<ColumnSchema> getColumns(long tableId) {
@@ -768,19 +778,27 @@ public class AugmenterContext implements Closeable {
             FullTableName eventTable
     ) {
         Map<String, Map<String, String>> stringifiedCellValues =
-                Stringifier.stringifyRowCellsValues(eventType, columnSchemas, includedColumns, row, cache);
+                null;
+        try {
+            stringifiedCellValues = Stringifier.stringifyRowCellsValues(eventType, columnSchemas, includedColumns, row, cache);
+        } catch (Exception e) {
+            LOG.log(Level.SEVERE, "Error while deserializing row: Eventtype: " + eventType + " table: " + this.getEventTable() + ", row: " + row.getAfter().toString());
+            throw e;
+        }
 
         String schemaName = eventTable.getDatabase();
         String tableName = eventTable.getName();
 
         List<String> primaryKeyColumns = TableSchema.getPrimaryKeyColumns(columnSchemas);
 
+        Map<String, Object> deserializedCellValues = RowValueDeserializer.deserializeRowCellValues(eventType, columnSchemas, includedColumns, row, cache);
+
         AugmentedRow augmentedRow = new AugmentedRow(
                 eventType,
                 schemaName, tableName,
                 transactionUUID, transactionXid,
                 commitTimestamp, transactionCounter,
-                primaryKeyColumns, stringifiedCellValues
+                primaryKeyColumns, stringifiedCellValues, deserializedCellValues
         );
 
         return augmentedRow;

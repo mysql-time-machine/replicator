@@ -51,4 +51,9 @@ public class Binlog implements Serializable, Comparable<Binlog> {
             return false;
         }
     }
+
+    @Override
+    public String toString() {
+        return String.format("filename: %s | position: %s", filename, position);
+    }
 }

@@ -15,7 +15,7 @@ public class QueryAugmentedEventData implements TableAugmentedEventData {
     private String sql;
     private TableSchema before;
     private TableSchema after;
-
+    private boolean isCompatibleSchemaChange = true;
     private boolean isDDL = false;
     private SchemaSnapshot schemaSnapshotOnDDL = null;
 
@@ -77,6 +77,14 @@ public class QueryAugmentedEventData implements TableAugmentedEventData {
 
     public void setDDL(boolean DDL) {
         isDDL = DDL;
+    }
+
+    public void setSchemaCompatibilityFlag(boolean isCompatibleSchemaChange){
+        this.isCompatibleSchemaChange = isCompatibleSchemaChange;
+    }
+
+    public boolean getIsCompatibleSchemaChange(){
+        return this.isCompatibleSchemaChange;
     }
 
     public SchemaSnapshot getSchemaSnapshotOnDDL() {

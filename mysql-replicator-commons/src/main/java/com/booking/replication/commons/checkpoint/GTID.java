@@ -42,4 +42,9 @@ public class GTID implements Serializable, Comparable<GTID>{
             return false;
         }
     }
+
+    @Override
+    public String toString() {
+        return String.format("gtid: %s", value);
+    }
 }

@@ -2,10 +2,10 @@ package com.booking.replication.applier.hbase.mutation;
 
 import com.booking.replication.applier.hbase.HBaseApplier;
 
+import com.booking.replication.applier.hbase.schema.HBaseRowKeyMapper;
 import com.booking.replication.augmenter.model.AugmenterModel;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.commons.metrics.Metrics;
-import com.google.common.base.Joiner;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -14,8 +14,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -32,13 +30,11 @@ public class HBaseApplierMutationGenerator {
         private final Put put;
         private final String table;
         private final String sourceRowUri;
-        private final boolean isTableMirrored;
 
-        public PutMutation(Put put, String table, String sourceRowUri, boolean isTableMirrored) {
+        public PutMutation(Put put, String table, String sourceRowUri) {
             this.put = put;
             this.sourceRowUri = sourceRowUri;
             this.table = table;
-            this.isTableMirrored = isTableMirrored;
         }
 
         public Put getPut() {
@@ -79,10 +75,8 @@ public class HBaseApplierMutationGenerator {
     private static final byte[] CF                           = Bytes.toBytes("d");
     private static final byte[] TID                          = Bytes.toBytes(AugmenterModel.Configuration.UUID_FIELD_NAME);
     private static final byte[] XID                          = Bytes.toBytes(AugmenterModel.Configuration.XID_FIELD_NAME);
-    private static final String DIGEST_ALGORITHM             = "MD5";
 
     private final Map<String, Object> configuration;
-    private static MessageDigest md;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HBaseApplierMutationGenerator.class);
 
@@ -90,7 +84,6 @@ public class HBaseApplierMutationGenerator {
     public HBaseApplierMutationGenerator(Map<String, Object> configuration, Metrics<?> metrics)
             throws NoSuchAlgorithmException {
         this.configuration = configuration;
-        this.md = MessageDigest.getInstance(DIGEST_ALGORITHM);
         this.metrics = metrics;
     }
 
@@ -101,23 +94,24 @@ public class HBaseApplierMutationGenerator {
      */
     public PutMutation getPutForMirroredTable(AugmentedRow augmentedRow) {
 
-        // RowID
-        String hbaseRowID = getHBaseRowKey(augmentedRow);
+        // Base RowID
+        String hbaseRowID = HBaseRowKeyMapper.getSaltedHBaseRowKey(augmentedRow);
 
-        // Context Payload Table
-        String payloadTableName =  (String) configuration.get(HBaseApplier.Configuration.PAYLOAD_TABLE_NAME);
-        if (payloadTableName != null && payloadTableName.equals(augmentedRow.getTableName())) {
-            hbaseRowID = getPayloadTableHBaseRowKey(augmentedRow);
-        }
-
+        // Base Table Name
         String namespace = (String) configuration.get(HBaseApplier.Configuration.TARGET_NAMESPACE);
         String prefix = "";
         if (!namespace.isEmpty()) {
             prefix = namespace + ":";
         }
-
         String hbaseTableName = prefix.toLowerCase() + augmentedRow.getTableName().toLowerCase();
 
+        // Context Payload Table
+        String payloadTableName =  (String) configuration.get(HBaseApplier.Configuration.PAYLOAD_TABLE_NAME);
+        if (payloadTableName != null && payloadTableName.equals(augmentedRow.getTableName())) {
+            hbaseRowID = HBaseRowKeyMapper.getPayloadTableHBaseRowKey(augmentedRow);
+        }
+
+        // Mutation
         Put put = new Put(Bytes.toBytes(hbaseRowID));
         UUID uuid = augmentedRow.getTransactionUUID();
         Long xid = augmentedRow.getTransactionXid();
@@ -175,10 +169,10 @@ public class HBaseApplierMutationGenerator {
                 // Only write values that have changed
                 String columnValue;
 
-                for (String columnName : augmentedRow.getRowColumns().keySet()) {
+                for (String columnName : augmentedRow.getStringifiedRowColumns().keySet()) {
 
-                    String valueBefore = augmentedRow.getRowColumns().get(columnName).get("value_before");
-                    String valueAfter = augmentedRow.getRowColumns().get(columnName).get("value_after");
+                    String valueBefore = augmentedRow.getStringifiedRowColumns().get(columnName).get("value_before");
+                    String valueAfter = augmentedRow.getStringifiedRowColumns().get(columnName).get("value_after");
 
                     if ((valueAfter == null) && (valueBefore == null)) {
                         // no change, skip;
@@ -249,9 +243,9 @@ public class HBaseApplierMutationGenerator {
 
                 String columnValue;
 
-                for (String columnName : augmentedRow.getRowColumns().keySet()) {
+                for (String columnName : augmentedRow.getStringifiedRowColumns().keySet()) {
 
-                    columnValue = augmentedRow.getRowColumns().get(columnName).get("value");
+                    columnValue = augmentedRow.getStringifiedRowColumns().get(columnName).get("value");
                     if (columnValue == null) {
                         columnValue = "NULL";
                     }
@@ -314,8 +308,8 @@ public class HBaseApplierMutationGenerator {
         return new PutMutation(
                 put,
                 hbaseTableName,
-                null,   // TODO: validator <- getRowUri(augmentedRow),
-                true);
+                null  // TODO: validator <- getRowUri(augmentedRow),
+        );
     }
 
     private String getRowUri(AugmentedRow row){
@@ -338,7 +332,7 @@ public class HBaseApplierMutationGenerator {
                 .map( column -> {
                     try {
 
-                        String value = row.getRowColumns().get(column).get( "UPDATE".equals(eventType) ? "value_after" : "value" );
+                        String value = row.getStringifiedRowColumns().get(column).get( "UPDATE".equals(eventType) ? "value_after" : "value" );
 
                         return URLEncoder.encode(column,"UTF-8") + "=" + URLEncoder.encode(value,"UTF-8");
 
@@ -355,78 +349,4 @@ public class HBaseApplierMutationGenerator {
         return String.format("mysql://%s/%s?%s", sourceDomain, table, keys  );
     }
 
-    public static String getHBaseRowKey(AugmentedRow row) {
-
-        // RowID
-        // This is sorted by column OP (from information schema)
-        List<String> pkColumnNames  = row.getPrimaryKeyColumns();
-        List<String> pkColumnValues = new ArrayList<>();
-
-        for (String pkColumnName : pkColumnNames) {
-
-            Map<String, String> pkCell = row.getRowColumns().get(pkColumnName);
-
-            switch (row.getEventType()) {
-
-                case "INSERT":
-                    pkColumnValues.add(pkCell.get("value"));
-                    break;
-
-                case "DELETE":
-                    pkColumnValues.add(pkCell.get("value_before"));
-                    break;
-
-                case "UPDATE":
-                    pkColumnValues.add(pkCell.get("value_after"));
-                    break;
-
-                default:
-                    throw new RuntimeException("Wrong event type. Expected RowType event.");
-            }
-        }
-
-        if (pkColumnValues.stream().filter(v -> v != null).collect(Collectors.toList()).isEmpty()) {
-            throw new RuntimeException("Tables without primary key are not allowed");
-        }
-
-        String hbaseRowID = Joiner.on(";").join(pkColumnValues);
-        String saltingPartOfKey = pkColumnValues.get(0);
-
-        // avoid region hot-spotting
-        hbaseRowID = saltRowKey(hbaseRowID, saltingPartOfKey);
-        return hbaseRowID;
-    }
-
-    private static String getPayloadTableHBaseRowKey(AugmentedRow row) {
-        if (row.getTransactionUUID() != null) {
-            return row.getTransactionUUID().toString();
-        } else {
-            throw new RuntimeException("Transaction ID missing in Augmented Row");
-        }
-    }
-
-    /**
-     * Salting the row keys with hex representation of first two bytes of md5.
-     *
-     * <p>hbaseRowID = md5(hbaseRowID)[0] + md5(hbaseRowID)[1] + "-" + hbaseRowID;</p>
-     */
-    private static String saltRowKey(String hbaseRowID, String firstPartOfRowKey) {
-
-        byte[] bytesOfSaltingPartOfRowKey = firstPartOfRowKey.getBytes(StandardCharsets.US_ASCII);
-
-        byte[] bytesMD5 = md.digest(bytesOfSaltingPartOfRowKey);
-
-        String byte1hex = Integer.toHexString(bytesMD5[0] & 0xFF);
-        String byte2hex = Integer.toHexString(bytesMD5[1] & 0xFF);
-        String byte3hex = Integer.toHexString(bytesMD5[2] & 0xFF);
-        String byte4hex = Integer.toHexString(bytesMD5[3] & 0xFF);
-
-        // add 0-padding
-        String salt = ("00" + byte1hex).substring(byte1hex.length())
-                + ("00" + byte2hex).substring(byte2hex.length())
-                + ("00" + byte3hex).substring(byte3hex.length())
-                + ("00" + byte4hex).substring(byte4hex.length())
-                ;
-        return salt + ";" + hbaseRowID;
-    }
 }

@@ -2,68 +2,96 @@ package com.booking.replication.commons.metrics;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Reporter;
+import org.eclipse.jetty.server.Server;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public abstract class Metrics<CloseableReporter extends Closeable & Reporter> implements Closeable {
+    private static final Logger LOG = Logger.getLogger(Metrics.class.getName());
+
     public enum Type {
+
         CONSOLE {
             @Override
-            protected Metrics<?> newInstance(Map<String, Object> configuration) {
-                return ConsoleMetrics.getInstance(configuration);
+            protected Metrics<?> newInstance(Map<String, Object> configuration, Server server) {
+                if (instance == null) {
+                    instance =  new ConsoleMetrics(configuration);
+                }
+                return instance;
             }
         },
         JMX {
             @Override
-            protected Metrics<?> newInstance(Map<String, Object> configuration) {
-                return JMXMetrics.getInstance(configuration);
+            protected Metrics<?> newInstance(Map<String, Object> configuration, Server server) {
+                if (instance == null) {
+                    instance =  new JMXMetrics(configuration);
+                }
+                return instance;
             }
         },
         GRAPHITE {
             @Override
-            protected Metrics<?> newInstance(Map<String, Object> configuration) {
-                return graphiteMetrics.getInstance(configuration);
+            protected Metrics<?> newInstance(Map<String, Object> configuration, Server server) {
+                if (instance == null) {
+                    instance =  new GraphiteMetrics(configuration);
+                }
+                return instance;
+            }
+        },PROMETHEUS {
+            @Override
+            protected Metrics<?> newInstance(Map<String, Object> configuration, Server server) {
+                if (instance == null) {
+                    instance =  new PrometheusMetrics(configuration, server);
+                }
+                return instance;
             }
         };
 
-        protected abstract Metrics<?> newInstance(Map<String, Object> configuration);
+        private static Metrics<?> instance;
+
+        protected abstract Metrics<?> newInstance(Map<String, Object> configuration, Server server);
+
+        public Metrics<?> getInstance(){
+            if(instance == null){
+                Metrics.LOG.log(Level.SEVERE, "Metrics.build(configuration) should have been called during starting the replicator");
+            }
+            return  instance;
+        }
     }
 
     public interface Configuration {
         String TYPE = "metrics.applier.type";
-        String PATH = "metrics.applier.delay.path";
+        String BASE_PATH = "metrics.applier.base_path";
+        String MYSQL_SCHEMA = "mysql.schema";
     }
-
-    private static final String BASE_PATH = "events";
 
     private final MetricRegistry registry;
     private final CloseableReporter reporter;
-    private final String delayName;
+    private String basePath;
 
     public Metrics(Map<String, Object> configuration) {
         this.registry = new MetricRegistry();
         this.reporter = this.getReporter(configuration, this.registry);
-        this.delayName = MetricRegistry.name(
-                Metrics.BASE_PATH,
-                this.getList(configuration.getOrDefault(Configuration.PATH, "delay")).toArray(new String[0])
-        );
+        String base = String.valueOf(configuration.getOrDefault(Configuration.BASE_PATH, "replicator"));
+        this.basePath = MetricRegistry.name(base, String.valueOf(configuration.getOrDefault(Configuration.MYSQL_SCHEMA, "db")));
     }
 
     public MetricRegistry getRegistry() {
         return registry;
     }
 
-    @SuppressWarnings("unchecked")
-    private List<String> getList(Object object) {
-        if (List.class.isInstance(object)) {
-            return (List<String>) object;
-        } else {
-            return Collections.singletonList(object.toString());
-        }
+    public void incrementCounter(String name, long val) {
+        this.registry.counter(name).inc(val);
+    }
+
+    public void updateMeter(String name, long val) {
+        this.registry.meter(name).mark(val);
     }
 
     @Override
@@ -71,11 +99,21 @@ public abstract class Metrics<CloseableReporter extends Closeable & Reporter> im
         this.reporter.close();
     }
 
+    public String basePath(){
+        return basePath;
+    }
+
     protected abstract CloseableReporter getReporter(Map<String, Object> configuration, MetricRegistry registry);
 
-    public static Metrics<?> build(Map<String, Object> configuration) {
+    public static Metrics<?> build(Map<String, Object> configuration, Server server) {
         return Metrics.Type.valueOf(
                 configuration.getOrDefault(Configuration.TYPE, Type.CONSOLE.name()).toString()
-        ).newInstance(configuration);
+        ).newInstance(configuration, server);
     }
-}
+
+    public static Metrics<?> getInstance(Map<String, Object> configuration){
+        return Metrics.Type.valueOf(
+                configuration.getOrDefault(Configuration.TYPE, Type.CONSOLE.name()).toString()
+        ).getInstance();
+    }
+ }

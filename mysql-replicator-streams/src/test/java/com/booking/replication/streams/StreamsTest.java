@@ -287,7 +287,10 @@ public class StreamsTest {
                     count2.incrementAndGet();
                     return String.format("value=%s", value);
                 })
-                .to(streamsDestination::push)
+                .to(s -> {
+                    streamsDestination.push(s);
+                    return true;
+                })
                 .build();
 
         streamsDestination.start();

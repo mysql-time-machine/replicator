@@ -3,7 +3,7 @@ package com.booking.replication.applier.hbase.writer;
 import com.booking.replication.applier.hbase.mutation.HBaseApplierMutationGenerator;
 import com.booking.replication.applier.hbase.schema.HBaseSchemaManager;
 import com.booking.replication.applier.hbase.time.RowTimestampOrganizer;
-import com.booking.replication.applier.hbase.util.AugmentedEventRowExtractor;
+import com.booking.replication.augmenter.util.AugmentedEventRowExtractor;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import org.apache.hadoop.conf.Configuration;
@@ -21,8 +21,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.booking.replication.commons.metrics.Metrics;
-import com.booking.replication.commons.metrics.Metrics;
-import com.codahale.metrics.MetricRegistry;
 
 public class HBaseTimeMachineWriter implements HBaseApplierWriter {
 
@@ -32,9 +30,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
         private final int FLUSH_RETRY_LIMIT = 30;
         private long bufferClearTime = 0L;
 
-        private final String HBASE_COLUMN_DEFAULT_FAMILY_NAME = "d";
-
-        private HBaseSchemaManager hbaseSchemaManager;
+        private final HBaseSchemaManager hbaseSchemaManager;
         private RowTimestampOrganizer timestampOrganizer;
         HBaseApplierMutationGenerator mutationGenerator;
 
@@ -77,7 +73,6 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
         public long getBufferClearTime() {
             return bufferClearTime;
         }
-
 
         @Override
         public int getTransactionBufferSize(String transactionUUID) {
@@ -148,8 +143,8 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                 if (unique.size() > 1) {
                     throw new RuntimeException("More than one table in binlog event not allowed!");
                 }
-                String mySqlTableName = tables.get(0);
-                return  mySqlTableName;
+                String tableName = tables.get(0);
+                return  tableName;
             } else {
                 throw new RuntimeException("No table found in AugmentedRow list!");
             }
@@ -165,12 +160,15 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
 
                 List<AugmentedRow> augmentedRows = AugmentedEventRowExtractor.extractAugmentedRows(event);
 
+                String augmentedRowsTableName = extractTableName(augmentedRows);
+
+                hbaseSchemaManager.createHBaseTableIfNotExists(augmentedRowsTableName);
+
                 this.metrics.getRegistry()
                         .counter("hbase.applier.rows.received.count").inc(augmentedRows.size());
 
                 if (timestampOrganizer != null) {
-                    String mySqlTableName = extractTableName(augmentedRows); // TODO: optimize, can be pre-calculated
-                    timestampOrganizer.organizeTimestamps(augmentedRows, mySqlTableName, transactionUUID);
+                    timestampOrganizer.organizeTimestamps(augmentedRows, augmentedRowsTableName, transactionUUID);
                 }
 
                 List<HBaseApplierMutationGenerator.PutMutation> eventMutations = augmentedRows.stream()
@@ -182,7 +180,6 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
 
                 this.metrics.getRegistry()
                         .counter("hbase.applier.put.count").inc(eventMutations.size());
-
             }
 
             // group by table
@@ -209,5 +206,4 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                 // TODO: send sample to validator
             }
         }
-
 }

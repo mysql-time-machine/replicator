@@ -1,9 +1,11 @@
 
 package com.booking.replication.it.hbase.impl
 
+import com.booking.replication.applier.hbase.StorageConfig
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
 import com.booking.replication.commons.services.ServicesControl
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTestRunner
+import com.booking.replication.it.util.HBase
 import com.booking.replication.it.util.MySQL
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.hadoop.conf.Configuration;
@@ -155,7 +157,8 @@ class TransmitInsertsTestImpl implements ReplicatorHBasePipelineIntegrationTest 
         def data = new TreeMap<>()
         try {
             // config
-            Configuration config = HBaseConfiguration.create()
+            StorageConfig storageConfig = StorageConfig.build(HBase.getConfiguration())
+            Configuration config = storageConfig.getConfig()
             Connection connection = ConnectionFactory.createConnection(config)
 
             Table table = connection.getTable(

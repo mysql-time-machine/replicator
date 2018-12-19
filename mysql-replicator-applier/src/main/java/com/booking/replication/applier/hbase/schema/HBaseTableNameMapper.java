@@ -18,10 +18,12 @@ public class HBaseTableNameMapper {
     private static final Logger LOG = LogManager.getLogger(HBaseTableNameMapper.class);
 
     public static String getSchemaSnapshotHistoryHBaseTableName(Map<String, Object> configuration) {
+        String prefix = HBaseApplier.Configuration.SCHEMA_HISTORY_NAMESPACE.equals("")
+                ?  configuration.get(HBaseApplier.Configuration.SCHEMA_HISTORY_NAMESPACE) + ":"
+                : "";
         String schemaHistoryTableName =
-                configuration.get(HBaseApplier.Configuration.SCHEMA_HISTORY_NAMESPACE)
-                        + ":" +
-                        configuration.get(HBaseApplier.Configuration.REPLICATED_SCHEMA_NAME).toString().toLowerCase();
+                prefix + configuration.get(HBaseApplier.Configuration.REPLICATED_SCHEMA_NAME).toString().toLowerCase();
+
         return schemaHistoryTableName + "_schema_history";
     }
 }

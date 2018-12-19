@@ -194,11 +194,8 @@ public class HBaseSchemaManager {
                 tableDescriptor.addFamily(cd);
                 tableDescriptor.setCompactionEnabled(true);
 
-                // pre-split into 16 regions
-                // RegionSplitter.HexStringSplit splitter = new RegionSplitter.HexStringSplit();
-                // byte[][] splitKeys = splitter.split(SCHEMA_HISTORY_TABLE_DEFAULT_REGIONS);
+                admin.createTable(tableDescriptor);
 
-                admin.createTable(tableDescriptor); // , splitKeys);
             } else {
                 LOG.info("Table " + hbaseTableName + " already exists in HBase. Probably a case of replaying the binlog.");
             }

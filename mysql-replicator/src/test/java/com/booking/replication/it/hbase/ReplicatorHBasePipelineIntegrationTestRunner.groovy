@@ -19,6 +19,7 @@ import com.booking.replication.it.hbase.impl.MicrosecondValidationTestImpl
 import com.booking.replication.it.hbase.impl.LongTransactionTestImpl
 import com.booking.replication.it.hbase.impl.PayloadTableTestImpl
 import com.booking.replication.it.hbase.impl.TableNameMergeFilterTestImpl
+import com.booking.replication.it.util.HBase
 import com.booking.replication.supplier.Supplier
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier
 import com.booking.replication.it.hbase.impl.TransmitInsertsTestImpl
@@ -65,12 +66,12 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     @Shared public static final String AUGMENTER_FILTER_TYPE = "TABLE_MERGE_PATTERN"
     @Shared public static final String AUGMENTER_FILTER_CONFIGURATION = "([_][12]\\d{3}(0[1-9]|1[0-2]))"
 
-    @Shared public static final String HBASE_SCHEMA_HISTORY_NAMESPACE = "schema_history"
 
     @Shared private static final String HBASE_COLUMN_FAMILY_NAME = "d"
     @Shared public static final String HBASE_TEST_PAYLOAD_TABLE_NAME = "tbl_payload_context"
 
-    @Shared public static final String HBASE_TARGET_NAMESPACE = "replicator_test"
+    @Shared public static final String HBASE_TARGET_NAMESPACE = "" //""replicator_test"
+    @Shared public static final String HBASE_SCHEMA_HISTORY_NAMESPACE = ""  //"""schema_history"
 
     @Shared public static final String STORAGE_TYPE = "BIGTABLE"
     @Shared public static final String BIGTABLE_PROJECT = "btbleval"
@@ -168,7 +169,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         while (counter > 0) {
             Thread.sleep(1000)
             if (hbaseSanityCheck()) {
-                LOG.info("HBase container is ready.")
+                LOG.info("HBase/BigTable is ready.")
                 break
             }
             counter--
@@ -334,20 +335,21 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
                     LOG.info("got => { key, val, t:  => " + retrievedRowKey +", " + retrievedValue + ", " + retrievedTimestamp)
 
-//                    if (!data.get(retrievedRowKey).get("c1").containsKey(retrievedTimestamp)) {
-//                        passed = false
-//                        break
-//                    }
-//                    if (!data.get(retrievedRowKey).get("c1").get(retrievedTimestamp).equals(retrievedValue)) {
-//                        passed = false
-//                        break
-//                    }
+                    if (!data.get(retrievedRowKey).get("c1").containsKey(retrievedTimestamp)) {
+                        passed = false
+                        break
+                    }
+                    if (!data.get(retrievedRowKey).get("c1").get(retrievedTimestamp).equals(retrievedValue)) {
+                        passed = false
+                        break
+                    }
                 }
             }
         } catch (IOException e) {
             e.printStackTrace()
         }
-        throw  new RuntimeException("done")
+
+        HBase.setConfiguration(this.getConfiguration())
 
         return passed
     }

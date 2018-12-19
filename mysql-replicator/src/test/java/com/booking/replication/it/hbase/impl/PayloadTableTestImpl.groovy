@@ -148,6 +148,8 @@ class PayloadTableTestImpl implements ReplicatorHBasePipelineIntegrationTest {
 
         result.add("tdiff|" + tdiff)
 
+        //sleep(100000000)
+
         return result
 
     }

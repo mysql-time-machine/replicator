@@ -1,13 +1,13 @@
 package com.booking.replication.applier.hbase.schema;
 
 import com.booking.replication.applier.hbase.HBaseApplier;
+import com.booking.replication.applier.hbase.StorageConfig;
 import com.booking.replication.augmenter.model.schema.SchemaAtPositionCache;
 import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
 import com.booking.replication.augmenter.model.schema.SchemaTransitionSequence;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
 
 import java.util.Map;
 
@@ -18,7 +18,7 @@ import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.io.compress.Compression;
 import org.apache.hadoop.hbase.util.Bytes;
 
-import org.apache.hadoop.hbase.util.RegionSplitter;
+//import org.apache.hadoop.hbase.util.RegionSplitter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,16 +31,15 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class HBaseSchemaManager {
 
-    private final Configuration hbaseConf;
+    private final Configuration hbaseConfig;
+
+    private final StorageConfig storageConfig;
 
     private Connection connection;
 
     private final Map<String, Integer> seenHBaseTables = new ConcurrentHashMap<>();
 
     private final Map<String, Object> configuration;
-
-    // Delta tables
-    private static final int DELTA_TABLE_MAX_VERSIONS = 1;
 
     // Mirrored tables
     private static final int MIRRORED_TABLE_DEFAULT_REGIONS = 16;
@@ -64,31 +63,20 @@ public class HBaseSchemaManager {
         USE_SNAPPY = (boolean) configuration.get(HBaseApplier.Configuration.HBASE_USE_SNAPPY);
 
         this.configuration = configuration;
-        this.hbaseConf = initHBaseConfig(configuration);
+
+        this.storageConfig = StorageConfig.build(configuration);
+
+        this.hbaseConfig = storageConfig.getConfig();
 
         if (!DRY_RUN) {
             try {
-                connection = ConnectionFactory.createConnection(hbaseConf);
+                connection = ConnectionFactory.createConnection(storageConfig.getConfig());
                 LOG.info("HBaseSchemaManager successfully established connection to HBase.");
             } catch (IOException e) {
                 LOG.error("HBaseSchemaManager could not connect to HBase");
                 e.printStackTrace();
             }
         }
-    }
-
-    private Configuration initHBaseConfig(Map<String, Object> configuration) {
-
-        Configuration hbConf = HBaseConfiguration.create();
-
-        // TODO: adapt to BigTable (no zookeeper, impl class properties)
-        String ZOOKEEPER_QUORUM =
-                (String) configuration.get(HBaseApplier.Configuration.HBASE_ZOOKEEPER_QUORUM);
-
-        hbConf.set("hbase.zookeeper.quorum", ZOOKEEPER_QUORUM);
-
-        return hbConf;
-
     }
 
     public void createHBaseTableIfNotExists(String hbaseTableName) throws IOException {
@@ -102,7 +90,7 @@ public class HBaseSchemaManager {
                 }
 
                 if (connection == null) {
-                    connection = ConnectionFactory.createConnection(hbaseConf);
+                    connection = ConnectionFactory.createConnection(storageConfig.getConfig());
                 }
 
                 Admin admin = connection.getAdmin();
@@ -130,11 +118,7 @@ public class HBaseSchemaManager {
                     tableDescriptor.addFamily(cd);
                     tableDescriptor.setCompactionEnabled(true);
 
-                    // pre-split into default number of regions
-                    RegionSplitter.HexStringSplit splitter = new RegionSplitter.HexStringSplit();
-                    byte[][] splitKeys = splitter.split(MIRRORED_TABLE_DEFAULT_REGIONS);
-
-                    admin.createTable(tableDescriptor, splitKeys);
+                    admin.createTable(tableDescriptor);
 
                     seenHBaseTables.put(hbaseTableName, 1);
 
@@ -189,7 +173,7 @@ public class HBaseSchemaManager {
         try {
 
             if (connection == null) {
-                connection = ConnectionFactory.createConnection(hbaseConf);
+                connection = ConnectionFactory.createConnection(storageConfig.getConfig());
             }
 
             Admin admin = connection.getAdmin();
@@ -206,11 +190,8 @@ public class HBaseSchemaManager {
                 tableDescriptor.addFamily(cd);
                 tableDescriptor.setCompactionEnabled(true);
 
-                // pre-split into 16 regions
-                // RegionSplitter.HexStringSplit splitter = new RegionSplitter.HexStringSplit();
-                // byte[][] splitKeys = splitter.split(SCHEMA_HISTORY_TABLE_DEFAULT_REGIONS);
+                admin.createTable(tableDescriptor);
 
-                admin.createTable(tableDescriptor); // , splitKeys);
             } else {
                 LOG.info("Table " + hbaseTableName + " already exists in HBase. Probably a case of replaying the binlog.");
             }

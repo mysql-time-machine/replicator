@@ -3,17 +3,79 @@
          xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <modelVersion>4.0.0</modelVersion>
+
     <parent>
         <groupId>com.booking.replication</groupId>
         <artifactId>replicator</artifactId>
         <version>0.16.0-beta-SNAPSHOT</version>
     </parent>
+
     <artifactId>mysql-replicator</artifactId>
     <name>mysql-replicator</name>
-    <properties>
-        <hbase.version>1.2.0</hbase.version>
-    </properties>
+
     <packaging>jar</packaging>
+    <profiles>
+        <profile>
+            <id>hbase</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>org.apache.hbase</groupId>
+                    <artifactId>hbase-client</artifactId>
+                    <version>1.2.0</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.hbase</groupId>
+                    <artifactId>hbase-common</artifactId>
+                    <version>1.2.0</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.hbase</groupId>
+                    <artifactId>hbase-server</artifactId>
+                    <version>1.2.0</version>
+                </dependency>
+                <dependency>
+                    <groupId>com.google.protobuf</groupId>
+                    <artifactId>protobuf-java</artifactId>
+                    <version>2.5.0</version>
+                </dependency>
+                <dependency>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                    <version>15.0</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>bigtable</id>
+            <activation>
+                <property>
+                    <name>sink</name>
+                    <value>bigtable</value>
+                </property>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>com.google.protobuf</groupId>
+                    <artifactId>protobuf-java</artifactId>
+                    <version>3.6.0</version>
+                </dependency>
+                <dependency>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                    <version>26.0-jre</version>
+                </dependency>
+                <dependency>
+                    <groupId>com.google.cloud.bigtable</groupId>
+                    <artifactId>bigtable-hbase-1.x</artifactId>
+                    <version>1.6.0</version>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
+
     <dependencies>
         <dependency>
             <groupId>commons-cli</groupId>
@@ -49,47 +111,35 @@
             <groupId>com.booking.replication</groupId>
             <artifactId>mysql-replicator-applier</artifactId>
         </dependency>
+
         <dependency>
-            <groupId>org.apache.hbase</groupId>
-            <artifactId>hbase-client</artifactId>
-            <version>${hbase.version}</version>
+            <groupId>org.codehaus.groovy</groupId>
+            <artifactId>groovy-all</artifactId>
+            <version>2.4.15</version>
         </dependency>
-        <dependency>
-            <groupId>org.apache.hbase</groupId>
-            <artifactId>hbase-common</artifactId>
-            <version>${hbase.version}</version>
-        </dependency>
-
-        <!-- Test Dependencies -->
-       	<!-- https://mvnrepository.com/artifact/org.codehaus.groovy/groovy-all -->
-	<dependency>
-	    <groupId>org.codehaus.groovy</groupId>
-	    <artifactId>groovy-all</artifactId>
-	    <version>2.4.15</version>
-	</dependency>
-
-
-        <!-- https://mvnrepository.com/artifact/org.codehaus.groovy/groovy-json -->
         <dependency>
             <groupId>org.codehaus.groovy</groupId>
             <artifactId>groovy-json</artifactId>
             <version>2.4.15</version>
         </dependency>
-
-        <!-- https://mvnrepository.com/artifact/org.codehaus.groovy/groovy-sql -->
         <dependency>
             <groupId>org.codehaus.groovy</groupId>
             <artifactId>groovy-sql</artifactId>
             <version>2.4.15</version>
         </dependency>
-
         <dependency>
             <groupId>org.spockframework</groupId>
             <artifactId>spock-core</artifactId>
             <version>1.0-groovy-2.4</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka_2.12</artifactId>
+            <version>1.1.0</version>
+        </dependency>
 
     </dependencies>
+
     <build>
         <plugins>
             <plugin>

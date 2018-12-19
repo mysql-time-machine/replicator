@@ -1,15 +1,25 @@
 package com.booking.replication.it.util
 
+import com.booking.replication.applier.hbase.StorageConfig
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTestRunner;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellScanner;
-import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.util.Bytes;
 
 class HBase {
+
+    private static  Map<String, Object> configuration
+
+    static setConfiguration( Map<String, Object> cnf) {
+        configuration = cnf
+    }
+
+    static Map<String, Object> getConfiguration() {
+        return configuration
+    }
 
     static Map<String, Map<String, Map<String,String>>> scanHBaseTable(String tableName) {
 
@@ -17,7 +27,9 @@ class HBase {
 
         try {
             // config
-            Configuration config = HBaseConfiguration.create()
+            StorageConfig storageConfig = StorageConfig.build(this.getConfiguration())
+            Configuration config = storageConfig.getConfig()
+
             Connection connection = ConnectionFactory.createConnection(config)
             Table table = connection.getTable(TableName.valueOf(
                     Bytes.toBytes(ReplicatorHBasePipelineIntegrationTestRunner.HBASE_TARGET_NAMESPACE),

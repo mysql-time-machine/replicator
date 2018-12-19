@@ -11,28 +11,73 @@
     <artifactId>mysql-replicator-applier</artifactId>
     <name>mysql-replicator-applier</name>
     <packaging>jar</packaging>
-    <properties>
-        <hbase.version>1.2.0</hbase.version>
-    </properties>
+
+    <profiles>
+        <profile>
+            <id>hbase</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>org.apache.hbase</groupId>
+                    <artifactId>hbase-client</artifactId>
+                    <version>1.2.0</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.hbase</groupId>
+                    <artifactId>hbase-common</artifactId>
+                    <version>1.2.0</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.hbase</groupId>
+                    <artifactId>hbase-server</artifactId>
+                    <version>1.2.0</version>
+                </dependency>
+                <dependency>
+                    <groupId>com.google.protobuf</groupId>
+                    <artifactId>protobuf-java</artifactId>
+                    <version>2.5.0</version>
+                </dependency>
+                <dependency>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                    <version>15.0</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>bigtable</id>
+            <activation>
+                <property>
+                    <name>sink</name>
+                    <value>bigtable</value>
+                </property>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>com.google.protobuf</groupId>
+                    <artifactId>protobuf-java</artifactId>
+                    <version>3.6.0</version>
+                </dependency>
+                <dependency>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                    <version>26.0-jre</version>
+                </dependency>
+                <dependency>
+                    <groupId>com.google.cloud.bigtable</groupId>
+                    <artifactId>bigtable-hbase-1.x</artifactId>
+                    <version>1.6.0</version>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
+
     <dependencies>
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka_2.12</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.hbase</groupId>
-            <artifactId>hbase-client</artifactId>
-            <version>${hbase.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.hbase</groupId>
-            <artifactId>hbase-common</artifactId>
-            <version>${hbase.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.hbase</groupId>
-            <artifactId>hbase-server</artifactId>
-            <version>${hbase.version}</version>
         </dependency>
         <dependency>
             <groupId>com.booking.replication</groupId>
@@ -53,4 +98,5 @@
             <artifactId>mysql-replicator-augmenter</artifactId>
         </dependency>
     </dependencies>
+
 </project>

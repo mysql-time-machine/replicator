@@ -5,6 +5,7 @@ import com.booking.replication.applier.Applier
 import com.booking.replication.applier.Partitioner
 import com.booking.replication.applier.Seeker
 import com.booking.replication.applier.hbase.HBaseApplier
+import com.booking.replication.applier.hbase.StorageConfig
 import com.booking.replication.augmenter.ActiveSchemaManager
 import com.booking.replication.augmenter.Augmenter
 import com.booking.replication.augmenter.AugmenterContext
@@ -18,6 +19,7 @@ import com.booking.replication.it.hbase.impl.MicrosecondValidationTestImpl
 import com.booking.replication.it.hbase.impl.LongTransactionTestImpl
 import com.booking.replication.it.hbase.impl.PayloadTableTestImpl
 import com.booking.replication.it.hbase.impl.TableNameMergeFilterTestImpl
+import com.booking.replication.it.util.HBase
 import com.booking.replication.supplier.Supplier
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier
 import com.booking.replication.it.hbase.impl.TransmitInsertsTestImpl
@@ -39,7 +41,7 @@ import spock.lang.Shared
 import spock.lang.Specification
 import spock.lang.Unroll
 
-class ReplicatorHBasePipelineIntegrationTestRunner extends  Specification {
+class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
     @Shared private static final Logger LOG = Logger.getLogger(ReplicatorHBasePipelineIntegrationTestRunner.class.getName())
 
@@ -62,10 +64,15 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends  Specification {
     @Shared public static final String AUGMENTER_FILTER_TYPE = "TABLE_MERGE_PATTERN"
     @Shared public static final String AUGMENTER_FILTER_CONFIGURATION = "([_][12]\\d{3}(0[1-9]|1[0-2]))"
 
-    @Shared public static final String HBASE_TARGET_NAMESPACE = "replicator_test"
-    @Shared public static final String HBASE_SCHEMA_HISTORY_NAMESPACE = "schema_history"
     @Shared private static final String HBASE_COLUMN_FAMILY_NAME = "d"
     @Shared public static final String HBASE_TEST_PAYLOAD_TABLE_NAME = "tbl_payload_context"
+
+    // HBase/BigTable specific config
+    @Shared public static final String HBASE_TARGET_NAMESPACE = getTargetNamespace()
+    @Shared public static final String HBASE_SCHEMA_HISTORY_NAMESPACE = getSchemaNamespace()
+    @Shared public static final String STORAGE_TYPE  = getStorageType()
+    @Shared public static final String BIGTABLE_PROJECT = getBigTableProject()
+    @Shared public static final String  BIGTABLE_INSTANCE = getBigTableInstance()
 
     @Shared private TESTS = [
             new TableNameMergeFilterTestImpl(),
@@ -96,7 +103,45 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends  Specification {
 
     @Shared  Replicator replicator
 
+    static String getStorageType() {
+        String storage = System.getProperty("sink")
+        if (storage != null &&  storage.equals("bigtable")) { return "BIGTABLE" }
+        else { return "HBASE"}
+    }
+
+    static String getTargetNamespace() {
+        String storage = System.getProperty("sink")
+        if (storage != null &&  storage.equals("bigtable")) { return "" }
+        else { return "replicator_test"}
+    }
+
+    static String getSchemaNamespace() {
+        String storage = System.getProperty("sink")
+        if (storage != null &&  storage.equals("bigtable")) { return "" }
+        else { return "schema_history"}
+
+    }
+
+    static String getBigTableProject() {
+        String projectID = System.getProperty("bigtable.projectID")
+        if (projectID != null && !projectID.equals("")) { return projectID }
+        else { return ""}
+    }
+
+    static String getBigTableInstance() {
+        String instanceID = System.getProperty("bigtable.instanceID")
+        if (instanceID != null && !instanceID.equals("")) { return instanceID }
+        else { return ""}
+    }
+
     void setupSpec() throws Exception {
+
+        println("env: HBASE_TARGET_NAMESPACE => " + HBASE_TARGET_NAMESPACE)
+        println("env: HBASE_SCHEMA_HISTORY_NAMESPACE => " + HBASE_SCHEMA_HISTORY_NAMESPACE)
+        println("env: STORAGE_TYPE => " + STORAGE_TYPE)
+        println("env: BIGTABLE_PROJECT => " + BIGTABLE_PROJECT)
+        println("env: BIGTABLE_INSTANCE => " + BIGTABLE_INSTANCE)
+
         // start
         replicator = startReplicator()
     }
@@ -159,7 +204,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends  Specification {
         while (counter > 0) {
             Thread.sleep(1000)
             if (hbaseSanityCheck()) {
-                LOG.info("HBase container is ready.")
+                LOG.info("HBase/BigTable is ready.")
                 break
             }
             counter--
@@ -228,22 +273,31 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends  Specification {
 
         try {
             // instantiate Configuration class
-            Configuration config = HBaseConfiguration.create()
 
+            StorageConfig storageConfig = StorageConfig.build(this.getConfiguration())
+            Configuration config = storageConfig.getConfig()
             Connection connection = ConnectionFactory.createConnection(config)
 
             Admin admin = connection.getAdmin()
 
-            NamespaceDescriptor replicationNamespace =
-                    NamespaceDescriptor.create(HBASE_TARGET_NAMESPACE).build()
-            admin.createNamespace(replicationNamespace)
+            if (STORAGE_TYPE.equals("HBASE")) {
 
-            NamespaceDescriptor schemaNamespace =
-                    NamespaceDescriptor.create(HBASE_SCHEMA_HISTORY_NAMESPACE).build()
-            admin.createNamespace(schemaNamespace)
+                LOG.info("storage type => " + STORAGE_TYPE)
 
-            String clusterStatus = admin.getClusterStatus().toString()
-            LOG.info("hbase cluster status => " + clusterStatus)
+                if (!HBASE_TARGET_NAMESPACE.empty) {
+                    NamespaceDescriptor replicationNamespace =
+                            NamespaceDescriptor.create(HBASE_TARGET_NAMESPACE).build()
+                    admin.createNamespace(replicationNamespace)
+                }
+                if (!HBASE_SCHEMA_HISTORY_NAMESPACE.empty) {
+                    NamespaceDescriptor schemaNamespace =
+                            NamespaceDescriptor.create(HBASE_SCHEMA_HISTORY_NAMESPACE).build()
+                    admin.createNamespace(schemaNamespace)
+                }
+                String clusterStatus = admin.getClusterStatus().toString()
+                LOG.info("hbase cluster status => " + clusterStatus)
+
+            }
 
             TableName tableName = TableName.valueOf(sanityCheckTableName)
 
@@ -258,6 +312,9 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends  Specification {
                 admin.createTable(tableDescriptor)
 
                 LOG.info("Created table " + tableName)
+
+            } else {
+                LOG.info("table already exists, moving on...")
             }
 
             // write test data
@@ -316,6 +373,9 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends  Specification {
         } catch (IOException e) {
             e.printStackTrace()
         }
+
+        HBase.setConfiguration(this.getConfiguration())
+
         return passed
     }
 
@@ -386,7 +446,11 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends  Specification {
         configuration.put(HBaseApplier.Configuration.DRYRUN, false)
 
         configuration.put(HBaseApplier.Configuration.PAYLOAD_TABLE_NAME, HBASE_TEST_PAYLOAD_TABLE_NAME)
-        
+
+        configuration.put(StorageConfig.Configuration.TYPE, STORAGE_TYPE)
+        configuration.put(StorageConfig.Configuration.BIGTABLE_INSTANCE_ID, BIGTABLE_INSTANCE)
+        configuration.put(StorageConfig.Configuration.BIGTABLE_PROJECT_ID, BIGTABLE_PROJECT)
+
         return configuration
     }
 }

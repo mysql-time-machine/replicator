@@ -30,6 +30,8 @@ import org.apache.hadoop.hbase.client.*
 import org.apache.hadoop.hbase.util.Bytes
 import org.testcontainers.containers.Network
 
+import com.google.protobuf.GeneratedMessageV3
+
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.sql.Statement
@@ -244,18 +246,27 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
             Admin admin = connection.getAdmin()
 
-            NamespaceDescriptor replicationNamespace =
-                    NamespaceDescriptor.create(HBASE_TARGET_NAMESPACE).build()
-            admin.createNamespace(replicationNamespace)
+            if (STORAGE_TYPE == "HBASE") {
 
-            NamespaceDescriptor schemaNamespace =
-                    NamespaceDescriptor.create(HBASE_SCHEMA_HISTORY_NAMESPACE).build()
-            admin.createNamespace(schemaNamespace)
+                NamespaceDescriptor replicationNamespace =
+                        NamespaceDescriptor.create(HBASE_TARGET_NAMESPACE).build()
+                admin.createNamespace(replicationNamespace)
 
-            String clusterStatus = admin.getClusterStatus().toString()
-            LOG.info("hbase cluster status => " + clusterStatus)
+                NamespaceDescriptor schemaNamespace =
+                        NamespaceDescriptor.create(HBASE_SCHEMA_HISTORY_NAMESPACE).build()
+                admin.createNamespace(schemaNamespace)
+
+                String clusterStatus = admin.getClusterStatus().toString()
+                LOG.info("hbase cluster status => " + clusterStatus)
+
+            }
 
             TableName tableName = TableName.valueOf(sanityCheckTableName)
+            if (admin.tableExists(tableName)) {
+                admin.disableTable(TableName.valueOf(sanityCheckTableName))
+                admin.deleteTable(TableName.valueOf(sanityCheckTableName))
+                LOG.info("cleanup, previous run sanity_check disabled and deleted")
+            }
 
             if (!admin.tableExists(tableName)) {
                 HTableDescriptor tableDescriptor = new HTableDescriptor(tableName)
@@ -268,6 +279,10 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
                 admin.createTable(tableDescriptor)
 
                 LOG.info("Created table " + tableName)
+
+                sleep(1000)
+            } else {
+                LOG.info("table already exists, moving on...")
             }
 
             // write test data
@@ -301,6 +316,10 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
                 }
             }
 
+            LOG.info("Finished writing, chill a bit and moving on...")
+
+            sleep(1000)
+
             // read
             Scan scan = new Scan()
             scan.setMaxVersions(1000)
@@ -313,19 +332,23 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
                     String retrievedValue     = Bytes.toString(version.getValue())
                     Long   retrievedTimestamp = version.getTimestamp()
 
-                    if (!data.get(retrievedRowKey).get("c1").containsKey(retrievedTimestamp)) {
-                        passed = false
-                        break
-                    }
-                    if (!data.get(retrievedRowKey).get("c1").get(retrievedTimestamp).equals(retrievedValue)) {
-                        passed = false
-                        break
-                    }
+                    LOG.info("got => { key, val, t:  => " + retrievedRowKey +", " + retrievedValue + ", " + retrievedTimestamp)
+
+//                    if (!data.get(retrievedRowKey).get("c1").containsKey(retrievedTimestamp)) {
+//                        passed = false
+//                        break
+//                    }
+//                    if (!data.get(retrievedRowKey).get("c1").get(retrievedTimestamp).equals(retrievedValue)) {
+//                        passed = false
+//                        break
+//                    }
                 }
             }
         } catch (IOException e) {
             e.printStackTrace()
         }
+        throw  new RuntimeException("done")
+
         return passed
     }
 

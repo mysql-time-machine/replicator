@@ -11,9 +11,6 @@
     <artifactId>mysql-replicator-applier</artifactId>
     <name>mysql-replicator-applier</name>
     <packaging>jar</packaging>
-    <properties>
-        <hbase.version>1.2.0</hbase.version>
-    </properties>
     <dependencies>
         <dependency>
             <groupId>org.apache.kafka</groupId>
@@ -34,6 +31,13 @@
             <artifactId>hbase-server</artifactId>
             <version>${hbase.version}</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java -->
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.6.1</version>
+        </dependency>
+
         <dependency>
             <groupId>com.booking.replication</groupId>
             <artifactId>mysql-replicator-commons</artifactId>

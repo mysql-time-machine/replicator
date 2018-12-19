@@ -40,6 +40,25 @@
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>com.google.cloud.bigtable</groupId>
+            <artifactId>bigtable-hbase-1.x</artifactId>
+            <version>${bigtable.version}</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/com.google.api.grpc/grpc-google-cloud-bigtable-v2 -->
+        <!--<dependency>-->
+            <!--<groupId>com.google.api.grpc</groupId>-->
+            <!--<artifactId>grpc-google-cloud-bigtable-v2</artifactId>-->
+            <!--<version>0.39.0</version>-->
+            <!--<scope>test</scope>-->
+        <!--</dependency>-->
+
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${guava.version}</version>
+        </dependency>
         <dependency>
             <groupId>com.booking.replication</groupId>
             <artifactId>mysql-replicator-commons</artifactId>

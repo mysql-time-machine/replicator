@@ -8,13 +8,8 @@ import com.booking.replication.applier.hbase.writer.HBaseTimeMachineWriter;
 import com.booking.replication.augmenter.model.event.*;
 
 import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
-
 import com.booking.replication.commons.metrics.Metrics;
-import com.codahale.metrics.Counter;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -46,6 +41,7 @@ public class HBaseApplier implements Applier {
     private HBaseApplierWriter hBaseApplierWriter;
 
     private Map<String, Object> configuration;
+    private final StorageConfig storageConfig;
 
     org.apache.hadoop.conf.Configuration hbaseConfig;
 
@@ -65,9 +61,11 @@ public class HBaseApplier implements Applier {
 
         this.configuration = configuration;
 
+        this.storageConfig = StorageConfig.build(configuration);
+
         this.metrics = Metrics.build(configuration);
 
-        hbaseConfig = getHBaseConfig(configuration);
+        hbaseConfig = storageConfig.getConfig();
 
         try {
             hbaseSchemaManager = new HBaseSchemaManager(configuration);
@@ -82,18 +80,7 @@ public class HBaseApplier implements Applier {
 
     }
 
-    private  org.apache.hadoop.conf.Configuration getHBaseConfig(Map<String, Object> configuration) {
 
-        org.apache.hadoop.conf.Configuration hbConf = HBaseConfiguration.create();
-
-        // TODO: adapt to BigTable (no zookeeper, impl class properties)
-        String ZOOKEEPER_QUORUM =
-            (String) configuration.get(HBaseApplier.Configuration.HBASE_ZOOKEEPER_QUORUM);
-
-            hbConf.set("hbase.zookeeper.quorum", ZOOKEEPER_QUORUM);
-
-        return hbConf;
-    }
 
     /**
      * Logic of Operation:

@@ -38,6 +38,8 @@
         <kafka.version>1.1.0</kafka.version>
         <dropwizard.metrics.version>4.0.2</dropwizard.metrics.version>
         <hbase.version>1.2.2</hbase.version>
+        <bigtable.version>1.5.0</bigtable.version>
+        <guava.version>23.6-jre</guava.version>
 
     </properties>
     <modules>
@@ -350,6 +352,12 @@
             <releases>
                 <enabled>true</enabled>
             </releases>
+        </repository>
+        <repository>
+            <id>snapshots-repo</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            <releases><enabled>false</enabled></releases>
+            <snapshots><enabled>true</enabled></snapshots>
         </repository>
     </repositories>
     <profiles>

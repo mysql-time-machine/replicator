@@ -5,6 +5,7 @@ import com.booking.replication.applier.Applier
 import com.booking.replication.applier.Partitioner
 import com.booking.replication.applier.Seeker
 import com.booking.replication.applier.hbase.HBaseApplier
+import com.booking.replication.applier.hbase.StorageConfig
 import com.booking.replication.augmenter.ActiveSchemaManager
 import com.booking.replication.augmenter.Augmenter
 import com.booking.replication.augmenter.AugmenterContext
@@ -39,7 +40,7 @@ import spock.lang.Shared
 import spock.lang.Specification
 import spock.lang.Unroll
 
-class ReplicatorHBasePipelineIntegrationTestRunner extends  Specification {
+class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
     @Shared private static final Logger LOG = Logger.getLogger(ReplicatorHBasePipelineIntegrationTestRunner.class.getName())
 
@@ -62,10 +63,16 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends  Specification {
     @Shared public static final String AUGMENTER_FILTER_TYPE = "TABLE_MERGE_PATTERN"
     @Shared public static final String AUGMENTER_FILTER_CONFIGURATION = "([_][12]\\d{3}(0[1-9]|1[0-2]))"
 
-    @Shared public static final String HBASE_TARGET_NAMESPACE = "replicator_test"
     @Shared public static final String HBASE_SCHEMA_HISTORY_NAMESPACE = "schema_history"
+
     @Shared private static final String HBASE_COLUMN_FAMILY_NAME = "d"
     @Shared public static final String HBASE_TEST_PAYLOAD_TABLE_NAME = "tbl_payload_context"
+
+    @Shared public static final String HBASE_TARGET_NAMESPACE = "replicator_test"
+
+    @Shared public static final String STORAGE_TYPE = "BIGTABLE"
+    @Shared public static final String BIGTABLE_PROJECT = "btbleval"
+    @Shared public static final String  BIGTABLE_INSTANCE = "testbasic"
 
     @Shared private TESTS = [
             new TableNameMergeFilterTestImpl(),
@@ -228,7 +235,10 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends  Specification {
 
         try {
             // instantiate Configuration class
-            Configuration config = HBaseConfiguration.create()
+
+            StorageConfig storageConfig = StorageConfig.build(this.getConfiguration())
+
+            Configuration config = storageConfig.getConfig()
 
             Connection connection = ConnectionFactory.createConnection(config)
 
@@ -386,7 +396,11 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends  Specification {
         configuration.put(HBaseApplier.Configuration.DRYRUN, false)
 
         configuration.put(HBaseApplier.Configuration.PAYLOAD_TABLE_NAME, HBASE_TEST_PAYLOAD_TABLE_NAME)
-        
+
+        configuration.put(StorageConfig.Configuration.TYPE, STORAGE_TYPE)
+        configuration.put(StorageConfig.Configuration.BIGTABLE_INSTANCE_ID, BIGTABLE_INSTANCE)
+        configuration.put(StorageConfig.Configuration.BIGTABLE_PROJECT_ID, BIGTABLE_PROJECT)
+
         return configuration
     }
 }

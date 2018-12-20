@@ -31,7 +31,7 @@ import org.apache.hadoop.hbase.client.*
 import org.apache.hadoop.hbase.util.Bytes
 import org.testcontainers.containers.Network
 
-import com.google.protobuf.GeneratedMessageV3
+//import com.google.protobuf.GeneratedMessageV3
 
 import java.sql.ResultSet
 import java.sql.SQLException
@@ -66,14 +66,13 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     @Shared public static final String AUGMENTER_FILTER_TYPE = "TABLE_MERGE_PATTERN"
     @Shared public static final String AUGMENTER_FILTER_CONFIGURATION = "([_][12]\\d{3}(0[1-9]|1[0-2]))"
 
-
     @Shared private static final String HBASE_COLUMN_FAMILY_NAME = "d"
     @Shared public static final String HBASE_TEST_PAYLOAD_TABLE_NAME = "tbl_payload_context"
 
-    @Shared public static final String HBASE_TARGET_NAMESPACE = "" //""replicator_test"
-    @Shared public static final String HBASE_SCHEMA_HISTORY_NAMESPACE = ""  //"""schema_history"
-
-    @Shared public static final String STORAGE_TYPE = "BIGTABLE"
+    // HBase/BigTable specific config - TODO: add to test configuration
+    @Shared public static final String HBASE_TARGET_NAMESPACE = "" // """replicator_test"
+    @Shared public static final String HBASE_SCHEMA_HISTORY_NAMESPACE = "" // """schema_history"
+    @Shared public static final String STORAGE_TYPE = "HBASE"//"BIGTABLE"
     @Shared public static final String BIGTABLE_PROJECT = "btbleval"
     @Shared public static final String  BIGTABLE_INSTANCE = "testbasic"
 
@@ -239,35 +238,36 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         try {
             // instantiate Configuration class
 
-            StorageConfig storageConfig = StorageConfig.build(this.getConfiguration())
+            //StorageConfig storageConfig = StorageConfig.build(this.getConfiguration())
 
-            Configuration config = storageConfig.getConfig()
+            //Configuration config = storageConfig.getConfig()
+
+            //Connection connection = ConnectionFactory.createConnection(config)
+            Configuration config = HBaseConfiguration.create()
 
             Connection connection = ConnectionFactory.createConnection(config)
-
             Admin admin = connection.getAdmin()
 
-            if (STORAGE_TYPE == "HBASE") {
+            if (STORAGE_TYPE.equals("HBASE")) {
 
-                NamespaceDescriptor replicationNamespace =
-                        NamespaceDescriptor.create(HBASE_TARGET_NAMESPACE).build()
-                admin.createNamespace(replicationNamespace)
+                LOG.info("storage type => " + STORAGE_TYPE)
 
-                NamespaceDescriptor schemaNamespace =
-                        NamespaceDescriptor.create(HBASE_SCHEMA_HISTORY_NAMESPACE).build()
-                admin.createNamespace(schemaNamespace)
-
+                if (!HBASE_TARGET_NAMESPACE.empty) {
+                    NamespaceDescriptor replicationNamespace =
+                            NamespaceDescriptor.create(HBASE_TARGET_NAMESPACE).build()
+                    admin.createNamespace(replicationNamespace)
+                }
+                if (!HBASE_SCHEMA_HISTORY_NAMESPACE.empty) {
+                    NamespaceDescriptor schemaNamespace =
+                            NamespaceDescriptor.create(HBASE_SCHEMA_HISTORY_NAMESPACE).build()
+                    admin.createNamespace(schemaNamespace)
+                }
                 String clusterStatus = admin.getClusterStatus().toString()
                 LOG.info("hbase cluster status => " + clusterStatus)
 
             }
 
             TableName tableName = TableName.valueOf(sanityCheckTableName)
-            if (admin.tableExists(tableName)) {
-                admin.disableTable(TableName.valueOf(sanityCheckTableName))
-                admin.deleteTable(TableName.valueOf(sanityCheckTableName))
-                LOG.info("cleanup, previous run sanity_check disabled and deleted")
-            }
 
             if (!admin.tableExists(tableName)) {
                 HTableDescriptor tableDescriptor = new HTableDescriptor(tableName)

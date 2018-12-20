@@ -20,7 +20,6 @@
         <!-- Dependencies Versions -->
         <metrics.version>3.1.0</metrics.version>
         <mockito.version>2.18.3</mockito.version>
-        <hbase.version>2.0.0</hbase.version>
         <sparkWebServer.version>2.7.2</sparkWebServer.version>
 
         <junit.version>4.12</junit.version>
@@ -37,11 +36,8 @@
         <commons-dbcp2.version>2.4.0</commons-dbcp2.version>
         <kafka.version>1.1.0</kafka.version>
         <dropwizard.metrics.version>4.0.2</dropwizard.metrics.version>
-        <hbase.version>2.0.0</hbase.version>
-        <bigtable.version>1.5.0</bigtable.version>
-        <guava.version>23.6-jre</guava.version>
-
     </properties>
+
     <modules>
         <module>mysql-replicator-commons</module>
         <module>mysql-replicator-streams</module>
@@ -52,7 +48,8 @@
         <module>mysql-replicator-augmenter</module>
         <module>mysql-replicator-applier</module>
         <module>mysql-replicator</module>
-  </modules>
+    </modules>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -239,6 +236,7 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+
     <dependencies>
         <dependency>
             <groupId>junit</groupId>

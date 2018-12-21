@@ -18,7 +18,7 @@ import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.io.compress.Compression;
 import org.apache.hadoop.hbase.util.Bytes;
 
-import org.apache.hadoop.hbase.util.RegionSplitter;
+//import org.apache.hadoop.hbase.util.RegionSplitter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -119,10 +119,14 @@ public class HBaseSchemaManager {
                     tableDescriptor.setCompactionEnabled(true);
 
                     // pre-split into default number of regions
-                    RegionSplitter.HexStringSplit splitter = new RegionSplitter.HexStringSplit();
-                    byte[][] splitKeys = splitter.split(MIRRORED_TABLE_DEFAULT_REGIONS);
-
-                    admin.createTable(tableDescriptor, splitKeys);
+                    String storageEngine = (String) configuration.get(StorageConfig.Configuration.TYPE);
+//                    if (storageEngine.equals("HBASE")) {
+//                        RegionSplitter.HexStringSplit splitter = new RegionSplitter.HexStringSplit();
+//                        byte[][] splitKeys = splitter.split(MIRRORED_TABLE_DEFAULT_REGIONS);
+//                        admin.createTable(tableDescriptor, splitKeys);
+//                    } else {
+                        admin.createTable(tableDescriptor);
+//                    }
 
                     seenHBaseTables.put(hbaseTableName, 1);
 

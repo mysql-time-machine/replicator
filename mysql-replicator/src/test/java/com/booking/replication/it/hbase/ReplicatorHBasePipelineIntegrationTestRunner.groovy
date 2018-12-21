@@ -238,14 +238,14 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         try {
             // instantiate Configuration class
 
-            //StorageConfig storageConfig = StorageConfig.build(this.getConfiguration())
-
-            //Configuration config = storageConfig.getConfig()
-
-            //Connection connection = ConnectionFactory.createConnection(config)
-            Configuration config = HBaseConfiguration.create()
-
+            StorageConfig storageConfig = StorageConfig.build(this.getConfiguration())
+            Configuration config = storageConfig.getConfig()
             Connection connection = ConnectionFactory.createConnection(config)
+
+            // with this hbase works
+            //Configuration config = HBaseConfiguration.create()
+            //Connection connection = ConnectionFactory.createConnection(config)
+
             Admin admin = connection.getAdmin()
 
             if (STORAGE_TYPE.equals("HBASE")) {

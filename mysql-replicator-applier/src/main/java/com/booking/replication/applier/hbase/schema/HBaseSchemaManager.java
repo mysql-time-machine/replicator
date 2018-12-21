@@ -70,7 +70,7 @@ public class HBaseSchemaManager {
 
         if (!DRY_RUN) {
             try {
-                connection = ConnectionFactory.createConnection(hbaseConfig);
+                connection = ConnectionFactory.createConnection(storageConfig.getConfig());
                 LOG.info("HBaseSchemaManager successfully established connection to HBase.");
             } catch (IOException e) {
                 LOG.error("HBaseSchemaManager could not connect to HBase");
@@ -90,7 +90,7 @@ public class HBaseSchemaManager {
                 }
 
                 if (connection == null) {
-                    connection = ConnectionFactory.createConnection(hbaseConfig);
+                    connection = ConnectionFactory.createConnection(storageConfig.getConfig());
                 }
 
                 Admin admin = connection.getAdmin();
@@ -118,15 +118,7 @@ public class HBaseSchemaManager {
                     tableDescriptor.addFamily(cd);
                     tableDescriptor.setCompactionEnabled(true);
 
-                    // pre-split into default number of regions
-                    String storageEngine = (String) configuration.get(StorageConfig.Configuration.TYPE);
-//                    if (storageEngine.equals("HBASE")) {
-//                        RegionSplitter.HexStringSplit splitter = new RegionSplitter.HexStringSplit();
-//                        byte[][] splitKeys = splitter.split(MIRRORED_TABLE_DEFAULT_REGIONS);
-//                        admin.createTable(tableDescriptor, splitKeys);
-//                    } else {
-                        admin.createTable(tableDescriptor);
-//                    }
+                    admin.createTable(tableDescriptor);
 
                     seenHBaseTables.put(hbaseTableName, 1);
 
@@ -181,7 +173,7 @@ public class HBaseSchemaManager {
         try {
 
             if (connection == null) {
-                connection = ConnectionFactory.createConnection(hbaseConfig);
+                connection = ConnectionFactory.createConnection(storageConfig.getConfig());
             }
 
             Admin admin = connection.getAdmin();

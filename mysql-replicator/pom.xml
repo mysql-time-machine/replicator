@@ -60,35 +60,35 @@
                 </property>
             </activation>
             <dependencies>
-                <dependency>
-                    <groupId>org.apache.hbase</groupId>
-                    <artifactId>hbase-client</artifactId>
-                    <version>2.0.0</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.apache.hbase</groupId>
-                    <artifactId>hbase-common</artifactId>
-                    <version>2.0.0</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.apache.hbase</groupId>
-                    <artifactId>hbase-server</artifactId>
-                    <version>2.0.0</version>
-                </dependency>
+                <!--<dependency>-->
+                    <!--<groupId>org.apache.hbase</groupId>-->
+                    <!--<artifactId>hbase-client</artifactId>-->
+                    <!--<version>2.0.0</version>-->
+                <!--</dependency>-->
+                <!--<dependency>-->
+                    <!--<groupId>org.apache.hbase</groupId>-->
+                    <!--<artifactId>hbase-common</artifactId>-->
+                    <!--<version>2.0.0</version>-->
+                <!--</dependency>-->
+                <!--<dependency>-->
+                    <!--<groupId>org.apache.hbase</groupId>-->
+                    <!--<artifactId>hbase-server</artifactId>-->
+                    <!--<version>2.0.0</version>-->
+                <!--</dependency>-->
                 <dependency>
                     <groupId>com.google.protobuf</groupId>
                     <artifactId>protobuf-java</artifactId>
-                    <version>3.6.1</version>
+                    <version>3.6.0</version>
                 </dependency>
                 <dependency>
                     <groupId>com.google.guava</groupId>
                     <artifactId>guava</artifactId>
-                    <version>23.6-jre</version>
+                    <version>26.0-jre</version>
                 </dependency>
                 <dependency>
                     <groupId>com.google.cloud.bigtable</groupId>
                     <artifactId>bigtable-hbase-1.x</artifactId>
-                    <version>1.7.0</version>
+                    <version>1.6.0</version>
                 </dependency>
             </dependencies>
         </profile>

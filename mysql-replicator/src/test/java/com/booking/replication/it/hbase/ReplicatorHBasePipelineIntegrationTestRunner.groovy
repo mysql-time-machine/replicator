@@ -31,7 +31,7 @@ import org.apache.hadoop.hbase.client.*
 import org.apache.hadoop.hbase.util.Bytes
 import org.testcontainers.containers.Network
 
-//import com.google.protobuf.GeneratedMessageV3
+import com.google.protobuf.GeneratedMessageV3
 
 import java.sql.ResultSet
 import java.sql.SQLException
@@ -72,7 +72,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     // HBase/BigTable specific config - TODO: add to test configuration
     @Shared public static final String HBASE_TARGET_NAMESPACE = "" // """replicator_test"
     @Shared public static final String HBASE_SCHEMA_HISTORY_NAMESPACE = "" // """schema_history"
-    @Shared public static final String STORAGE_TYPE = "HBASE"//"BIGTABLE"
+    @Shared public static final String STORAGE_TYPE = "BIGTABLE"
     @Shared public static final String BIGTABLE_PROJECT = "btbleval"
     @Shared public static final String  BIGTABLE_INSTANCE = "testbasic"
 

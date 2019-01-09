@@ -106,6 +106,7 @@ public class HBaseSchemaManager {
 
                 if (admin.tableExists(tableName)) {
                     LOG.warn("Table exists in HBase, but not in schema cache. Probably a case of a table that was dropped and than created again");
+                    seenHBaseTables.put(hbaseTableName, 1);
                 } else {
                     HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);
                     HColumnDescriptor cd = new HColumnDescriptor("d");

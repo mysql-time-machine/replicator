@@ -300,24 +300,27 @@ public class AugmenterContext implements Closeable {
                 }
                 // ddl table
                 else if ((matcher = this.ddlTablePattern.matcher(query)).find()) {
+                    Boolean shouldProcess = ( queryRawEventData.getDatabase().equals(replicatedSchema) );
                     this.updateCommons(
-                            true,
+                            shouldProcess,
                             QueryAugmentedEventDataType.DDL_TABLE,
                             QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
                             queryRawEventData.getDatabase(),
                             matcher.group(4)
                     );
 
-                    isAtDDL.set(true);
-
-                    long schemaChangeTimestamp = eventHeader.getTimestamp();
-                    this.updateSchema(query, schemaChangeTimestamp);
+                    // Because we don't want to create tables for non-replicated schemas
+                    if ( shouldProcess ) {
+                        isAtDDL.set(true);
+                        long schemaChangeTimestamp = eventHeader.getTimestamp();
+                        this.updateSchema(query, schemaChangeTimestamp);
+                    }
 
                 }
                 // ddl temp table
                 else if ((matcher = this.ddlTemporaryTablePattern.matcher(query)).find()) {
                     this.updateCommons(
-                            true,
+                            ( queryRawEventData.getDatabase().equals(replicatedSchema) ),
                             QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE,
                             QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
                             queryRawEventData.getDatabase(),
@@ -327,7 +330,7 @@ public class AugmenterContext implements Closeable {
                 // ddl view
                 else if ((matcher = this.ddlViewPattern.matcher(query)).find()) {
                     this.updateCommons(
-                            true,
+                            ( queryRawEventData.getDatabase().equals(replicatedSchema) ),
                             QueryAugmentedEventDataType.DDL_VIEW,
                             QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
                             queryRawEventData.getDatabase(),
@@ -335,7 +338,7 @@ public class AugmenterContext implements Closeable {
                     );
                 } else if ((matcher = this.ddlAnalyzePattern.matcher(query)).find()) {
                     this.updateCommons(
-                            true,
+                            false,
                             QueryAugmentedEventDataType.DDL_ANALYZE,
                             QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
                             queryRawEventData.getDatabase(),

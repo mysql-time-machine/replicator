@@ -16,6 +16,7 @@ import com.booking.replication.commons.metrics.Metrics;
 import com.booking.replication.supplier.model.RawEvent;
 import com.booking.replication.streams.Streams;
 import com.booking.replication.supplier.Supplier;
+import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -152,7 +153,19 @@ public class Replicator {
 //                Checkpoint from = new Checkpoint(
 //                        new Binlog("binlog.000001", 4)
 //                );
-                Checkpoint from = this.seeker.seek(this.getCheckpoint());
+
+                String startFilename = (String)configuration.get(BinaryLogSupplier.Configuration.BINLOG_START_FILENAME);
+                Long startPosition = Long.valueOf( (String)configuration.get(BinaryLogSupplier.Configuration.BINLOG_START_POSITION) );
+
+                Checkpoint from;
+                if ( startPosition != null && startFilename != null ) {
+                    from = new Checkpoint(
+                            new Binlog(startFilename, startPosition )
+                    );
+                } else {
+                    from = this.seeker.seek(this.getCheckpoint());
+                }
+
                 this.supplier.start(from);
 
                 Replicator.LOG.log(Level.INFO, "replicator started");

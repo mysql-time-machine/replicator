@@ -437,12 +437,12 @@ public class AugmenterContext implements Closeable {
 
                 TableIdRawEventData tableIdRawEventData = TableIdRawEventData.class.cast(eventData);
                 FullTableName eventTable = this.getEventTable(tableIdRawEventData.getTableId());
-                LOG.info( "currentTransactionSchemaName (" + currentTransactionSchemaName + ") equal replicatedSchema (" + replicatedSchema + ")? " + (currentTransactionSchemaName.equals(replicatedSchema) ? "true" : "false") + "\n" +
+                LOG.info( "currentTransactionSchemaName (" + currentTransactionSchemaName + ") equal replicatedSchema (" + replicatedSchema + ")? " + ( currentTransactionSchemaName.get().equals(replicatedSchema) ? "true" : "false") + "\n" +
                                "eventTable (" + ( eventTable != null ? eventTable.getName() : "null" ) + ") is " + (eventTable == null ? "" : "not") + " null" + "\n" +
                                "Table name is " + ( eventTable != null && !this.excludeTable(eventTable.getName()) ? "not" : "" ) + " excluded"
                 );
                 this.updateCommons(
-                        (currentTransactionSchemaName.equals(replicatedSchema)) && ((eventTable == null) || (!this.excludeTable(eventTable.getName()))),
+                        ( currentTransactionSchemaName.get().equals(replicatedSchema) ) && ((eventTable == null) || (!this.excludeTable(eventTable.getName()))),
                         null,
                         null,
                         null,

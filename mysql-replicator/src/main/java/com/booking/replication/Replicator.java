@@ -154,11 +154,11 @@ public class Replicator {
 //                        new Binlog("binlog.000001", 4)
 //                );
 
-                String startFilename = (String)configuration.get(BinaryLogSupplier.Configuration.BINLOG_START_FILENAME);
-                Long startPosition = Long.valueOf( (String)configuration.get(BinaryLogSupplier.Configuration.BINLOG_START_POSITION) );
+                String startFilename = (String)configuration.getOrDefault(BinaryLogSupplier.Configuration.BINLOG_START_FILENAME,"checkpoint");
+                Long startPosition = Long.valueOf( (String)configuration.getOrDefault(BinaryLogSupplier.Configuration.BINLOG_START_POSITION,"-1") );
 
                 Checkpoint from;
-                if ( startPosition != null && startFilename != null ) {
+                if ( startPosition != -1 && startFilename != "checkpoint" ) {
                     from = new Checkpoint(
                             new Binlog(startFilename, startPosition )
                     );

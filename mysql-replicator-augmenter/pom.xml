@@ -38,5 +38,9 @@
             <groupId>com.booking.replication</groupId>
             <artifactId>mysql-replicator-augmenter-model</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.booking.replication</groupId>
+            <artifactId>mysql-replicator-supplier</artifactId>
+        </dependency>
     </dependencies>
 </project>

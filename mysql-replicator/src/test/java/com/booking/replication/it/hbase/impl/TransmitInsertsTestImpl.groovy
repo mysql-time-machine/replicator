@@ -1,4 +1,3 @@
-
 package com.booking.replication.it.hbase.impl
 
 import com.booking.replication.applier.hbase.StorageConfig

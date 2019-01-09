@@ -1,15 +1,10 @@
 package com.booking.replication.augmenter;
 
-import com.booking.replication.augmenter.model.event.AugmentedEvent;
-import com.booking.replication.augmenter.model.event.AugmentedEventType;
+import com.booking.replication.augmenter.model.event.*;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
-import com.booking.replication.augmenter.model.event.AugmentedEventData;
-import com.booking.replication.augmenter.model.event.AugmentedEventHeader;
 import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
 import com.booking.replication.commons.checkpoint.ForceRewindException;
-import com.booking.replication.supplier.model.RawEvent;
-import com.booking.replication.supplier.model.RawEventData;
-import com.booking.replication.supplier.model.RawEventHeaderV4;
+import com.booking.replication.supplier.model.*;
 
 import java.io.Closeable;
 import java.io.IOException;

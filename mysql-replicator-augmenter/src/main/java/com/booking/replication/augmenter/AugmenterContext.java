@@ -21,6 +21,8 @@ import com.booking.replication.supplier.model.RotateRawEventData;
 import com.booking.replication.supplier.model.TableIdRawEventData;
 import com.booking.replication.supplier.model.TableMapRawEventData;
 import com.booking.replication.supplier.model.XIDRawEventData;
+import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
+
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -77,6 +79,7 @@ public class AugmenterContext implements Closeable {
     private static final String DEFAULT_SET_PATTERN = "(?<=set\\()(.*?)(?=\\))";
 
     private final SchemaManager schemaManager;
+    private final String replicatedSchema;
     private final CurrentTransaction transaction;
 
     private final Pattern beginPattern;
@@ -105,6 +108,7 @@ public class AugmenterContext implements Closeable {
 
     private final AtomicReference<String> binlogFilename;
     private final AtomicLong binlogPosition;
+    private final AtomicReference<String> currentTransactionSchemaName;
 
     private final GTIDType gtidType;
     private final AtomicReference<String> gtidValue;
@@ -183,6 +187,10 @@ public class AugmenterContext implements Closeable {
 
         this.isAtDDL = new AtomicBoolean();
         this.isAtDDL.set(false);
+        currentTransactionSchemaName = new AtomicReference<>();
+        replicatedSchema = (String) configuration.get( BinaryLogSupplier.Configuration.MYSQL_SCHEMA );
+
+        LOG.info("Setting replicatedSchema to: " + replicatedSchema);
     }
 
     private Pattern getPattern(Map<String, Object> configuration, String configurationPath, String configurationDefault) {
@@ -249,7 +257,8 @@ public class AugmenterContext implements Closeable {
 
                 // begin
                 if (this.beginPattern.matcher(query).find()) {
-
+                    currentTransactionSchemaName.set(queryRawEventData.getDatabase());
+                    LOG.info("Set currentTransactionSchemaName to: " + currentTransactionSchemaName);
                     this.updateCommons(
                             false,
                             QueryAugmentedEventDataType.BEGIN,
@@ -428,9 +437,12 @@ public class AugmenterContext implements Closeable {
 
                 TableIdRawEventData tableIdRawEventData = TableIdRawEventData.class.cast(eventData);
                 FullTableName eventTable = this.getEventTable(tableIdRawEventData.getTableId());
-
+                LOG.info( "currentTransactionSchemaName (" + currentTransactionSchemaName + ") equal replicatedSchema (" + replicatedSchema + ")? " + (currentTransactionSchemaName.equals(replicatedSchema) ? "true" : "false") + "\n" +
+                               "eventTable (" + ( eventTable != null ? eventTable.getName() : "null" ) + ") is " + (eventTable == null ? "" : "not") + " null" + "\n" +
+                               "Table name is " + ( eventTable != null && !this.excludeTable(eventTable.getName()) ? "not" : "" ) + " excluded"
+                );
                 this.updateCommons(
-                        (eventTable == null) || (!this.excludeTable(eventTable.getName())),
+                        (currentTransactionSchemaName.equals(replicatedSchema)) && ((eventTable == null) || (!this.excludeTable(eventTable.getName()))),
                         null,
                         null,
                         null,

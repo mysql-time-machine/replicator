@@ -48,9 +48,17 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
 
             this.hbaseSchemaManager = hbaseSchemaManager;
 
+            this.metrics.getRegistry()
+                    .counter("hbase.applier.connection.attempt").inc(1L);
             connection = ConnectionFactory.createConnection(hbaseConfig);
+            this.metrics.getRegistry()
+                    .counter("hbase.applier.connection.success").inc(1L);
 
+            this.metrics.getRegistry()
+                    .counter("hbase.applier.connection.admin.attempt").inc(1L);
             admin = connection.getAdmin();
+            this.metrics.getRegistry()
+                    .counter("hbase.applier.connection.admin.success").inc(1L);
 
             buffered = new ConcurrentHashMap<>();
 

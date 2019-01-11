@@ -5,6 +5,7 @@ import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
 import com.booking.replication.commons.checkpoint.ForceRewindException;
 import com.booking.replication.supplier.model.*;
+import com.booking.replication.commons.metrics.Metrics;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -63,17 +64,21 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
     private final AugmenterContext context;
     private final HeaderAugmenter headerAugmenter;
     private final DataAugmenter dataAugmenter;
+    private final Metrics<?> metrics;
 
     private Augmenter(SchemaManager schemaManager, Map<String, Object> configuration) {
         this.context = new AugmenterContext(schemaManager, configuration);
         this.headerAugmenter = new HeaderAugmenter(this.context);
         this.dataAugmenter = new DataAugmenter(this.context);
+        this.metrics = Metrics.build(configuration);
     }
 
     @Override
     public Collection<AugmentedEvent> apply(RawEvent rawEvent) {
 
         try {
+            this.metrics.getRegistry()
+                    .counter("hbase.augmenter.apply.attempt").inc(1L);
 
             RawEventHeaderV4 eventHeader = rawEvent.getHeader();
             RawEventData eventData = rawEvent.getData();
@@ -81,11 +86,14 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
             this.context.updateContext(eventHeader, eventData);
 
             if (this.context.shouldProcess()) {
-
+                this.metrics.getRegistry()
+                        .counter("hbase.augmenter.apply.should_process.true").inc(1L);
                 if (this.context.getTransaction().markedForCommit()) { // <- commit reached?
 
 
                     if (this.context.getTransaction().sizeLimitExceeded()) { // <- rewind?
+                        this.metrics.getRegistry()
+                                .counter("hbase.augmenter.apply.transaction.rewind").inc(1L);
 
                         // size limit exceeded, drop current transaction & rewind
                         this.context.getTransaction().getAndClear();
@@ -99,6 +107,8 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
                         Collection<AugmentedEvent> augmentedEvents = this.context.getTransaction().getAndClear();
 
                         if (augmentedEvents.size() > 0) {
+                            this.metrics.getRegistry()
+                                    .counter("hbase.augmenter.apply.transaction.success").inc(1L);
                             return augmentedEvents;
                         } else {
                             return null;
@@ -123,6 +133,8 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
 
                     AugmentedEvent augmentedEvent = new AugmentedEvent(augmentedEventHeader, augmentedEventData);
 
+                    this.metrics.getRegistry()
+                            .counter("hbase.augmenter.apply.event.success").inc(1L);
                     // Optional payload for DDL event:
                     //      - if current event is DDL, there will be an updated schema snapshot
                     //        in the context object and isAtDdl will be true
@@ -133,6 +145,8 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
                         if (augmentedEvent.getHeader().getEventType() == AugmentedEventType.QUERY) {
                             SchemaSnapshot schemaSnapshot = this.context.getSchemaSnapshot();
                             augmentedEvent.setOptionalPayload(schemaSnapshot);
+                            this.metrics.getRegistry()
+                                    .counter("hbase.augmenter.apply.event.ddl").inc(1L);
                         } else {
                             throw new RuntimeException("Error in logic");
                         }
@@ -149,7 +163,8 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
                             return augmentedEvents;
                         } else {
                             this.context.getTransaction().add(augmentedEvent);
-
+                            this.metrics.getRegistry()
+                                    .counter("hbase.augmenter.apply.transaction.event_added").inc(1L);
                             return null;
                         }
                     } else {
@@ -157,6 +172,8 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
                     }
                 }
             } else {
+                this.metrics.getRegistry()
+                        .counter("hbase.augmenter.apply.should_process.false").inc(1L);
                 return null;
             }
         } finally {

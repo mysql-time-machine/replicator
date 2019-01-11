@@ -61,8 +61,8 @@ public class Replicator {
     private final Applier applier;
     private final Metrics<?> metrics;
     private final CheckpointApplier checkpointApplier;
-    private final Streams<Collection<AugmentedEvent>, Collection<AugmentedEvent>> streamsApplier;
-    private final Streams<RawEvent, Collection<AugmentedEvent>> streamsSupplier;
+    private final Streams<Collection<AugmentedEvent>, Collection<AugmentedEvent>> destinationStream;
+    private final Streams<RawEvent, Collection<AugmentedEvent>> sourceStream;
 
     public Replicator(final Map<String, Object> configuration) {
 
@@ -96,7 +96,7 @@ public class Replicator {
 
         this.checkpointApplier = CheckpointApplier.build(configuration, this.coordinator, this.checkpointPath);
 
-        this.streamsApplier = Streams.<Collection<AugmentedEvent>>builder()
+        this.destinationStream = Streams.<Collection<AugmentedEvent>>builder()
                 .threads(threads)
                 .tasks(tasks)
                 .partitioner((events, totalPartitions) -> this.partitioner.apply(events.iterator().next(), totalPartitions))
@@ -109,7 +109,7 @@ public class Replicator {
                     }
                 }).build();
 
-        this.streamsSupplier = Streams.<RawEvent>builder()
+        this.sourceStream = Streams.<RawEvent>builder()
                 .fromPush()
                 .process(this.augmenter)
                 .process(this.seeker)
@@ -122,7 +122,7 @@ public class Replicator {
                         ).add(event);
                     }
                     for (Collection<AugmentedEvent> splitEvents : splitEventsMap.values()) {
-                        this.streamsApplier.push(splitEvents);
+                        this.destinationStream.push(splitEvents);
                     }
                     return true;
                 }).build();
@@ -142,10 +142,10 @@ public class Replicator {
                 Replicator.LOG.log(Level.INFO, "starting replicator");
 
                 Replicator.LOG.log(Level.INFO, "starting streams applier");
-                this.streamsApplier.start();
+                this.destinationStream.start();
 
                 Replicator.LOG.log(Level.INFO, "starting streams supplier");
-                this.streamsSupplier.start();
+                this.sourceStream.start();
 
                 Replicator.LOG.log(Level.INFO, "starting supplier");
 
@@ -182,10 +182,10 @@ public class Replicator {
                 this.supplier.stop();
 
                 Replicator.LOG.log(Level.INFO, "stopping streams supplier");
-                this.streamsSupplier.stop();
+                this.sourceStream.stop();
 
                 Replicator.LOG.log(Level.INFO, "stopping streams applier");
-                this.streamsApplier.stop();
+                this.destinationStream.stop();
 
                 Replicator.LOG.log(Level.INFO, "replicator stopped");
             } catch (IOException | InterruptedException exception) {
@@ -193,11 +193,11 @@ public class Replicator {
             }
         });
 
-        this.supplier.onEvent(this.streamsSupplier::push);
+        this.supplier.onEvent(this.sourceStream::push);
 
         this.supplier.onException(exceptionHandle);
-        this.streamsSupplier.onException(exceptionHandle);
-        this.streamsApplier.onException(exceptionHandle);
+        this.sourceStream.onException(exceptionHandle);
+        this.destinationStream.onException(exceptionHandle);
 
     }
 

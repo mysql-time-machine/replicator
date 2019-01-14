@@ -159,7 +159,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
             Collection<AugmentedEvent> events = buffered.get(transactionUUID);
             List<HBaseApplierMutationGenerator.PutMutation> mutations = new ArrayList<>();
 
-            // extract augmented rows
+            // extract augmented rows & generate mutations
             for (AugmentedEvent event : events) {
 
                 List<AugmentedRow> augmentedRows = AugmentedEventRowExtractor.extractAugmentedRows(event);
@@ -169,7 +169,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                 hbaseSchemaManager.createHBaseTableIfNotExists(augmentedRowsTableName);
 
                 this.metrics.getRegistry()
-                        .counter("hbase.applier.rows.received.count").inc(augmentedRows.size());
+                        .counter("hbase.applier.writer.rows.received.count").inc(augmentedRows.size());
 
                 if (timestampOrganizer != null) {
                     timestampOrganizer.organizeTimestamps(augmentedRows, augmentedRowsTableName, transactionUUID);
@@ -204,9 +204,27 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                         mutation -> mutation.getPut()
                 ).collect(Collectors.toList());
 
+                long tBegin = System.currentTimeMillis();
+
+                // TODO: monitor
+                long nrMutations = putList.size();
+
                 Table table = connection.getTable(TableName.valueOf(tableName));
                 table.put(putList);
                 table.close();
+
+                long tEnd = System.currentTimeMillis();
+                long latency = tEnd - tBegin;
+
+                this.metrics
+                        .getRegistry()
+                        .histogram("hbase.applier.writer.put.latency")
+                        .update(latency);
+
+                this.metrics
+                        .getRegistry()
+                        .histogram("hbase.applier.writer.put.nr-mutations")
+                        .update(latency);
                 // TODO: send sample to validator
             }
         }

@@ -169,7 +169,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                 hbaseSchemaManager.createHBaseTableIfNotExists(augmentedRowsTableName);
 
                 this.metrics.getRegistry()
-                        .counter("hbase.applier.rows.received.count").inc(augmentedRows.size());
+                        .counter("hbase.applier.writer.rows.received").inc(augmentedRows.size());
 
                 if (timestampOrganizer != null) {
                     timestampOrganizer.organizeTimestamps(augmentedRows, augmentedRowsTableName, transactionUUID);
@@ -183,7 +183,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                 mutations.addAll(eventMutations);
 
                 this.metrics.getRegistry()
-                        .counter("hbase.applier.put.count").inc(eventMutations.size());
+                        .counter("hbase.applier.writer.put").inc(eventMutations.size());
             }
 
             // group by table

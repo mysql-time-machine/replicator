@@ -224,12 +224,17 @@ public class AugmenterContext implements Closeable {
 
     public synchronized void updateContext(RawEventHeaderV4 eventHeader, RawEventData eventData) {
 
+        this.metrics.getRegistry()
+                .counter("hbase.augmenter_context.update_header.attempt").inc(1L);
+
         this.updateHeader(
                 eventHeader.getTimestamp(),
                 eventHeader.getServerId(),
                 eventHeader.getNextPosition()
         );
 
+        this.metrics.getRegistry()
+                .counter("hbase.augmenter_context.update_header.succeeded").inc(1L);
         isAtDDL.set(false);
 
         switch (eventHeader.getEventType()) {

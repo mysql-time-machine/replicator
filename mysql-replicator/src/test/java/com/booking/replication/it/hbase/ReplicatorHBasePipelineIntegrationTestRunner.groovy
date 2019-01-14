@@ -75,11 +75,11 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     @Shared public static final String  BIGTABLE_INSTANCE = getBigTableInstance()
 
     @Shared private TESTS = [
-            new TableNameMergeFilterTestImpl(),
-            new TransmitInsertsTestImpl(),
-            new MicrosecondValidationTestImpl(),
-            new LongTransactionTestImpl(),
-            new PayloadTableTestImpl()
+//            new TableNameMergeFilterTestImpl(),
+            new TransmitInsertsTestImpl()
+//            new MicrosecondValidationTestImpl(),
+//            new LongTransactionTestImpl(),
+//            new PayloadTableTestImpl()
     ]
 
     @Shared ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS)
@@ -377,6 +377,23 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         HBase.setConfiguration(this.getConfiguration())
 
         return passed
+    }
+
+    static String randString(int targetStringLength) {
+
+        int leftLimit = 97   // letter 'a'
+        int rightLimit = 122 // letter 'z'
+
+        Random random = new Random()
+        StringBuilder buffer = new StringBuilder(targetStringLength)
+        for (int i = 0; i < targetStringLength; i++) {
+            Number randomLimitedInt = leftLimit + ((Number)
+                    (random.nextFloat() * (rightLimit - leftLimit + 1)))
+            buffer.append((char) randomLimitedInt)
+        }
+        String generatedString = buffer.toString()
+
+        return generatedString
     }
 
     static String randString() {

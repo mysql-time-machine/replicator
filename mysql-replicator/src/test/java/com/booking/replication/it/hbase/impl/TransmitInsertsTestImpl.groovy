@@ -49,41 +49,43 @@ class TransmitInsertsTestImpl implements ReplicatorHBasePipelineIntegrationTest 
         replicantMySQLHandle.execute(sqlCreate);
         replicantMySQLHandle.commit();
 
-        // INSERT
-        def testRows = [
-                ['A', '1', '665726', 'PZBAAQSVoSxxFassQEAQ'],
-                ['B', '2', '490705', 'cvjIXQiWLegvLs kXaKH'],
-                ['C', '3', '437616', 'pjFNkiZExAiHkKiJePMp'],
-                ['D', '4', '537616', 'SjFNkiZExAiHkKiJePMp'],
-                ['E', '5', '637616', 'ajFNkiZExAiHkKiJePMp']
-        ]
+        for ( i in 1..25000 ) {
+            // INSERT
+            def testRows = [
+                    [ ReplicatorHBasePipelineIntegrationTestRunner.randString(1), i, i+100, ReplicatorHBasePipelineIntegrationTestRunner.randString(20)],
+                    [ReplicatorHBasePipelineIntegrationTestRunner.randString(1), i+1, i+101, ReplicatorHBasePipelineIntegrationTestRunner.randString(20)],
+                    [ReplicatorHBasePipelineIntegrationTestRunner.randString(1), i+2, i+102, ReplicatorHBasePipelineIntegrationTestRunner.randString(20)],
+                    [ReplicatorHBasePipelineIntegrationTestRunner.randString(1), i+3, i+103, ReplicatorHBasePipelineIntegrationTestRunner.randString(20)],
+                    [ReplicatorHBasePipelineIntegrationTestRunner.randString(1), i+4, i+104, ReplicatorHBasePipelineIntegrationTestRunner.randString(20)]
+            ]
 
-        // insert
-        testRows.each {
-            row ->
-                try {
-                    def sqlString = """
-                INSERT INTO
-                sometable (
-                        pk_part_1,
-                        pk_part_2,
-                        randomInt,
-                        randomVarchar
-                )
-                values (
-                        ${row[0]},
-                        ${row[1]},
-                        ${row[2]},
-                        ${row[3]}
-                )
-                """
-                    replicantMySQLHandle.execute(sqlString)
-                    replicantMySQLHandle.commit()
-                } catch (Exception ex) {
-                    replicantMySQLHandle.rollback()
-                }
+            println("Preparing to insert batch #" + i)
+            // insert
+            testRows.each {
+                row ->
+                    try {
+                        def sqlString = """
+                    INSERT INTO
+                    sometable (
+                            pk_part_1,
+                            pk_part_2,
+                            randomInt,
+                            randomVarchar
+                    )
+                    values (
+                            ${row[0]},
+                            ${row[1]},
+                            ${row[2]},
+                            ${row[3]}
+                    )
+                    """
+                        replicantMySQLHandle.execute(sqlString)
+                        replicantMySQLHandle.commit()
+                    } catch (Exception ex) {
+                        replicantMySQLHandle.rollback()
+                    }
+            }
         }
-
         replicantMySQLHandle.close()
     }
 

@@ -81,7 +81,7 @@ public class HBaseSchemaManager {
 
     public void createHBaseTableIfNotExists(String hbaseTableName) throws IOException {
 
-        try {
+        try ( Admin admin = connection.getAdmin() ){
 
             if (!DRY_RUN) {
 
@@ -92,8 +92,6 @@ public class HBaseSchemaManager {
                 if (connection == null) {
                     connection = ConnectionFactory.createConnection(storageConfig.getConfig());
                 }
-
-                Admin admin = connection.getAdmin();
 
                 TableName tableName;
 
@@ -171,13 +169,11 @@ public class HBaseSchemaManager {
             hbaseRowKey = "initial-snapshot";
         }
 
-        try {
+        try ( Admin admin = connection.getAdmin() ){
 
             if (connection == null) {
                 connection = ConnectionFactory.createConnection(storageConfig.getConfig());
             }
-
-            Admin admin = connection.getAdmin();
 
             TableName tableName = TableName.valueOf(hbaseTableName);
 
@@ -249,6 +245,7 @@ public class HBaseSchemaManager {
 
             Table hbaseTable = connection.getTable(tableName);
             hbaseTable.put(put);
+            hbaseTable.close();
 
         } catch (IOException ioe) {
             throw new SchemaTransitionException("Failed to store schemaChangePointSnapshot in HBase.", ioe);

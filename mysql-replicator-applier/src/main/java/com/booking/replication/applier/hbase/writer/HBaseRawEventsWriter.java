@@ -118,6 +118,7 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
             Table table = connection.getTable(TableName.valueOf(Bytes.toBytes(tableName)));
 
             table.put(mutationsByTable.get(tableName));
+            table.close();
         }
     }
 

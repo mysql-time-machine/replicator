@@ -172,6 +172,7 @@ class MicrosecondValidationTestImpl implements ReplicatorHBasePipelineIntegratio
 
                 }
             }
+            table.close();
         } catch (IOException e) {
             e.printStackTrace()
         }

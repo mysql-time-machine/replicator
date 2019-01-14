@@ -210,6 +210,7 @@ class LongTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest 
 
                 }
             }
+            table.close();
         } catch (IOException e) {
             e.printStackTrace()
         }

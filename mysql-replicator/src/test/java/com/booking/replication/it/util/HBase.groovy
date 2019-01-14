@@ -66,6 +66,7 @@ class HBase {
                     )
                 }
             }
+            table.close();
         } catch (IOException e) {
             e.printStackTrace()
         }

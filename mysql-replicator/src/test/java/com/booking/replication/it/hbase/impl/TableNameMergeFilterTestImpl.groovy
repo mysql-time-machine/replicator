@@ -148,6 +148,7 @@ class TableNameMergeFilterTestImpl implements ReplicatorHBasePipelineIntegration
                         }
                     }
                 }
+                table.close();
             } catch (IOException e) {
                 e.printStackTrace()
             }

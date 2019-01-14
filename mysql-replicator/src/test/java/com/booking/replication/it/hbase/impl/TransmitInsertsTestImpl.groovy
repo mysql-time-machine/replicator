@@ -196,6 +196,7 @@ class TransmitInsertsTestImpl implements ReplicatorHBasePipelineIntegrationTest 
                     data.get(tableName).get(rowKey).put(fullColumnName, Bytes.toString(cell.getValue())
                     )
                 }
+                table.close();
             }
         } catch (IOException e) {
             e.printStackTrace()

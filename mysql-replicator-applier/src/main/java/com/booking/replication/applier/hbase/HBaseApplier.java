@@ -117,10 +117,16 @@ public class HBaseApplier implements Applier {
     @Override
     public synchronized Boolean apply(Collection<AugmentedEvent> events) {
 
-        this.metrics.getRegistry()
-                .counter("hbase.applier.events.seen").inc(1L);
-        this.metrics.getRegistry()
-                .counter("hbase.applier.events.size").inc(events.size());
+        this.metrics
+                .getRegistry()
+                .histogram("hbase.applier.events.apply.batchsize")
+                .update(events.size());
+
+        for (AugmentedEvent event : events) {
+            this.metrics.getRegistry()
+                    .counter("hbase.applier.events.seen").inc(1L);
+        }
+
         checkIfBufferExpired();
 
         try {

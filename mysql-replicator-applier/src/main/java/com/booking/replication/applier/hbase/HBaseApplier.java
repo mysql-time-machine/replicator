@@ -118,8 +118,9 @@ public class HBaseApplier implements Applier {
     public synchronized Boolean apply(Collection<AugmentedEvent> events) {
 
         this.metrics.getRegistry()
-                .counter("hbase.applier.events.received").inc(1L);
-
+                .counter("hbase.applier.events.seen").inc(1L);
+        this.metrics.getRegistry()
+                .counter("hbase.applier.events.size").inc(events.size());
         checkIfBufferExpired();
 
         try {
@@ -138,13 +139,24 @@ public class HBaseApplier implements Applier {
             String transactionUUID = transactionUUIDs.get(0);
             if ((dataEvents.size() >= FLUSH_BUFFER_SIZE) || hBaseApplierWriter.getTransactionBufferSize(transactionUUID) >= FLUSH_BUFFER_SIZE) {
                 hBaseApplierWriter.buffer(transactionUUID, dataEvents);
+                this.metrics.getRegistry()
+                        .counter("hbase.applier.buffer.buffered").inc(1L);
+                this.metrics.getRegistry()
+                        .counter("hbase.applier.buffer.flush.attempt").inc(1L);
                 boolean s = hBaseApplierWriter.flushTransactionBuffer(transactionUUID);
+
                 if (s) {
+                    this.metrics.getRegistry()
+                            .counter("hbase.applier.buffer.flush.success").inc(1L);
                     return true; // <- committed, will advance safe checkpoint
                 } else {
+                    this.metrics.getRegistry()
+                            .counter("hbase.applier.buffer.flush.failure").inc(1L);
                     throw new RuntimeException("Failed to write buffer to HBase");
                 }
             } else {
+                this.metrics.getRegistry()
+                        .counter("hbase.applier.buffer.buffered").inc(1L);
                 hBaseApplierWriter.buffer(transactionUUID, dataEvents);
                 return false; // buffered
             }
@@ -152,11 +164,19 @@ public class HBaseApplier implements Applier {
             // multiple transactions in one list
             for (String transactionUUID : transactionUUIDs) {
                 hBaseApplierWriter.buffer(transactionUUID, dataEvents);
+                this.metrics.getRegistry()
+                        .counter("hbase.applier.buffer.buffered").inc(1L);
             }
+            this.metrics.getRegistry()
+                    .counter("hbase.applier.buffer.flush.force.attempt").inc(1L);
             forceFlush();
+            this.metrics.getRegistry()
+                    .counter("hbase.applier.buffer.flush.force.success").inc(1L);
             return true;
         } else {
             LOG.warn("Empty transaction");
+            this.metrics.getRegistry()
+                    .counter("hbase.applier.events.empty").inc(1L);
             return false; // treat empty transaction as buffered
         }
     }

@@ -99,7 +99,14 @@ public class Replicator {
         this.destinationStream = Streams.<Collection<AugmentedEvent>>builder()
                 .threads(threads)
                 .tasks(tasks)
-                .partitioner((events, totalPartitions) -> this.partitioner.apply(events.iterator().next(), totalPartitions))
+                .partitioner((events, totalPartitions) -> {
+                    this.metrics.getRegistry()
+                            .counter("hbase.streams.destination.partitioner.event.apply.attempt").inc(1L);
+                    Integer partitionNumber = this.partitioner.apply(events.iterator().next(), totalPartitions);
+                    this.metrics.getRegistry()
+                            .counter("hbase.streams.destination.partitioner.event.apply.success").inc(1L);
+                    return partitionNumber;
+                })
                 .queue()
                 .fromPush()
                 .to(this.applier)
@@ -117,9 +124,13 @@ public class Replicator {
                 .to((events) -> {
                     Map<Integer, Collection<AugmentedEvent>> splitEventsMap = new HashMap<>();
                     for (AugmentedEvent event : events) {
+                        this.metrics.getRegistry()
+                                .counter("hbase.streams.partitioner.event.apply.attempt").inc(1L);
                         splitEventsMap.computeIfAbsent(
                                 this.partitioner.apply(event, tasks), partition -> new ArrayList<>()
                         ).add(event);
+                        metrics.getRegistry()
+                                .counter("hbase.streams.partitioner.event.apply.success").inc(1L);
                     }
                     for (Collection<AugmentedEvent> splitEvents : splitEventsMap.values()) {
                         this.destinationStream.push(splitEvents);

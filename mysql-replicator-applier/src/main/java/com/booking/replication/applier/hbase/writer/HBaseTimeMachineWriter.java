@@ -204,9 +204,27 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                         mutation -> mutation.getPut()
                 ).collect(Collectors.toList());
 
+                long tBegin = System.currentTimeMillis();
+
+                // TODO: monitor
+                long nrMutations = putList.size();
+
                 Table table = connection.getTable(TableName.valueOf(tableName));
                 table.put(putList);
                 table.close();
+
+                long tEnd = System.currentTimeMillis();
+                long latency = tEnd - tBegin;
+
+                this.metrics
+                        .getRegistry()
+                        .histogram("hbase.applier.writer.put.latency")
+                        .update(latency);
+
+                this.metrics
+                        .getRegistry()
+                        .histogram("hbase.applier.writer.put.nr-mutations")
+                        .update(latency);
                 // TODO: send sample to validator
             }
         }

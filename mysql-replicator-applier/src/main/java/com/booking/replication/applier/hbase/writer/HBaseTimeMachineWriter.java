@@ -94,19 +94,23 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
 
         @Override
         public boolean forceFlushThreadBuffer(Long threadID) throws IOException {
-            Boolean s = flushThreadBuffer(threadID);
+            if ( buffered.contains(threadID) ) {
+                Boolean s = flushThreadBuffer(threadID);
 
-            if (s) {
-                return true; // <- markedForCommit, will advance safe checkpoint
+                if (s) {
+                    return true; // <- markedForCommit, will advance safe checkpoint
+                } else {
+                    throw new IOException("Failed to write buffer to HBase");
+                }
             } else {
-                throw new IOException("Failed to write buffer to HBase");
+                return true;
             }
         }
 
         @Override
         public boolean flushThreadBuffer(Long threadID) {
             if (buffered.get(threadID) == null) {
-                throw new RuntimeException("Called flushThreadBuffer for non existing transaction");
+                throw new RuntimeException("Called flushThreadBuffer for thread with empty buffer");
             }
             boolean result = false;
             try {

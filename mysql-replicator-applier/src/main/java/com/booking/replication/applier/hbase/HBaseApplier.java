@@ -115,12 +115,12 @@ public class HBaseApplier implements Applier {
 
         this.metrics
                 .getRegistry()
-                .histogram("hbase.applier.events.apply.batchsize")
+                .histogram("hbase.thread_" + threadID + ".applier.events.apply.batchsize")
                 .update(events.size());
 
         for (AugmentedEvent event : events) {
             this.metrics.getRegistry()
-                    .counter("hbase.applier.events.seen").inc(1L);
+                    .counter("hbas.thread_" + threadID + ".applier.events.seen").inc(1L);
         }
 
         checkIfBufferExpired();
@@ -142,23 +142,23 @@ public class HBaseApplier implements Applier {
             if ((dataEvents.size() >= FLUSH_BUFFER_SIZE) || hBaseApplierWriter.getThreadBufferSize(threadID) >= FLUSH_BUFFER_SIZE) {
                 hBaseApplierWriter.buffer(threadID, transactionUUID, dataEvents);
                 this.metrics.getRegistry()
-                        .counter("hbase.applier.buffer.buffered").inc(1L);
+                        .counter("hbase.thread_" + threadID + ".applier.buffer.buffered").inc(1L);
                 this.metrics.getRegistry()
-                        .counter("hbase.applier.buffer.flush.attempt").inc(1L);
+                        .counter("hbase.thread_" + threadID + ".applier.buffer.flush.attempt").inc(1L);
                 boolean s = hBaseApplierWriter.flushThreadBuffer(threadID);
 
                 if (s) {
                     this.metrics.getRegistry()
-                            .counter("hbase.applier.buffer.flush.success").inc(1L);
+                            .counter("hbase.thread_" + threadID + ".applier.buffer.flush.success").inc(1L);
                     return true; // <- committed, will advance safe checkpoint
                 } else {
                     this.metrics.getRegistry()
-                            .counter("hbase.applier.buffer.flush.failure").inc(1L);
+                            .counter("hbase.thread_" + threadID + ".applier.buffer.flush.failure").inc(1L);
                     throw new RuntimeException("Failed to write buffer to HBase");
                 }
             } else {
                 this.metrics.getRegistry()
-                        .counter("hbase.applier.buffer.buffered").inc(1L);
+                        .counter("hbase.thread_" + threadID + ".buffer.buffered").inc(1L);
                 hBaseApplierWriter.buffer(threadID, transactionUUID, dataEvents);
                 return false; // buffered
             }
@@ -167,18 +167,18 @@ public class HBaseApplier implements Applier {
             for (String transactionUUID : transactionUUIDs) {
                 hBaseApplierWriter.buffer(threadID, transactionUUID, dataEvents);
                 this.metrics.getRegistry()
-                        .counter("hbase.applier.buffer.buffered").inc(1L);
+                        .counter("hbase.thread_" + threadID + ".applier.buffer.buffered").inc(1L);
             }
             this.metrics.getRegistry()
-                    .counter("hbase.applier.buffer.flush.force.attempt").inc(1L);
+                    .counter("hbase.thread_" + threadID + ".applier.buffer.flush.force.attempt").inc(1L);
             forceFlush();
             this.metrics.getRegistry()
-                    .counter("hbase.applier.buffer.flush.force.success").inc(1L);
+                    .counter("hbase.thread_" + threadID + ".applier.buffer.flush.force.success").inc(1L);
             return true;
         } else {
             LOG.warn("Empty transaction");
             this.metrics.getRegistry()
-                    .counter("hbase.applier.events.empty").inc(1L);
+                    .counter("hbase.thread_" + threadID + ".applier.events.empty").inc(1L);
             return false; // treat empty transaction as buffered
         }
     }

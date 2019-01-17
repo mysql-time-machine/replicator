@@ -115,7 +115,7 @@ public class HBaseApplier implements Applier {
      * case of error, apply should throw and Exception and the whole pipeline will shutdown.
      */
     @Override
-    public synchronized Boolean apply(Collection<AugmentedEvent> events) {
+    public Boolean apply(Collection<AugmentedEvent> events) {
 
         this.metrics
                 .getRegistry()

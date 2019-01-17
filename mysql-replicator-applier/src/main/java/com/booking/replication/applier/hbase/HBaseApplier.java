@@ -19,14 +19,9 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toList;
-
-import com.booking.replication.commons.metrics.Metrics;
-import com.booking.replication.commons.metrics.Metrics;
-import com.codahale.metrics.MetricRegistry;
 
 public class HBaseApplier implements Applier {
 
@@ -94,7 +89,7 @@ public class HBaseApplier implements Applier {
      * The apply() method returns Boolean. If it returns true, this is a signal for
      * Coordinator that rows are committed. In case of small transactions, applier
      * will internally buffer them and apply will return false until buffer is
-     * large enough. Once buffer is large enough it will flushTransactionBuffer the buffer and
+     * large enough. Once buffer is large enough it will flushThreadBuffer the buffer and
      * return true (on success).
      * <p>
      * In short:
@@ -104,7 +99,7 @@ public class HBaseApplier implements Applier {
      * - IOException means that all write attempts have failed. This shuts down the whole pipeline.
      * <p>
      * In addition:
-     * - In case that flushTransactionBuffer() fails, the retry logic needs to be implemented
+     * - In case that flushThreadBuffer() fails, the retry logic needs to be implemented
      * in the ApplierWriter. The Streams implementation manages threads and
      * groups rows by transactions. Once the transaction batch has been sent
      * to the ApplierWriter it is the responsibility of the
@@ -116,6 +111,7 @@ public class HBaseApplier implements Applier {
      */
     @Override
     public Boolean apply(Collection<AugmentedEvent> events) {
+        Long threadID = Thread.currentThread().getId();
 
         this.metrics
                 .getRegistry()
@@ -143,13 +139,13 @@ public class HBaseApplier implements Applier {
 
         if (transactionUUIDs.size() == 1) {
             String transactionUUID = transactionUUIDs.get(0);
-            if ((dataEvents.size() >= FLUSH_BUFFER_SIZE) || hBaseApplierWriter.getTransactionBufferSize(transactionUUID) >= FLUSH_BUFFER_SIZE) {
-                hBaseApplierWriter.buffer(transactionUUID, dataEvents);
+            if ((dataEvents.size() >= FLUSH_BUFFER_SIZE) || hBaseApplierWriter.getThreadBufferSize(threadID) >= FLUSH_BUFFER_SIZE) {
+                hBaseApplierWriter.buffer(threadID, transactionUUID, dataEvents);
                 this.metrics.getRegistry()
                         .counter("hbase.applier.buffer.buffered").inc(1L);
                 this.metrics.getRegistry()
                         .counter("hbase.applier.buffer.flush.attempt").inc(1L);
-                boolean s = hBaseApplierWriter.flushTransactionBuffer(transactionUUID);
+                boolean s = hBaseApplierWriter.flushThreadBuffer(threadID);
 
                 if (s) {
                     this.metrics.getRegistry()
@@ -163,13 +159,13 @@ public class HBaseApplier implements Applier {
             } else {
                 this.metrics.getRegistry()
                         .counter("hbase.applier.buffer.buffered").inc(1L);
-                hBaseApplierWriter.buffer(transactionUUID, dataEvents);
+                hBaseApplierWriter.buffer(threadID, transactionUUID, dataEvents);
                 return false; // buffered
             }
         } else if (transactionUUIDs.size() > 1) {
             // multiple transactions in one list
             for (String transactionUUID : transactionUUIDs) {
-                hBaseApplierWriter.buffer(transactionUUID, dataEvents);
+                hBaseApplierWriter.buffer(threadID, transactionUUID, dataEvents);
                 this.metrics.getRegistry()
                         .counter("hbase.applier.buffer.buffered").inc(1L);
             }
@@ -225,7 +221,7 @@ public class HBaseApplier implements Applier {
 
     private void checkIfBufferExpired() {
         long now = Instant.now().toEpochMilli();
-        if(now - hBaseApplierWriter.getBufferClearTime() > BUFFER_FLUSH_TIME_LIMIT) {
+        if(now - hBaseApplierWriter.getThreadLastFlushTime() > BUFFER_FLUSH_TIME_LIMIT) {
             forceFlush();
         }
     }
@@ -234,9 +230,9 @@ public class HBaseApplier implements Applier {
     public boolean forceFlush() {
         boolean s;
         try {
-            s = hBaseApplierWriter.forceFlush();
+            s = hBaseApplierWriter.forceFlushThreadBuffer( Thread.currentThread().getId() );
         } catch (IOException e) {
-            throw new RuntimeException("forceFlush() failed");
+            throw new RuntimeException("forceFlushThreadBuffer() failed");
         }
         return s;
     }

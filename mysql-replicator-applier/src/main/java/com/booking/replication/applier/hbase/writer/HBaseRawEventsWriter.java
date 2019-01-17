@@ -40,7 +40,7 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
     }
 
     @Override
-    public void buffer(String transactionUUID,  Collection<AugmentedEvent> events) {
+    public void buffer(Long threadID, String transactionUUID, Collection<AugmentedEvent> events) {
         if (buffered.get(transactionUUID) == null) {
             buffered.put(transactionUUID, new ArrayList<>());
         }
@@ -50,25 +50,18 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
     }
 
     @Override
-    public long getBufferClearTime() {
+    public long getThreadLastFlushTime() {
         return bufferClearTime;
     }
 
     @Override
-    public int getTransactionBufferSize(String transactionUUID) {
+    public int getThreadBufferSize(Long threadID) {
         return 0;
     }
 
     @Override
-    public boolean forceFlush() throws IOException {
-        List<String> transactionsBuffered = (List<String>) buffered.keySet();
-
-        Boolean s = transactionsBuffered
-                .stream()
-                .map(tUUID -> flushTransactionBuffer(tUUID))
-                .filter(result -> result == false)
-                .collect(Collectors.toList())
-                .isEmpty();
+    public boolean forceFlushThreadBuffer(Long threadID) throws IOException {
+        Boolean s = flushThreadBuffer(threadID);
         if (s) {
             return true; // <- markedForCommit, will advance safe checkpoint
         } else {
@@ -77,11 +70,11 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
     }
 
     @Override
-    public boolean flushTransactionBuffer(String transactionUUID) {
+    public boolean flushThreadBuffer(Long threadID) {
         boolean result = false;
         try {
-            result = flushWithRetry(transactionUUID); // false means all retries have failed
-            buffered.remove(transactionUUID);
+            result = flushWithRetry(threadID); // false means all retries have failed
+            buffered.remove(threadID);
             bufferClearTime = Instant.now().toEpochMilli();
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -89,7 +82,7 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
         return  result;
     }
 
-    private Boolean flushWithRetry(String transactionUUID) throws InterruptedException {
+    private Boolean flushWithRetry(Long threadID) throws InterruptedException {
 
         int counter = FLUSH_RETRY_LIMIT;
 
@@ -97,7 +90,7 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
             counter--;
 
             try {
-                writeToHBase(buffered.get(transactionUUID));
+                writeToHBase(buffered.get(threadID));
                 return true;
             } catch (IOException e) {
                 LOG.warn("Failed to write to HBase.", e);

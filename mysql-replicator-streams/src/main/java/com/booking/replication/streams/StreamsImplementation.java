@@ -197,6 +197,9 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
                 throw new IllegalStateException();
             }
 
+            Integer partNumber = this.partitioner.apply(input, this.tasks);
+            LOG.info("Queue #" + partNumber + " is size " + this.queues[this.partitioner.apply(input, this.tasks)].size() );
+
             return this.queues[this.partitioner.apply(input, this.tasks)].offer(input);
         }
     }

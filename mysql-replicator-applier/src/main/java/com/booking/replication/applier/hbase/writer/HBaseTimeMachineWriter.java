@@ -156,6 +156,10 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
 
         private void writeToHBase(String transactionUUID) throws IOException {
 
+            this.metrics.getRegistry()
+                    .histogram("hbase.applier.writer.buffer.nr_transactions_buffered")
+                    .update( buffered.size() );
+
             Collection<AugmentedEvent> events = buffered.get(transactionUUID);
             List<HBaseApplierMutationGenerator.PutMutation> mutations = new ArrayList<>();
 
@@ -183,7 +187,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                 mutations.addAll(eventMutations);
 
                 this.metrics.getRegistry()
-                        .counter("hbase.applier.writer.put").inc(eventMutations.size());
+                        .counter("hbase.applier.writer.mutations_generated").inc(eventMutations.size());
             }
 
             // group by table
@@ -224,7 +228,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                 this.metrics
                         .getRegistry()
                         .histogram("hbase.applier.writer.put.nr-mutations")
-                        .update(latency);
+                        .update(nrMutations);
                 // TODO: send sample to validator
             }
         }

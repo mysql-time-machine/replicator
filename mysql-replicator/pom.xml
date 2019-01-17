@@ -67,10 +67,11 @@
                     <artifactId>guava</artifactId>
                     <version>26.0-jre</version>
                 </dependency>
+                <!-- https://mvnrepository.com/artifact/com.google.cloud.bigtable/bigtable-hbase-1.x -->
                 <dependency>
                     <groupId>com.google.cloud.bigtable</groupId>
                     <artifactId>bigtable-hbase-1.x</artifactId>
-                    <version>1.6.0</version>
+                    <version>1.8.0</version>
                 </dependency>
             </dependencies>
         </profile>

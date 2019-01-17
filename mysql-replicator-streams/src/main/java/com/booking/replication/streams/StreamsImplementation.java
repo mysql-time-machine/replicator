@@ -115,30 +115,31 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     @Override
     public final Streams<Input, Output> start() {
         if ((this.queues != null || this.from != null) && !this.running.getAndSet(true) && this.executor == null) {
-            Consumer<Integer> consumer = (task) -> {
+            Consumer<Integer> consumer = (partitionNumber) -> {
                 Input input = null;
 
                 try {
                     while (this.running.get()) {
-                        input = this.from.apply(task);
-                        this.process(input, task);
+                        input = this.from.apply(partitionNumber);
+                        this.process(input, partitionNumber);
                         input = null;
                     }
                 } catch (Exception exception) {
                     this.handleException(exception);
                 } finally {
                     if (this.requeue != null && input != null) {
-                        this.requeue.accept(task, input);
+                        this.requeue.accept(partitionNumber, input);
                     }
                 }
             };
 
+            LOG.info("Starting a stream with #" + this.threads + " FixedThreadPool");
             this.executor = Executors.newFixedThreadPool(this.threads);
 
             for (int index = 0; index < this.tasks; index++) {
-                final int task = index;
+                final int partitionNumber = index;
 
-                this.executor.execute(() -> consumer.accept(task));
+                this.executor.execute(() -> consumer.accept(partitionNumber));
             }
         }
 

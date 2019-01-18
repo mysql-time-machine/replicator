@@ -72,7 +72,17 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
         }
 
         if (this.queues != null) {
-            this.from = (task) -> StreamsImplementation.this.queues[task].poll();
+            this.from = (task) -> {
+                while ( StreamsImplementation.this.queues[task].size() == 0 ) {
+                    try {
+                        Thread.sleep(10);
+                    } catch ( Exception e ) {
+                        e.printStackTrace();
+                        LOG.warning("&shrug;");
+                    }
+                }
+                return StreamsImplementation.this.queues[task].poll();
+            };
             this.requeue = (task, input) -> StreamsImplementation.this.queues[task].offerFirst(input);
         } else if(from != null) {
             this.from = from;

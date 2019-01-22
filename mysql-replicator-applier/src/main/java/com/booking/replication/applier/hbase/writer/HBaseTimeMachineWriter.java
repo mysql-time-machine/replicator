@@ -66,7 +66,6 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
         public void buffer(Long threadID, String transactionUUID, Collection<AugmentedEvent> events) {
             if (buffered.get(threadID) == null) {
                 buffered.put(threadID, new HashMap<>());
-                buffered.get(threadID).put(transactionUUID, new ArrayList<>());
             }
 
             if ( buffered.get(threadID).get(transactionUUID) == null ) {

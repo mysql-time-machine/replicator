@@ -31,7 +31,7 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
 
     Connection connection;
     Admin admin;
-    ConcurrentHashMap<String, Collection<AugmentedEvent>> buffered;
+    ConcurrentHashMap<Long,Map<String,Collection<AugmentedEvent>>> buffered;
 
     public HBaseRawEventsWriter(Configuration hbaseConfig, Map<String, Object> configuration) throws IOException {
         connection = ConnectionFactory.createConnection(hbaseConfig);
@@ -41,12 +41,15 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
 
     @Override
     public void buffer(Long threadID, String transactionUUID, Collection<AugmentedEvent> events) {
-        if (buffered.get(transactionUUID) == null) {
-            buffered.put(transactionUUID, new ArrayList<>());
+        if (buffered.get(threadID) == null) {
+            buffered.put(threadID, new HashMap<>());
         }
-        for (AugmentedEvent event: events) {
-            buffered.get(transactionUUID).add(event);
+
+        if ( buffered.get(threadID).get(transactionUUID) == null ) {
+            buffered.get(threadID).put(transactionUUID, new ArrayList<>());
         }
+
+        buffered.get(threadID).get(transactionUUID).addAll(events);
     }
 
     @Override
@@ -82,6 +85,20 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
         return  result;
     }
 
+    @Override
+    public boolean forceFlushAllThreadBuffers() throws IOException {
+        Boolean result = true;
+        for ( Long id : buffered.keySet() ) {
+            result = result && flushThreadBuffer(id);
+
+            if ( result == false ) {
+                throw new IOException("Failed to forceFlush buffer for thread " + id + " to HBase");
+            }
+        }
+
+        return true;
+    }
+
     private Boolean flushWithRetry(Long threadID) throws InterruptedException {
 
         int counter = FLUSH_RETRY_LIMIT;
@@ -90,7 +107,7 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
             counter--;
 
             try {
-                writeToHBase(buffered.get(threadID));
+                writeToHBase(threadID);
                 return true;
             } catch (IOException e) {
                 LOG.warn("Failed to write to HBase.", e);
@@ -100,11 +117,17 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
         return false;
     }
 
-    private void writeToHBase(Collection<AugmentedEvent> events) throws IOException {
+    private void writeToHBase(Long threadID) throws IOException {
 
         // TODO: throw new IOException("Chaos Monkey");
 
-        Map<String,List<Put>> mutationsByTable = generateMutations(events);
+        Collection<AugmentedEvent> events = new ArrayList<>();
+
+        for ( String transactionID : buffered.get(threadID).keySet() ){
+            events.addAll( buffered.get(threadID).get(transactionID) );
+        }
+
+        Map<String,List<Put>> mutationsByTable = generateMutations( events );
 
         for (String tableName : mutationsByTable.keySet()) {
 

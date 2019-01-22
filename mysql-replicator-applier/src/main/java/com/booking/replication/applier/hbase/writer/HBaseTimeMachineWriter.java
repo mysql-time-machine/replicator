@@ -93,6 +93,20 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
         }
 
         @Override
+        public boolean forceFlushAllThreadBuffers() throws IOException {
+            Boolean result = true;
+            for ( Long id : buffered.keySet() ) {
+                result = result && flushThreadBuffer(id);
+
+                if ( result == false ) {
+                    throw new IOException("Failed to forceFlush buffer for thread " + id + " to HBase");
+                }
+            }
+
+            return true;
+        }
+
+        @Override
         public boolean forceFlushThreadBuffer(Long threadID) throws IOException {
             if ( buffered.contains(threadID) ) {
                 Boolean s = flushThreadBuffer(threadID);

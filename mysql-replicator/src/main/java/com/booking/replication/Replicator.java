@@ -212,9 +212,8 @@ public class Replicator {
 
     }
 
-    public synchronized boolean forceFlushApplier() {
-        applier.forceFlush();
-        return true;
+    public Applier getApplier() {
+        return this.applier;
     }
 
     private Checkpoint getCheckpoint() throws IOException {

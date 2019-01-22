@@ -236,4 +236,15 @@ public class HBaseApplier implements Applier {
         }
         return s;
     }
+
+    public boolean forceFlushAll() {
+        boolean s;
+        try {
+            s = hBaseApplierWriter.forceFlushAllThreadBuffers();
+        } catch (IOException e) {
+            throw new RuntimeException("forceFlushThreadBuffer() failed");
+        }
+        return s;
+    }
+
 }

@@ -16,4 +16,6 @@ public interface HBaseApplierWriter {
     boolean forceFlushThreadBuffer(Long threadID) throws IOException;
 
     boolean flushThreadBuffer(Long threadID);
+
+    boolean forceFlushAllThreadBuffers() throws IOException;
 }

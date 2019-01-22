@@ -172,9 +172,9 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         testName << TESTS.collect({ test ->
             test.doAction(mysqlBinaryLog)
             sleep(30000)
-            replicator.forceFlushApplier()
-            test.testName()}
-        )
+            ( (HBaseApplier) replicator.getApplier() ).forceFlushAll()
+            test.testName()
+        })
         expected << TESTS.collect({ test -> test.getExpectedState()})
         received << TESTS.collect({ test -> test.getActualState()})
 

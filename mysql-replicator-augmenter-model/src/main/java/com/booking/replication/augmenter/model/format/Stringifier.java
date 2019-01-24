@@ -131,6 +131,14 @@ public class Stringifier {
                 stringifiedCellValue = buffer.reverse().toString();
             }
 
+            switch (columnType) {
+                case "date":
+                case "datetime":
+                    stringifiedCellValue = cellValue.toString();
+                    break;
+                default: break;
+            }
+
             if (columnType.contains("tiny")) {
                 if (columnType.contains("unsigned")) {
                     stringifiedCellValue = String.valueOf(

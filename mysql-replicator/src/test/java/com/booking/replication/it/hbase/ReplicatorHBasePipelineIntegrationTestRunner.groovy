@@ -166,7 +166,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     def "#testName: { EXPECTED =>  #expected, RECEIVED => #received }"() {
 
         expect:
-        expected == received
+        received == expected
 
         where:
         testName << TESTS.collect({ test ->

@@ -5,7 +5,12 @@ import com.booking.replication.augmenter.model.schema.ColumnSchema;
 
 import java.io.Serializable;
 import java.math.BigInteger;
+import java.nio.CharBuffer;
 import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
@@ -132,9 +137,18 @@ public class Stringifier {
             }
 
             switch (columnType) {
-                case "date":
-                case "datetime":
+                case "date": // created as java.util.Date in binlog connector
                     stringifiedCellValue = cellValue.toString();
+                    break;
+                case "timestamp": // created as java.sql.Timestamp in binlog connector
+                    if (! (cellValue instanceof java.sql.Timestamp) ) {
+                        System.out.println("= WARN: binlog parser has changed java type for timestamp =");
+                    }
+                    System.out.println("=========>" + cellValue.toString());
+                    Date x = (java.sql.Timestamp) cellValue;
+                    stringifiedCellValue = Long.toString(x.getTime());
+                    break;
+                case "time": // created as java.sql.Time in binlog connector
                     break;
                 default: break;
             }

@@ -12,6 +12,12 @@ import org.apache.hadoop.hbase.*
 import org.apache.hadoop.hbase.client.*
 import org.apache.hadoop.hbase.util.Bytes
 
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
+
 class TransmitInsertsTestImpl implements ReplicatorHBasePipelineIntegrationTest {
 
     private String HBASE_COLUMN_FAMILY_NAME = "d"
@@ -21,6 +27,14 @@ class TransmitInsertsTestImpl implements ReplicatorHBasePipelineIntegrationTest 
     private String TABLE_NAME = "sometable"
 
     private static final ObjectMapper MAPPER = new ObjectMapper()
+
+    def testRows = [
+            ['A', '1', '665726', 'PZBAAQSVoSxxFassQEAQ', '1990-01-01', '2018-07-14T12:00:00'],
+            ['B', '2', '490705', 'cvjIXQiWLegvLs kXaKH', '1991-01-01', '1991-01-01T13:00:00'],
+            ['C', '3', '437616', 'pjFNkiZExAiHkKiJePMp', '1992-01-01', '1992-01-01T14:00:00'],
+            ['D', '4', '537616', 'SjFNkiZExAiHkKiJePMp', '1993-01-01', '1993-01-01T15:00:00'],
+            ['E', '5', '637616', 'ajFNkiZExAiHkKiJePMp', '1994-01-01', '1994-01-01T16:00:00']
+    ]
 
     @Override
     void doAction(ServicesControl mysqlReplicant) {
@@ -36,29 +50,26 @@ class TransmitInsertsTestImpl implements ReplicatorHBasePipelineIntegrationTest 
         def sqlCreate = """
         CREATE TABLE
             sometable (
-            pk_part_1         varchar(5) NOT NULL DEFAULT '',
-            pk_part_2         int(11)    NOT NULL DEFAULT 0,
-            randomInt         int(11)             DEFAULT NULL,
-            randomVarchar     varchar(32)         DEFAULT NULL,
-            randomDate        date                DEFAULT NULL,
-            randomDatetime    datetime            DEFAULT NULL,
-            PRIMARY KEY       (pk_part_1,pk_part_2),
-            KEY randomVarchar (randomVarchar),
-            KEY randomInt     (randomInt)
+            
+                pk_part_1         varchar(5) NOT NULL DEFAULT '',
+                pk_part_2         int(11)    NOT NULL DEFAULT 0,
+                
+                randomInt         int(11)             DEFAULT NULL,
+                randomVarchar     varchar(32)         DEFAULT NULL,
+                
+                randomDate        date                DEFAULT NULL,
+                aTimestamp        timestamp           DEFAULT CURRENT_TIMESTAMP,
+                
+                PRIMARY KEY       (pk_part_1,pk_part_2),
+                KEY randomVarchar (randomVarchar),
+                
+                KEY randomInt     (randomInt)
+                
             ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
         """
 
         replicantMySQLHandle.execute(sqlCreate);
         replicantMySQLHandle.commit();
-
-        // INSERT
-        def testRows = [
-                ['A', '1', '665726', 'PZBAAQSVoSxxFassQEAQ', '1990-01-01', '2018-07-14 12:00:00'],
-                ['B', '2', '490705', 'cvjIXQiWLegvLs kXaKH', '1991-01-01', '1991-01-01 13:00:00'],
-                ['C', '3', '437616', 'pjFNkiZExAiHkKiJePMp', '1992-01-01', '1992-01-01 14:00:00'],
-                ['D', '4', '537616', 'SjFNkiZExAiHkKiJePMp', '1993-01-01', '1993-01-01 15:00:00'],
-                ['E', '5', '637616', 'ajFNkiZExAiHkKiJePMp', '1994-01-01', '1994-01-01 16:00:00']
-        ]
 
         // insert
         testRows.each {
@@ -72,7 +83,7 @@ class TransmitInsertsTestImpl implements ReplicatorHBasePipelineIntegrationTest 
                         randomInt,
                         randomVarchar,
                         randomDate,
-                        randomDatetime
+                        aTimestamp
                 )
                 values (
                         ${row[0]},
@@ -83,8 +94,6 @@ class TransmitInsertsTestImpl implements ReplicatorHBasePipelineIntegrationTest 
                         ${row[5]}
                 )
                 """
-                    // Ensure the timezone is consistent regardless of execution location
-                    replicantMySQLHandle.execute("SET time_zone='+01:00';")
                     replicantMySQLHandle.execute(sqlString)
                     replicantMySQLHandle.commit()
                 } catch (Exception ex) {
@@ -112,8 +121,27 @@ class TransmitInsertsTestImpl implements ReplicatorHBasePipelineIntegrationTest 
         return "HBaseTransmitInserts"
     }
 
+    // when running tests in non-GMT timezone
+    //      - assuming that at least the java process and mysql are in the same timezone
+    private long getExpectedTimestamp(String sentToMySQL) {
+
+        System.out.println("string_sent_in_current_timezone_to_mysql_timestamp => " + sentToMySQL);
+
+        LocalDateTime aLDT = LocalDateTime.parse(sentToMySQL);
+        System.out.println("LocalDateTime parsed_in_current_timezone from mysql_query_value => " + aLDT);
+
+        String offset  = ZonedDateTime.now().getOffset().getId();
+        System.out.println("current offset id => " + offset);
+
+        Instant timestamp = aLDT.toInstant(ZoneOffset.of("+01:00"));
+        System.out.println("LocalDateTime converted to timestamp" + timestamp);
+
+        return timestamp.toEpochMilli();
+    }
+
     @Override
     Object getExpectedState() {
+
         def expected = new TreeMap<>()
         def f = HBASE_COLUMN_FAMILY_NAME
         [
@@ -122,7 +150,7 @@ class TransmitInsertsTestImpl implements ReplicatorHBasePipelineIntegrationTest 
                 "7fc56270;A;1|${f}:randomInt|665726",
                 "7fc56270;A;1|${f}:randomVarchar|PZBAAQSVoSxxFassQEAQ",
                 "7fc56270;A;1|${f}:randomDate|1990-01-01",
-                "7fc56270;A;1|${f}:randomDatetime|Sat Jul 14 14:00:00 CEST 2018",
+                "7fc56270;A;1|${f}:aTimestamp|${getExpectedTimestamp(testRows[0][5])}",
                 "7fc56270;A;1|${f}:row_status|I",
 
                 "9d5ed678;B;2|${f}:pk_part_1|B",
@@ -130,7 +158,7 @@ class TransmitInsertsTestImpl implements ReplicatorHBasePipelineIntegrationTest 
                 "9d5ed678;B;2|${f}:randomInt|490705",
                 "9d5ed678;B;2|${f}:randomVarchar|cvjIXQiWLegvLs kXaKH",
                 "9d5ed678;B;2|${f}:randomDate|1991-01-01",
-                "9d5ed678;B;2|${f}:randomDatetime|Tue Jan 01 14:00:00 CET 1991",
+                "9d5ed678;B;2|${f}:aTimestamp|${getExpectedTimestamp(testRows[1][5])}",
                 "9d5ed678;B;2|${f}:row_status|I",
 
                 "0d61f837;C;3|${f}:pk_part_1|C",
@@ -138,7 +166,7 @@ class TransmitInsertsTestImpl implements ReplicatorHBasePipelineIntegrationTest 
                 "0d61f837;C;3|${f}:randomInt|437616",
                 "0d61f837;C;3|${f}:randomVarchar|pjFNkiZExAiHkKiJePMp",
                 "0d61f837;C;3|${f}:randomDate|1992-01-01",
-                "0d61f837;C;3|${f}:randomDatetime|Wed Jan 01 15:00:00 CET 1992",
+                "0d61f837;C;3|${f}:aTimestamp|${getExpectedTimestamp(testRows[2][5])}",
                 "0d61f837;C;3|${f}:row_status|I",
 
                 "f623e75a;D;4|${f}:pk_part_1|D",
@@ -146,7 +174,7 @@ class TransmitInsertsTestImpl implements ReplicatorHBasePipelineIntegrationTest 
                 "f623e75a;D;4|${f}:randomInt|537616",
                 "f623e75a;D;4|${f}:randomVarchar|SjFNkiZExAiHkKiJePMp",
                 "f623e75a;D;4|${f}:randomDate|1993-01-01",
-                "f623e75a;D;4|${f}:randomDatetime|Fri Jan 01 16:00:00 CET 1993",
+                "f623e75a;D;4|${f}:aTimestamp|${getExpectedTimestamp(testRows[3][5])}",
                 "f623e75a;D;4|${f}:row_status|I",
 
                 "3a3ea00c;E;5|${f}:pk_part_1|E",
@@ -154,7 +182,7 @@ class TransmitInsertsTestImpl implements ReplicatorHBasePipelineIntegrationTest 
                 "3a3ea00c;E;5|${f}:randomInt|637616",
                 "3a3ea00c;E;5|${f}:randomVarchar|ajFNkiZExAiHkKiJePMp",
                 "3a3ea00c;E;5|${f}:randomDate|1994-01-01",
-                "3a3ea00c;E;5|${f}:randomDatetime|Sat Jan 01 17:00:00 CET 1994",
+                "3a3ea00c;E;5|${f}:aTimestamp|${getExpectedTimestamp(testRows[4][5])}",
                 "3a3ea00c;E;5|${f}:row_status|I"
         ].collect({ x ->
             def r = x.tokenize('|')

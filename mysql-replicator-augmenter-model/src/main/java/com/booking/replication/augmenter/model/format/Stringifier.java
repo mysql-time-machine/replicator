@@ -10,6 +10,8 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.IntStream;
@@ -144,11 +146,23 @@ public class Stringifier {
                     if (! (cellValue instanceof java.sql.Timestamp) ) {
                         System.out.println("= WARN: binlog parser has changed java type for timestamp =");
                     }
-                    System.out.println("=========>" + cellValue.toString());
-                    Date x = (java.sql.Timestamp) cellValue;
-                    stringifiedCellValue = Long.toString(x.getTime());
+                    String tzId = ZonedDateTime.now().getZone().toString();
+                    ZoneId zoneId = ZoneId.of(tzId);
+                    Long timestamp =  ((java.sql.Timestamp) cellValue).getTime();
+
+                    LocalDateTime aLDT = Instant.ofEpochMilli(timestamp).atZone(zoneId).toLocalDateTime();
+                    System.out.println("---LocalDateTime stringifier => " + aLDT);
+
+                    Integer offset  = ZonedDateTime.from(aLDT.atZone(ZoneId.of(tzId))).getOffset().getTotalSeconds();
+                    System.out.println("---timezone offset value => " + offset);
+
+                    timestamp = timestamp - offset * 1000;
+
+                    stringifiedCellValue = String.valueOf(timestamp);
+
                     break;
-                case "time": // created as java.sql.Time in binlog connector
+                case "datetime":  // <- this is not reliable out of UTC
+                case "time":      // <- this is not reliable out of UTC
                     break;
                 default: break;
             }

@@ -125,18 +125,23 @@ class TransmitInsertsTestImpl implements ReplicatorHBasePipelineIntegrationTest 
     //      - assuming that at least the java process and mysql are in the same timezone
     private long getExpectedTimestamp(String sentToMySQL) {
 
-        System.out.println("string_sent_in_current_timezone_to_mysql_timestamp => " + sentToMySQL);
+        String tzId = ZonedDateTime.now().getZone().toString()
+        ZoneId zoneId = ZoneId.of(tzId)
 
-        LocalDateTime aLDT = LocalDateTime.parse(sentToMySQL);
+        LocalDateTime aLDT = LocalDateTime.parse(sentToMySQL)
         System.out.println("LocalDateTime parsed_in_current_timezone from mysql_query_value => " + aLDT);
 
-        String offset  = ZonedDateTime.now().getOffset().getId();
-        System.out.println("current offset id => " + offset);
+        String offset  = ZonedDateTime.now().getOffset().getId()
+        System.out.println("current offset id => " + offset)
 
-        Instant timestamp = aLDT.toInstant(ZoneOffset.of("+01:00"));
-        System.out.println("LocalDateTime converted to timestamp" + timestamp);
+        String offsetString = zoneId.getRules().getOffset(aLDT.atZone(zoneId).toInstant())
+        System.out.println("current offset string => " + offsetString)
 
-        return timestamp.toEpochMilli();
+        Instant timestamp = aLDT.toInstant(ZoneOffset.of(offsetString))
+
+        System.out.println("LocalDateTime converted to timestamp" + timestamp)
+
+        return timestamp.toEpochMilli()
     }
 
     @Override

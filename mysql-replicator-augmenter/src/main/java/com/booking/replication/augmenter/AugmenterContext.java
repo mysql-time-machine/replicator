@@ -64,6 +64,7 @@ public class AugmenterContext implements Closeable {
     }
 
     private static final Logger LOG = Logger.getLogger(AugmenterContext.class.getName());
+
     private final Metrics<?> metrics;
 
     private static final int DEFAULT_TRANSACTION_LIMIT = 1000;
@@ -408,8 +409,10 @@ public class AugmenterContext implements Closeable {
                 break;
 
             case XID:
+
                 this.metrics.getRegistry()
                         .counter("hbase.augmenter_context.type.xid").inc(1L);
+
                 XIDRawEventData xidRawEventData = XIDRawEventData.class.cast(eventData);
 
                 this.updateCommons(

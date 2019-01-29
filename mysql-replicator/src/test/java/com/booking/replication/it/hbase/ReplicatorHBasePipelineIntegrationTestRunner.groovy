@@ -45,6 +45,12 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
     @Shared private static final Logger LOG = Logger.getLogger(ReplicatorHBasePipelineIntegrationTestRunner.class.getName())
 
+    // TODO: add integration test for buffer size limit exceeded (rewind mode)
+    @Shared private static final int AUGMENTER_TRANSACTION_BUFFER_SIZE_LIMIT = 1000
+
+    @Shared private static final int NUMBER_OF_THREADS = 3
+    @Shared private static final int NUMBER_OF_TASKS = 3
+
     @Shared private static final String ZOOKEEPER_LEADERSHIP_PATH = "/replicator/leadership"
     @Shared private static final String ZOOKEEPER_CHECKPOINT_PATH = "/replicator/checkpoint"
 
@@ -58,8 +64,6 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     @Shared private static final String MYSQL_INIT_SCRIPT = "mysql.init.sql"
 
     @Shared private static final String ACTIVE_SCHEMA_INIT_SCRIPT = "active_schema.init.sql"
-
-    @Shared private static final int TRANSACTION_LIMIT = 100
 
     @Shared public static final String AUGMENTER_FILTER_TYPE = "TABLE_MERGE_PATTERN"
     @Shared public static final String AUGMENTER_FILTER_CONFIGURATION = "([_][12]\\d{3}(0[1-9]|1[0-2]))"
@@ -75,11 +79,11 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     @Shared public static final String  BIGTABLE_INSTANCE = getBigTableInstance()
 
     @Shared private TESTS = [
-//            new TableNameMergeFilterTestImpl(),
-            new TransmitInsertsTestImpl()//,
-//            new MicrosecondValidationTestImpl(),
-//            new LongTransactionTestImpl(),
-//            new PayloadTableTestImpl()
+            new TableNameMergeFilterTestImpl(),
+            new TransmitInsertsTestImpl(),
+            new MicrosecondValidationTestImpl(),
+            new LongTransactionTestImpl(),
+            new PayloadTableTestImpl()
     ]
 
     @Shared ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS)
@@ -397,7 +401,12 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     }
 
     private Map<String, Object> getConfiguration() {
+
         Map<String, Object> configuration = new HashMap<>()
+
+        // Streams
+        configuration.put(Replicator.Configuration.REPLICATOR_THREADS, String.valueOf(NUMBER_OF_THREADS))
+        configuration.put(Replicator.Configuration.REPLICATOR_TASKS, String.valueOf(NUMBER_OF_TASKS))
 
         // Coordinator Configuration
         configuration.put(Replicator.Configuration.CHECKPOINT_PATH, ZOOKEEPER_CHECKPOINT_PATH)
@@ -424,14 +433,13 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PASSWORD, MYSQL_PASSWORD)
 
         // Augmenter
-        configuration.put(AugmenterContext.Configuration.TRANSACTION_BUFFER_LIMIT, String.valueOf(TRANSACTION_LIMIT))
-
+        configuration.put(AugmenterContext.Configuration.TRANSACTION_BUFFER_LIMIT, String.valueOf(AUGMENTER_TRANSACTION_BUFFER_SIZE_LIMIT))
         configuration.put(AugmenterFilter.Configuration.FILTER_TYPE, AUGMENTER_FILTER_TYPE)
         configuration.put(AugmenterFilter.Configuration.FILTER_CONFIGURATION, AUGMENTER_FILTER_CONFIGURATION)
 
         // Applier Configuration
         configuration.put(Seeker.Configuration.TYPE, Seeker.Type.NONE.name())
-        configuration.put(Partitioner.Configuration.TYPE, Partitioner.Type.XXID.name())
+        configuration.put(Partitioner.Configuration.TYPE, Partitioner.Type.TRID.name())
         configuration.put(Applier.Configuration.TYPE, Applier.Type.HBASE.name())
 
         // HBase Specifics

@@ -8,6 +8,7 @@ import com.booking.replication.augmenter.model.event.TableAugmentedEventData;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiFunction;
 
@@ -44,6 +45,23 @@ public interface Partitioner extends BiFunction<AugmentedEvent, Integer, Integer
                 };
             }
         },
+        TRID {
+            @Override
+            protected Partitioner newInstance(Map<String, Object> configuration) {
+
+                return (event, totalPartitions) -> {
+
+                    if (event.getHeader().getEventTransaction() != null) {
+                        AugmentedEventTransaction transaction = event.getHeader().getEventTransaction();
+                        long tmp = UUID.fromString(transaction.getIdentifier()).getMostSignificantBits() & Integer.MAX_VALUE;
+                        return Math.toIntExact(Long.remainderUnsigned(tmp, totalPartitions));
+                    } else {
+                        return ThreadLocalRandom.current().nextInt(totalPartitions);
+                    }
+
+                };
+            }
+        },
         RANDOM {
             @Override
             protected Partitioner newInstance(Map<String, Object> configuration) {
@@ -70,7 +88,7 @@ public interface Partitioner extends BiFunction<AugmentedEvent, Integer, Integer
 
     static Partitioner build(Map<String, Object> configuration) {
         return Partitioner.Type.valueOf(
-                configuration.getOrDefault(Configuration.TYPE, Type.RANDOM.name()).toString()
+                configuration.getOrDefault(Configuration.TYPE, Type.TRID.name()).toString()
         ).newInstance(configuration);
     }
 }

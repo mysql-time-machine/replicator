@@ -14,8 +14,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.logging.Logger;
 
 public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>, Closeable {
+
+    private static final Logger LOG = Logger.getLogger(Augmenter.class.getName());
 
     public enum SchemaType {
 
@@ -77,6 +80,7 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
     public Collection<AugmentedEvent> apply(RawEvent rawEvent) {
 
         try {
+
             this.metrics.getRegistry()
                     .counter("hbase.augmenter.apply.attempt").inc(1L);
 
@@ -86,12 +90,17 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
             this.context.updateContext(eventHeader, eventData);
 
             if (this.context.shouldProcess()) {
+
                 this.metrics.getRegistry()
                         .counter("hbase.augmenter.apply.should_process.true").inc(1L);
-                if (this.context.getTransaction().markedForCommit()) { // <- commit reached?
+
+                if (this.context.getTransaction().markedForCommit()) { // <- commit reached || ...
 
 
-                    if (this.context.getTransaction().sizeLimitExceeded()) { // <- rewind?
+                    if (this.context.getTransaction().sizeLimitExceeded()) { // <- rewind
+
+                        LOG.info("Transaction size limit exceeded");
+
                         this.metrics.getRegistry()
                                 .counter("hbase.augmenter.apply.transaction.rewind").inc(1L);
 

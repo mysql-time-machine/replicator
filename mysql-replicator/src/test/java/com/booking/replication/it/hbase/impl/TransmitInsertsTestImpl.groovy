@@ -127,19 +127,9 @@ class TransmitInsertsTestImpl implements ReplicatorHBasePipelineIntegrationTest 
 
         String tzId = ZonedDateTime.now().getZone().toString()
         ZoneId zoneId = ZoneId.of(tzId)
-
         LocalDateTime aLDT = LocalDateTime.parse(sentToMySQL)
-        System.out.println("LocalDateTime parsed_in_current_timezone from mysql_query_value => " + aLDT);
-
-        String offset  = ZonedDateTime.now().getOffset().getId()
-        System.out.println("current offset id => " + offset)
-
         String offsetString = zoneId.getRules().getOffset(aLDT.atZone(zoneId).toInstant())
-        System.out.println("current offset string => " + offsetString)
-
         Instant timestamp = aLDT.toInstant(ZoneOffset.of(offsetString))
-
-        System.out.println("LocalDateTime converted to timestamp" + timestamp)
 
         return timestamp.toEpochMilli()
     }

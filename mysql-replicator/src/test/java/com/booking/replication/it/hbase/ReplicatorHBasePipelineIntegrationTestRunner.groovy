@@ -136,11 +136,11 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
     void setupSpec() throws Exception {
 
-        println("env: HBASE_TARGET_NAMESPACE => " + HBASE_TARGET_NAMESPACE)
-        println("env: HBASE_SCHEMA_HISTORY_NAMESPACE => " + HBASE_SCHEMA_HISTORY_NAMESPACE)
-        println("env: STORAGE_TYPE => " + STORAGE_TYPE)
-        println("env: BIGTABLE_PROJECT => " + BIGTABLE_PROJECT)
-        println("env: BIGTABLE_INSTANCE => " + BIGTABLE_INSTANCE)
+        LOG.info("env: HBASE_TARGET_NAMESPACE => " + HBASE_TARGET_NAMESPACE)
+        LOG.info("env: HBASE_SCHEMA_HISTORY_NAMESPACE => " + HBASE_SCHEMA_HISTORY_NAMESPACE)
+        LOG.info("env: STORAGE_TYPE => " + STORAGE_TYPE)
+        LOG.info("env: BIGTABLE_PROJECT => " + BIGTABLE_PROJECT)
+        LOG.info("env: BIGTABLE_INSTANCE => " + BIGTABLE_INSTANCE)
 
         // start
         replicator = startReplicator()

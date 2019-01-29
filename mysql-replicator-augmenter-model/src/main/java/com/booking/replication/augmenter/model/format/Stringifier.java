@@ -14,10 +14,13 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.logging.Logger;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
 
 public class Stringifier {
+
+    private static final Logger LOG = Logger.getLogger(Stringifier.class.getName());
 
     public static Map<String, Map<String, String>> stringifyRowCellsValues(
             String eventType,
@@ -139,31 +142,31 @@ public class Stringifier {
             }
 
             switch (columnType) {
+
                 case "date": // created as java.util.Date in binlog connector
                     stringifiedCellValue = cellValue.toString();
                     break;
+
                 case "timestamp": // created as java.sql.Timestamp in binlog connector
                     if (! (cellValue instanceof java.sql.Timestamp) ) {
-                        System.out.println("= WARN: binlog parser has changed java type for timestamp =");
+                       LOG.warning("binlog parser has changed java type for timestamp!");
                     }
+
+                    // a workaround for UTC-enforcement by mysql-binlog-connector
                     String tzId = ZonedDateTime.now().getZone().toString();
                     ZoneId zoneId = ZoneId.of(tzId);
                     Long timestamp =  ((java.sql.Timestamp) cellValue).getTime();
-
                     LocalDateTime aLDT = Instant.ofEpochMilli(timestamp).atZone(zoneId).toLocalDateTime();
-                    System.out.println("---LocalDateTime stringifier => " + aLDT);
-
                     Integer offset  = ZonedDateTime.from(aLDT.atZone(ZoneId.of(tzId))).getOffset().getTotalSeconds();
-                    System.out.println("---timezone offset value => " + offset);
-
                     timestamp = timestamp - offset * 1000;
-
                     stringifiedCellValue = String.valueOf(timestamp);
 
                     break;
-                case "datetime":  // <- this is not reliable out of UTC
-                case "time":      // <- this is not reliable out of UTC
+
+                case "datetime":  // <- this is not reliable outside of UTC
+                case "time":      // <- this is not reliable outside of UTC
                     break;
+
                 default: break;
             }
 

@@ -23,7 +23,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     private final int tasks;
     private final BiFunction<Input, Integer, Integer> partitioner;
     private final Deque<Input>[] queues;
-    private final Function<Integer, Input> from;
+    private final Function<Integer, Input> dataSupplierFn;
     private final BiConsumer<Integer, Input> requeue;
     private final Predicate<Input> filter;
     private final Function<Input, Output> process;
@@ -41,7 +41,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
             int tasks,
             BiFunction<Input, Integer, Integer> partitioner,
             Class<? extends Deque> queueType,
-            Function<Integer, Input> from,
+            Function<Integer, Input> fnGetNextItem,
             Predicate<Input> filter,
             Function<Input, Output> process,
             Function<Output, Boolean> to,
@@ -72,7 +72,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
         }
 
         if (this.queues != null) {
-            this.from = (task) -> {
+            this.dataSupplierFn = (task) -> {
                 while ( StreamsImplementation.this.queues[task].size() == 0 ) {
                     try {
                         Thread.sleep(10);
@@ -84,18 +84,18 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
                 return StreamsImplementation.this.queues[task].poll();
             };
             this.requeue = (task, input) -> StreamsImplementation.this.queues[task].offerFirst(input);
-        } else if(from != null) {
-            this.from = from;
+        } else if (fnGetNextItem != null) {
+            this.dataSupplierFn = fnGetNextItem;
             this.requeue = null;
         } else {
-            this.from = null;
+            this.dataSupplierFn = null;
             this.requeue = null;
         }
 
-        this.filter = (filter != null)?(filter):(input -> true);
-        this.process = (process != null)?(process):(input -> (Output) input);
-        this.to = (to != null)?(to):(output -> true);
-        this.post = (post != null)?(post):((output, executing) -> {});
+        this.filter = (filter != null) ? (filter) : (input -> true);
+        this.process = (process != null) ? (process) : (input -> (Output) input);
+        this.to = (to != null) ? (to) : (output -> true);
+        this.post = (post != null) ? (post) : ((output, executing) -> {});
         this.running = new AtomicBoolean();
         this.handling = new AtomicBoolean();
         this.handler = (exception) -> StreamsImplementation.LOG.log(Level.SEVERE, "error inside streams", exception);
@@ -124,13 +124,13 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
 
     @Override
     public final Streams<Input, Output> start() {
-        if ((this.queues != null || this.from != null) && !this.running.getAndSet(true) && this.executor == null) {
+        if ((this.queues != null || this.dataSupplierFn != null) && !this.running.getAndSet(true) && this.executor == null) {
             Consumer<Integer> consumer = (partitionNumber) -> {
                 Input input = null;
 
                 try {
                     while (this.running.get()) {
-                        input = this.from.apply(partitionNumber);
+                        input = this.dataSupplierFn.apply(partitionNumber);
                         this.process(input, partitionNumber);
                         input = null;
                     }
@@ -191,17 +191,27 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
 
     @Override
     public final boolean push(Input input) {
-        if (this.queues == null && this.from == null) {
+
+        // if there are no queues and no item consumer, short circuit
+        // data directly to process function
+        if (this.queues == null && this.dataSupplierFn == null) {
+
             try {
                 this.process(input, 0);
                 return true;
             } catch (Exception exception) {
                 this.handleException(exception);
-
                 return false;
             }
-        } else {
-            Objects.requireNonNull(this.queues);
+        }
+
+        // if queues are available then dataSupplierFn is internally initialized
+        // to a lambda that polls the queue. This happens even if dataSupplierFn
+        // is specified in pipeline configuration, it will still get overridden
+        // by queue poller.
+        else if (this.queues != null) {
+
+            Objects.requireNonNull(this.queues, "queues must not be null");
 
             if (!this.running.get()) {
                 throw new IllegalStateException();
@@ -211,6 +221,9 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
             LOG.info("Queue #" + partNumber + " is size " + this.queues[this.partitioner.apply(input, this.tasks)].size() );
 
             return this.queues[this.partitioner.apply(input, this.tasks)].offer(input);
+        } else {
+            // this.queues == null && this.dataSupplierFn != null
+            throw new RuntimeException("push() called while running in pull mode");
         }
     }
 

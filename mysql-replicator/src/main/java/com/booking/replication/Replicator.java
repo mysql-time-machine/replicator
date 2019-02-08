@@ -96,6 +96,25 @@ public class Replicator {
 
         this.checkpointApplier = CheckpointApplier.build(configuration, this.coordinator, this.checkpointPath);
 
+
+        // --------------------------------------------------------------------
+        // Setup streams/pipelines:
+        //
+        // Notes:
+        //
+        //  Supplying the input data has three modes:
+        //      1. Short Circuit Push:
+        //          - Input data for this stream/data-pipeline will be provided by
+        //            by calling the push() method of the pipeline instance, which will not
+        //            use any queues but will directly pass the item to the process()
+        //            method.
+        //      2. Queued Push:
+        //          - If pipeline has a queue then the push() method will default to
+        //            adding items to that queue and then internal consumer is automatically
+        //            initialized as the poller of that queue
+        //      3. Pull:
+        //          - There is no queue and the internal consumer is passed as a lambda
+        //            function which knows hot to get data from an external data source.
         this.destinationStream = Streams.<Collection<AugmentedEvent>>builder()
                 .threads(threads)
                 .tasks(tasks)
@@ -107,9 +126,9 @@ public class Replicator {
                             .counter("hbase.streams.destination.partitioner.event.apply.success").inc(1L);
                     return partitionNumber;
                 })
-                .queue()
-                .fromPush()
-                .to(this.applier)
+                .useDefaultQueueType()
+                .usePushMode()
+                .setSink(this.applier)
                 .post((events, task) -> {
                     for (AugmentedEvent event : events) {
                         this.checkpointApplier.accept(event, task);
@@ -117,11 +136,11 @@ public class Replicator {
                 }).build();
 
         this.sourceStream = Streams.<RawEvent>builder()
-                .fromPush()
+                .usePushMode()
                 .process(this.augmenter)
                 .process(this.seeker)
                 .process(this.augmenterFilter)
-                .to((events) -> {
+                .setSink((events) -> {
                     Map<Integer, Collection<AugmentedEvent>> splitEventsMap = new HashMap<>();
                     for (AugmentedEvent event : events) {
                         this.metrics.getRegistry()
@@ -159,11 +178,6 @@ public class Replicator {
                 this.sourceStream.start();
 
                 Replicator.LOG.log(Level.INFO, "starting supplier");
-
-                // TODO: add fixed start pos to cmd line params
-//                Checkpoint from = new Checkpoint(
-//                        new Binlog("binlog.000001", 4)
-//                );
 
                 String startFilename = (String)configuration.getOrDefault(BinaryLogSupplier.Configuration.BINLOG_START_FILENAME,"checkpoint");
                 Long startPosition = Long.valueOf( (String)configuration.getOrDefault(BinaryLogSupplier.Configuration.BINLOG_START_POSITION,"-1") );

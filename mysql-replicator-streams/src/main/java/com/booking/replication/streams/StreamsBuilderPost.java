@@ -5,7 +5,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 public interface StreamsBuilderPost<Input, Output> {
-    StreamsBuilderPost<Input, Output> to(Function<Output, Boolean> to);
+    StreamsBuilderPost<Input, Output> setSink(Function<Output, Boolean> to);
 
     StreamsBuilderBuild<Input, Output> post(Consumer<Input> post);
 

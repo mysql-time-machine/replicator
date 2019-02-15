@@ -73,6 +73,14 @@ public class HBaseApplier implements Applier {
             e.printStackTrace();
         }
 
+        if (hbaseSchemaManager == null) {
+            throw new RuntimeException("Failed to initialize HBaseSchemaManager");
+        }
+
+        if (hBaseApplierWriter == null) {
+            throw new RuntimeException("Failed to initialize HBaseTimeMachineWriter");
+        }
+
     }
 
 

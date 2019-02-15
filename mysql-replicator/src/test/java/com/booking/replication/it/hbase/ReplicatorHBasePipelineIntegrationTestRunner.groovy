@@ -46,7 +46,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     @Shared private static final Logger LOG = Logger.getLogger(ReplicatorHBasePipelineIntegrationTestRunner.class.getName())
 
     // TODO: add integration test for buffer size limit exceeded (rewind mode)
-    @Shared private static final int AUGMENTER_TRANSACTION_BUFFER_SIZE_LIMIT = 1000
+    @Shared private static final int AUGMENTER_TRANSACTION_BUFFER_SIZE_LIMIT = 2
 
     @Shared private static final int NUMBER_OF_THREADS = 3
     @Shared private static final int NUMBER_OF_TASKS = 3

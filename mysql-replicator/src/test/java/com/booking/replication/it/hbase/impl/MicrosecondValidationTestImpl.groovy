@@ -1,6 +1,7 @@
 package com.booking.replication.it.hbase.impl
 
-import com.booking.replication.applier.hbase.StorageConfig;
+import com.booking.replication.applier.hbase.StorageConfig
+import com.booking.replication.augmenter.model.AugmenterModel;
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
 import com.booking.replication.applier.hbase.time.RowTimestampOrganizer
 import com.booking.replication.commons.services.ServicesControl
@@ -158,7 +159,11 @@ class MicrosecondValidationTestImpl implements ReplicatorHBasePipelineIntegratio
                         continue
                     }
 
-                    if (columnName == "transaction_uuid" || columnName == "transaction_xid") {
+                    if (columnName ==
+                            AugmenterModel.Configuration.UUID_FIELD_NAME
+                         ||
+                         columnName ==
+                            AugmenterModel.Configuration.XID_FIELD_NAME) {
                         continue
                     }
 

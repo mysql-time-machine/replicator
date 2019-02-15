@@ -72,7 +72,7 @@ public class AugmenterContext implements Closeable {
     private static final String DEFAULT_BEGIN_PATTERN = "^(/\\*.*?\\*/\\s*)?(begin)";
     private static final String DEFAULT_COMMIT_PATTERN = "^(/\\*.*?\\*/\\s*)?(commit)";
     private static final String DEFAULT_DDL_DEFINER_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(definer)\\s*=";
-    private static final String DEFAULT_DDL_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(table)\\s+(?:if not exists\\s+|if exists\\s+)?(\\S+)";
+    private static final String DEFAULT_DDL_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|modify)\\s+(table)\\s+(?:if not exists\\s+|if exists\\s+)?(\\S+)";
     private static final String DEFAULT_DDL_TEMPORARY_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(temporary)\\s+(table)\\s+(\\S+)";
     private static final String DEFAULT_DDL_VIEW_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(view)\\s+(\\S+)";
     private static final String DEFAULT_DDL_ANALYZE_PATTERN = "^(/\\*.*?\\*/\\s*)?(analyze)\\s+(table)\\s+(\\S+)";
@@ -580,6 +580,7 @@ public class AugmenterContext implements Closeable {
                 String tableName = this.eventTable.get().getName();
 
                 if (isDDLAndIsNot(QueryAugmentedEventDataOperationType.CREATE)) {
+                    // if not create, then before exists
                     this.columnsBefore.set(this.schemaManager.listColumns(tableName));
                     this.createTableBefore.set(this.schemaManager.getCreateTable(tableName));
                 } else {
@@ -598,7 +599,7 @@ public class AugmenterContext implements Closeable {
                     this.columnsAfter.set(this.schemaManager.listColumns(tableName));
                     this.createTableAfter.set(this.schemaManager.getCreateTable(tableName));
                 } else {
-                    //
+                    // if delete, then after does not exists
                     this.columnsAfter.set(null);
                     this.createTableAfter.set(null);
                 }

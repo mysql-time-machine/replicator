@@ -79,7 +79,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends  Specification {
 
     @Shared Network network = Network.newNetwork()
 
-    @Shared  ServicesControl zookeeper = servicesProvider.startZookeeper(network)
+    @Shared  ServicesControl zookeeper = servicesProvider.startZookeeper(network, "replicatorZK")
     @Shared  ServicesControl mysqlBinaryLog = servicesProvider.startMySQL(
             MYSQL_SCHEMA,
             MYSQL_USERNAME,

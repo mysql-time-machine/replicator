@@ -1,0 +1,51 @@
+coordinator.type: "ZOOKEEPER"
+supplier.type: "BINLOG"
+augmenter:
+  schema:
+    type: "ACTIVE"
+    active.mysql:
+      hostname: "hostname"
+      port: "3306"
+      schema: "activeschema_myschema"
+      username: "username"
+      password: "password"
+  context:
+    transaction.buffer.limit : 2000000000
+    exclude.table:
+    - heartbeat
+    - pseudo_gtid_status
+seeker.type: "NONE"
+partitioner.type: "RANDOM"
+applier.type: "KAFKA"
+checkpoint:
+  applier.type: "COORDINATOR"
+  path: "/base/replicator/myschema/checkpoint"
+webserver.type: "JETTY"
+metrics.applier:
+  type: "PROMETHEUS"
+  base_path: "replicator_myschema"
+replicator:
+  tasks: 8
+  threads: 8
+  queue:
+    size: 10000
+    timeout: 300
+zookeeper:
+  connection.string:
+  - "zk1:2181"
+  leadership.path: "/base/replicator/myschema/leadership"
+mysql:
+  hostname:
+  - "db-hostname"
+  port: 3306
+  schema: "myschema"
+kafka:
+  consumer:
+    auto.offset.reset: "earliest"
+    bootstrap.servers: "localhost:9092"
+    group.id: "consumer1"
+  producer:
+    bootstrap.servers: "localhost:9092"
+  topic: "replicator"
+  message.format: "avro"
+  schema.registry.url: "http://localhost:8081"

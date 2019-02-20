@@ -7,9 +7,14 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.time.Duration;
+import java.util.logging.Logger;
 
 public final class ContainersProvider implements ServicesProvider {
+
+    private static final Logger LOG = Logger.getLogger(ContainersProvider.class.getName());
 
 //    // Tags
 //    private static final String MYSQL_DOCKER_IMAGE_DEFAULT = "mysql:5.6.38";
@@ -39,7 +44,21 @@ public final class ContainersProvider implements ServicesProvider {
     private static final String KAFKA_ZOOKEEPER_CONNECT_KEY = "KAFKA_ZOOKEEPER_CONNECT";
     private static final String KAFKA_CREATE_TOPICS_KEY = "KAFKA_CREATE_TOPICS";
     private static final String KAFKA_ADVERTISED_HOST_NAME_KEY = "KAFKA_ADVERTISED_HOST_NAME";
+
+    private static final String KAFKA_LISTENERS_KEY = "KAFKA_LISTENERS";
+    private static final String KAFKA_ADVERTISED_LISTENERS_KEY = "KAFKA_ADVERTISED_LISTENERS";
+    private static final String KAFKA_LISTENER_SECURITY_PROTOCOL_MAP_KEY = "KAFKA_LISTENER_SECURITY_PROTOCOL_MAP";
+    private static final String KAFKA_INTER_BROKER_LISTENER_NAME_KEY = "KAFKA_INTER_BROKER_LISTENER_NAME";
     private static final int KAFKA_PORT = 9092;
+
+    private static final String SCHEMA_REGISTRY_IMAGE_KEY = "docker.image.schema_registry";
+    private static final int SCHEMA_REGISTRY_PORT = 8081;
+    private static final String SCHEMA_REGISTRY_WAIT_REGEX = ".*Server started.*\\n";
+    public static final String SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL_KEY = "SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL";
+    public static final String SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS_KEY = "SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS";
+    public static final String SCHEMA_REGISTRY_HOST_NAME_KEY = "SCHEMA_REGISTRY_HOST_NAME";
+    public static final String SCHEMA_REGISTRY_LISTENERS_KEY = "SCHEMA_REGISTRY_LISTENERS";
+    public static final String KAFKASTORE_TOPIC_KEY = "KAFKASTORE_TOPIC";
 
     private static final String HBASE_DOCKER_IMAGE_KEY = "docker.image.hbase";
     private static final String HBASE_CREATE_NAMESPACES = "test,schema_history";
@@ -79,11 +98,16 @@ public final class ContainersProvider implements ServicesProvider {
             container.withNetwork(network);
         }
 
-        if(matchExposedPort) {
+        if (matchExposedPort) {
             container.withCreateContainerCmdModifier(
                     command -> command.withPortBindings(PortBinding.parse(String.format("%d:%d", port, port)))
             );
         }
+
+        container.withLogConsumer(outputFrame -> {
+            System.out.println(image + " " + outputFrame.getUtf8String());
+        });
+
 
         return container;
     }
@@ -162,31 +186,14 @@ public final class ContainersProvider implements ServicesProvider {
         };
     }
 
-//    public ServicesControl startZookeeper(String zkImageTag) {
-//        GenericContainer<?> zookeeper =  this.getZookeeper(null, zkImageTag);
-//
-//        zookeeper.start();
-//
-//        return new ServicesControl() {
-//            @Override
-//            public void close() {
-//                zookeeper.stop();
-//            }
-//
-//            @Override
-//            public int getPort() {
-//                return zookeeper.getMappedPort(ContainersProvider.ZOOKEEPER_PORT);
-//            }
-//        };
-//    }
-
     @Override
     public ServicesControl startZookeeper() {
-        GenericContainer<?> zookeeper =  this.getZookeeper(
+        GenericContainer<?> zookeeper = this.getZookeeper(
                 null, VersionedPipelines.defaultTags.zookeeperTag);
 
         zookeeper.start();
 
+
         return new ServicesControl() {
             @Override
             public void close() {
@@ -197,15 +204,16 @@ public final class ContainersProvider implements ServicesProvider {
             public int getPort() {
                 return zookeeper.getMappedPort(ContainersProvider.ZOOKEEPER_PORT);
             }
+
         };
     }
 
     @Override
-    public ServicesControl startZookeeper(Network network) {
-        GenericContainer<?> zookeeper =  this.getZookeeper(network, VersionedPipelines.defaultTags.zookeeperTag);
+    public ServicesControl startZookeeper(Network network, String networkAlias) {
+        GenericContainer<?> zookeeper = this.getZookeeper(network, VersionedPipelines.defaultTags.zookeeperTag);
+        zookeeper.withNetworkAliases(networkAlias);
 
         zookeeper.start();
-
         return new ServicesControl() {
             @Override
             public void close() {
@@ -216,6 +224,7 @@ public final class ContainersProvider implements ServicesProvider {
             public int getPort() {
                 return zookeeper.getMappedPort(ContainersProvider.ZOOKEEPER_PORT);
             }
+
         };
     }
 
@@ -254,25 +263,6 @@ public final class ContainersProvider implements ServicesProvider {
             @Override
             public int getPort() {
                 return mysql.getMappedPort(ContainersProvider.MYSQL_PORT);
-            }
-        };
-    }
-
-    @Override
-    public ServicesControl startZookeeper(Network network, String zkImageTag) {
-        GenericContainer<?> zookeeper =  this.getZookeeper(network, zkImageTag);
-
-        zookeeper.start();
-
-        return new ServicesControl() {
-            @Override
-            public void close() {
-                zookeeper.stop();
-            }
-
-            @Override
-            public int getPort() {
-                return zookeeper.getMappedPort(ContainersProvider.ZOOKEEPER_PORT);
             }
         };
     }
@@ -322,6 +312,49 @@ public final class ContainersProvider implements ServicesProvider {
         };
     }
 
+    @Override
+    public ServicesControl startKafka(Network network, String topic, int partitions, int replicas, String networkAlias) {
+
+        GenericContainer<?> kafka = this.getContainer(
+                System.getProperty(
+                        ContainersProvider.KAFKA_DOCKER_IMAGE_KEY,
+                        VersionedPipelines.defaultTags.kafkaTag
+                ),
+                ContainersProvider.KAFKA_PORT,
+                network,
+                ContainersProvider.KAFKA_STARTUP_WAIT_REGEX,
+                partitions,
+                true
+        ).withEnv(
+                ContainersProvider.KAFKA_ZOOKEEPER_CONNECT_KEY,
+                String.format("%s:%d", "kafkaZk", ContainersProvider.ZOOKEEPER_PORT)
+        ).withEnv(
+                ContainersProvider.KAFKA_CREATE_TOPICS_KEY,
+                String.format("%s:%d:%d", topic, partitions, replicas)
+        ).withEnv(KAFKA_LISTENERS_KEY, String.format("PLAINTEXT://%s:29092,OUTSIDE://0.0.0.0:%d", networkAlias, KAFKA_PORT)
+        ).withEnv(KAFKA_LISTENER_SECURITY_PROTOCOL_MAP_KEY, "PLAINTEXT:PLAINTEXT,OUTSIDE:PLAINTEXT"
+        ).withEnv(KAFKA_ADVERTISED_LISTENERS_KEY, String.format("PLAINTEXT://%s:29092,OUTSIDE://localhost:%d", networkAlias, KAFKA_PORT)
+        ).withEnv(KAFKA_INTER_BROKER_LISTENER_NAME_KEY, "PLAINTEXT");
+        //   https://rmoff.net/2018/08/02/kafka-listeners-explained/
+
+        kafka.withNetworkAliases(networkAlias);
+
+        kafka.start();
+
+        return new ServicesControl() {
+            @Override
+            public void close() {
+                kafka.stop();
+            }
+
+            @Override
+            public int getPort() {
+                return kafka.getMappedPort(ContainersProvider.KAFKA_PORT);
+            }
+        };
+    }
+
+
     public ServicesControl startKafka(String kafkaImageTag, String topic, int partitions, int replicas) {
         Network network = Network.newNetwork();
 
@@ -365,6 +398,41 @@ public final class ContainersProvider implements ServicesProvider {
             @Override
             public int getPort() {
                 return kafka.getMappedPort(ContainersProvider.KAFKA_PORT);
+            }
+        };
+    }
+
+    @Override
+    public ServicesControl startSchemaRegistry(Network network) {
+
+        GenericContainer<?> schemaRegistry = this.getContainer(System.getProperty(
+                ContainersProvider.SCHEMA_REGISTRY_IMAGE_KEY,
+                VersionedPipelines.defaultTags.schemaRegistryTag
+                ),
+                ContainersProvider.SCHEMA_REGISTRY_PORT,
+                network,
+                ContainersProvider.SCHEMA_REGISTRY_WAIT_REGEX,
+                1,
+                true
+        ).withEnv(
+                ContainersProvider.SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL_KEY,
+                String.format("%s:%d", "kafkaZk", ContainersProvider.ZOOKEEPER_PORT)
+        ).withEnv(
+                ContainersProvider.SCHEMA_REGISTRY_HOST_NAME_KEY,
+                "localhost"
+        );
+
+        schemaRegistry.start();
+
+        return new ServicesControl() {
+            @Override
+            public void close() {
+                schemaRegistry.stop();
+            }
+
+            @Override
+            public int getPort() {
+                return schemaRegistry.getMappedPort(ContainersProvider.SCHEMA_REGISTRY_PORT);
             }
         };
     }

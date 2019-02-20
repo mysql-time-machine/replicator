@@ -20,15 +20,17 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
 
     private final CheckpointStorage storage;
     private final String path;
+    private final boolean transactionEnabled;
     private final AtomicLong lastExecution;
     private final Map<Integer, Long> lastTimestampMap;
     private final Map<Integer, AugmentedEventTransaction> lastTransactionMap;
     private final Map<Integer, Checkpoint> lastCheckpointMap;
     private final ScheduledExecutorService executor;
 
-    public CoordinatorCheckpointApplier(CheckpointStorage storage, String path, long period) {
+    public CoordinatorCheckpointApplier(CheckpointStorage storage, String path, long period, boolean transactionEnabled) {
         this.storage = storage;
         this.path = path;
+        this.transactionEnabled = transactionEnabled;
         this.lastExecution = new AtomicLong();
         this.lastTimestampMap = new ConcurrentHashMap<>();
         this.lastTransactionMap = new ConcurrentHashMap<>();
@@ -50,11 +52,13 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
             if (minimumCheckpoint != null) {
                 try {
                     this.storage.saveCheckpoint(this.path, minimumCheckpoint);
+                    CoordinatorCheckpointApplier.LOG.log(Level.INFO, "Last checkpoint: " + minimumCheckpoint.toString());
                     this.lastExecution.set(System.currentTimeMillis());
                 } catch (IOException exception) {
                     CoordinatorCheckpointApplier.LOG.log(Level.WARNING, "error saving checkpoint", exception);
                 }
             }
+
         }, period, period, TimeUnit.MILLISECONDS);
     }
 
@@ -64,11 +68,15 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
         AugmentedEventTransaction transaction = event.getHeader().getEventTransaction();
 
         this.lastTimestampMap.put(task, System.currentTimeMillis());
-
-        if (transaction != null && transaction.compareTo(this.lastTransactionMap.get(task)) > 0) {
+        if (this.transactionEnabled) {
+            if (transaction != null && transaction.compareTo(this.lastTransactionMap.get(task)) > 0) {
+                this.lastCheckpointMap.put(task, checkpoint);
+                this.lastTransactionMap.put(task, transaction);
+            }
+        } else {
             this.lastCheckpointMap.put(task, checkpoint);
-            this.lastTransactionMap.put(task, transaction);
         }
+
     }
 
     @Override

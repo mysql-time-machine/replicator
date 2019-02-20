@@ -6,8 +6,6 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.leader.LeaderLatch;
 import org.apache.curator.framework.recipes.leader.LeaderLatchListener;
-import org.apache.curator.framework.state.ConnectionState;
-import org.apache.curator.framework.state.ConnectionStateListener;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.CreateMode;
 
@@ -18,8 +16,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class ZookeeperCoordinator extends Coordinator {
+    private static final Logger LOG = Logger.getLogger(ZookeeperCoordinator.class.getName());
+
     public interface Configuration {
         String LEADERSHIP_PATH = "zookeeper.leadership.path";
         String CONNECTION_STRING = "zookeeper.connection.string";
@@ -55,17 +57,6 @@ public class ZookeeperCoordinator extends Coordinator {
             @Override
             public void notLeader() {
                 ZookeeperCoordinator.this.loseLeadership();
-            }
-        });
-
-        this.client.getConnectionStateListenable().addListener(new ConnectionStateListener() {
-            @Override
-            public void stateChanged(CuratorFramework client, ConnectionState newState) {
-                switch(newState) {
-                    case LOST:
-                    case SUSPENDED:
-                        ZookeeperCoordinator.this.loseLeadership();
-                }
             }
         });
     }
@@ -132,6 +123,7 @@ public class ZookeeperCoordinator extends Coordinator {
     @Override
     public void awaitLeadership() {
         try {
+            ZookeeperCoordinator.LOG.log(Level.INFO, "Waiting for leadership.");
             this.latch.await();
         } catch (InterruptedException | EOFException exception) {
             throw new RuntimeException(exception);

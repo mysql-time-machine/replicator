@@ -1,9 +1,9 @@
 package com.booking.replication.streams;
 
-import java.util.Deque;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 public interface StreamsBuilderFrom<Input, Output> {
     StreamsBuilderFrom<Input, Output> threads(int threads);
@@ -12,11 +12,15 @@ public interface StreamsBuilderFrom<Input, Output> {
 
     StreamsBuilderFrom<Input, Output> partitioner(BiFunction<Input, Integer, Integer> partitioner);
 
-    StreamsBuilderFrom<Input, Output> queue();
+    StreamsBuilderFrom<Input, Output> useDefaultQueueType();
 
-    StreamsBuilderFrom<Input, Output> queue(Class<? extends Deque> queueType);
+    StreamsBuilderFrom<Input, Output> setQueueType(Class<? extends BlockingDeque> queueType);
 
-    StreamsBuilderFilter<Input, Output> fromPull(Function<Integer, Input> supplier);
+    StreamsBuilderFrom<Input, Output> queueSize(int queueSize);
 
-    StreamsBuilderFilter<Input, Output> fromPush();
+    StreamsBuilderFrom<Input, Output> queueTimeout(long queueTimeout, TimeUnit timeUnit);
+
+    StreamsBuilderFilter<Input, Output> setDataSupplier(Function<Integer, Input> supplier);
+
+    StreamsBuilderFilter<Input, Output> usePushMode();
 }

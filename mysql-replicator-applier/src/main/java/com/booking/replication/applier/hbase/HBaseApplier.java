@@ -10,10 +10,7 @@ import com.booking.replication.augmenter.model.event.*;
 import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
 
 import com.booking.replication.commons.metrics.Metrics;
-import com.codahale.metrics.Counter;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -28,10 +25,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toList;
-
-import com.booking.replication.commons.metrics.Metrics;
-import com.booking.replication.commons.metrics.Metrics;
-import com.codahale.metrics.MetricRegistry;
 
 public class HBaseApplier implements Applier {
 
@@ -65,7 +58,7 @@ public class HBaseApplier implements Applier {
 
         this.configuration = configuration;
 
-        this.metrics = Metrics.build(configuration);
+        this.metrics = Metrics.getInstance(configuration);
 
         hbaseConfig = getHBaseConfig(configuration);
 

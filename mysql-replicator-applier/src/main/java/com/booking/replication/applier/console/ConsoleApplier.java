@@ -22,6 +22,7 @@ public class ConsoleApplier implements Applier {
     public Boolean apply(Collection<AugmentedEvent> events) {
         try {
             for (AugmentedEvent event : events) {
+//                ConsoleApplier.LOG.info(ConsoleApplier.MAPPER.writeValueAsString(event));
                 ConsoleApplier.LOG.info(ConsoleApplier.MAPPER.writeValueAsString(event));
             }
 

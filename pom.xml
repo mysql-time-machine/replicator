@@ -32,13 +32,14 @@
         <jackson.version>2.9.6</jackson.version>
         <zookeeper.version>3.4.12</zookeeper.version>
         <curator.version>4.0.1</curator.version>
-        <mysql-connector.version>8.0.12</mysql-connector.version>
+        <mysql-connector.version>5.1.46</mysql-connector.version>
         <mysql-binlog-connector.version>0.16.1</mysql-binlog-connector.version>
         <commons-dbcp2.version>2.4.0</commons-dbcp2.version>
         <kafka.version>1.1.0</kafka.version>
         <dropwizard.metrics.version>4.0.2</dropwizard.metrics.version>
         <hbase.version>1.2.2</hbase.version>
-
+        <avro.version>1.8.1</avro.version>
+        <confluent.version>0.1.0</confluent.version>
     </properties>
     <modules>
         <module>mysql-replicator-commons</module>
@@ -164,10 +165,21 @@
                 <version>${commons-dbcp2.version}</version>
             </dependency>
             <dependency>
+                <groupId>org.apache.avro</groupId>
+                <artifactId>avro</artifactId>
+                <version>${avro.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.apache.kafka</groupId>
                 <artifactId>kafka_2.12</artifactId>
                 <version>${kafka.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.confluent</groupId>
+                <artifactId>kafka-avro-serializer</artifactId>
+                <version>5.0.1</version>
+            </dependency>
+
             <dependency>
                 <groupId>io.dropwizard.metrics</groupId>
                 <artifactId>metrics-core</artifactId>
@@ -343,6 +355,10 @@
         <repository>
             <id>cloudera</id>
             <url>https://repository.cloudera.com/artifactory/cloudera-repos/</url>
+        </repository>
+        <repository>
+            <id>confluent</id>
+            <url>http://packages.confluent.io/maven/</url>
         </repository>
         <repository>
             <id>central</id>

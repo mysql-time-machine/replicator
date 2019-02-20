@@ -24,13 +24,15 @@ public interface ServicesProvider {
 
     ServicesControl startZookeeper();
 
-    ServicesControl startZookeeper(Network network);
+    ServicesControl startZookeeper(Network network, String networkAlias);
 
     ServicesControl startMySQL(String schema, String username, String password, String... initScripts);
 
-    ServicesControl startZookeeper(Network network, String zkImageTag);
-
     ServicesControl startKafka(String topic, int partitions, int replicas);
+
+    ServicesControl startKafka(Network network, String topic, int partitions, int replicas, String networkAlias);
+
+    ServicesControl startSchemaRegistry(Network network);
 
     ServicesControl startHbase();
 

@@ -3,16 +3,9 @@ package com.booking.replication.streams;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.Objects;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.function.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -22,7 +15,8 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     private final int threads;
     private final int tasks;
     private final BiFunction<Input, Integer, Integer> partitioner;
-    private final Deque<Input>[] queues;
+    private final BlockingDeque<Input>[] queues;
+    private final long queueTimeout;
     private final Function<Integer, Input> from;
     private final BiConsumer<Integer, Input> requeue;
     private final Predicate<Input> filter;
@@ -40,14 +34,15 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
             int threads,
             int tasks,
             BiFunction<Input, Integer, Integer> partitioner,
-            Class<? extends Deque> queueType,
+            Class<? extends BlockingDeque> queueType,
+            int queueSize,
+            long queueTimeout,
             Function<Integer, Input> from,
             Predicate<Input> filter,
             Function<Input, Output> process,
             Function<Output, Boolean> to,
             BiConsumer<Input, Integer> post
     ) {
-
         this.threads = threads + 1;
         this.tasks = tasks;
 
@@ -58,11 +53,11 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
         }
 
         if (queueType != null) {
-            this.queues = new Deque[this.tasks];
+            this.queues = new BlockingDeque[this.tasks];
 
             for (int index = 0; index < this.queues.length; index++) {
                 try {
-                    this.queues[index] = queueType.newInstance();
+                    this.queues[index] = queueType.getConstructor(int.class).newInstance(queueSize);
                 } catch (ReflectiveOperationException exception) {
                     throw new RuntimeException(exception);
                 }
@@ -71,10 +66,21 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
             this.queues = null;
         }
 
+        this.queueTimeout = queueTimeout;
+
         if (this.queues != null) {
             this.from = (task) -> StreamsImplementation.this.queues[task].poll();
-            this.requeue = (task, input) -> StreamsImplementation.this.queues[task].offerFirst(input);
-        } else if(from != null) {
+            this.requeue = (task, input) -> {
+                try {
+                    if (!StreamsImplementation.this.queues[task].offerFirst(input, queueTimeout, TimeUnit.SECONDS)) {
+                        this.handleException(new StreamsException(String.format("Max waiting time exceeded while requeue setSink internal buffer: %d seconds", queueTimeout)));
+                    }
+                } catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                    this.handleException(exception);
+                }
+            };
+        } else if (from != null) {
             this.from = from;
             this.requeue = null;
         } else {
@@ -82,10 +88,11 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
             this.requeue = null;
         }
 
-        this.filter = (filter != null)?(filter):(input -> true);
-        this.process = (process != null)?(process):(input -> (Output) input);
-        this.to = (to != null)?(to):(output -> true);
-        this.post = (post != null)?(post):((output, executing) -> {});
+        this.filter = (filter != null) ? (filter) : (input -> true);
+        this.process = (process != null) ? (process) : (input -> (Output) input);
+        this.to = (to != null) ? (to) : (output -> true);
+        this.post = (post != null) ? (post) : ((output, executing) -> {
+        });
         this.running = new AtomicBoolean();
         this.handling = new AtomicBoolean();
         this.handler = (exception) -> StreamsImplementation.LOG.log(Level.SEVERE, "error inside streams", exception);
@@ -179,24 +186,28 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     }
 
     @Override
-    public final boolean push(Input input) {
+    public final void push(Input input) {
         if (this.queues == null && this.from == null) {
             try {
                 this.process(input, 0);
-                return true;
             } catch (Exception exception) {
                 this.handleException(exception);
-
-                return false;
             }
         } else {
             Objects.requireNonNull(this.queues);
 
             if (!this.running.get()) {
-                throw new IllegalStateException();
+                throw new IllegalStateException("Streams has stopped.");
             }
 
-            return this.queues[this.partitioner.apply(input, this.tasks)].offer(input);
+            try {
+                if (!StreamsImplementation.this.queues[this.partitioner.apply(input, this.tasks)].offer(input, this.queueTimeout, TimeUnit.SECONDS)) {
+                    this.handleException(new StreamsException(String.format("Max waiting time exceeded while writing setSink internal buffer: %d", this.queueTimeout)));
+                }
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                this.handleException(exception);
+            }
         }
     }
 

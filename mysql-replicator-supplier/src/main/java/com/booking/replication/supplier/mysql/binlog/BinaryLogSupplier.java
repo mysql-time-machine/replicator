@@ -93,6 +93,7 @@ public class BinaryLogSupplier implements Supplier {
                 this.username,
                 this.password
         );
+        client.setHeartbeatInterval(TimeUnit.MILLISECONDS.toMillis(10));
 
         EventDeserializer eventDeserializer = new EventDeserializer();
         eventDeserializer.setCompatibilityMode(EventDeserializer.CompatibilityMode.CHAR_AND_BINARY_AS_BYTE_ARRAY);
@@ -133,6 +134,32 @@ public class BinaryLogSupplier implements Supplier {
                         this.client = this.getClient(hostname);
 
                         if (this.consumer != null) {
+                            this.client.registerLifecycleListener(new BinaryLogClient.LifecycleListener() {
+                                @Override
+                                public void onConnect(BinaryLogClient client) {
+                                    BinaryLogSupplier.LOG.log(Level.INFO,
+                                            String.format("Binlog client connected to:%s : %s, %s",
+                                                    hostname,
+                                                    client.getBinlogFilename(),
+                                                    client.getBinlogPosition(),
+                                                    client.getGtidSet()));
+                                }
+
+                                @Override
+                                public void onCommunicationFailure(BinaryLogClient client, Exception ex) {
+                                    BinaryLogSupplier.LOG.log(Level.SEVERE, String.format("Binlog client had communication failure :%s, %s", hostname, ex.getMessage()));
+                                }
+
+                                @Override
+                                public void onEventDeserializationFailure(BinaryLogClient client, Exception ex) {
+                                    BinaryLogSupplier.LOG.log(Level.SEVERE, String.format("Binlog client had Event deserialization failure : %s, %s", hostname, ex.getMessage()));
+                                }
+
+                                @Override
+                                public void onDisconnect(BinaryLogClient client) {
+                                    BinaryLogSupplier.LOG.log(Level.INFO, String.format("Binlog client disconnected from: %s", hostname));
+                                }
+                            });
                             this.client.registerEventListener(
                                     event -> {
                                         try {
@@ -183,6 +210,8 @@ public class BinaryLogSupplier implements Supplier {
             } catch (IOException exception) {
                 BinaryLogSupplier.LOG.log(Level.SEVERE, "error disconnecting", exception);
             }
+        }else{
+            BinaryLogSupplier.LOG.log(Level.WARNING, "Trying to disconnect suppliet which is already disconnected");
         }
     }
 

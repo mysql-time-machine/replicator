@@ -1,13 +1,10 @@
 package com.booking.replication.streams;
 
-import java.util.Deque;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.TimeUnit;
+import java.util.function.*;
 import java.util.logging.Logger;
 
 public final class StreamsBuilder<Input, Output> implements
@@ -21,7 +18,9 @@ public final class StreamsBuilder<Input, Output> implements
     private int threads;
     private int tasks;
     private BiFunction<Input, Integer, Integer> partitioner;
-    private Class<? extends Deque> queueType;
+    private Class<? extends BlockingDeque> queueType;
+    private int queueSize;
+    private long queueTimeout;
     private Function<Integer, Input> from;
     private Predicate<Input> filter;
     private Function<Input, Output> process;
@@ -32,7 +31,9 @@ public final class StreamsBuilder<Input, Output> implements
             int threads,
             int tasks,
             BiFunction<Input, Integer, Integer> partitioner,
-            Class<? extends Deque> queueType,
+            Class<? extends BlockingDeque> queueType,
+            int queueSize,
+            long queueTimeout,
             Function<Integer, Input> from,
             Predicate<Input> filter,
             Function<Input, Output> process,
@@ -42,6 +43,8 @@ public final class StreamsBuilder<Input, Output> implements
         this.tasks = tasks;
         this.partitioner = partitioner;
         this.queueType = queueType;
+        this.queueSize = queueSize;
+        this.queueTimeout = queueTimeout;
         this.from = from;
         this.filter = filter;
         this.process = process;
@@ -50,7 +53,7 @@ public final class StreamsBuilder<Input, Output> implements
     }
 
     StreamsBuilder() {
-        this(0, 1, null, null, null, null, null, null, null);
+        this(0, 1, null, null, Integer.MAX_VALUE, Long.MAX_VALUE, null, null, null, null, null);
     }
 
     @Override
@@ -74,6 +77,26 @@ public final class StreamsBuilder<Input, Output> implements
     }
 
     @Override
+    public final StreamsBuilderFrom<Input, Output> queueSize(int queueSize) {
+        if (queueSize > 0) {
+            this.queueSize = queueSize;
+            return this;
+        } else {
+            throw new IllegalArgumentException();
+        }
+    }
+
+    @Override
+    public final StreamsBuilderFrom<Input, Output> queueTimeout(long queueTimeout, TimeUnit timeUnit) {
+        if (queueTimeout > 0) {
+            this.queueTimeout = timeUnit.toSeconds(queueTimeout);
+            return this;
+        } else {
+            throw new IllegalArgumentException();
+        }
+    }
+
+    @Override
     public StreamsBuilderFrom<Input, Output> partitioner(BiFunction<Input, Integer, Integer> partitioner) {
         Objects.requireNonNull(partitioner);
         this.partitioner = partitioner;
@@ -81,26 +104,26 @@ public final class StreamsBuilder<Input, Output> implements
     }
 
     @Override
-    public StreamsBuilderFrom<Input, Output> queue() {
-        return this.queue(ConcurrentLinkedDeque.class);
+    public StreamsBuilderFrom<Input, Output> useDefaultQueueType() {
+        return this.setQueueType(LinkedBlockingDeque.class);
     }
 
     @Override
-    public StreamsBuilderFrom<Input, Output> queue(Class<? extends Deque> queueType) {
+    public StreamsBuilderFrom<Input, Output> setQueueType(Class<? extends BlockingDeque> queueType) {
         Objects.requireNonNull(queueType);
         this.queueType = queueType;
         return this;
     }
 
     @Override
-    public final StreamsBuilderFilter<Input, Output> fromPull(Function<Integer, Input> supplier) {
+    public final StreamsBuilderFilter<Input, Output> setDataSupplier(Function<Integer, Input> supplier) {
         Objects.requireNonNull(supplier);
         this.from = supplier;
         return this;
     }
 
     @Override
-    public final StreamsBuilderFilter<Input, Output> fromPush() {
+    public final StreamsBuilderFilter<Input, Output> usePushMode() {
         this.from = null;
         return this;
     }
@@ -113,6 +136,8 @@ public final class StreamsBuilder<Input, Output> implements
                 this.tasks,
                 this.partitioner,
                 this.queueType,
+                this.queueSize,
+                this.queueTimeout,
                 this.from,
                 input -> (this.filter == null || this.filter.test(input)) && filter.test(input),
                 null,
@@ -130,6 +155,8 @@ public final class StreamsBuilder<Input, Output> implements
                 this.tasks,
                 this.partitioner,
                 this.queueType,
+                this.queueSize,
+                this.queueTimeout,
                 this.from,
                 this.filter,
                 input -> {
@@ -146,13 +173,15 @@ public final class StreamsBuilder<Input, Output> implements
     }
 
     @Override
-    public final StreamsBuilderPost<Input, Output> to(Function<Output, Boolean> to) {
+    public final StreamsBuilderPost<Input, Output> setSink(Function<Output, Boolean> to) {
         Objects.requireNonNull(to);
         return new StreamsBuilder<>(
                 this.threads,
                 this.tasks,
                 this.partitioner,
                 this.queueType,
+                this.queueSize,
+                this.queueTimeout,
                 this.from,
                 this.filter,
                 this.process,
@@ -187,6 +216,8 @@ public final class StreamsBuilder<Input, Output> implements
                 this.tasks,
                 this.partitioner,
                 this.queueType,
+                this.queueSize,
+                this.queueTimeout,
                 this.from,
                 this.filter,
                 this.process,
@@ -210,6 +241,8 @@ public final class StreamsBuilder<Input, Output> implements
                 this.tasks,
                 this.partitioner,
                 this.queueType,
+                this.queueSize,
+                this.queueTimeout,
                 this.from,
                 this.filter,
                 this.process,

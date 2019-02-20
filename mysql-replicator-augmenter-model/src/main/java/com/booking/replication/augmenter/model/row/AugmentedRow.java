@@ -10,6 +10,7 @@ import java.util.UUID;
 
 public class AugmentedRow {
 
+    private Map<String, Object> rawRowColumns;
     private UUID         transactionUUID;
     private Long         transactionXid;
 
@@ -25,7 +26,7 @@ public class AugmentedRow {
     private final Long fakeMicrosecondCounter;
     private       Long rowMicrosecondTimestamp = null;
 
-    // rowColumns format:
+    // stringifiedRowColumns format:
     // {
     //      $columnName => {
     //          value        => $value // <- null for UPDATE op
@@ -33,7 +34,7 @@ public class AugmentedRow {
     //          value_after  => $value // <- null for DELETE op
     //      }
     // }
-    private Map<String, Map<String,String>> rowColumns = new CaseInsensitiveMap<>();
+    private Map<String, Map<String,String>> stringifiedRowColumns = new CaseInsensitiveMap<>();
 
     public AugmentedRow() {
         this.fakeMicrosecondCounter = null;
@@ -51,7 +52,8 @@ public class AugmentedRow {
             Long binlogEventCounter,
 
             List<String> primaryKeyColumns,
-            Map<String,Map<String, String>> rowColumnValues
+            Map<String,Map<String, String>> stringifiedRowColumnValues,
+            Map<String, Object> rowColumnValues
     ) {
 
 
@@ -74,7 +76,9 @@ public class AugmentedRow {
 
         this.eventType = eventType;
 
-        this.rowColumns = rowColumnValues;
+        this.stringifiedRowColumns = stringifiedRowColumnValues;
+
+        this.rawRowColumns = rowColumnValues;
 
         this.tableSchema = schemaName;
         this.tableName = tableName;
@@ -83,12 +87,12 @@ public class AugmentedRow {
     }
 
     public void initColumnDataSlots() {
-        rowColumns.put(AugmenterModel.Configuration.UUID_FIELD_NAME, new HashMap<String, String>());
-        rowColumns.put(AugmenterModel.Configuration.XID_FIELD_NAME, new HashMap<String, String>());
+        stringifiedRowColumns.put(AugmenterModel.Configuration.UUID_FIELD_NAME, new HashMap<String, String>());
+        stringifiedRowColumns.put(AugmenterModel.Configuration.XID_FIELD_NAME, new HashMap<String, String>());
     }
 
-    public Map<String, Map<String, String>> getRowColumns() {
-        return rowColumns;
+    public Map<String, Map<String, String>> getStringifiedRowColumns() {
+        return stringifiedRowColumns;
     }
 
     public String getTableSchema() {
@@ -155,11 +159,19 @@ public class AugmentedRow {
         this.tableSchema = tableSchema;
     }
 
-    public void setRowColumns(Map<String, Map<String, String>> rowColumns) {
-        this.rowColumns = rowColumns;
+    public void setStringifiedRowColumns(Map<String, Map<String, String>> stringifiedRowColumns) {
+        this.stringifiedRowColumns = stringifiedRowColumns;
     }
 
     public Long getRowMicrosecondTimestamp() {
         return this.rowMicrosecondTimestamp;
+    }
+
+    public Map<String, Object> getRawRowColumns() {
+        return rawRowColumns;
+    }
+
+    public void setRawRowColumns(Map<String, Object> rawRowColumns) {
+        this.rawRowColumns = rawRowColumns;
     }
 }

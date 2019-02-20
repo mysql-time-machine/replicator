@@ -10,6 +10,7 @@ import com.booking.replication.commons.checkpoint.Binlog;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.GTID;
 import com.booking.replication.commons.checkpoint.GTIDType;
+import com.booking.replication.commons.metrics.Metrics;
 import com.booking.replication.commons.services.ServicesControl;
 import com.booking.replication.commons.services.ServicesProvider;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -64,7 +65,9 @@ public class KafkaTest {
                 new AugmentedEventHeader(
                         System.currentTimeMillis(),
                         KafkaTest.getCheckpoint(index),
-                        AugmentedEventType.BYTE_ARRAY
+                        AugmentedEventType.BYTE_ARRAY,
+                        "dbName",
+                        "tableName"
                 ),
                 new ByteArrayAugmentedEventData(data)
         );
@@ -90,6 +93,7 @@ public class KafkaTest {
         configuration.put(KafkaApplier.Configuration.TOPIC, KafkaTest.TOPIC_NAME);
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.BOOTSTRAP_SERVERS_CONFIG), KafkaTest.servicesControl.getURL());
 
+        Metrics.build(configuration, null);
         try (Applier applier = Applier.build(configuration)) {
             applier.apply(KafkaTest.events);
         }
@@ -104,6 +108,7 @@ public class KafkaTest {
         configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG), KafkaTest.servicesControl.getURL());
         configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.GROUP_ID_CONFIG), KafkaTest.GROUP_ID);
 
+        Metrics.build(configuration, null);
         Seeker seeker = Seeker.build(configuration);
 
         seeker.seek(KafkaTest.events.get(KafkaTest.events.size() - 1).getHeader().getCheckpoint());

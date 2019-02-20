@@ -44,7 +44,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                                       Map<String, Object> configuration)
                 throws IOException, NoSuchAlgorithmException {
 
-            this.metrics = Metrics.build(configuration);
+            this.metrics = Metrics.getInstance(configuration);
 
             this.hbaseSchemaManager = hbaseSchemaManager;
 

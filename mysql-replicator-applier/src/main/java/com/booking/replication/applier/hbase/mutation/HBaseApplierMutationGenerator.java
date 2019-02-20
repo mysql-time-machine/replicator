@@ -169,10 +169,10 @@ public class HBaseApplierMutationGenerator {
                 // Only write values that have changed
                 String columnValue;
 
-                for (String columnName : augmentedRow.getRowColumns().keySet()) {
+                for (String columnName : augmentedRow.getStringifiedRowColumns().keySet()) {
 
-                    String valueBefore = augmentedRow.getRowColumns().get(columnName).get("value_before");
-                    String valueAfter = augmentedRow.getRowColumns().get(columnName).get("value_after");
+                    String valueBefore = augmentedRow.getStringifiedRowColumns().get(columnName).get("value_before");
+                    String valueAfter = augmentedRow.getStringifiedRowColumns().get(columnName).get("value_after");
 
                     if ((valueAfter == null) && (valueBefore == null)) {
                         // no change, skip;
@@ -243,9 +243,9 @@ public class HBaseApplierMutationGenerator {
 
                 String columnValue;
 
-                for (String columnName : augmentedRow.getRowColumns().keySet()) {
+                for (String columnName : augmentedRow.getStringifiedRowColumns().keySet()) {
 
-                    columnValue = augmentedRow.getRowColumns().get(columnName).get("value");
+                    columnValue = augmentedRow.getStringifiedRowColumns().get(columnName).get("value");
                     if (columnValue == null) {
                         columnValue = "NULL";
                     }
@@ -332,7 +332,7 @@ public class HBaseApplierMutationGenerator {
                 .map( column -> {
                     try {
 
-                        String value = row.getRowColumns().get(column).get( "UPDATE".equals(eventType) ? "value_after" : "value" );
+                        String value = row.getStringifiedRowColumns().get(column).get( "UPDATE".equals(eventType) ? "value_after" : "value" );
 
                         return URLEncoder.encode(column,"UTF-8") + "=" + URLEncoder.encode(value,"UTF-8");
 
@@ -348,4 +348,5 @@ public class HBaseApplierMutationGenerator {
 
         return String.format("mysql://%s/%s?%s", sourceDomain, table, keys  );
     }
+
 }

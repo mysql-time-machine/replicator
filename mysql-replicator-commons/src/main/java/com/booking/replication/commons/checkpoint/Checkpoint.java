@@ -44,7 +44,7 @@ public class Checkpoint implements Serializable, Comparable<Checkpoint> {
         int comparison = 0;
 
         if (checkpoint != null) {
-            if (this.gtid != null &&  checkpoint.gtid != null) {
+            if (this.gtid != null && checkpoint.gtid != null) {
                 if (this.gtid.getType() != checkpoint.gtid.getType()) {
                     throw new UnsupportedOperationException(String.format(
                             "cannot compare checkpoints with distinct types: %s and %s",
@@ -56,7 +56,7 @@ public class Checkpoint implements Serializable, Comparable<Checkpoint> {
                 comparison = this.gtid.compareTo(checkpoint.gtid);
             } else if (this.gtid != null) {
                 comparison = Integer.MAX_VALUE;
-            } else if (checkpoint.gtid != null){
+            } else if (checkpoint.gtid != null) {
                 comparison = Integer.MIN_VALUE;
             }
 
@@ -87,5 +87,10 @@ public class Checkpoint implements Serializable, Comparable<Checkpoint> {
         } else {
             return false;
         }
+    }
+
+    @Override
+    public String toString() {
+        return String.format("timestamp: %s | serverid: %s | gitid: %s | binlog: %s", timestamp, serverId, gtid, binlog);
     }
 }

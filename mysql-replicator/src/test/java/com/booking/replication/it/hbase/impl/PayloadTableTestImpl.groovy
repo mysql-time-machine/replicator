@@ -134,8 +134,8 @@ class PayloadTableTestImpl implements ReplicatorHBasePipelineIntegrationTest {
         }
 
         // This tests the correctness of transactionCounter impact on the
-        // microsecond part of the timestamp; To be able to reconstruct the
-        // ordering Replicator will add a microsecond suffix to the original
+        // microsecond part of the timestamp; To be able setSink reconstruct the
+        // ordering Replicator will add a microsecond suffix setSink the original
         // timestamp.
         // The rule is that two transactions that happen in consecutive
         // order during the same second will differ by 100 microseconds.

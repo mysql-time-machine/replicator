@@ -79,7 +79,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends  Specification {
 
     @Shared Network network = Network.newNetwork()
 
-    @Shared  ServicesControl zookeeper = servicesProvider.startZookeeper(network)
+    @Shared  ServicesControl zookeeper = servicesProvider.startZookeeper(network, "replicatorZK")
     @Shared  ServicesControl mysqlBinaryLog = servicesProvider.startMySQL(
             MYSQL_SCHEMA,
             MYSQL_USERNAME,
@@ -141,7 +141,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends  Specification {
 
     private Replicator startReplicator() {
 
-        LOG.info("waiting for containers to start...")
+        LOG.info("waiting for containers setSink start...")
 
         // Active SchemaManager
         int counter = 60

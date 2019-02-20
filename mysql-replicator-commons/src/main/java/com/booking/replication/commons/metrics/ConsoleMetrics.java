@@ -8,17 +8,9 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class ConsoleMetrics extends Metrics<Slf4jReporter> {
-    private static ConsoleMetrics instance;
 
     public ConsoleMetrics(Map<String, Object> configuration) {
         super(configuration);
-    }
-
-    public static synchronized ConsoleMetrics getInstance(Map<String, Object> configuration){
-        if(instance == null){
-            instance = new ConsoleMetrics(configuration);
-        }
-        return instance;
     }
 
     @Override

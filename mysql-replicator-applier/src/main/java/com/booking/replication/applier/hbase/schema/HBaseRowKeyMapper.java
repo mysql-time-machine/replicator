@@ -37,7 +37,7 @@ public class HBaseRowKeyMapper {
 
         for (String pkColumnName : pkColumnNames) {
 
-            Map<String, String> pkCell = row.getRowColumns().get(pkColumnName);
+            Map<String, String> pkCell = row.getStringifiedRowColumns().get(pkColumnName);
 
             switch (row.getEventType()) {
 

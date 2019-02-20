@@ -100,8 +100,8 @@ public class CellValueDeserializerTest {
 
         ColumnSchema columnSchema3 = new ColumnSchema("id", "bigint(10) unsigned", "NULL", false, "PRI", "NULL", "");
         HashMap<String, String[]> cache3 = new HashMap<>();
-        Object result3 = CellValueDeserializer.deserialize(cache3, columnSchema3, 8388600, "NULL");
-        assertEquals(8388600, result3);
+        Object result3 = CellValueDeserializer.deserialize(cache3, columnSchema3, 8388600L, "NULL");
+        assertEquals("8388600", result3);
     }
 
     @Test

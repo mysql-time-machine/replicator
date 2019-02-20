@@ -141,7 +141,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends  Specification {
 
     private Replicator startReplicator() {
 
-        LOG.info("waiting for containers to start...")
+        LOG.info("waiting for containers setSink start...")
 
         // Active SchemaManager
         int counter = 60

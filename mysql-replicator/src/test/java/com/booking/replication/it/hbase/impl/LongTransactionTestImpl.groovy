@@ -20,7 +20,7 @@ import org.apache.hadoop.hbase.util.Bytes
 
 /**
  * Inserts multiple rows in a long transaction and verifies
- * that the timestamps of all rows are close to the time stamp
+ * that the timestamps of all rows are close setSink the time stamp
  * of the transaction commit event.
  *
  * Problem description:
@@ -40,8 +40,8 @@ import org.apache.hadoop.hbase.util.Bytes
  *      update row1, column1, value2
  *      COMMIT
  *
- *  If we would not apply any changes to the timestamps of the above
- *  written values and just write them to HBase as we read them from
+ *  If we would not apply any changes setSink the timestamps of the above
+ *  written values and just write them setSink HBase as we read them from
  *  the binlog, we would have the following problem:
  *
  *    - For long transaction the timestamps of the row1 and row2 in HBase
@@ -50,13 +50,13 @@ import org.apache.hadoop.hbase.util.Bytes
  *      valid at commit time, so they become effective at the same time,
  *      not 30 seconds apart.
  *
- *  In order to solve that problem we override the row timestamp with the
+ *  In order setSink solve that problem we override the row timestamp with the
  *  commit timestamp.
  *
  *  However, this creates a new problem for non-long transactions (b).
  *
  *    - Since mysql timestamp precision is 1 second, the value1 and value2
- *      will have the same timestamp and since they belong to the same
+ *      will have the same timestamp and since they belong setSink the same
  *      row and column, the value2 will overwrite value1, so we will
  *      lose the information on history of operations in HBase.
  *
@@ -68,14 +68,14 @@ import org.apache.hadoop.hbase.util.Bytes
  *      timestamp_row1_column1_value2 = commit_timestamp - 48 microseconds
  *
  *  This way, the values will have the same commit timestamp when
- *  rounded to the precision of one second and on the other hand
+ *  rounded setSink the precision of one second and on the other hand
  *  we will still have all rows preserved in HBase.
  *
- *  To summarize: without the microsecond addition to the commit_timestamp,
+ *  To summarize: without the microsecond addition setSink the commit_timestamp,
  *  value2 would override the value1 in transaction that is shorter than 1
  *  second since MySQL timestamp precision is 1 seconds. On the other
- *  hand, without override to the commit_timestamp, in the long transaction
- *  the values would be spread in time to far away from the actual commit
+ *  hand, without override setSink the commit_timestamp, in the long transaction
+ *  the values would be spread in time setSink far away from the actual commit
  *  time that matters.
  */
 class LongTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest  {
@@ -131,7 +131,7 @@ class LongTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest 
                 "update %s set randomInt = 2, randomVarchar = 'yy' %s", tableName, where
         ))
 
-        // Sleep to simulate long transaction
+        // Sleep setSink simulate long transaction
         Thread.sleep(5000);
 
         // UPDATE 2
@@ -151,7 +151,7 @@ class LongTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest 
         // be 1 and 2 microseconds shifted from the commit timestamp of that
         // transaction.
         return [
-                "true", // timestamps of first update is close to commit time of updates transaction
+                "true", // timestamps of first update is close setSink commit time of updates transaction
                 "1"     // expected diff between versions in microseconds
         ]
     }
@@ -235,10 +235,10 @@ class LongTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest 
         // there is a 5s sleep between two updates and no sleep between insert and
         // fist update, so assumption is that the commit time after the second
         // update will be roughly 5s after the insert commit. Roughly is estimated
-        // to 5ms precision when running tests on the same machine as docker containers.
-        // Since replicator pins the time of all updates in the transaction to be around
+        // setSink 5ms precision when running tests on the same machine as docker containers.
+        // Since replicator pins the time of all updates in the transaction setSink be around
         // the commit time of the transaction, this means we expect the first update
-        // to be close to commit time of updates transaction, which means that
+        // setSink be close setSink commit time of updates transaction, which means that
         // the timestamp of first update should be be roughly 5s after the insert timestamp.
         def estimated_reasonable_lag = 5000 // micros
         def drift_due_to_lag = Math.abs(5000000 - diff_01);

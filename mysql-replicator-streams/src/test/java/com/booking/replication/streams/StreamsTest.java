@@ -16,12 +16,12 @@ public class StreamsTest {
         AtomicInteger count2 = new AtomicInteger();
 
         Streams.<Integer>builder()
-                .queue()
-                .fromPull((task) -> {
+                .useDefaultQueueType()
+                .setDataSupplier((task) -> {
                     count1.incrementAndGet();
                     return ThreadLocalRandom.current().nextInt();
                 })
-                .to((value) -> {
+                .setSink((value) -> {
                     count2.incrementAndGet();
                     return true;
                 })
@@ -40,9 +40,9 @@ public class StreamsTest {
         int number = ThreadLocalRandom.current().nextInt();
 
         Streams<Integer, Integer> streams = Streams.<Integer>builder()
-                .queue()
-                .fromPush()
-                .to((value) -> {
+                .useDefaultQueueType()
+                .usePushMode()
+                .setSink((value) -> {
                     count1.incrementAndGet();
                     assertEquals(number, value.intValue());
                     return true;
@@ -62,8 +62,8 @@ public class StreamsTest {
         AtomicInteger count2 = new AtomicInteger();
 
         Streams.<Integer>builder()
-                .queue()
-                .fromPull((task) -> {
+                .useDefaultQueueType()
+                .setDataSupplier((task) -> {
                     int value = ThreadLocalRandom.current().nextInt();
 
                     if (value > 0) {
@@ -73,7 +73,7 @@ public class StreamsTest {
                     return value;
                 })
                 .filter((value) -> value > 0)
-                .to((value) -> {
+                .setSink((value) -> {
                     count2.incrementAndGet();
                     assertTrue(value > 0);
                     return true;
@@ -92,13 +92,13 @@ public class StreamsTest {
         AtomicInteger count2 = new AtomicInteger();
 
         Streams.<Integer>builder()
-                .queue()
-                .fromPull((task) -> {
+                .useDefaultQueueType()
+                .setDataSupplier((task) -> {
                     count1.incrementAndGet();
                     return ThreadLocalRandom.current().nextInt();
                 })
                 .process(Object::toString)
-                .to((value) -> {
+                .setSink((value) -> {
                     count2.incrementAndGet();
                     assertTrue(String.class.isInstance(value));
                     return true;
@@ -117,14 +117,14 @@ public class StreamsTest {
         AtomicInteger count2 = new AtomicInteger();
 
         Streams.<Integer>builder()
-                .queue()
-                .fromPull((task) -> {
+                .useDefaultQueueType()
+                .setDataSupplier((task) -> {
                     count1.incrementAndGet();
                     return ThreadLocalRandom.current().nextInt();
                 })
                 .process(Object::toString)
                 .process((value) -> String.format("value=%s", value))
-                .to((value) -> {
+                .setSink((value) -> {
                     count2.incrementAndGet();
                     assertTrue(value.startsWith("value="));
                     return true;
@@ -145,14 +145,14 @@ public class StreamsTest {
         Streams<Integer, String> streams = Streams.<Integer>builder()
                 .tasks(10)
                 .threads(10)
-                .queue()
-                .fromPull((task) -> {
+                .useDefaultQueueType()
+                .setDataSupplier((task) -> {
                     count1.incrementAndGet();
                     return ThreadLocalRandom.current().nextInt();
                 })
                 .process(Object::toString)
                 .process((value) -> String.format("value=%s", value))
-                .to((value) -> {
+                .setSink((value) -> {
                     count2.incrementAndGet();
                     return true;
                 })
@@ -175,8 +175,8 @@ public class StreamsTest {
         AtomicInteger count3 = new AtomicInteger();
 
         Streams.<Integer>builder()
-                .queue()
-                .fromPull((task) -> {
+                .useDefaultQueueType()
+                .setDataSupplier((task) -> {
                     int value = ThreadLocalRandom.current().nextInt();
 
                     if (value > 0) {
@@ -187,12 +187,12 @@ public class StreamsTest {
                 })
                 .filter(value -> value > 0)
                 .process(Object::toString)
-                .to((value) -> {
+                .setSink((value) -> {
                     count2.incrementAndGet();
                     assertTrue(String.class.isInstance(value));
                     return true;
                 })
-                .to((value) -> {
+                .setSink((value) -> {
                     count3.incrementAndGet();
                     assertTrue(Integer.parseInt(value) > 0);
                     return true;
@@ -213,8 +213,8 @@ public class StreamsTest {
         AtomicInteger count3 = new AtomicInteger();
 
         Streams.<Integer>builder()
-                .queue()
-                .fromPull((task) -> {
+                .useDefaultQueueType()
+                .setDataSupplier((task) -> {
                     int value = ThreadLocalRandom.current().nextInt();
 
                     if (value > 0) {
@@ -225,7 +225,7 @@ public class StreamsTest {
                 })
                 .filter(value -> value > 0)
                 .process(Object::toString)
-                .to((value) -> {
+                .setSink((value) -> {
                     count2.incrementAndGet();
                     assertTrue(String.class.isInstance(value));
                     return true;
@@ -248,9 +248,9 @@ public class StreamsTest {
         int number = ThreadLocalRandom.current().nextInt();
 
         Streams<Integer, Integer> streams = Streams.<Integer>builder()
-                .queue()
-                .fromPush()
-                .to((value) -> {
+                .useDefaultQueueType()
+                .usePushMode()
+                .setSink((value) -> {
                     throw new NullPointerException();
                 })
                 .build()
@@ -271,9 +271,9 @@ public class StreamsTest {
         Streams<String, String> streamsDestination = Streams.<String>builder()
                 .tasks(10)
                 .threads(10)
-                .queue()
-                .fromPush()
-                .to(output -> {
+                .useDefaultQueueType()
+                .usePushMode()
+                .setSink(output -> {
                     count3.incrementAndGet();
                     return true;
                 })
@@ -281,13 +281,13 @@ public class StreamsTest {
                 .build();
 
         Streams<Integer, String> streamsSource = Streams.<Integer>builder()
-                .fromPush()
+                .usePushMode()
                 .process(Object::toString)
                 .process((value) -> {
                     count2.incrementAndGet();
                     return String.format("value=%s", value);
                 })
-                .to(s -> {
+                .setSink(s -> {
                     streamsDestination.push(s);
                     return true;
                 })

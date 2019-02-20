@@ -117,11 +117,11 @@ public class Replicator {
                 .threads(threads)
                 .tasks(tasks)
                 .partitioner((events, totalPartitions) -> this.partitioner.apply(events.iterator().next(), totalPartitions))
-                .queue()
+                .useDefaultQueueType()
                 .queueSize(queueSize)
                 .queueTimeout(queueTimeout, TimeUnit.SECONDS)
-                .fromPush()
-                .to(this.applier)
+                .usePushMode()
+                .setSink(this.applier)
                 .post((events, task) -> {
                     for (AugmentedEvent event : events) {
                         this.checkpointApplier.accept(event, task);
@@ -129,11 +129,11 @@ public class Replicator {
                 }).build();
 
         this.streamsSupplier = Streams.<RawEvent>builder()
-                .fromPush()
+                .usePushMode()
                 .process(this.augmenter)
                 .process(this.seeker)
                 .process(this.augmenterFilter)
-                .to((events) -> {
+                .setSink((events) -> {
                     Map<Integer, Collection<AugmentedEvent>> splitEventsMap = new HashMap<>();
                     for (AugmentedEvent event : events) {
                         splitEventsMap.computeIfAbsent(
@@ -297,10 +297,10 @@ public class Replicator {
         Options options = new Options();
 
         options.addOption(Option.builder().longOpt("help").desc("print the help message").build());
-        options.addOption(Option.builder().longOpt("config").argName("key-value").desc("the configuration to be used with the format <key>=<value>").hasArgs().build());
-        options.addOption(Option.builder().longOpt("config-file").argName("filename").desc("the configuration file to be used (YAML)").hasArg().build());
-        options.addOption(Option.builder().longOpt("supplier").argName("supplier").desc("the supplier to be used").hasArg().build());
-        options.addOption(Option.builder().longOpt("applier").argName("applier").desc("the applier to be used").hasArg().build());
+        options.addOption(Option.builder().longOpt("config").argName("key-value").desc("the configuration setSink be used with the format <key>=<value>").hasArgs().build());
+        options.addOption(Option.builder().longOpt("config-file").argName("filename").desc("the configuration file setSink be used (YAML)").hasArg().build());
+        options.addOption(Option.builder().longOpt("supplier").argName("supplier").desc("the supplier setSink be used").hasArg().build());
+        options.addOption(Option.builder().longOpt("applier").argName("applier").desc("the applier setSink be used").hasArg().build());
         options.addOption(Option.builder().longOpt("secret-file").argName("filename").desc("the secret file which has Mysql user/password config (JSON)").hasArg().build());
 
 

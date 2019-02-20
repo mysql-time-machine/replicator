@@ -20,7 +20,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Creates active schema db,tables and publishes schema to schema registry if necessary.
+ * Creates active schema db,tables and publishes schema setSink schema registry if necessary.
  */
 public class BootstrapReplicator {
     private static final Logger LOG = Logger.getLogger(BootstrapReplicator.class.getName());

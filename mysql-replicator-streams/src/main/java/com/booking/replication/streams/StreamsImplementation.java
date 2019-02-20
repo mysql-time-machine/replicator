@@ -73,7 +73,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
             this.requeue = (task, input) -> {
                 try {
                     if (!StreamsImplementation.this.queues[task].offerFirst(input, queueTimeout, TimeUnit.SECONDS)) {
-                        this.handleException(new StreamsException(String.format("Max waiting time exceeded while requeue to internal buffer: %d seconds", queueTimeout)));
+                        this.handleException(new StreamsException(String.format("Max waiting time exceeded while requeue setSink internal buffer: %d seconds", queueTimeout)));
                     }
                 } catch (InterruptedException exception) {
                     Thread.currentThread().interrupt();
@@ -202,7 +202,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
 
             try {
                 if (!StreamsImplementation.this.queues[this.partitioner.apply(input, this.tasks)].offer(input, this.queueTimeout, TimeUnit.SECONDS)) {
-                    this.handleException(new StreamsException(String.format("Max waiting time exceeded while writing to internal buffer: %d", this.queueTimeout)));
+                    this.handleException(new StreamsException(String.format("Max waiting time exceeded while writing setSink internal buffer: %d", this.queueTimeout)));
                 }
             } catch (InterruptedException exception) {
                 Thread.currentThread().interrupt();

@@ -12,15 +12,15 @@ public interface StreamsBuilderFrom<Input, Output> {
 
     StreamsBuilderFrom<Input, Output> partitioner(BiFunction<Input, Integer, Integer> partitioner);
 
-    StreamsBuilderFrom<Input, Output> queue();
+    StreamsBuilderFrom<Input, Output> useDefaultQueueType();
 
-    StreamsBuilderFrom<Input, Output> queue(Class<? extends BlockingDeque> queueType);
+    StreamsBuilderFrom<Input, Output> setQueueType(Class<? extends BlockingDeque> queueType);
 
     StreamsBuilderFrom<Input, Output> queueSize(int queueSize);
 
     StreamsBuilderFrom<Input, Output> queueTimeout(long queueTimeout, TimeUnit timeUnit);
 
-    StreamsBuilderFilter<Input, Output> fromPull(Function<Integer, Input> supplier);
+    StreamsBuilderFilter<Input, Output> setDataSupplier(Function<Integer, Input> supplier);
 
-    StreamsBuilderFilter<Input, Output> fromPush();
+    StreamsBuilderFilter<Input, Output> usePushMode();
 }

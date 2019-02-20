@@ -104,26 +104,26 @@ public final class StreamsBuilder<Input, Output> implements
     }
 
     @Override
-    public StreamsBuilderFrom<Input, Output> queue() {
-        return this.queue(LinkedBlockingDeque.class);
+    public StreamsBuilderFrom<Input, Output> useDefaultQueueType() {
+        return this.setQueueType(LinkedBlockingDeque.class);
     }
 
     @Override
-    public StreamsBuilderFrom<Input, Output> queue(Class<? extends BlockingDeque> queueType) {
+    public StreamsBuilderFrom<Input, Output> setQueueType(Class<? extends BlockingDeque> queueType) {
         Objects.requireNonNull(queueType);
         this.queueType = queueType;
         return this;
     }
 
     @Override
-    public final StreamsBuilderFilter<Input, Output> fromPull(Function<Integer, Input> supplier) {
+    public final StreamsBuilderFilter<Input, Output> setDataSupplier(Function<Integer, Input> supplier) {
         Objects.requireNonNull(supplier);
         this.from = supplier;
         return this;
     }
 
     @Override
-    public final StreamsBuilderFilter<Input, Output> fromPush() {
+    public final StreamsBuilderFilter<Input, Output> usePushMode() {
         this.from = null;
         return this;
     }
@@ -173,7 +173,7 @@ public final class StreamsBuilder<Input, Output> implements
     }
 
     @Override
-    public final StreamsBuilderPost<Input, Output> to(Function<Output, Boolean> to) {
+    public final StreamsBuilderPost<Input, Output> setSink(Function<Output, Boolean> to) {
         Objects.requireNonNull(to);
         return new StreamsBuilder<>(
                 this.threads,

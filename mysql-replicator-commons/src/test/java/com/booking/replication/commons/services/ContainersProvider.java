@@ -105,7 +105,7 @@ public final class ContainersProvider implements ServicesProvider {
         }
 
         container.withLogConsumer(outputFrame -> {
-            System.out.println(image + " " + outputFrame.getUtf8String());
+//            System.out.println(image + " " + outputFrame.getUtf8String());
         });
 
 

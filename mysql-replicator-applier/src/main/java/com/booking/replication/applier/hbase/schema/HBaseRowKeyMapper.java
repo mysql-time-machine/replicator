@@ -16,15 +16,7 @@ import java.util.stream.Collectors;
 public class HBaseRowKeyMapper {
 
     public static final String DIGEST_ALGORITHM             = "MD5";
-    private static MessageDigest md;
-
-    static {
-        try {
-            md = MessageDigest.getInstance(HBaseRowKeyMapper.DIGEST_ALGORITHM);
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
-    }
+    private MessageDigest md;
 
     private static final Logger LOG = LogManager.getLogger(HBaseRowKeyMapper.class);
 
@@ -86,6 +78,14 @@ public class HBaseRowKeyMapper {
     private static String saltRowKey(String hbaseRowID, String firstPartOfRowKey) {
 
         byte[] bytesOfSaltingPartOfRowKey = firstPartOfRowKey.getBytes(StandardCharsets.US_ASCII);
+        MessageDigest md;
+
+        try {
+            md = MessageDigest.getInstance(HBaseRowKeyMapper.DIGEST_ALGORITHM);
+        } catch( NoSuchAlgorithmException e ) {
+            e.printStackTrace();
+            throw new RuntimeException("No MD5 Algorithm found");
+        }
 
         byte[] bytesMD5 = md.digest(bytesOfSaltingPartOfRowKey);
 

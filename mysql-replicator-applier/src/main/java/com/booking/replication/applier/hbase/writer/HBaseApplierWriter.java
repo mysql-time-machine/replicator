@@ -7,13 +7,15 @@ import java.util.Collection;
 
 public interface HBaseApplierWriter {
 
-    void buffer(String transactionUUID, Collection<AugmentedEvent> events);
+    void buffer(Long threadID, String transactionUUID, Collection<AugmentedEvent> events);
 
-    long getBufferClearTime();
+    long getThreadLastFlushTime();
 
-    int getTransactionBufferSize(String transactionUUID);
+    int getThreadBufferSize(Long threadID);
 
-    boolean forceFlush() throws IOException;
+    boolean forceFlushThreadBuffer(Long threadID) throws IOException;
 
-    boolean flushTransactionBuffer(String transactionUUID);
+    boolean flushThreadBuffer(Long threadID);
+
+    boolean forceFlushAllThreadBuffers() throws IOException;
 }

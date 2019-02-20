@@ -31,7 +31,7 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
 
     Connection connection;
     Admin admin;
-    ConcurrentHashMap<String, Collection<AugmentedEvent>> buffered;
+    ConcurrentHashMap<Long,Map<String,Collection<AugmentedEvent>>> buffered;
 
     public HBaseRawEventsWriter(Configuration hbaseConfig, Map<String, Object> configuration) throws IOException {
         connection = ConnectionFactory.createConnection(hbaseConfig);
@@ -40,35 +40,31 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
     }
 
     @Override
-    public void buffer(String transactionUUID,  Collection<AugmentedEvent> events) {
-        if (buffered.get(transactionUUID) == null) {
-            buffered.put(transactionUUID, new ArrayList<>());
+    public void buffer(Long threadID, String transactionUUID, Collection<AugmentedEvent> events) {
+        if (buffered.get(threadID) == null) {
+            buffered.put(threadID, new HashMap<>());
         }
-        for (AugmentedEvent event: events) {
-            buffered.get(transactionUUID).add(event);
+
+        if ( buffered.get(threadID).get(transactionUUID) == null ) {
+            buffered.get(threadID).put(transactionUUID, new ArrayList<>());
         }
+
+        buffered.get(threadID).get(transactionUUID).addAll(events);
     }
 
     @Override
-    public long getBufferClearTime() {
+    public long getThreadLastFlushTime() {
         return bufferClearTime;
     }
 
     @Override
-    public int getTransactionBufferSize(String transactionUUID) {
+    public int getThreadBufferSize(Long threadID) {
         return 0;
     }
 
     @Override
-    public boolean forceFlush() throws IOException {
-        List<String> transactionsBuffered = (List<String>) buffered.keySet();
-
-        Boolean s = transactionsBuffered
-                .stream()
-                .map(tUUID -> flushTransactionBuffer(tUUID))
-                .filter(result -> result == false)
-                .collect(Collectors.toList())
-                .isEmpty();
+    public boolean forceFlushThreadBuffer(Long threadID) throws IOException {
+        Boolean s = flushThreadBuffer(threadID);
         if (s) {
             return true; // <- markedForCommit, will advance safe checkpoint
         } else {
@@ -77,11 +73,11 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
     }
 
     @Override
-    public boolean flushTransactionBuffer(String transactionUUID) {
+    public boolean flushThreadBuffer(Long threadID) {
         boolean result = false;
         try {
-            result = flushWithRetry(transactionUUID); // false means all retries have failed
-            buffered.remove(transactionUUID);
+            result = flushWithRetry(threadID); // false means all retries have failed
+            buffered.remove(threadID);
             bufferClearTime = Instant.now().toEpochMilli();
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -89,7 +85,21 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
         return  result;
     }
 
-    private Boolean flushWithRetry(String transactionUUID) throws InterruptedException {
+    @Override
+    public boolean forceFlushAllThreadBuffers() throws IOException {
+        Boolean result = true;
+        for ( Long id : buffered.keySet() ) {
+            result = result && flushThreadBuffer(id);
+
+            if ( result == false ) {
+                throw new IOException("Failed to forceFlush buffer for thread " + id + " to HBase");
+            }
+        }
+
+        return true;
+    }
+
+    private Boolean flushWithRetry(Long threadID) throws InterruptedException {
 
         int counter = FLUSH_RETRY_LIMIT;
 
@@ -97,7 +107,7 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
             counter--;
 
             try {
-                writeToHBase(buffered.get(transactionUUID));
+                writeToHBase(threadID);
                 return true;
             } catch (IOException e) {
                 LOG.warn("Failed to write to HBase.", e);
@@ -107,17 +117,24 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
         return false;
     }
 
-    private void writeToHBase(Collection<AugmentedEvent> events) throws IOException {
+    private void writeToHBase(Long threadID) throws IOException {
 
         // TODO: throw new IOException("Chaos Monkey");
 
-        Map<String,List<Put>> mutationsByTable = generateMutations(events);
+        Collection<AugmentedEvent> events = new ArrayList<>();
+
+        for ( String transactionID : buffered.get(threadID).keySet() ){
+            events.addAll( buffered.get(threadID).get(transactionID) );
+        }
+
+        Map<String,List<Put>> mutationsByTable = generateMutations( events );
 
         for (String tableName : mutationsByTable.keySet()) {
 
             Table table = connection.getTable(TableName.valueOf(Bytes.toBytes(tableName)));
 
             table.put(mutationsByTable.get(tableName));
+            table.close();
         }
     }
 

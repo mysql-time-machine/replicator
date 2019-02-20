@@ -6,6 +6,7 @@ import com.booking.replication.augmenter.model.row.AugmentedRow;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static com.booking.replication.applier.hbase.schema.HBaseRowKeyMapper.getSaltedHBaseRowKey;
 
@@ -53,21 +54,25 @@ public class RowTimestampOrganizer {
     }
 
     public static final long TIMESTAMP_SPAN_MICROSECONDS = 50;
-    private String currentTransactionUUID = null;
-    private Map<String, TimestampTuple> timestampsCache;
+    private ThreadLocal<String> currentTransactionUUID = new ThreadLocal<>();
+    private ConcurrentHashMap<Long, Map<String, TimestampTuple>> timestampsCache = new ConcurrentHashMap<>();
 
-    public void organizeTimestamps(List<AugmentedRow> rows, String mysqlTableName, String transactionUUID) {
+    public void organizeTimestamps(List<AugmentedRow> rows, String mysqlTableName, Long threadID, String transactionUUID) {
 
-        if (currentTransactionUUID == null || !currentTransactionUUID.equals(transactionUUID)) {
-            currentTransactionUUID = transactionUUID;
-            timestampsCache = new HashMap<>();
+        if ( timestampsCache.get(threadID) == null ) {
+            timestampsCache.put( threadID, new HashMap<>() );
+        }
+        // if first call, or we're on a new transaction
+        if (currentTransactionUUID.get() == null || !currentTransactionUUID.get().equals(transactionUUID)) {
+            currentTransactionUUID.set(transactionUUID);
+            timestampsCache.put(threadID, new HashMap<>() );
         }
 
         for (AugmentedRow row : rows) {
             String key = mysqlTableName + ":" + getSaltedHBaseRowKey(row);
             TimestampTuple v;
-            if (timestampsCache.containsKey(key)) {
-                v = timestampsCache.get(key);
+            if (timestampsCache.get(threadID).containsKey(key)) {
+                v = timestampsCache.get(threadID).get(key);
                 if (v.timestamp < v.maximumTimestamp) {
                     v.timestamp++;
                 }
@@ -76,7 +81,7 @@ public class RowTimestampOrganizer {
                         row.getRowMicrosecondTimestamp() - TIMESTAMP_SPAN_MICROSECONDS,
                         row.getRowMicrosecondTimestamp() // <- maximumTimestamp
                 );
-                timestampsCache.put(key, v);
+                timestampsCache.get(threadID).put(key, v);
             }
 
             row.setRowMicrosecondTimestamp(v.timestamp);

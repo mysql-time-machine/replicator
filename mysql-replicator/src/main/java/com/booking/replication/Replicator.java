@@ -16,9 +16,11 @@ import com.booking.replication.controller.WebServer;
 import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.streams.Streams;
 import com.booking.replication.supplier.Supplier;
+
 import com.booking.replication.supplier.model.RawEvent;
 import com.booking.utils.BootstrapReplicator;
 import com.codahale.metrics.MetricRegistry;
+import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -64,8 +66,8 @@ public class Replicator {
     private final CheckpointApplier checkpointApplier;
     private final WebServer webServer;
 
-    private final Streams<Collection<AugmentedEvent>, Collection<AugmentedEvent>> streamsApplier;
-    private final Streams<RawEvent, Collection<AugmentedEvent>> streamsSupplier;
+    private final Streams<Collection<AugmentedEvent>, Collection<AugmentedEvent>> destinationStream;
+    private final Streams<RawEvent, Collection<AugmentedEvent>> sourceStream;
 
     public Replicator(final Map<String, Object> configuration) {
 
@@ -113,13 +115,37 @@ public class Replicator {
 
         this.checkpointApplier = CheckpointApplier.build(configuration, this.coordinator, this.checkpointPath);
 
-        this.streamsApplier = Streams.<Collection<AugmentedEvent>>builder()
+
+        // --------------------------------------------------------------------
+        // Setup streams/pipelines:
+        //
+        // Notes:
+        //
+        //  Supplying the input data has three modes:
+        //      1. Short Circuit Push:
+        //          - Input data for this stream/data-pipeline will be provided by
+        //            by calling the push() method of the pipeline instance, which will not
+        //            use any queues but will directly pass the item to the process()
+        //            method.
+        //      2. Queued Push:
+        //          - If pipeline has a queue then the push() method will default to
+        //            adding items to that queue and then internal consumer is automatically
+        //            initialized as the poller of that queue
+        //      3. Pull:
+        //          - There is no queue and the internal consumer is passed as a lambda
+        //            function which knows hot to get data from an external data source.
+        this.destinationStream = Streams.<Collection<AugmentedEvent>>builder()
                 .threads(threads)
                 .tasks(tasks)
-                .partitioner((events, totalPartitions) -> this.partitioner.apply(events.iterator().next(), totalPartitions))
+                .partitioner((events, totalPartitions) -> {
+                    this.metrics.getRegistry()
+                            .counter("hbase.streams.destination.partitioner.event.apply.attempt").inc(1L);
+                    Integer partitionNumber = this.partitioner.apply(events.iterator().next(), totalPartitions);
+                    this.metrics.getRegistry()
+                            .counter("hbase.streams.destination.partitioner.event.apply.success").inc(1L);
+                    return partitionNumber;
+                })
                 .useDefaultQueueType()
-                .queueSize(queueSize)
-                .queueTimeout(queueTimeout, TimeUnit.SECONDS)
                 .usePushMode()
                 .setSink(this.applier)
                 .post((events, task) -> {
@@ -128,7 +154,7 @@ public class Replicator {
                     }
                 }).build();
 
-        this.streamsSupplier = Streams.<RawEvent>builder()
+        this.sourceStream = Streams.<RawEvent>builder()
                 .usePushMode()
                 .process(this.augmenter)
                 .process(this.seeker)
@@ -136,12 +162,16 @@ public class Replicator {
                 .setSink((events) -> {
                     Map<Integer, Collection<AugmentedEvent>> splitEventsMap = new HashMap<>();
                     for (AugmentedEvent event : events) {
+                        this.metrics.getRegistry()
+                                .counter("hbase.streams.partitioner.event.apply.attempt").inc(1L);
                         splitEventsMap.computeIfAbsent(
                                 this.partitioner.apply(event, tasks), partition -> new ArrayList<>()
                         ).add(event);
+                        metrics.getRegistry()
+                                .counter("hbase.streams.partitioner.event.apply.success").inc(1L);
                     }
                     for (Collection<AugmentedEvent> splitEvents : splitEventsMap.values()) {
-                        this.streamsApplier.push(splitEvents);
+                        this.destinationStream.push(splitEvents);
                     }
                     return true;
                 }).build();
@@ -162,10 +192,10 @@ public class Replicator {
                 Replicator.LOG.log(Level.INFO, "starting replicator");
 
                 Replicator.LOG.log(Level.INFO, "starting streams applier");
-                this.streamsApplier.start();
+                this.destinationStream.start();
 
                 Replicator.LOG.log(Level.INFO, "starting streams supplier");
-                this.streamsSupplier.start();
+                this.sourceStream.start();
 
                 Replicator.LOG.log(Level.INFO, "starting supplier");
 
@@ -191,10 +221,10 @@ public class Replicator {
                 this.supplier.stop();
 
                 Replicator.LOG.log(Level.INFO, "stopping streams supplier");
-                this.streamsSupplier.stop();
+                this.sourceStream.stop();
 
                 Replicator.LOG.log(Level.INFO, "stopping streams applier");
-                this.streamsApplier.stop();
+                this.destinationStream.stop();
 
                 Replicator.LOG.log(Level.INFO, "stopping web server");
                 this.webServer.stop();
@@ -205,17 +235,16 @@ public class Replicator {
             }
         });
 
-        this.supplier.onEvent(this.streamsSupplier::push);
+        this.supplier.onEvent(this.sourceStream::push);
 
         this.supplier.onException(exceptionHandle);
-        this.streamsSupplier.onException(exceptionHandle);
-        this.streamsApplier.onException(exceptionHandle);
+        this.sourceStream.onException(exceptionHandle);
+        this.destinationStream.onException(exceptionHandle);
 
     }
 
-    public synchronized boolean forceFlushApplier() {
-        applier.forceFlush();
-        return true;
+    public Applier getApplier() {
+        return this.applier;
     }
 
     private Checkpoint getCheckpoint() throws IOException {

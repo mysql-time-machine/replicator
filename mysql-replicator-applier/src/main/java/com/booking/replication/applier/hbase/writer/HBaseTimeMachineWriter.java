@@ -28,8 +28,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
         private final Metrics<?> metrics;
 
         private final int FLUSH_RETRY_LIMIT = 30;
-        private long bufferClearTime = 0L;
-
+        private ThreadLocal<Long> bufferClearTime = ThreadLocal.withInitial(() -> Instant.now().toEpochMilli());
         private final HBaseSchemaManager hbaseSchemaManager;
         private RowTimestampOrganizer timestampOrganizer;
         HBaseApplierMutationGenerator mutationGenerator;
@@ -37,7 +36,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
         Connection connection;
         Admin admin;
 
-        ConcurrentHashMap<String,Collection<AugmentedEvent>> buffered;
+        ConcurrentHashMap<Long,Map<String,Collection<AugmentedEvent>>> buffered;
 
         public HBaseTimeMachineWriter(Configuration hbaseConfig,
                                       HBaseSchemaManager hbaseSchemaManager,
@@ -48,7 +47,11 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
 
             this.hbaseSchemaManager = hbaseSchemaManager;
 
+            this.metrics.getRegistry()
+                    .counter("hbase.applier.connection.attempt").inc(1L);
             connection = ConnectionFactory.createConnection(hbaseConfig);
+            this.metrics.getRegistry()
+                    .counter("hbase.applier.connection.success").inc(1L);
 
             admin = connection.getAdmin();
 
@@ -60,65 +63,81 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
         }
 
         @Override
-        public void buffer(String transactionUUID, Collection<AugmentedEvent> events) {
-            if (buffered.get(transactionUUID) == null) {
-                buffered.put(transactionUUID, new ArrayList<>());
+        public void buffer(Long threadID, String transactionUUID, Collection<AugmentedEvent> events) {
+            if (buffered.get(threadID) == null) {
+                buffered.put(threadID, new HashMap<>());
             }
+
+            if ( buffered.get(threadID).get(transactionUUID) == null ) {
+                buffered.get(threadID).put(transactionUUID, new ArrayList<>());
+            }
+
             for (AugmentedEvent event : events) {
-                buffered.get(transactionUUID).add(event);
+                buffered.get(threadID).get(transactionUUID).add(event);
             }
         }
 
         @Override
-        public long getBufferClearTime() {
-            return bufferClearTime;
+        public long getThreadLastFlushTime() {
+            return bufferClearTime.get();
         }
 
         @Override
-        public int getTransactionBufferSize(String transactionUUID) {
-            if (buffered.get(transactionUUID) == null) {
+        public int getThreadBufferSize(Long threadID) {
+            if (buffered.get(threadID) == null) {
                 return 0;
             } else {
-                return buffered.get(transactionUUID).size();
+                return buffered.get(threadID).size();
             }
         }
 
         @Override
-        public boolean forceFlush() throws IOException {
+        public boolean forceFlushAllThreadBuffers() throws IOException {
+            Boolean result = true;
+            for ( Long id : buffered.keySet() ) {
+                result = result && flushThreadBuffer(id);
 
-            List<String> transactionsBuffered = buffered.keySet().stream().collect(Collectors.toList());
+                if ( result == false ) {
+                    throw new IOException("Failed to forceFlush buffer for thread " + id + " to HBase");
+                }
+            }
 
-            Boolean s = transactionsBuffered
-                             .stream()
-                             .map(tUUID -> flushTransactionBuffer(tUUID))
-                             .filter(result -> result == false)
-                             .collect(Collectors.toList())
-                             .isEmpty();
-            if (s) {
-                return true; // <- markedForCommit, will advance safe checkpoint
+            return true;
+        }
+
+        @Override
+        public boolean forceFlushThreadBuffer(Long threadID) throws IOException {
+            if ( buffered.contains(threadID) ) {
+                Boolean s = flushThreadBuffer(threadID);
+
+                if (s) {
+                    return true; // <- markedForCommit, will advance safe checkpoint
+                } else {
+                    throw new IOException("Failed to write buffer to HBase");
+                }
             } else {
-                throw new IOException("Failed to write buffer to HBase");
+                return true;
             }
         }
 
         @Override
-        public boolean flushTransactionBuffer(String transactionUUID) {
-            if (buffered.get(transactionUUID) == null) {
-                throw new RuntimeException("Called flushTransactionBuffer for non existing transaction");
+        public boolean flushThreadBuffer(Long threadID) {
+            if (buffered.get(threadID) == null) {
+                throw new RuntimeException("Called flushThreadBuffer for thread with empty buffer");
             }
             boolean result = false;
             try {
-                result = flushWithRetry(transactionUUID); // false means all retries have failed
-                buffered.remove(transactionUUID);
+                result = flushThreadBufferWithRetry(threadID); // false means all retries have failed
+                buffered.remove(threadID);
 
-                bufferClearTime = Instant.now().toEpochMilli();
+                bufferClearTime.set( Instant.now().toEpochMilli() );
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
             return result;
         }
 
-        private Boolean flushWithRetry(String transactionUUID) throws InterruptedException {
+        private Boolean flushThreadBufferWithRetry(Long threadID) throws InterruptedException {
 
             int counter = FLUSH_RETRY_LIMIT;
 
@@ -126,7 +145,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                 counter--;
 
                 try {
-                    writeToHBase(transactionUUID);
+                    writeToHBase(threadID);
                     return true;
                 } catch (IOException e) {
                     LOG.warn("Failed to write to HBase.", e);
@@ -150,36 +169,40 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
             }
         }
 
-        private void writeToHBase(String transactionUUID) throws IOException {
+        private void writeToHBase(Long threadID) throws IOException {
 
-            Collection<AugmentedEvent> events = buffered.get(transactionUUID);
+            this.metrics.getRegistry()
+                    .histogram("hbase.thread_" + threadID + "_applier.writer.buffer.thread_" + threadID + ".nr_transactions_buffered")
+                    .update( buffered.get(threadID).size() );
+
             List<HBaseApplierMutationGenerator.PutMutation> mutations = new ArrayList<>();
 
-            // extract augmented rows
-            for (AugmentedEvent event : events) {
+            for ( String transactionUUID: buffered.get(threadID).keySet() ) {
+                for (AugmentedEvent event : buffered.get(threadID).get(transactionUUID)) {
+                    List<AugmentedRow> augmentedRows = AugmentedEventRowExtractor.extractAugmentedRows(event);
 
-                List<AugmentedRow> augmentedRows = AugmentedEventRowExtractor.extractAugmentedRows(event);
+                    String augmentedRowsTableName = extractTableName(augmentedRows);
 
-                String augmentedRowsTableName = extractTableName(augmentedRows);
+                    hbaseSchemaManager.createHBaseTableIfNotExists(augmentedRowsTableName);
 
-                hbaseSchemaManager.createHBaseTableIfNotExists(augmentedRowsTableName);
+                    this.metrics.getRegistry()
+                            .counter("hbase.thread_" + threadID + ".applier.writer.rows.received").inc(augmentedRows.size());
 
-                this.metrics.getRegistry()
-                        .counter("hbase.applier.rows.received.count").inc(augmentedRows.size());
+                    if (timestampOrganizer != null) {
+                        timestampOrganizer.organizeTimestamps(augmentedRows, augmentedRowsTableName, threadID, transactionUUID);
+                    }
 
-                if (timestampOrganizer != null) {
-                    timestampOrganizer.organizeTimestamps(augmentedRows, augmentedRowsTableName, transactionUUID);
+                    List<HBaseApplierMutationGenerator.PutMutation> eventMutations = augmentedRows.stream()
+                            .flatMap(
+                                    row -> Stream.of(mutationGenerator.getPutForMirroredTable(row))
+                            )
+                            .collect(Collectors.toList());
+                    mutations.addAll(eventMutations);
+
+                    this.metrics.getRegistry()
+                            .counter("hbase.thread_" + threadID + ".applier.writer.mutations_generated").inc(eventMutations.size());
+
                 }
-
-                List<HBaseApplierMutationGenerator.PutMutation> eventMutations = augmentedRows.stream()
-                        .flatMap(
-                                row -> Stream.of(mutationGenerator.getPutForMirroredTable(row))
-                        )
-                        .collect(Collectors.toList());
-                mutations.addAll(eventMutations);
-
-                this.metrics.getRegistry()
-                        .counter("hbase.applier.put.count").inc(eventMutations.size());
             }
 
             // group by table
@@ -200,9 +223,27 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                         mutation -> mutation.getPut()
                 ).collect(Collectors.toList());
 
+                long tBegin = System.currentTimeMillis();
+
+                // TODO: monitor
+                long nrMutations = putList.size();
+
                 Table table = connection.getTable(TableName.valueOf(tableName));
                 table.put(putList);
                 table.close();
+
+                long tEnd = System.currentTimeMillis();
+                long latency = tEnd - tBegin;
+
+                this.metrics
+                        .getRegistry()
+                        .histogram("hbase.thread_" + threadID + ".applier.writer.put.latency")
+                        .update(latency);
+
+                this.metrics
+                        .getRegistry()
+                        .histogram("hbase.thread_" + threadID + ".applier.writer.put.nr-mutations")
+                        .update(nrMutations);
                 // TODO: send sample to validator
             }
         }

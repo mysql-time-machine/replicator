@@ -1,14 +1,16 @@
 package com.booking.replication.it.hbase.impl
 
+import com.booking.replication.applier.hbase.StorageConfig
+import com.booking.replication.augmenter.model.AugmenterModel
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
 import com.booking.replication.commons.services.ServicesControl
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTestRunner
+import com.booking.replication.it.util.HBase
 import com.booking.replication.it.util.MySQL
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hbase.Cell
 import org.apache.hadoop.hbase.CellScanner
-import org.apache.hadoop.hbase.HBaseConfiguration
 import org.apache.hadoop.hbase.TableName
 import org.apache.hadoop.hbase.client.Connection
 import org.apache.hadoop.hbase.client.ConnectionFactory
@@ -162,7 +164,9 @@ class LongTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest 
         def data = new TreeMap<>()
         try {
             // config
-            Configuration config = HBaseConfiguration.create()
+            StorageConfig storageConfig = StorageConfig.build(HBase.getConfiguration())
+            Configuration config = storageConfig.getConfig()
+
             Connection connection = ConnectionFactory.createConnection(config)
             Table table = connection.getTable(TableName.valueOf(
                     Bytes.toBytes(ReplicatorHBasePipelineIntegrationTestRunner.HBASE_TARGET_NAMESPACE),
@@ -182,7 +186,11 @@ class LongTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest 
 
                     String columnName =  Bytes.toString(cell.getQualifier())
 
-                    if (columnName == "transaction_uuid" || columnName == "transaction_xid") {
+                    if (columnName ==
+                            AugmenterModel.Configuration.UUID_FIELD_NAME
+                            ||
+                            columnName ==
+                            AugmenterModel.Configuration.XID_FIELD_NAME) {
                         continue
                     }
 
@@ -207,6 +215,7 @@ class LongTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest 
 
                 }
             }
+            table.close();
         } catch (IOException e) {
             e.printStackTrace()
         }

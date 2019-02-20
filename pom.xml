@@ -20,7 +20,6 @@
         <!-- Dependencies Versions -->
         <metrics.version>3.1.0</metrics.version>
         <mockito.version>2.18.3</mockito.version>
-        <hbase.version>1.2.2</hbase.version>
         <sparkWebServer.version>2.7.2</sparkWebServer.version>
 
         <junit.version>4.12</junit.version>
@@ -37,10 +36,10 @@
         <commons-dbcp2.version>2.4.0</commons-dbcp2.version>
         <kafka.version>1.1.0</kafka.version>
         <dropwizard.metrics.version>4.0.2</dropwizard.metrics.version>
-        <hbase.version>1.2.2</hbase.version>
         <avro.version>1.8.1</avro.version>
         <confluent.version>0.1.0</confluent.version>
     </properties>
+
     <modules>
         <module>mysql-replicator-commons</module>
         <module>mysql-replicator-streams</module>
@@ -51,7 +50,8 @@
         <module>mysql-replicator-augmenter</module>
         <module>mysql-replicator-applier</module>
         <module>mysql-replicator</module>
-  </modules>
+    </modules>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -249,6 +249,7 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+
     <dependencies>
         <dependency>
             <groupId>junit</groupId>
@@ -366,6 +367,12 @@
             <releases>
                 <enabled>true</enabled>
             </releases>
+        </repository>
+        <repository>
+            <id>snapshots-repo</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            <releases><enabled>false</enabled></releases>
+            <snapshots><enabled>true</enabled></snapshots>
         </repository>
     </repositories>
     <profiles>
@@ -499,9 +506,9 @@
                 <version>3.0.0-M1</version>
                 <configuration>
                     <argLine>${tests.arguments}</argLine>
-		    <includes>
-		   	<include>**/*Test.java</include>
-		   	<include>**/*Test*.java</include>
+                    <includes>
+		   	            <include>**/*Test.java</include>
+		   	            <include>**/*Test*.java</include>
                     </includes>
                     <systemProperties>
                         <property>
@@ -518,6 +525,7 @@
                         </property>
                     </systemProperties>
                 </configuration>
+
             </plugin>
         </plugins>
     </build>

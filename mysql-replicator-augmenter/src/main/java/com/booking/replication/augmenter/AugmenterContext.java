@@ -13,6 +13,7 @@ import com.booking.replication.commons.checkpoint.GTID;
 import com.booking.replication.commons.checkpoint.GTIDType;
 import com.booking.replication.commons.metrics.Metrics;
 import com.booking.replication.supplier.model.*;
+import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 import com.codahale.metrics.MetricRegistry;
 
 import java.io.Closeable;
@@ -54,8 +55,7 @@ public class AugmenterContext implements Closeable {
     private static final String DEFAULT_BEGIN_PATTERN = "^(/\\*.*?\\*/\\s*)?(begin)";
     private static final String DEFAULT_COMMIT_PATTERN = "^(/\\*.*?\\*/\\s*)?(commit)";
     private static final String DEFAULT_DDL_DEFINER_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(definer)\\s*=";
-    private static final String DEFAULT_DDL_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(table)\\s+(?:if not exists\\s+|if exists\\s+)?(\\S+)";
-
+    private static final String DEFAULT_DDL_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|modify)\\s+(table)\\s+(?:if not exists\\s+|if exists\\s+)?(\\S+)";
     private static final String DEFAULT_DDL_TEMPORARY_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(temporary)\\s+(table)\\s+(\\S+)";
     private static final String DEFAULT_DDL_VIEW_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(view)\\s+(\\S+)";
     private static final String DEFAULT_DDL_ANALYZE_PATTERN = "^(/\\*.*?\\*/\\s*)?(analyze)\\s+(table)\\s+(\\S+)";
@@ -64,6 +64,7 @@ public class AugmenterContext implements Closeable {
     private static final String DEFAULT_SET_PATTERN = "(?<=set\\()(.*?)(?=\\))";
 
     private final SchemaManager schemaManager;
+    private final String replicatedSchema;
     private final CurrentTransaction transaction;
 
     private final Pattern beginPattern;
@@ -95,6 +96,7 @@ public class AugmenterContext implements Closeable {
 
     private final AtomicReference<String> binlogFilename;
     private final AtomicLong binlogPosition;
+    private final AtomicReference<String> currentTransactionSchemaName;
 
     private final GTIDType gtidType;
     private final AtomicReference<String> gtidValue;
@@ -119,7 +121,6 @@ public class AugmenterContext implements Closeable {
         this.schemaSnapshot = new AtomicReference<>();
         this.metrics = Metrics.getInstance(configuration);
         this.binlogsBasePath = MetricRegistry.name(this.metrics.basePath(), "binlogs");
-
 
         transactionCounter = new AtomicLong();
         transactionCounter.set(0L);
@@ -176,6 +177,9 @@ public class AugmenterContext implements Closeable {
 
         this.isAtDDL = new AtomicBoolean();
         this.isAtDDL.set(false);
+        currentTransactionSchemaName = new AtomicReference<>();
+        replicatedSchema = (String) configuration.get( BinaryLogSupplier.Configuration.MYSQL_SCHEMA );
+
     }
 
     private Pattern getPattern(Map<String, Object> configuration, String configurationPath, String configurationDefault) {
@@ -207,12 +211,17 @@ public class AugmenterContext implements Closeable {
 
     public synchronized void updateContext(RawEventHeaderV4 eventHeader, RawEventData eventData) {
 
+        this.metrics.getRegistry()
+                .counter("hbase.augmenter_context.update_header.attempt").inc(1L);
+
         this.updateHeader(
                 eventHeader.getTimestamp(),
                 eventHeader.getServerId(),
                 eventHeader.getNextPosition()
         );
 
+        this.metrics.getRegistry()
+                .counter("hbase.augmenter_context.update_header.succeeded").inc(1L);
         isAtDDL.set(false);
 
         switch (eventHeader.getEventType()) {
@@ -225,6 +234,9 @@ public class AugmenterContext implements Closeable {
                         null,
                         null
                 );
+
+                this.metrics.getRegistry()
+                        .counter("hbase.augmenter_context.type.rotate").inc(1L);
 
                 RotateRawEventData rotateRawEventData = RotateRawEventData.class.cast(eventData);
 
@@ -240,9 +252,12 @@ public class AugmenterContext implements Closeable {
                 String query = queryRawEventData.getSQL();
                 Matcher matcher;
 
+                this.metrics.getRegistry()
+                        .counter("hbase.augmenter_context.type.query").inc(1L);
+
                 // begin
                 if (this.beginPattern.matcher(query).find()) {
-
+                    currentTransactionSchemaName.set(queryRawEventData.getDatabase());
                     this.updateCommons(
                             false,
                             QueryAugmentedEventDataType.BEGIN,
@@ -267,13 +282,17 @@ public class AugmenterContext implements Closeable {
                             null
                     );
 
+                    this.metrics.getRegistry()
+                            .counter("hbase.augmenter_context.type.commit").inc(1L);
+
                     if (!this.transaction.commit(eventHeader.getTimestamp())) {
                         AugmenterContext.LOG.log(Level.WARNING, "transaction already markedForCommit");
                     }
                 }
                 // ddl definer
                 else if ((matcher = this.ddlDefinerPattern.matcher(query)).find()) {
-
+                    this.metrics.getRegistry()
+                            .counter("hbase.augmenter_context.type.ddl_definer").inc(1L);
                     this.updateCommons(
                             true,
                             QueryAugmentedEventDataType.DDL_DEFINER,
@@ -284,24 +303,36 @@ public class AugmenterContext implements Closeable {
                 }
                 // ddl table
                 else if ((matcher = this.ddlTablePattern.matcher(query)).find()) {
+                    this.metrics.getRegistry()
+                            .counter("hbase.augmenter_context.type.ddl_table").inc(1L);
+                    Boolean shouldProcess = ( queryRawEventData.getDatabase().equals(replicatedSchema) );
                     this.updateCommons(
-                            true,
+                            shouldProcess,
                             QueryAugmentedEventDataType.DDL_TABLE,
                             QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
                             queryRawEventData.getDatabase(),
                             matcher.group(4)
                     );
 
-                    isAtDDL.set(true);
-
-                    long schemaChangeTimestamp = eventHeader.getTimestamp();
-                    this.updateSchema(query, schemaChangeTimestamp);
+                    // Because we don't want to create tables for non-replicated schemas
+                    if ( shouldProcess ) {
+                        this.metrics.getRegistry()
+                                .counter("hbase.augmenter_context.type.ddl_table.should_process.true").inc(1L);
+                        isAtDDL.set(true);
+                        long schemaChangeTimestamp = eventHeader.getTimestamp();
+                        this.updateSchema(query, schemaChangeTimestamp);
+                    } else {
+                        this.metrics.getRegistry()
+                                .counter("hbase.augmenter_context.type.ddl_table.should_process.false").inc(1L);
+                    }
 
                 }
                 // ddl temp table
                 else if ((matcher = this.ddlTemporaryTablePattern.matcher(query)).find()) {
+                    this.metrics.getRegistry()
+                            .counter("hbase.augmenter_context.type.ddl_temp_table").inc(1L);
                     this.updateCommons(
-                            true,
+                            ( queryRawEventData.getDatabase().equals(replicatedSchema) ),
                             QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE,
                             QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
                             queryRawEventData.getDatabase(),
@@ -310,16 +341,20 @@ public class AugmenterContext implements Closeable {
                 }
                 // ddl view
                 else if ((matcher = this.ddlViewPattern.matcher(query)).find()) {
+                    this.metrics.getRegistry()
+                            .counter("hbase.augmenter_context.type.ddl_view").inc(1L);
                     this.updateCommons(
-                            true,
+                            ( queryRawEventData.getDatabase().equals(replicatedSchema) ),
                             QueryAugmentedEventDataType.DDL_VIEW,
                             QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
                             queryRawEventData.getDatabase(),
                             null
                     );
                 } else if ((matcher = this.ddlAnalyzePattern.matcher(query)).find()) {
+                    this.metrics.getRegistry()
+                            .counter("hbase.augmenter_context.type.ddl_analyse").inc(1L);
                     this.updateCommons(
-                            true,
+                            false,
                             QueryAugmentedEventDataType.DDL_ANALYZE,
                             QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
                             queryRawEventData.getDatabase(),
@@ -329,6 +364,8 @@ public class AugmenterContext implements Closeable {
 
                 // pseudoGTID
                 else if ((matcher = this.pseudoGTIDPattern.matcher(query)).find()) {
+                    this.metrics.getRegistry()
+                            .counter("hbase.augmenter_context.type.pseudo_gtid").inc(1L);
                     this.updateCommons(
                             false,
                             QueryAugmentedEventDataType.PSEUDO_GTID,
@@ -344,7 +381,8 @@ public class AugmenterContext implements Closeable {
                             0
                     );
                 } else {
-
+                    this.metrics.getRegistry()
+                            .counter("hbase.augmenter_context.type.unknown").inc(1L);
                     this.updateCommons(
                             false,
                             null,
@@ -357,6 +395,9 @@ public class AugmenterContext implements Closeable {
                 break;
 
             case XID:
+
+                this.metrics.getRegistry()
+                        .counter("hbase.augmenter_context.type.xid").inc(1L);
 
                 XIDRawEventData xidRawEventData = XIDRawEventData.class.cast(eventData);
 
@@ -374,6 +415,8 @@ public class AugmenterContext implements Closeable {
                 break;
 
             case GTID:
+                this.metrics.getRegistry()
+                        .counter("hbase.augmenter_context.type.gtid").inc(1L);
                 GTIDRawEventData gtidRawEventData = GTIDRawEventData.class.cast(eventData);
                 this.updateCommons(
                         false,
@@ -392,7 +435,8 @@ public class AugmenterContext implements Closeable {
                 break;
 
             case TABLE_MAP:
-
+                this.metrics.getRegistry()
+                        .counter("hbase.augmenter_context.type.table_map").inc(1L);
                 TableMapRawEventData tableMapRawEventData = TableMapRawEventData.class.cast(eventData);
                 this.updateCommons(
                         false,
@@ -418,6 +462,8 @@ public class AugmenterContext implements Closeable {
             case EXT_UPDATE_ROWS:
             case DELETE_ROWS:
             case EXT_DELETE_ROWS:
+                this.metrics.getRegistry()
+                        .counter("hbase.augmenter_context.type.insert_update_delete").inc(1L);
 
                 TableIdRawEventData tableIdRawEventData = TableIdRawEventData.class.cast(eventData);
                 FullTableName eventTable = this.getEventTable(tableIdRawEventData.getTableId());
@@ -428,7 +474,7 @@ public class AugmenterContext implements Closeable {
                     tblName = eventTable.getName();
                 }
                 this.updateCommons(
-                        (eventTable == null) || (!this.excludeTable(eventTable.getName())),
+                        ( currentTransactionSchemaName.get().equals(replicatedSchema) ) && ((eventTable == null) || (!this.excludeTable(eventTable.getName()))),
                         null,
                         null,
                         dbName,
@@ -437,6 +483,8 @@ public class AugmenterContext implements Closeable {
                 break;
 
             default:
+                this.metrics.getRegistry()
+                        .counter("hbase.augmenter_context.type.default").inc(1L);
                 this.updateCommons(
                         false,
                         null,
@@ -524,6 +572,7 @@ public class AugmenterContext implements Closeable {
                 String tableName = this.eventTable.get().getName();
 
                 if (isDDLAndIsNot(QueryAugmentedEventDataOperationType.CREATE)) {
+                    // if not create, then before exists
                     this.columnsBefore.set(this.schemaManager.listColumns(tableName));
                     this.createTableBefore.set(this.schemaManager.getCreateTable(tableName));
                 } else {
@@ -542,7 +591,7 @@ public class AugmenterContext implements Closeable {
                     this.columnsAfter.set(this.schemaManager.listColumns(tableName));
                     this.createTableAfter.set(this.schemaManager.getCreateTable(tableName));
                 } else {
-                    //
+                    // if delete, then after does not exists
                     this.columnsAfter.set(null);
                     this.createTableAfter.set(null);
                 }

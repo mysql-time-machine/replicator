@@ -6,12 +6,13 @@ import com.booking.replication.augmenter.model.event.AugmentedEventHeader;
 import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.SchemaAtPositionCache;
+import com.booking.replication.augmenter.model.event.*;
+import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
 import com.booking.replication.augmenter.model.schema.TableSchema;
 import com.booking.replication.commons.checkpoint.ForceRewindException;
-import com.booking.replication.supplier.model.RawEvent;
-import com.booking.replication.supplier.model.RawEventData;
-import com.booking.replication.supplier.model.RawEventHeaderV4;
+import com.booking.replication.supplier.model.*;
+import com.booking.replication.commons.metrics.Metrics;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -21,8 +22,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.logging.Logger;
 
 public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>, Closeable {
+
+    private static final Logger LOG = Logger.getLogger(Augmenter.class.getName());
 
     public enum SchemaType {
 
@@ -91,17 +95,22 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
     private final AugmenterContext context;
     private final HeaderAugmenter headerAugmenter;
     private final DataAugmenter dataAugmenter;
+    private final Metrics<?> metrics;
 
     private Augmenter(SchemaManager schemaManager, Map<String, Object> configuration) {
         this.context = new AugmenterContext(schemaManager, configuration);
         this.headerAugmenter = new HeaderAugmenter(this.context);
         this.dataAugmenter = new DataAugmenter(this.context);
+        this.metrics = Metrics.getInstance(configuration);
     }
 
     @Override
     public Collection<AugmentedEvent> apply(RawEvent rawEvent) {
 
         try {
+
+            this.metrics.getRegistry()
+                    .counter("hbase.augmenter.apply.attempt").inc(1L);
 
             RawEventHeaderV4 eventHeader = rawEvent.getHeader();
             RawEventData eventData = rawEvent.getData();
@@ -175,6 +184,7 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
         // Augment the event
         AugmentedEventHeader augmentedEventHeader = this.headerAugmenter.apply(eventHeader, eventData);
 
+
         if (augmentedEventHeader == null) {
             return null;
         }
@@ -199,6 +209,7 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
                 augmentedEvent.setOptionalPayload(schemaSnapshot);
             } else {
                 throw new RuntimeException("Error in logic");
+
             }
         }
         return augmentedEvent;

@@ -49,3 +49,9 @@ kafka:
   topic: "replicator"
   message.format: "avro"
   schema.registry.url: "http://localhost:8081"
+override:
+  checkpoint:
+    start.position: true
+    binLog:
+        filename: binlog.030691
+        position: 7191634

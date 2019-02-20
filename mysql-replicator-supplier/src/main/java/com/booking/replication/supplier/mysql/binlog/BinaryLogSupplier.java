@@ -37,6 +37,8 @@ public class BinaryLogSupplier implements Supplier {
         String MYSQL_USERNAME = "mysql.username";
         String MYSQL_PASSWORD = "mysql.password";
         String POSITION_TYPE = "supplier.binlog.position.type";
+        String BINLOG_START_FILENAME = "supplier.binlog.start.filename";
+        String BINLOG_START_POSITION = "supplier.binlog.start.position";
     }
 
     private final AtomicBoolean running;

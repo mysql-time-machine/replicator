@@ -1,5 +1,6 @@
 package com.booking.replication.it.hbase.impl
 
+import com.booking.replication.augmenter.model.AugmenterModel
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
 import com.booking.replication.commons.services.ServicesControl
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTestRunner
@@ -102,8 +103,9 @@ class PayloadTableTestImpl implements ReplicatorHBasePipelineIntegrationTest {
         def data = HBase.scanHBaseTable(tableName)
         def payload = HBase.scanHBaseTable(payloadTableName)
 
+
         def transactionUUIDsSortedByTimestampInDataTable =
-                data['8b04d5e3;first']['d:transaction_uuid']
+                data['8b04d5e3;first']['d:' + AugmenterModel.Configuration.UUID_FIELD_NAME]
                         .sort{ it.key }
                         .collect {
                             timestamp, transactionUUID  ->
@@ -147,6 +149,8 @@ class PayloadTableTestImpl implements ReplicatorHBasePipelineIntegrationTest {
         }
 
         result.add("tdiff|" + tdiff)
+
+        //sleep(100000000)
 
         return result
 

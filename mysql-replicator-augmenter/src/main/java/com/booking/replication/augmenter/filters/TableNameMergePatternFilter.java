@@ -3,6 +3,7 @@ package com.booking.replication.augmenter.filters;
 import com.booking.replication.augmenter.AugmenterFilter;
 import com.booking.replication.augmenter.model.event.*;
 import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
+import com.booking.replication.commons.metrics.Metrics;
 
 import java.util.Collection;
 import java.util.Map;
@@ -27,16 +28,20 @@ public class TableNameMergePatternFilter implements AugmenterFilter {
 
     private final String pattern;
     private final Pattern tableNameSufixPattern;
+    private Metrics<?> metrics;
 
     public TableNameMergePatternFilter(Map<String, Object> configuration) {
         pattern = (String) configuration.get(Configuration.FILTER_CONFIGURATION);
         tableNameSufixPattern = Pattern.compile(pattern);
+        metrics = Metrics.getInstance(configuration);
     }
 
     @Override
     public Collection<AugmentedEvent> apply(Collection<AugmentedEvent> augmentedEvents) {
+        metrics.getRegistry()
+                .counter("hbase.augmenter.filter.table_name_merge.attempt").inc(1L);
 
-        return augmentedEvents.stream()
+        Collection<AugmentedEvent> filtered = augmentedEvents.stream()
                 .map(
                         ev -> {
                             if (ev.getHeader().getEventType() == AugmentedEventType.WRITE_ROWS) {
@@ -69,6 +74,14 @@ public class TableNameMergePatternFilter implements AugmenterFilter {
                         }
                 )
                 .collect(Collectors.toList());
+
+        metrics.getRegistry()
+                .counter("hbase.augmenter.filter.table_name_merge.success").inc(1L);
+
+        metrics.getRegistry()
+                .counter("hbase.augmenter.filter.table_name_merge.filtered_length").inc( filtered.size() );
+
+        return filtered;
     }
 
     private String getRewrittenName(String originalTableName) {

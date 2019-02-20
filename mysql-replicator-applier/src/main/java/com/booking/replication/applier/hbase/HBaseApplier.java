@@ -5,13 +5,11 @@ import com.booking.replication.applier.hbase.schema.HBaseSchemaManager;
 import com.booking.replication.applier.hbase.schema.SchemaTransitionException;
 import com.booking.replication.applier.hbase.writer.HBaseApplierWriter;
 import com.booking.replication.applier.hbase.writer.HBaseTimeMachineWriter;
-import com.booking.replication.augmenter.model.event.*;
-
+import com.booking.replication.augmenter.model.event.AugmentedEvent;
+import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
-
 import com.booking.replication.commons.metrics.Metrics;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -21,7 +19,6 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toList;
@@ -32,13 +29,14 @@ public class HBaseApplier implements Applier {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private final Metrics<?> metrics;
-    private int FLUSH_BUFFER_SIZE       = 5;
-    private int BUFFER_FLUSH_TIME_LIMIT = 5;
+    private int FLUSH_BUFFER_SIZE       = 1000;
+    private int BUFFER_FLUSH_TIME_LIMIT = 30;
 
     private HBaseSchemaManager hbaseSchemaManager;
     private HBaseApplierWriter hBaseApplierWriter;
 
     private Map<String, Object> configuration;
+    private final StorageConfig storageConfig;
 
     org.apache.hadoop.conf.Configuration hbaseConfig;
 
@@ -59,8 +57,9 @@ public class HBaseApplier implements Applier {
         this.configuration = configuration;
 
         this.metrics = Metrics.getInstance(configuration);
+        this.storageConfig = StorageConfig.build(configuration);
 
-        hbaseConfig = getHBaseConfig(configuration);
+        hbaseConfig = storageConfig.getConfig();
 
         try {
             hbaseSchemaManager = new HBaseSchemaManager(configuration);
@@ -73,20 +72,17 @@ public class HBaseApplier implements Applier {
             e.printStackTrace();
         }
 
+        if (hbaseSchemaManager == null) {
+            throw new RuntimeException("Failed to initialize HBaseSchemaManager");
+        }
+
+        if (hBaseApplierWriter == null) {
+            throw new RuntimeException("Failed to initialize HBaseTimeMachineWriter");
+        }
+
     }
 
-    private  org.apache.hadoop.conf.Configuration getHBaseConfig(Map<String, Object> configuration) {
 
-        org.apache.hadoop.conf.Configuration hbConf = HBaseConfiguration.create();
-
-        // TODO: adapt to BigTable (no zookeeper, impl class properties)
-        String ZOOKEEPER_QUORUM =
-            (String) configuration.get(HBaseApplier.Configuration.HBASE_ZOOKEEPER_QUORUM);
-
-            hbConf.set("hbase.zookeeper.quorum", ZOOKEEPER_QUORUM);
-
-        return hbConf;
-    }
 
     /**
      * Logic of Operation:
@@ -100,7 +96,7 @@ public class HBaseApplier implements Applier {
      * The apply() method returns Boolean. If it returns true, this is a signal for
      * Coordinator that rows are committed. In case of small transactions, applier
      * will internally buffer them and apply will return false until buffer is
-     * large enough. Once buffer is large enough it will flushTransactionBuffer the buffer and
+     * large enough. Once buffer is large enough it will flushThreadBuffer the buffer and
      * return true (on success).
      * <p>
      * In short:
@@ -110,7 +106,7 @@ public class HBaseApplier implements Applier {
      * - IOException means that all write attempts have failed. This shuts down the whole pipeline.
      * <p>
      * In addition:
-     * - In case that flushTransactionBuffer() fails, the retry logic needs to be implemented
+     * - In case that flushThreadBuffer() fails, the retry logic needs to be implemented
      * in the ApplierWriter. The Streams implementation manages threads and
      * groups rows by transactions. Once the transaction batch has been sent
      * to the ApplierWriter it is the responsibility of the
@@ -121,10 +117,18 @@ public class HBaseApplier implements Applier {
      * case of error, apply should throw and Exception and the whole pipeline will shutdown.
      */
     @Override
-    public synchronized Boolean apply(Collection<AugmentedEvent> events) {
+    public Boolean apply(Collection<AugmentedEvent> events) {
+        Long threadID = Thread.currentThread().getId();
 
-        this.metrics.getRegistry()
-                .counter("hbase.applier.events.received").inc(1L);
+        this.metrics
+                .getRegistry()
+                .histogram("hbase.thread_" + threadID + ".applier.events.apply.batchsize")
+                .update(events.size());
+
+        for (AugmentedEvent event : events) {
+            this.metrics.getRegistry()
+                    .counter("hbas.thread_" + threadID + ".applier.events.seen").inc(1L);
+        }
 
         checkIfBufferExpired();
 
@@ -142,27 +146,46 @@ public class HBaseApplier implements Applier {
 
         if (transactionUUIDs.size() == 1) {
             String transactionUUID = transactionUUIDs.get(0);
-            if ((dataEvents.size() >= FLUSH_BUFFER_SIZE) || hBaseApplierWriter.getTransactionBufferSize(transactionUUID) >= FLUSH_BUFFER_SIZE) {
-                hBaseApplierWriter.buffer(transactionUUID, dataEvents);
-                boolean s = hBaseApplierWriter.flushTransactionBuffer(transactionUUID);
+            if ((dataEvents.size() >= FLUSH_BUFFER_SIZE) || hBaseApplierWriter.getThreadBufferSize(threadID) >= FLUSH_BUFFER_SIZE) {
+                hBaseApplierWriter.buffer(threadID, transactionUUID, dataEvents);
+                this.metrics.getRegistry()
+                        .counter("hbase.thread_" + threadID + ".applier.buffer.buffered").inc(1L);
+                this.metrics.getRegistry()
+                        .counter("hbase.thread_" + threadID + ".applier.buffer.flush.attempt").inc(1L);
+                boolean s = hBaseApplierWriter.flushThreadBuffer(threadID);
+
                 if (s) {
+                    this.metrics.getRegistry()
+                            .counter("hbase.thread_" + threadID + ".applier.buffer.flush.success").inc(1L);
                     return true; // <- committed, will advance safe checkpoint
                 } else {
+                    this.metrics.getRegistry()
+                            .counter("hbase.thread_" + threadID + ".applier.buffer.flush.failure").inc(1L);
                     throw new RuntimeException("Failed to write buffer to HBase");
                 }
             } else {
-                hBaseApplierWriter.buffer(transactionUUID, dataEvents);
+                this.metrics.getRegistry()
+                        .counter("hbase.thread_" + threadID + ".buffer.buffered").inc(1L);
+                hBaseApplierWriter.buffer(threadID, transactionUUID, dataEvents);
                 return false; // buffered
             }
         } else if (transactionUUIDs.size() > 1) {
             // multiple transactions in one list
             for (String transactionUUID : transactionUUIDs) {
-                hBaseApplierWriter.buffer(transactionUUID, dataEvents);
+                hBaseApplierWriter.buffer(threadID, transactionUUID, dataEvents);
+                this.metrics.getRegistry()
+                        .counter("hbase.thread_" + threadID + ".applier.buffer.buffered").inc(1L);
             }
+            this.metrics.getRegistry()
+                    .counter("hbase.thread_" + threadID + ".applier.buffer.flush.force.attempt").inc(1L);
             forceFlush();
+            this.metrics.getRegistry()
+                    .counter("hbase.thread_" + threadID + ".applier.buffer.flush.force.success").inc(1L);
             return true;
         } else {
             LOG.warn("Empty transaction");
+            this.metrics.getRegistry()
+                    .counter("hbase.thread_" + threadID + ".applier.events.empty").inc(1L);
             return false; // treat empty transaction as buffered
         }
     }
@@ -205,7 +228,7 @@ public class HBaseApplier implements Applier {
 
     private void checkIfBufferExpired() {
         long now = Instant.now().toEpochMilli();
-        if(now - hBaseApplierWriter.getBufferClearTime() > BUFFER_FLUSH_TIME_LIMIT) {
+        if(now - hBaseApplierWriter.getThreadLastFlushTime() > BUFFER_FLUSH_TIME_LIMIT) {
             forceFlush();
         }
     }
@@ -214,10 +237,21 @@ public class HBaseApplier implements Applier {
     public boolean forceFlush() {
         boolean s;
         try {
-            s = hBaseApplierWriter.forceFlush();
+            s = hBaseApplierWriter.forceFlushThreadBuffer( Thread.currentThread().getId() );
         } catch (IOException e) {
-            throw new RuntimeException("forceFlush() failed");
+            throw new RuntimeException("forceFlushThreadBuffer() failed");
         }
         return s;
     }
+
+    public boolean forceFlushAll() {
+        boolean s;
+        try {
+            s = hBaseApplierWriter.forceFlushAllThreadBuffers();
+        } catch (IOException e) {
+            throw new RuntimeException("forceFlushThreadBuffer() failed");
+        }
+        return s;
+    }
+
 }

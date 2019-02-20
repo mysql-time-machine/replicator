@@ -6,6 +6,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public interface StreamsBuilderFrom<Input, Output> {
+
     StreamsBuilderFrom<Input, Output> threads(int threads);
 
     StreamsBuilderFrom<Input, Output> tasks(int tasks);
@@ -23,4 +24,5 @@ public interface StreamsBuilderFrom<Input, Output> {
     StreamsBuilderFilter<Input, Output> setDataSupplier(Function<Integer, Input> supplier);
 
     StreamsBuilderFilter<Input, Output> usePushMode();
+
 }

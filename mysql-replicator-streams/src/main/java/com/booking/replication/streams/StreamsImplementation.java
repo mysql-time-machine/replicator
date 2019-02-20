@@ -17,7 +17,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     private final BiFunction<Input, Integer, Integer> partitioner;
     private final BlockingDeque<Input>[] queues;
     private final long queueTimeout;
-    private final Function<Integer, Input> from;
+    private final Function<Integer, Input> dataSupplierFn;
     private final BiConsumer<Integer, Input> requeue;
     private final Predicate<Input> filter;
     private final Function<Input, Output> process;
@@ -37,7 +37,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
             Class<? extends BlockingDeque> queueType,
             int queueSize,
             long queueTimeout,
-            Function<Integer, Input> from,
+            Function<Integer, Input> fnGetNextItem,
             Predicate<Input> filter,
             Function<Input, Output> process,
             Function<Output, Boolean> to,
@@ -69,7 +69,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
         this.queueTimeout = queueTimeout;
 
         if (this.queues != null) {
-            this.from = (task) -> StreamsImplementation.this.queues[task].poll();
+            this.dataSupplierFn = (task) -> StreamsImplementation.this.queues[task].poll();
             this.requeue = (task, input) -> {
                 try {
                     if (!StreamsImplementation.this.queues[task].offerFirst(input, queueTimeout, TimeUnit.SECONDS)) {
@@ -80,17 +80,18 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
                     this.handleException(exception);
                 }
             };
-        } else if (from != null) {
-            this.from = from;
+        } else if (fnGetNextItem != null) {
+            this.dataSupplierFn = fnGetNextItem;
             this.requeue = null;
         } else {
-            this.from = null;
+            this.dataSupplierFn = null;
             this.requeue = null;
         }
 
         this.filter = (filter != null) ? (filter) : (input -> true);
         this.process = (process != null) ? (process) : (input -> (Output) input);
         this.to = (to != null) ? (to) : (output -> true);
+
         this.post = (post != null) ? (post) : ((output, executing) -> {
         });
         this.running = new AtomicBoolean();
@@ -121,31 +122,32 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
 
     @Override
     public final Streams<Input, Output> start() {
-        if ((this.queues != null || this.from != null) && !this.running.getAndSet(true) && this.executor == null) {
-            Consumer<Integer> consumer = (task) -> {
+        if ((this.queues != null || this.dataSupplierFn != null) && !this.running.getAndSet(true) && this.executor == null) {
+            Consumer<Integer> consumer = (partitionNumber) -> {
                 Input input = null;
 
                 try {
                     while (this.running.get()) {
-                        input = this.from.apply(task);
-                        this.process(input, task);
+                        input = this.dataSupplierFn.apply(partitionNumber);
+                        this.process(input, partitionNumber);
                         input = null;
                     }
                 } catch (Exception exception) {
                     this.handleException(exception);
                 } finally {
                     if (this.requeue != null && input != null) {
-                        this.requeue.accept(task, input);
+                        this.requeue.accept(partitionNumber, input);
                     }
                 }
             };
 
+            LOG.info("Starting a stream with #" + this.threads + " FixedThreadPool");
             this.executor = Executors.newFixedThreadPool(this.threads);
 
             for (int index = 0; index < this.tasks; index++) {
-                final int task = index;
+                final int partitionNumber = index;
 
-                this.executor.execute(() -> consumer.accept(task));
+                this.executor.execute(() -> consumer.accept(partitionNumber));
             }
         }
 
@@ -187,14 +189,21 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
 
     @Override
     public final void push(Input input) {
-        if (this.queues == null && this.from == null) {
+        if (this.queues == null && this.dataSupplierFn == null) {
             try {
                 this.process(input, 0);
             } catch (Exception exception) {
                 this.handleException(exception);
             }
-        } else {
-            Objects.requireNonNull(this.queues);
+        }
+
+        // if queues are available then dataSupplierFn is internally initialized
+        // to a lambda that polls the queue. This happens even if dataSupplierFn
+        // is specified in pipeline configuration, it will still get overridden
+        // by queue poller.
+        else if (this.queues != null) {
+
+            Objects.requireNonNull(this.queues, "queues must not be null");
 
             if (!this.running.get()) {
                 throw new IllegalStateException("Streams has stopped.");

@@ -11,11 +11,11 @@ import static org.junit.Assert.assertTrue;
 
 public class StreamsTest {
     @Test
-    public void testFromPull() throws InterruptedException {
+    public void testPullMode() throws InterruptedException {
         AtomicInteger count1 = new AtomicInteger();
         AtomicInteger count2 = new AtomicInteger();
 
-        Streams.<Integer>builder()
+        Streams<Integer, Integer> streams  = Streams.<Integer>builder()
                 .useDefaultQueueType()
                 .setDataSupplier((task) -> {
                     count1.incrementAndGet();
@@ -24,17 +24,17 @@ public class StreamsTest {
                 .setSink((value) -> {
                     count2.incrementAndGet();
                     return true;
-                })
-                .build()
-                .start()
-                .wait(1L, TimeUnit.SECONDS)
-                .stop();
+                }).build();
+
+        streams.start()
+               .wait(1L, TimeUnit.SECONDS)
+               .stop();
 
         assertEquals(count1.get(), count2.get());
     }
 
     @Test
-    public void testFromPush() throws InterruptedException {
+    public void testPushMode() throws InterruptedException {
         AtomicInteger count1 = new AtomicInteger();
 
         int number = ThreadLocalRandom.current().nextInt();

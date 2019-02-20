@@ -21,7 +21,7 @@ public final class StreamsBuilder<Input, Output> implements
     private Class<? extends BlockingDeque> queueType;
     private int queueSize;
     private long queueTimeout;
-    private Function<Integer, Input> from;
+    private Function<Integer, Input> dataSupplierFn;
     private Predicate<Input> filter;
     private Function<Input, Output> process;
     private Function<Output, Boolean> to;
@@ -34,7 +34,7 @@ public final class StreamsBuilder<Input, Output> implements
             Class<? extends BlockingDeque> queueType,
             int queueSize,
             long queueTimeout,
-            Function<Integer, Input> from,
+            Function<Integer, Input> dataSupplierFn,
             Predicate<Input> filter,
             Function<Input, Output> process,
             Function<Output, Boolean> to,
@@ -45,7 +45,7 @@ public final class StreamsBuilder<Input, Output> implements
         this.queueType = queueType;
         this.queueSize = queueSize;
         this.queueTimeout = queueTimeout;
-        this.from = from;
+        this.dataSupplierFn = dataSupplierFn;
         this.filter = filter;
         this.process = process;
         this.to = to;
@@ -118,13 +118,18 @@ public final class StreamsBuilder<Input, Output> implements
     @Override
     public final StreamsBuilderFilter<Input, Output> setDataSupplier(Function<Integer, Input> supplier) {
         Objects.requireNonNull(supplier);
-        this.from = supplier;
+        this.dataSupplierFn = supplier;
         return this;
     }
 
     @Override
     public final StreamsBuilderFilter<Input, Output> usePushMode() {
-        this.from = null;
+        // here we just make sure that there is no custom consumer to  get the
+        // data for the pipeline. Under the hood, this can have two scenarios:
+        //      1. if queues exists, the consumer will be created as a simple queue poller, but pipeline will
+        //         externally still require call to push()
+        //      2. if queues do not exists, then calls to push() will short circuit the data to process().
+        this.dataSupplierFn = null;
         return this;
     }
 
@@ -138,7 +143,7 @@ public final class StreamsBuilder<Input, Output> implements
                 this.queueType,
                 this.queueSize,
                 this.queueTimeout,
-                this.from,
+                this.dataSupplierFn,
                 input -> (this.filter == null || this.filter.test(input)) && filter.test(input),
                 null,
                 null,
@@ -157,7 +162,7 @@ public final class StreamsBuilder<Input, Output> implements
                 this.queueType,
                 this.queueSize,
                 this.queueTimeout,
-                this.from,
+                this.dataSupplierFn,
                 this.filter,
                 input -> {
                     Output output = (this.process != null)?(this.process.apply(input)):((Output) input);
@@ -182,7 +187,7 @@ public final class StreamsBuilder<Input, Output> implements
                 this.queueType,
                 this.queueSize,
                 this.queueTimeout,
-                this.from,
+                this.dataSupplierFn,
                 this.filter,
                 this.process,
                 output -> {
@@ -218,7 +223,7 @@ public final class StreamsBuilder<Input, Output> implements
                 this.queueType,
                 this.queueSize,
                 this.queueTimeout,
-                this.from,
+                this.dataSupplierFn,
                 this.filter,
                 this.process,
                 this.to,
@@ -243,7 +248,7 @@ public final class StreamsBuilder<Input, Output> implements
                 this.queueType,
                 this.queueSize,
                 this.queueTimeout,
-                this.from,
+                this.dataSupplierFn,
                 this.filter,
                 this.process,
                 this.to,

@@ -13,6 +13,7 @@ import java.util.Map;
 
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.TableExistsException;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.io.compress.Compression;
@@ -169,7 +170,7 @@ public class HBaseSchemaManager {
             hbaseRowKey = "initial-snapshot";
         }
 
-        try ( Admin admin = connection.getAdmin() ){
+        try ( Admin admin = connection.getAdmin() ) {
 
             if (connection == null) {
                 connection = ConnectionFactory.createConnection(storageConfig.getConfig());
@@ -195,7 +196,7 @@ public class HBaseSchemaManager {
 
             Put put = new Put(Bytes.toBytes(hbaseRowKey));
 
-            String ddlColumnName  = "ddl";
+            String ddlColumnName = "ddl";
             put.addColumn(
                     CF,
                     Bytes.toBytes(ddlColumnName),
@@ -203,7 +204,7 @@ public class HBaseSchemaManager {
                     Bytes.toBytes(ddl)
             );
 
-            String schemaTransitionSequenceColumnName  = "schemaTransitionSequence";
+            String schemaTransitionSequenceColumnName = "schemaTransitionSequence";
             put.addColumn(
                     CF,
                     Bytes.toBytes(schemaTransitionSequenceColumnName),
@@ -211,7 +212,7 @@ public class HBaseSchemaManager {
                     Bytes.toBytes(jsonSchemaTransitionSequence)
             );
 
-            String schemaSnapshotPreColumnName  = "schemaPreChange";
+            String schemaSnapshotPreColumnName = "schemaPreChange";
             put.addColumn(
                     CF,
                     Bytes.toBytes(schemaSnapshotPreColumnName),
@@ -246,7 +247,8 @@ public class HBaseSchemaManager {
             Table hbaseTable = connection.getTable(tableName);
             hbaseTable.put(put);
             hbaseTable.close();
-
+        } catch (TableExistsException tee) {
+            LOG.warn("trying to create hbase table that already exists", tee);
         } catch (IOException ioe) {
             throw new SchemaTransitionException("Failed to store schemaChangePointSnapshot in HBase.", ioe);
         }

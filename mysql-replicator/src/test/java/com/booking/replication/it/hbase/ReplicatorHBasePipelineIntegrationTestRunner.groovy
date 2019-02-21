@@ -175,7 +175,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         where:
         testName << TESTS.collect({ test ->
             test.doAction(mysqlBinaryLog)
-            sleep(30000)
+            sleep(60000)
             ( (HBaseApplier) replicator.getApplier() ).forceFlushAll()
             test.testName()
         })

@@ -1,11 +1,8 @@
 [![][Build Status img]][Build Status]
-[![][Quality Gate img]][Quality Gate]
 [![][Coverage Status img]][Coverage Status]
 [![][Known Vulnerabilities img]][Known Vulnerabilities]
+[![][Quality Gate img]][Quality Gate]
 [![][license img]][license]
-[![][License Check img]][License Check]
-[![][Maven Central img]][Maven Central]
-[![][Javadocs img]][Javadocs]
 
 ## MySQL Replicator
 Replicates data changes from MySQL binlog to HBase or Kafka. In case of HBase, preserves the previous data versions. HBase storage is intended for auditing and analysis of historical data. In addition, special daily-changes tables can be maintained in HBase, which are convenient for fast and cheap imports from HBase to Hive. Replication to Kafka is intended for easy real-time access to a stream of data changes.
@@ -14,56 +11,55 @@ Replicates data changes from MySQL binlog to HBase or Kafka. In case of HBase, p
 This readme file provides some basic documentation on how to get started. For more details, refer to official documentation at [mysql-time-machine](https://mysql-time-machine.github.io/).
 
 ### Building required Docker images
-1. Run `mvn package -P uberjar` from the root of the `replicator` repository to build the MySQL Replicator jar that will be used later;
-2. Rename built jar to `mysql-replicator.jar` and copy it to the `images/002_replicator_runner/input/replicator/` directory inside the `docker` repository;
-3. Run `container_build.sh` script from the `images/002_replicator_runner/` directory inside the `docker` repository;
-4. Run `docker ps` to verify that `replicator-runner` image has been built successfully;
+1. Run `mvn clean package` from the root of the `replicator` repository to build the MySQL Replicator distribution that will be used later;
+2. Copy the distribtution file to the `images/replicator_testing/input/replicator/` directory inside the `docker` repository;
+3. Run `container_build.sh` script from the `images/replicator_testing/` directory inside the `docker` repository;
+4. Run `docker images` to verify that `replicator-testing` image has been built successfully;
 
 ### Getting Started with MySQL Replicator
 Replicator assumes that there is a pre-installed environment in which it can run. This environment consists of:
 
  - MySQL Instance
  - Zookeeper Instance
- - Graphite Instance
- - Target Store Instance (Kafka, HBase, or none in case of STDOUT)
- 
+ - Graphite Instance (or none in case of console metrics reporter)
+ - Target Datastore Instance (Kafka, HBase, or none in case of STDOUT)
+
 Easiest way to test drive the replicator is to use docker to locally create this needed environment. In addition to docker you will need [docker-compose](https://docs.docker.com/compose/) installed locally.
 
 ````
 git clone https://github.com/mysql-time-machine/docker.git
-cd docker/docker-compose/replicator_kafka
+cd docker/docker-compose/replicator_testing
 ````
 
 Start all containers (mysql, kafka, graphite, replicator, zookeeper)
- 
+
 ```
   ./run_all
 ```
 
 Now, in another terminal, you can connect to the replicator container
- 
-```` 
+
+````
  ./attach_to_replicator
  cd /replicator
 ````
- 
- This folder contains the replicator jar, the replicator configuration file, log configuration and some utility scripts. 
- Now we can insert some random data in mysql:
- 
-````
- ./random_mysql_ops
- ...
- ('TwIPn','4216871','313785','NIrnXGEpqJI gGDstvhs'),
- ('AwqgI','4831311','930233','IHwkTOuEnOqGdEWNzJtq'),
- ('WIJCB','1516599','487420','rPnOHfZlIvEEvFFEIGiW'),
- ...
-````
 
- This data has been inserted in pre-created database 'test' in precreated table 'sometable'. The provided mysql instance is configured to use RBR and binlogs are active.
- 
+This folder contains:
+1. different utility scripts to setup and run the replicator
+2. replicator configuration file
+3. log configuration file
+
+There are the steps to initialize the environemnt and start the replication with latest 0.16 version:
+````
+ ./00_setup   # will unznip the jars from distribution
+ ./01_seed    # will initialize mysql with random data
+ ./02_run_016 # will start the replication
+
+Random data in the seed step has been inserted in pre-created database 'test' in precreated table 'sometable'. The provided mysql instance is configured to use RBR and binlogs are active.
+
 ````
   mysql --host=mysql --user=root --pass=mysqlPass
-  
+
   mysql> use test;
   mysql> show tables;
   +----------------+
@@ -73,20 +69,6 @@ Now, in another terminal, you can connect to the replicator container
   +----------------+
   1 row in set (0.00 sec)
 ````
- 
- Now we can replicate the binlog content to Kafka. 
- 
-````
- ./run_kafka
-````
- 
- And read the data from Kafka
- 
-````
- ./read_kafka
-````
-
-In this example we have written augmentedRows to mysql, then replicated the binlogs to kafka and then red from Kafka sequentially. However, these processes can be run in parallel as the real life setup would work.
 
 As the replication is running, you can observe the replication statistics at graphite dashboard: http://localhost/dashboard/
 
@@ -98,15 +80,8 @@ Packaging the project is really simple with Maven
 mvn clean package
 ```
 
-Will generate a light jar with the project. This dependency can be used in your projects directly, always that you use maven to get all the transitive dependencies.
+Will generate a tar.gz distribution as output. The distribution will contain all dependencies.
 
-If you need to generate a Uberjar you can execute, so you don't need to worry about dependencies, you can execute
-
-```
-mvn clean package -P uberjar
-```
-
-The generated jar will contain all the dependencies included in a single jar file.
 
 ### DEPLOY
 
@@ -127,11 +102,18 @@ Now you should be in conditions to deploy the project.
 Bosko Devetak <bosko.devetak@gmail.com>
 
 ### CONTRIBUTORS
+
+Ashwin Konale<a href="https://github.com/akonale">[akonale]</a>
+
 Carlos Tasada <a href="https://github.com/ctasada">[ctasada]</a>
 
 Dmitrii Tcyganov <a href="https://github.com/dtcyganov">[dtcyganov]</a>
 
 Evgeny Dmitriev <a href="https://github.com/dmitrieveu">[dmitrieveu]</a>
+
+Fabricio Damasceno <a href="https://github.com/forlando">[forlando]</a>
+
+Gaurav Kohli <a href="https://github.com/gauravkohli">[gauravkohli]</a>
 
 Greg Franklin <a href="https://github.com/gregf1">[gregf1]</a>
 
@@ -151,11 +133,13 @@ Raynald Chung <a href="https://github.com/raynald">[raynald]</a>
 
 Rares Mirica <a href="https://github.com/mrares">[mrares]</a>
 
+Steve Aurigema <a href="https://github.com/steveauri">[steveauri]</a>
+
 ### ACKNOWLEDGMENT
 Replicator was originally developed for Booking.com. With approval from Booking.com, the code and specification were generalized and published as Open Source on github, for which the author would like to express his gratitude.
 
 ### COPYRIGHT AND LICENSE
-Copyright (C) 2015, 2016, 2017, 2018 by Author and Contributors
+Copyright (C) 2015, 2016, 2017, 2018, 2019 by Author and Contributors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

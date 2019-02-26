@@ -50,10 +50,12 @@ This folder contains:
 3. log configuration file
 
 There are the steps to initialize the environemnt and start the replication with latest 0.16 version:
+
 ````
  ./00_setup   # will unznip the jars from distribution
  ./01_seed    # will initialize mysql with random data
  ./02_run_016 # will start the replication
+````
 
 Random data in the seed step has been inserted in pre-created database 'test' in precreated table 'sometable'. The provided mysql instance is configured to use RBR and binlogs are active.
 
@@ -169,4 +171,3 @@ limitations under the License.
 [License Check]:https://app.fossa.io/projects/git%2Bgithub.com%2Fmysql-time-machine%2Freplicator?ref=badge_shield
 [Javadocs]:http://javadoc.io/doc/com.booking/mysql-replicator
 [Javadocs img]:http://javadoc.io/badge/com.booking/mysql-replicator.svg
-

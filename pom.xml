@@ -28,7 +28,7 @@
         <log4j2.version>2.11.0</log4j2.version>
         <slf4j.version>1.7.25</slf4j.version>
         <commons-cli.version>1.4</commons-cli.version>
-        <jackson.version>2.9.6</jackson.version>
+        <jackson.version>2.9.8</jackson.version>
         <zookeeper.version>3.4.12</zookeeper.version>
         <curator.version>4.0.1</curator.version>
         <mysql-connector.version>5.1.46</mysql-connector.version>
@@ -38,6 +38,7 @@
         <dropwizard.metrics.version>4.0.2</dropwizard.metrics.version>
         <avro.version>1.8.1</avro.version>
         <confluent.version>0.1.0</confluent.version>
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     </properties>
 
     <modules>
@@ -469,7 +470,6 @@
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.0</version>
                 <executions>
-
                     <!-- Prepares the property pointing to the JaCoCo runtime agent which is passed as VM argument when Maven the Surefire plugin is executed. -->
                     <execution>
                         <goals>
@@ -481,7 +481,6 @@
                             <propertyName>surefireArgLine</propertyName>
                         </configuration>
                     </execution>
-
                     <!-- Ensures that the code coverage report for unit tests is created after unit tests have been run. -->
                     <execution>
                         <id>post-unit-test</id>

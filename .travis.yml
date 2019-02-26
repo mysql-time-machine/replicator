@@ -22,8 +22,8 @@ script:
   - mvn package -V -U -B
 
 after_success:
-  - bash <(curl -s https://codecov.io/bash)
   - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent package sonar:sonar
+  - bash <(curl -s https://codecov.io/bash)
 
 services:
   - docker

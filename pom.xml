@@ -281,11 +281,20 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/org.codehaus.sonar/sonar-maven3-plugin -->
+        <dependency>
+            <groupId>org.codehaus.sonar</groupId>
+            <artifactId>sonar-maven3-plugin</artifactId>
+            <version>5.1</version>
+            <type>pom</type>
+        </dependency>
     </dependencies>
+
     <scm>
         <connection>scm:git:ssh://github.com/mysql-time-machine/replicator.git</connection>
         <url>https://github.com/mysql-time-machine/replicator.git</url>
     </scm>
+
     <developers>
         <developer>
             <name>Bosko Devetak</name>
@@ -330,6 +339,7 @@
             <email>forlando@gmail.com</email>
         </developer>
     </developers>
+
     <licenses>
         <license>
             <name>Apache License, Version 2.0</name>
@@ -338,10 +348,12 @@
             <comments>A business-friendly OSS license</comments>
         </license>
     </licenses>
+
     <organization>
         <name>Booking.com</name>
         <url>http://www.booking.com</url>
     </organization>
+
     <distributionManagement>
         <snapshotRepository>
             <id>ossrh</id>
@@ -352,6 +364,7 @@
             <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
         </repository>
     </distributionManagement>
+
     <repositories>
         <repository>
             <id>cloudera</id>
@@ -375,6 +388,7 @@
             <snapshots><enabled>true</enabled></snapshots>
         </repository>
     </repositories>
+
     <profiles>
         <profile>
             <id>development</id>
@@ -438,6 +452,7 @@
             </build>
         </profile>
     </profiles>
+
     <build>
         <plugins>
             <plugin>
@@ -452,32 +467,34 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.2</version>
+                <version>0.8.0</version>
                 <executions>
+
                     <!-- Prepares the property pointing to the JaCoCo runtime agent which is passed as VM argument when Maven the Surefire plugin is executed. -->
                     <execution>
                         <goals>
                             <goal>prepare-agent</goal>
                         </goals>
+                        <id>prepare-agent</id>
                         <configuration>
-                            <!-- Sets the path to the file which contains the execution data. -->
-                            <destFile>${project.build.directory}${file.separator}jacoco.exec</destFile>
-                            <!-- Sets the name of the property containing the settings for JaCoCo runtime agent. -->
-                            <propertyName>tests.arguments</propertyName>
+                            <destFile>${jacoco.test.unit.dataFile}</destFile>
+                            <propertyName>surefireArgLine</propertyName>
                         </configuration>
                     </execution>
+
                     <!-- Ensures that the code coverage report for unit tests is created after unit tests have been run. -->
                     <execution>
-                        <id>report</id>
+                        <id>post-unit-test</id>
                         <phase>test</phase>
                         <goals>
                             <goal>report</goal>
                         </goals>
                         <configuration>
-                            <!-- Sets the path to the file which contains the execution data. -->
-                            <dataFile>${project.build.directory}${file.separator}jacoco.exec</dataFile>
+                            <dataFile>${jacoco.test.unit.dataFile}</dataFile>
+                            <outputDirectory>target/jacoco/site-unit-test</outputDirectory>
                         </configuration>
                     </execution>
+
                 </executions>
             </plugin>
             <plugin>
@@ -500,12 +517,40 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>3.4.0.905</version>
+            </plugin>
+
+            <plugin>
+                <groupId>org.sonarsource.scanner.maven</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>3.4.0.905</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>sonar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.sonarsource.scanner.maven</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>3.6.0.1398</version>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.0.0-M1</version>
+                <version>3.0.0-M2</version>
                 <configuration>
                     <argLine>${tests.arguments}</argLine>
+                    <argLine>${surefireArgLine}</argLine>
+
                     <includes>
 		   	            <include>**/*Test.java</include>
 		   	            <include>**/*Test*.java</include>

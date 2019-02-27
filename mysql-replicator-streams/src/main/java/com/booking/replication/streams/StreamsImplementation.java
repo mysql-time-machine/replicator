@@ -216,18 +216,15 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
         // by queue poller.
         else if (this.queues != null) {
 
-            LOG.info("Push: queue exists");
             Objects.requireNonNull(this.queues, "queues must not be null");
 
             if (!this.running.get()) {
                 throw new IllegalStateException("Streams has stopped.");
             }
 
-            LOG.info("Push: stream still running");
-
             try {
                 if (!StreamsImplementation.this.queues[this.partitioner.apply(input, this.tasks)].offer(input, this.queueTimeout, TimeUnit.SECONDS)) {
-                    LOG.info("Push: offer timeout");
+                    LOG.warning("Push: offer timeout");
                     this.handleException(new StreamsException(String.format("Max waiting time exceeded while writing setSink internal buffer: %d", this.queueTimeout)));
                 }
             } catch (InterruptedException exception) {

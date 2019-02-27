@@ -90,6 +90,7 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
 
     public interface Configuration {
         String SCHEMA_TYPE = "augmenter.schema.type";
+        String BOOTSTRAP = "augmenter.schema.bootstrap";
     }
 
     private final AugmenterContext context;
@@ -118,7 +119,9 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
             this.context.updateContext(eventHeader, eventData);
 
             if (this.context.shouldProcess()) {
+
                 if(this.context.isTransactionsEnabled()){
+
                     return processTransactionFlow(eventHeader, eventData);
                 }
                 AugmentedEvent augmentedEvent = getAugmentedEvent(eventHeader, eventData);
@@ -167,11 +170,9 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
                     Collection<AugmentedEvent> augmentedEvents = this.context.getTransaction().getAndClear();
 
                     this.context.getTransaction().add(augmentedEvent);
-
                     return augmentedEvents;
                 } else {
                     this.context.getTransaction().add(augmentedEvent);
-
                     return null;
                 }
             } else {

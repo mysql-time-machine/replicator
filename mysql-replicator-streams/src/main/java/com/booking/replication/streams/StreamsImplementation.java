@@ -21,7 +21,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     private final BiConsumer<Integer, Input> requeue;
     private final Predicate<Input> filter;
     private final Function<Input, Output> process;
-    private final Function<Output, Boolean> to;
+    private final Function<Output, Boolean> sink;
     private final BiConsumer<Input, Integer> post;
     private final AtomicBoolean running;
     private final AtomicBoolean handling;
@@ -40,7 +40,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
             Function<Integer, Input> fnGetNextItem,
             Predicate<Input> filter,
             Function<Input, Output> process,
-            Function<Output, Boolean> to,
+            Function<Output, Boolean> sink,
             BiConsumer<Input, Integer> post
     ) {
         this.threads = threads + 1;
@@ -69,7 +69,19 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
         this.queueTimeout = queueTimeout;
 
         if (this.queues != null) {
-            this.dataSupplierFn = (task) -> StreamsImplementation.this.queues[task].poll();
+            this.dataSupplierFn = (task) -> {
+                while (true) {
+                    int size = StreamsImplementation.this.queues[task].size();
+                    if (size > 9000) {
+                        LOG.warning("Queues are getting big. Queue #" + task + " size: " + size);
+                    }
+                    try {
+                        return StreamsImplementation.this.queues[task].takeFirst();
+                    } catch (InterruptedException e) {
+                        LOG.info("Queue #" + task + " reader interrupted");
+                    }
+                }
+            };
             this.requeue = (task, input) -> {
                 try {
                     if (!StreamsImplementation.this.queues[task].offerFirst(input, queueTimeout, TimeUnit.SECONDS)) {
@@ -90,7 +102,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
 
         this.filter = (filter != null) ? (filter) : (input -> true);
         this.process = (process != null) ? (process) : (input -> (Output) input);
-        this.to = (to != null) ? (to) : (output -> true);
+        this.sink = (sink != null) ? (sink) : (output -> true);
 
         this.post = (post != null) ? (post) : ((output, executing) -> {
         });
@@ -102,8 +114,9 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     private void process(Input input, int task) {
         if (input != null && this.filter.test(input)) {
             Output output = this.process.apply(input);
-
-            if (output != null && this.to.apply(output)) {
+            if (output == null) {
+            }
+            if (output != null && this.sink.apply(output)) {
                 this.post.accept(input, task);
             }
         }
@@ -203,14 +216,18 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
         // by queue poller.
         else if (this.queues != null) {
 
+            LOG.info("Push: queue exists");
             Objects.requireNonNull(this.queues, "queues must not be null");
 
             if (!this.running.get()) {
                 throw new IllegalStateException("Streams has stopped.");
             }
 
+            LOG.info("Push: stream still running");
+
             try {
                 if (!StreamsImplementation.this.queues[this.partitioner.apply(input, this.tasks)].offer(input, this.queueTimeout, TimeUnit.SECONDS)) {
+                    LOG.info("Push: offer timeout");
                     this.handleException(new StreamsException(String.format("Max waiting time exceeded while writing setSink internal buffer: %d", this.queueTimeout)));
                 }
             } catch (InterruptedException exception) {

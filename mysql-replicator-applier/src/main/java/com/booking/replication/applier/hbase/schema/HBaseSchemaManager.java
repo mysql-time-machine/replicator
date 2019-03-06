@@ -49,7 +49,7 @@ public class HBaseSchemaManager {
     // schema history table
     private static final int SCHEMA_HISTORY_TABLE_NR_VERSIONS = 1;
 
-    private static boolean DRY_RUN;
+    private final boolean DRY_RUN;
     private static boolean USE_SNAPPY;
 
     private static final byte[] CF = Bytes.toBytes("d");
@@ -82,9 +82,10 @@ public class HBaseSchemaManager {
 
     public void createHBaseTableIfNotExists(String hbaseTableName) throws IOException {
 
-        try ( Admin admin = connection.getAdmin() ){
 
-            if (!DRY_RUN) {
+        if (!DRY_RUN) {
+
+            try ( Admin admin = connection.getAdmin() ){
 
                 if (seenHBaseTables.containsKey(hbaseTableName)) {
                     return;
@@ -124,9 +125,10 @@ public class HBaseSchemaManager {
 
                     LOG.warn("Created hbase table " + hbaseTableName);
                 }
+
+            } catch (IOException e) {
+                throw new IOException("Failed to create table in HBase", e);
             }
-        } catch (IOException e) {
-            throw new IOException("Failed to create table in HBase", e);
         }
     }
 

@@ -16,6 +16,8 @@ public class AugmentedRow {
 
     private Long         commitTimestamp;
 
+    private Long transactionSequenceNumber = 0L;
+
     private List<String> primaryKeyColumns;
 
     private String       eventType;
@@ -23,9 +25,7 @@ public class AugmentedRow {
     private String       tableName;
     private String       tableSchema;
 
-    private final Long fakeMicrosecondCounter;
-    private       Long rowMicrosecondTimestamp = null;
-
+    private Long         rowMicrosecondTimestamp = 0L;
     // stringifiedRowColumns format:
     // {
     //      $columnName => {
@@ -37,25 +37,18 @@ public class AugmentedRow {
     private Map<String, Map<String,String>> stringifiedRowColumns = new CaseInsensitiveMap<>();
 
     public AugmentedRow() {
-        this.fakeMicrosecondCounter = null;
     }
 
     public AugmentedRow(
             String eventType,
             String schemaName,
             String tableName,
-
             UUID transactionUUID,
             Long transactionXid,
-
-            Long commitTimestamp,
-            Long binlogEventCounter,
-
             List<String> primaryKeyColumns,
             Map<String,Map<String, String>> stringifiedRowColumnValues,
             Map<String, Object> rowColumnValues
     ) {
-
 
         this.primaryKeyColumns = primaryKeyColumns;
 
@@ -63,16 +56,13 @@ public class AugmentedRow {
 
         this.transactionXid = transactionXid;
 
-        this.commitTimestamp = commitTimestamp;
-
         // time-bucketed binlogEventCounter is used to add a fake microsecond suffix for the timestamps
         // of all rows in the event. This way we keep the information about ordering of events
         // and the ordering of changes to their rows in case when the same row is changed multiple
         // times during one second, but in different events. The additional logic is added in
         // TimestampOrganizer which protects the ordering of changes in cases when the same row
         // is altered multiple times in the same event.
-        // TODO: merge these two steps in the TimestampOrganizer
-        this.fakeMicrosecondCounter = binlogEventCounter * 100; // one inc <=> 0.1ms
+//        this.microsecondTransactionOffset = null; // transactionCounter * 100; // one inc <=> 0.1ms
 
         this.eventType = eventType;
 
@@ -84,6 +74,14 @@ public class AugmentedRow {
         this.tableName = tableName;
 
         initColumnDataSlots();
+    }
+
+    public void setTransactionSequenceNumber(Long transactionSequenceNumber) {
+        this.transactionSequenceNumber = transactionSequenceNumber;
+    }
+
+    public void setCommitTimestamp(Long commitTimestamp) {
+        this.commitTimestamp = commitTimestamp;
     }
 
     public void initColumnDataSlots() {
@@ -119,8 +117,8 @@ public class AugmentedRow {
         return commitTimestamp;
     }
 
-    public Long getFakeMicrosecondCounter() {
-        return fakeMicrosecondCounter;
+    public Long getMicrosecondTransactionOffset() {
+        return transactionSequenceNumber * 100;
     }
 
     public String getEventType() {
@@ -133,10 +131,6 @@ public class AugmentedRow {
 
     public void setTransactionXid(Long transactionXid) {
         this.transactionXid = transactionXid;
-    }
-
-    public void setCommitTimestamp(Long commitTimestamp) {
-        this.commitTimestamp = commitTimestamp;
     }
 
     public void setRowMicrosecondTimestamp(Long rowMicrosecondTimestamp) {

@@ -1,15 +1,18 @@
 package com.booking.replication.applier.hbase;
 
 import com.booking.replication.applier.Applier;
+import com.booking.replication.applier.hbase.schema.HBaseRowKeyMapper;
 import com.booking.replication.applier.hbase.schema.HBaseSchemaManager;
 import com.booking.replication.applier.hbase.schema.SchemaTransitionException;
 import com.booking.replication.applier.hbase.writer.HBaseApplierWriter;
 import com.booking.replication.applier.hbase.writer.HBaseTimeMachineWriter;
-import com.booking.replication.augmenter.model.event.AugmentedEvent;
-import com.booking.replication.augmenter.model.event.AugmentedEventType;
+import com.booking.replication.augmenter.model.event.*;
+import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
+import com.booking.replication.augmenter.util.AugmentedEventRowExtractor;
 import com.booking.replication.commons.metrics.Metrics;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.hadoop.hbase.client.Put;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -29,8 +32,9 @@ public class HBaseApplier implements Applier {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private final Metrics<?> metrics;
-    private int FLUSH_BUFFER_SIZE       = 1000;
+    private int FLUSH_BUFFER_SIZE       = 10;
     private int BUFFER_FLUSH_TIME_LIMIT = 30;
+    private final boolean dryRun;
 
     private HBaseSchemaManager hbaseSchemaManager;
     private HBaseApplierWriter hBaseApplierWriter;
@@ -55,6 +59,8 @@ public class HBaseApplier implements Applier {
     public HBaseApplier(Map<String, Object> configuration) {
 
         this.configuration = configuration;
+
+        this.dryRun = (boolean) configuration.get(Configuration.DRYRUN);
 
         this.metrics = Metrics.getInstance(configuration);
         this.storageConfig = StorageConfig.build(configuration);
@@ -130,6 +136,21 @@ public class HBaseApplier implements Applier {
                     .counter("hbas.thread_" + threadID + ".applier.events.seen").inc(1L);
         }
 
+        if (dryRun) {
+            for (AugmentedEvent ev: events) {
+                List<AugmentedRow> augmentedRows = AugmentedEventRowExtractor.extractAugmentedRows(ev);
+                augmentedRows.stream().forEach(row ->
+                    System.out.println(
+                        row.getEventType() + ":" +
+                            "\ttable => " + row.getTableName() +
+                            "\tkey => " + HBaseRowKeyMapper.getSaltedHBaseRowKey(row) +
+                            "\tcommitTimestamp => " + row.getCommitTimestamp() +
+                            "\ttransactionCounter => " + row.getMicrosecondTransactionOffset() / 100 +
+                            "\tmicrosecondTimestamp => " + row.getRowMicrosecondTimestamp())
+                    );
+            }
+            return true;
+        }
         checkIfBufferExpired();
 
         try {
@@ -143,6 +164,7 @@ public class HBaseApplier implements Applier {
         List<AugmentedEvent> dataEvents = extractDataEventsOnly(events);
 
         List<String> transactionUUIDs = getTransactionUUIDs(events);
+
 
         if (transactionUUIDs.size() == 1) {
             String transactionUUID = transactionUUIDs.get(0);
@@ -170,6 +192,7 @@ public class HBaseApplier implements Applier {
                 return false; // buffered
             }
         } else if (transactionUUIDs.size() > 1) {
+
             // multiple transactions in one list
             for (String transactionUUID : transactionUUIDs) {
                 hBaseApplierWriter.buffer(threadID, transactionUUID, dataEvents);

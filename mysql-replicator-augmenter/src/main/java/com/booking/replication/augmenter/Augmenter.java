@@ -6,8 +6,6 @@ import com.booking.replication.augmenter.model.event.AugmentedEventHeader;
 import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.SchemaAtPositionCache;
-import com.booking.replication.augmenter.model.event.*;
-import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
 import com.booking.replication.augmenter.model.schema.TableSchema;
 import com.booking.replication.commons.checkpoint.ForceRewindException;
@@ -106,7 +104,7 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
     }
 
     @Override
-    public Collection<AugmentedEvent> apply(RawEvent rawEvent) {
+    public synchronized Collection<AugmentedEvent> apply(RawEvent rawEvent) {
 
         try {
 
@@ -119,9 +117,7 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
             this.context.updateContext(eventHeader, eventData);
 
             if (this.context.shouldProcess()) {
-
                 if(this.context.isTransactionsEnabled()){
-
                     return processTransactionFlow(eventHeader, eventData);
                 }
                 AugmentedEvent augmentedEvent = getAugmentedEvent(eventHeader, eventData);
@@ -135,8 +131,8 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
     }
 
     private Collection<AugmentedEvent> processTransactionFlow(RawEventHeaderV4 eventHeader, RawEventData eventData) {
-        if (this.context.getTransaction().markedForCommit()) { // <- commit reached?
 
+        if (this.context.getTransaction().markedForCommit()) { // <- commit reached?
 
             if (this.context.getTransaction().sizeLimitExceeded()) { // <- rewind?
 
@@ -162,7 +158,6 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
             AugmentedEvent augmentedEvent = getAugmentedEvent(eventHeader, eventData);
             if (augmentedEvent == null) return null;
 
-
             if (this.context.getTransaction().started()) {
 
                 if (this.context.getTransaction().resuming() && this.context.getTransaction().sizeLimitExceeded()) {
@@ -181,10 +176,10 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
         }
     }
 
-    private AugmentedEvent getAugmentedEvent(RawEventHeaderV4 eventHeader, RawEventData eventData) {
+    private synchronized AugmentedEvent getAugmentedEvent(RawEventHeaderV4 eventHeader, RawEventData eventData) {
+
         // Augment the event
         AugmentedEventHeader augmentedEventHeader = this.headerAugmenter.apply(eventHeader, eventData);
-
 
         if (augmentedEventHeader == null) {
             return null;

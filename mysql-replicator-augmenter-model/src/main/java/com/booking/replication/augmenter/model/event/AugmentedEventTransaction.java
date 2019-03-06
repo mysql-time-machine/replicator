@@ -4,21 +4,21 @@ import java.io.Serializable;
 
 @SuppressWarnings("unused")
 public class AugmentedEventTransaction implements Serializable, Comparable<AugmentedEventTransaction> {
-    private long timestamp;
-    private String identifier;
-    private long xxid;
 
-    public AugmentedEventTransaction() {
-    }
+    private final long commitTimestamp;
+    private final String identifier;
+    private final long xxid;
+    private final long transactionSequenceNumber;
 
-    public AugmentedEventTransaction(long timestamp, String identifier, long xxid) {
-        this.timestamp = timestamp;
+    public AugmentedEventTransaction(long commitTimestamp, String identifier, long xxid, long transactionSequenceNumber) {
+        this.commitTimestamp = commitTimestamp;
         this.identifier = identifier;
         this.xxid = xxid;
+        this.transactionSequenceNumber = transactionSequenceNumber;
     }
 
-    public long getTimestamp() {
-        return this.timestamp;
+    public long getCommitTimestamp() {
+        return this.commitTimestamp;
     }
 
     public String getIdentifier() {
@@ -27,6 +27,10 @@ public class AugmentedEventTransaction implements Serializable, Comparable<Augme
 
     public long getXXID() {
         return this.xxid;
+    }
+
+    public long getTransactionSequenceNumber() {
+        return  transactionSequenceNumber;
     }
 
     @Override
@@ -41,10 +45,10 @@ public class AugmentedEventTransaction implements Serializable, Comparable<Augme
     @Override
     public int compareTo(AugmentedEventTransaction transaction) {
         if (transaction != null) {
-            if (this.timestamp == transaction.timestamp) {
+            if (this.commitTimestamp == transaction.commitTimestamp) {
                 return Long.compare(this.xxid, transaction.xxid);
             } else {
-                return Long.compare(this.timestamp, transaction.timestamp);
+                return Long.compare(this.commitTimestamp, transaction.commitTimestamp);
             }
         } else {
             return Integer.MAX_VALUE;

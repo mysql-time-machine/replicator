@@ -18,6 +18,7 @@ public class CurrentTransaction {
     private final AtomicReference<UUID> identifier;
     private final AtomicReference<Collection<AugmentedEvent>> buffer;
     private final AtomicLong xxid;
+    private final AtomicLong transactionSequenceNumber;
     private final AtomicLong timestamp;
     private final Class<?> bufferClass;
     private final int bufferSizeLimit;
@@ -28,6 +29,7 @@ public class CurrentTransaction {
         this.identifier = new AtomicReference<>();
         this.buffer = new AtomicReference<>();
         this.xxid = new AtomicLong();
+        this.transactionSequenceNumber = new AtomicLong();
         this.timestamp = new AtomicLong();
         this.bufferClass = this.getBufferClass(bufferClass);
         this.bufferSizeLimit = bufferSizeLimit;
@@ -40,8 +42,11 @@ public class CurrentTransaction {
                 this.buffer.set(this.getBufferInstance());
                 this.xxid.set(0L);
                 this.timestamp.set(0L);
+                // This is the sequence number of the transaction within the second when the transaction is committed.
+                // Since we can know this number only at commit time, we initialize it at 0 and set it to proper value
+                // at commit time.
+                this.transactionSequenceNumber.set(0L);
             }
-
             return true;
         } else {
             return false;
@@ -73,7 +78,8 @@ public class CurrentTransaction {
                         new AugmentedEventTransaction(
                             this.timestamp.get(),
                             this.identifier.get().toString(),
-                            this.xxid.get()
+                            this.xxid.get(),
+                            this.transactionSequenceNumber.get()
                         )
                 );
 
@@ -86,13 +92,12 @@ public class CurrentTransaction {
         }
     }
 
-    public boolean commit(long xxid, long timestamp) {
-
+    public boolean commit(long xxid, long timestamp, long transactionSequenceNumber) {
         if (this.started.getAndSet(false)) {
             this.resuming.set(false);
             this.xxid.set(xxid);
             this.timestamp.set(timestamp);
-
+            this.transactionSequenceNumber.set(transactionSequenceNumber);
             return true;
         } else {
             return false;
@@ -104,8 +109,8 @@ public class CurrentTransaction {
         this.buffer.set(this.getBufferInstance());
     }
 
-    public boolean commit(long timestamp) {
-        return this.commit(CurrentTransaction.DEFAULT_XXID, timestamp);
+    public boolean commit(long timestamp, long transactionSequenceNumber) {
+        return this.commit(CurrentTransaction.DEFAULT_XXID, timestamp, transactionSequenceNumber);
     }
 
     public boolean started() {

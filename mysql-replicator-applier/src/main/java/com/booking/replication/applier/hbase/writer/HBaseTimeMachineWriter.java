@@ -1,6 +1,8 @@
 package com.booking.replication.applier.hbase.writer;
 
+import com.booking.replication.applier.hbase.HBaseApplier;
 import com.booking.replication.applier.hbase.mutation.HBaseApplierMutationGenerator;
+import com.booking.replication.applier.hbase.schema.HBaseRowKeyMapper;
 import com.booking.replication.applier.hbase.schema.HBaseSchemaManager;
 import com.booking.replication.applier.hbase.time.RowTimestampOrganizer;
 import com.booking.replication.augmenter.util.AugmentedEventRowExtractor;
@@ -32,6 +34,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
         private final HBaseSchemaManager hbaseSchemaManager;
         private RowTimestampOrganizer timestampOrganizer;
         HBaseApplierMutationGenerator mutationGenerator;
+        private final boolean dryRun;
 
         Connection connection;
         Admin admin;
@@ -60,6 +63,8 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
             mutationGenerator = new HBaseApplierMutationGenerator(configuration, metrics);
 
             timestampOrganizer = new RowTimestampOrganizer(); // <- TODO: if not initial_snapshot_mode()
+
+            dryRun = (boolean) configuration.get(HBaseApplier.Configuration.DRYRUN);
         }
 
         @Override
@@ -225,7 +230,6 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
 
                 long tBegin = System.currentTimeMillis();
 
-                // TODO: monitor
                 long nrMutations = putList.size();
 
                 Table table = connection.getTable(TableName.valueOf(tableName));
@@ -244,6 +248,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                         .getRegistry()
                         .histogram("hbase.thread_" + threadID + ".applier.writer.put.nr-mutations")
                         .update(nrMutations);
+
                 // TODO: send sample to validator
             }
         }

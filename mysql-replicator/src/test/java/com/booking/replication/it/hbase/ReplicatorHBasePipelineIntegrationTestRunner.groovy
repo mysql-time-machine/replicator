@@ -18,6 +18,7 @@ import com.booking.replication.coordinator.ZookeeperCoordinator
 import com.booking.replication.it.hbase.impl.MicrosecondValidationTestImpl
 import com.booking.replication.it.hbase.impl.LongTransactionTestImpl
 import com.booking.replication.it.hbase.impl.PayloadTableTestImpl
+import com.booking.replication.it.hbase.impl.SplitTransactionTestImpl
 import com.booking.replication.it.hbase.impl.TableNameMergeFilterTestImpl
 import com.booking.replication.it.util.HBase
 import com.booking.replication.supplier.Supplier
@@ -83,7 +84,8 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
             new TransmitInsertsTestImpl(),
             new MicrosecondValidationTestImpl(),
             new LongTransactionTestImpl(),
-            new PayloadTableTestImpl()
+            new PayloadTableTestImpl(),
+            new SplitTransactionTestImpl()
     ]
 
     @Shared ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS)

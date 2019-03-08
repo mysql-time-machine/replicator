@@ -139,7 +139,7 @@ class SplitTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest
     @Override
     Object getExpectedState() {
         // expected ordering of values when sorted by microseconds timestamp
-        return [1,20,30,443]
+        return ["1","20","30","443"]
     }
 
     @Override
@@ -208,7 +208,7 @@ class SplitTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest
         def values = []
 
         for (t in timestamps) {
-            values.add(ri_cells[t])
+            values.add(ri_cells[t].toString())
         }
 
         // ==============================================================

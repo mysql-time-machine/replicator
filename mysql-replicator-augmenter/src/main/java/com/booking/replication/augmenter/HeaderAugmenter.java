@@ -13,7 +13,7 @@ public class HeaderAugmenter {
         this.context = context;
     }
 
-    public AugmentedEventHeader apply(RawEventHeaderV4 eventHeader, RawEventData eventData) {
+    public synchronized AugmentedEventHeader apply(RawEventHeaderV4 eventHeader, RawEventData eventData) {
         AugmentedEventType type = this.getAugmentedEventType(eventHeader);
 
         if (type == null) {

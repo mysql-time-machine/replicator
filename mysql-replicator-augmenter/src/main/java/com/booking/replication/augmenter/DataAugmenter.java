@@ -27,7 +27,7 @@ public class DataAugmenter {
         this.context = context;
     }
 
-    public AugmentedEventData apply(RawEventHeaderV4 eventHeader, RawEventData eventData) {
+    public synchronized AugmentedEventData apply(RawEventHeaderV4 eventHeader, RawEventData eventData) {
 
         switch (eventHeader.getEventType()) {
 
@@ -57,8 +57,6 @@ public class DataAugmenter {
 
                         this.context.computeAugmentedEventRows(
                                 "INSERT",
-                                this.context.getTransaction().getTimestamp(),
-                                this.context.getTransactionCounter().get(),
                                 this.context.getTransaction().getIdentifier().get(),
                                 this.context.getTransaction().getXxid(),
                                 writeRowsRawEventData.getTableId(),
@@ -92,8 +90,6 @@ public class DataAugmenter {
 
                         this.context.computeAugmentedEventRows(
                                 "UPDATE",
-                                this.context.getTransaction().getTimestamp(),
-                                this.context.getTransactionCounter().get(),
                                 this.context.getTransaction().getIdentifier().get(),
                                 this.context.getTransaction().getXxid(),
                                 updateRowsRawEventData.getTableId(),
@@ -126,8 +122,6 @@ public class DataAugmenter {
                         columns2,
                         this.context.computeAugmentedEventRows(
                                 "DELETE",
-                                this.context.getTransaction().getTimestamp(),
-                                this.context.getTransactionCounter().get(),
                                 this.context.getTransaction().getIdentifier().get(),
                                 this.context.getTransaction().getXxid(),
                                 deleteRowsRawEventData.getTableId(),

@@ -83,9 +83,9 @@ public class AugmenterContext implements Closeable {
 
     private final List<String> excludeTableList;
 
-    private final AtomicLong timestamp;
-    private final AtomicLong previousTimestamp;
-    private final AtomicLong transactionCounter;
+    private volatile AtomicLong timestamp;
+    private volatile AtomicLong previousTimestamp;
+    private volatile AtomicLong transactionCounter;
     private final AtomicLong serverId;
     private final AtomicLong nextPosition;
 
@@ -270,7 +270,6 @@ public class AugmenterContext implements Closeable {
                 }
                 // commit
                 else if (this.commitPattern.matcher(query).find()) {
-
                     this.updateCommons(
                             true,
                             QueryAugmentedEventDataType.COMMIT,
@@ -282,7 +281,7 @@ public class AugmenterContext implements Closeable {
                     this.metrics.getRegistry()
                             .counter("hbase.augmenter_context.type.commit").inc(1L);
 
-                    if (!this.transaction.commit(eventHeader.getTimestamp())) {
+                    if (!this.transaction.commit(eventHeader.getTimestamp(), transactionCounter.get())) {
                         AugmenterContext.LOG.log(Level.WARNING, "transaction already markedForCommit");
                     }
                 }
@@ -392,7 +391,6 @@ public class AugmenterContext implements Closeable {
                 break;
 
             case XID:
-
                 this.metrics.getRegistry()
                         .counter("hbase.augmenter_context.type.xid").inc(1L);
 
@@ -406,7 +404,7 @@ public class AugmenterContext implements Closeable {
                         null
                 );
 
-                if (!this.transaction.commit(xidRawEventData.getXID(), eventHeader.getTimestamp())) {
+                if (!this.transaction.commit(xidRawEventData.getXID(), eventHeader.getTimestamp(), transactionCounter.get())) {
                     AugmenterContext.LOG.log(Level.WARNING, "transaction already markedForCommit");
                 }
                 break;
@@ -495,21 +493,30 @@ public class AugmenterContext implements Closeable {
 
     private synchronized void updateTransactionCounter() {
 
-        transactionCounter.incrementAndGet();
-
-        if (transactionCounter.get() > 999998L) {
+        if (transactionCounter.get() > 9998L) {
             transactionCounter.set(0L);
-            LOG.warning("Fake microsecond counter's overflowed, resetting to 0.");
+            LOG.warning("TransactionCounter counter is overflowed, resetting to 0.");
         }
 
         if (timestamp.get() > previousTimestamp.get()) {
-            if (transactionCounter.get() != 0) {
-                transactionCounter.set(0);
-                previousTimestamp.set(timestamp.get());
-                LOG.fine("Fake microsecond counter back to 0, next second in the stream has arrived.");
-            }
-        }
+            long oldTc =  transactionCounter.getAndSet(0);
+            long oldTimestamp = previousTimestamp.getAndSet(timestamp.get());
+            LOG.info("TransactionCounter Set to 0: " +
+                    " previousTimestamp => " + oldTimestamp +
+                    ", currentTimestamp => " + timestamp.get() +
+                    ", previousTransactionCounter => " + oldTc +
+                    ", currentTransactionCounter => " + transactionCounter.get());
 
+        } else if (timestamp.get() == previousTimestamp.get()) {
+            transactionCounter.incrementAndGet();
+        } else if (timestamp.get() < previousTimestamp.get()) {
+            LOG.warning("Transactions out of order: " +
+                    "previousTimestamp => " + previousTimestamp.get() +
+                    ", currentTimestamp => " + timestamp.get() +
+                    ", transactionCounter => " + transactionCounter.get());
+        } else {
+            LOG.warning("This code should not be reachable");
+        }
     }
 
     private void updateHeader(long timestamp, long serverId, long nextPosition) {
@@ -535,10 +542,11 @@ public class AugmenterContext implements Closeable {
         }
 
         if (queryType != null) {
-            if (queryType.equals(QueryAugmentedEventDataType.BEGIN)) {
+            if (queryType.equals(QueryAugmentedEventDataType.COMMIT)) {
                 updateTransactionCounter();
             }
         }
+
     }
 
     private void updateBinlog(String filename, long position) {
@@ -765,10 +773,6 @@ public class AugmenterContext implements Closeable {
 
             String eventType,
 
-            AtomicLong commitTimestamp,
-
-            Long transactionCounter,
-
             UUID transactionUUID,
 
             Long xxid,
@@ -793,8 +797,6 @@ public class AugmenterContext implements Closeable {
                 augmentedRows.add(
                         this.getAugmentedRow(
                                 eventType,
-                                commitTimestamp.get(),
-                                transactionCounter,
                                 transactionUUID,
                                 xxid,
                                 columns,
@@ -813,8 +815,6 @@ public class AugmenterContext implements Closeable {
 
     private AugmentedRow getAugmentedRow(
             String eventType,
-            Long commitTimestamp,
-            long transactionCounter,
             UUID transactionUUID,
             Long transactionXid,
             List<ColumnSchema> columnSchemas,
@@ -843,7 +843,6 @@ public class AugmenterContext implements Closeable {
                 eventType,
                 schemaName, tableName,
                 transactionUUID, transactionXid,
-                commitTimestamp, transactionCounter,
                 primaryKeyColumns, stringifiedCellValues, deserializedCellValues
         );
 

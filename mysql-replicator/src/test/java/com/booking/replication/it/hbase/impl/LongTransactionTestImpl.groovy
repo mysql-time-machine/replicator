@@ -127,6 +127,15 @@ class LongTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest 
         ))
         replicantMySQLHandle.commit()
 
+        // begin TODO: split transaction test
+        //  sleep_until_new_second
+        //  (1..10).do(update) // bump transaction counter
+        //  begin long transaction
+        //  sleep_until_next_second
+        //  commit
+        //  (1..5).do(update) // bump transaction counter but less than in previous second
+        // end TODO
+
         // UPDATE 1
         def where = " where pk_part_1 = 'user' and pk_part_2 = 42"
         replicantMySQLHandle.execute(sprintf(

@@ -41,7 +41,6 @@ public class AugmenterContext implements Closeable {
         String DDL_TEMPORARY_TABLE_PATTERN = "augmenter.context.pattern.ddl.temporary.table";
         String DDL_VIEW_PATTERN = "augmenter.context.pattern.ddl.view";
         String DDL_ANALYZE_PATTERN = "augmenter.context.pattern.ddl.analyze";
-        String PSEUDO_GTID_PATTERN = "augmenter.context.pattern.pseudo.gtid";
         String ENUM_PATTERN = "augmenter.context.pattern.enum";
         String SET_PATTERN = "augmenter.context.pattern.set";
         String EXCLUDE_TABLE = "augmenter.context.exclude.table";
@@ -59,7 +58,6 @@ public class AugmenterContext implements Closeable {
     private static final String DEFAULT_DDL_TEMPORARY_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(temporary)\\s+(table)\\s+(\\S+)";
     private static final String DEFAULT_DDL_VIEW_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(view)\\s+(\\S+)";
     private static final String DEFAULT_DDL_ANALYZE_PATTERN = "^(/\\*.*?\\*/\\s*)?(analyze)\\s+(table)\\s+(\\S+)";
-    private static final String DEFAULT_PSEUDO_GTID_PATTERN = "(?<=_pseudo_gtid_hint__asc\\:)(.{8}\\:.{16}\\:.{8})";
     private static final String DEFAULT_ENUM_PATTERN = "(?<=enum\\()(.*?)(?=\\))";
     private static final String DEFAULT_SET_PATTERN = "(?<=set\\()(.*?)(?=\\))";
 
@@ -74,7 +72,6 @@ public class AugmenterContext implements Closeable {
     private final Pattern ddlTemporaryTablePattern;
     private final Pattern ddlViewPattern;
     private final Pattern ddlAnalyzePattern;
-    private final Pattern pseudoGTIDPattern;
     private final Pattern enumPattern;
     private final Pattern setPattern;
     private final boolean transactionsEnabled;
@@ -143,7 +140,6 @@ public class AugmenterContext implements Closeable {
         this.ddlTemporaryTablePattern = this.getPattern(configuration, Configuration.DDL_TEMPORARY_TABLE_PATTERN, AugmenterContext.DEFAULT_DDL_TEMPORARY_TABLE_PATTERN);
         this.ddlViewPattern = this.getPattern(configuration, Configuration.DDL_VIEW_PATTERN, AugmenterContext.DEFAULT_DDL_VIEW_PATTERN);
         this.ddlAnalyzePattern = this.getPattern(configuration, Configuration.DDL_ANALYZE_PATTERN, AugmenterContext.DEFAULT_DDL_ANALYZE_PATTERN);
-        this.pseudoGTIDPattern = this.getPattern(configuration, Configuration.PSEUDO_GTID_PATTERN, AugmenterContext.DEFAULT_PSEUDO_GTID_PATTERN);
         this.enumPattern = this.getPattern(configuration, Configuration.ENUM_PATTERN, AugmenterContext.DEFAULT_ENUM_PATTERN);
         this.setPattern = this.getPattern(configuration, Configuration.SET_PATTERN, AugmenterContext.DEFAULT_SET_PATTERN);
         this.transactionsEnabled = Boolean.parseBoolean(configuration.getOrDefault(Configuration.TRANSACTIONS_ENABLED, "true").toString());
@@ -251,7 +247,7 @@ public class AugmenterContext implements Closeable {
                 Matcher matcher;
 
                 this.metrics.getRegistry()
-                        .counter("hbase.augmenter_context.type.query").inc(1L);
+                        .counter("augmenter_context.type.query").inc(1L);
 
                 // begin
                 if (this.beginPattern.matcher(query).find()) {
@@ -262,12 +258,12 @@ public class AugmenterContext implements Closeable {
                             queryRawEventData.getDatabase(),
                             null
                     );
-
                     if (!this.transaction.begin()) {
                         AugmenterContext.LOG.log(Level.WARNING, "transaction already started");
                     }
 
                 }
+
                 // commit
                 else if (this.commitPattern.matcher(query).find()) {
                     this.updateCommons(
@@ -300,8 +296,8 @@ public class AugmenterContext implements Closeable {
                 // ddl table
                 else if ((matcher = this.ddlTablePattern.matcher(query)).find()) {
                     this.metrics.getRegistry()
-                            .counter("hbase.augmenter_context.type.ddl_table").inc(1L);
-                    Boolean shouldProcess = ( queryRawEventData.getDatabase().equals(replicatedSchema) );
+                            .counter("augmenter_context.type.ddl_table").inc(1L);
+                    Boolean shouldProcess = (queryRawEventData.getDatabase().equals(replicatedSchema) );
                     this.updateCommons(
                             shouldProcess,
                             QueryAugmentedEventDataType.DDL_TABLE,
@@ -355,26 +351,6 @@ public class AugmenterContext implements Closeable {
                             QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
                             queryRawEventData.getDatabase(),
                             null
-                    );
-                }
-
-                // pseudoGTID
-                else if ((matcher = this.pseudoGTIDPattern.matcher(query)).find()) {
-                    this.metrics.getRegistry()
-                            .counter("hbase.augmenter_context.type.pseudo_gtid").inc(1L);
-                    this.updateCommons(
-                            false,
-                            QueryAugmentedEventDataType.PSEUDO_GTID,
-                            null,
-                            queryRawEventData.getDatabase(),
-                            null
-                    );
-
-                    this.updateGTID(
-                            GTIDType.PSEUDO,
-                            matcher.group(0),
-                            (byte) 0,
-                            0
                     );
                 } else {
                     this.metrics.getRegistry()
@@ -546,7 +522,6 @@ public class AugmenterContext implements Closeable {
                 updateTransactionCounter();
             }
         }
-
     }
 
     private void updateBinlog(String filename, long position) {
@@ -657,6 +632,7 @@ public class AugmenterContext implements Closeable {
     public CurrentTransaction getTransaction() {
         return this.transaction;
     }
+
 
     public boolean shouldProcess() {
         return this.continueFlag.get();

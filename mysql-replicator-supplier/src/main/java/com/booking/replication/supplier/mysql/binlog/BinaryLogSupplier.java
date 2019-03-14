@@ -60,7 +60,7 @@ public class BinaryLogSupplier implements Supplier {
         Object schema = configuration.get(Configuration.MYSQL_SCHEMA);
         Object username = configuration.get(Configuration.MYSQL_USERNAME);
         Object password = configuration.get(Configuration.MYSQL_PASSWORD);
-        Object positionType = configuration.getOrDefault(Configuration.POSITION_TYPE, PositionType.ANY.name());
+        Object positionType = configuration.getOrDefault(Configuration.POSITION_TYPE, PositionType.GTID);
 
         Objects.requireNonNull(hostname, String.format("Configuration required: %s", Configuration.MYSQL_HOSTNAME));
         Objects.requireNonNull(schema, String.format("Configuration required: %s", Configuration.MYSQL_SCHEMA));
@@ -174,14 +174,28 @@ public class BinaryLogSupplier implements Supplier {
                         }
 
                         if (checkpoint != null) {
+
+                            if (checkpoint.getGTID() != null && checkpoint.getGTID().getType() == GTIDType.PSEUDO) {
+                                throw new RuntimeException("PseudoGTID checkpoints are no longer supported. Last version of the replicator that supports pseudoGTIDs is v0.14.6. For all subsequent versions please use native GTIDs instead.");
+                            }
+
                             this.client.setServerId(checkpoint.getServerId());
 
+                            // start from binlog position and filename
                             if ((this.positionType == PositionType.ANY || this.positionType == PositionType.BINLOG) && checkpoint.getBinlog() != null) {
+                                LOG.info("Starting Binlog Client from binlog:position ->  " +
+                                        checkpoint.getBinlog().getFilename() +
+                                        ":" +
+                                        checkpoint.getBinlog().getPosition()
+                                );
+
                                 this.client.setBinlogFilename(checkpoint.getBinlog().getFilename());
                                 this.client.setBinlogPosition(checkpoint.getBinlog().getPosition());
                             }
 
-                            if ((this.positionType == PositionType.ANY || this.positionType == PositionType.GTID) && checkpoint.getGTID() != null && checkpoint.getGTID().getType() == GTIDType.REAL) {
+                            // start from GTID
+                            if ((this.positionType == PositionType.GTID) && checkpoint.getGTID() != null && checkpoint.getGTID().getType() == GTIDType.REAL) {
+                                LOG.info("Starting Binlog Client from GTID checkpoint: " + checkpoint.getGTID().getValue());
                                 this.client.setGtidSet(checkpoint.getGTID().getValue());
                             }
                         }

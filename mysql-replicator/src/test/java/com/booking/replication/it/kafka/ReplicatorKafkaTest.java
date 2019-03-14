@@ -240,6 +240,7 @@ public class ReplicatorKafkaTest {
         configuration.put(Coordinator.Configuration.TYPE, Coordinator.Type.ZOOKEEPER.name());
 
         configuration.put(Supplier.Configuration.TYPE, Supplier.Type.BINLOG.name());
+        configuration.put(BinaryLogSupplier.Configuration.POSITION_TYPE, BinaryLogSupplier.PositionType.BINLOG);
 
         configuration.put(Augmenter.Configuration.SCHEMA_TYPE, Augmenter.SchemaType.ACTIVE.name());
         configuration.put(Seeker.Configuration.TYPE, Seeker.Type.KAFKA.name());

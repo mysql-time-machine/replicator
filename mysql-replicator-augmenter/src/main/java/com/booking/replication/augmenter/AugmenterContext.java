@@ -522,6 +522,7 @@ public class AugmenterContext implements Closeable {
                 updateTransactionCounter();
             }
         }
+
     }
 
     private void updateBinlog(String filename, long position) {

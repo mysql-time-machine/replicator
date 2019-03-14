@@ -106,7 +106,6 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
     @Override
     public synchronized Collection<AugmentedEvent> apply(RawEvent rawEvent) {
 
-
         try {
 
             this.metrics.getRegistry().counter("augmenter.apply.attempt").inc(1L);
@@ -121,6 +120,7 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
                 this.metrics.getRegistry().counter("augmenter.apply.should_process.true").inc(1L);
 
                 if(this.context.isTransactionsEnabled()){
+
                     return processTransactionFlow(eventHeader, eventData);
                 }
 

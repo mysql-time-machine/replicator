@@ -117,7 +117,9 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
             this.context.updateContext(eventHeader, eventData);
 
             if (this.context.shouldProcess()) {
+
                 if(this.context.isTransactionsEnabled()){
+
                     return processTransactionFlow(eventHeader, eventData);
                 }
                 AugmentedEvent augmentedEvent = getAugmentedEvent(eventHeader, eventData);

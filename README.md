@@ -12,7 +12,7 @@ This readme file provides some basic documentation on how to get started. For mo
 
 ### Building required Docker images
 1. Run `mvn clean package` from the root of the `replicator` repository to build the MySQL Replicator distribution that will be used later;
-2. Copy the distribtution file to the `images/replicator_testing/input/replicator/` directory inside the `docker` repository;
+2. Copy the distribution file to the `images/replicator_testing/input/replicator/` directory inside the `docker` repository;
 3. Run `container_build.sh` script from the `images/replicator_testing/` directory inside the `docker` repository;
 4. Run `docker images` to verify that `replicator-testing` image has been built successfully;
 

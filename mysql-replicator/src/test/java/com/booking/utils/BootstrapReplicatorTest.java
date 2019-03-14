@@ -4,6 +4,7 @@ package com.booking.utils;
 import com.booking.replication.applier.kafka.KafkaApplier;
 import com.booking.replication.applier.schema.registry.BCachedSchemaRegistryClient;
 import com.booking.replication.augmenter.ActiveSchemaManager;
+import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.commons.services.ServicesControl;
 import com.booking.replication.commons.services.ServicesProvider;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
@@ -24,6 +25,7 @@ public class BootstrapReplicatorTest {
     private static final String KAFKA_REPLICATOR_TOPIC_NAME = "mytopic";
     private static final String MYSQL_INIT_SCRIPT = "mysql.init.sql";
     private static final String MYSQL_ROOT_USERNAME = "root";
+    private static final boolean BOOTSTRAP_ACTIVE = true;
     private static ServicesControl mysqlBinaryLog;
     private static ServicesControl mysqlActiveSchema;
     private static ServicesControl kafkaZk;
@@ -59,6 +61,7 @@ public class BootstrapReplicatorTest {
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_SCHEMA, BootstrapReplicatorTest.MYSQL_ACTIVE_SCHEMA);
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, BootstrapReplicatorTest.MYSQL_ROOT_USERNAME);
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PASSWORD, BootstrapReplicatorTest.MYSQL_PASSWORD);
+        configuration.put(Augmenter.Configuration.BOOTSTRAP, BootstrapReplicatorTest.BOOTSTRAP_ACTIVE);
 
         String schemaRegistryUrl = String.format("http://%s:%d", BootstrapReplicatorTest.schemaRegistry.getHost(), BootstrapReplicatorTest.schemaRegistry.getPort());
         configuration.put(KafkaApplier.Configuration.SCHEMA_REGISTRY_URL, schemaRegistryUrl);

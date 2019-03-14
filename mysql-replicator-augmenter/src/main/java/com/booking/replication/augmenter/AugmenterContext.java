@@ -96,7 +96,6 @@ public class AugmenterContext implements Closeable {
 
     private final AtomicReference<String> binlogFilename;
     private final AtomicLong binlogPosition;
-    private final AtomicReference<String> currentTransactionSchemaName;
 
     private final GTIDType gtidType;
     private final AtomicReference<String> gtidValue;
@@ -177,7 +176,6 @@ public class AugmenterContext implements Closeable {
 
         this.isAtDDL = new AtomicBoolean();
         this.isAtDDL.set(false);
-        currentTransactionSchemaName = new AtomicReference<>();
         replicatedSchema = (String) configuration.get( BinaryLogSupplier.Configuration.MYSQL_SCHEMA );
 
     }
@@ -257,7 +255,6 @@ public class AugmenterContext implements Closeable {
 
                 // begin
                 if (this.beginPattern.matcher(query).find()) {
-                    currentTransactionSchemaName.set(queryRawEventData.getDatabase());
                     this.updateCommons(
                             false,
                             QueryAugmentedEventDataType.BEGIN,
@@ -474,7 +471,7 @@ public class AugmenterContext implements Closeable {
                     tblName = eventTable.getName();
                 }
                 this.updateCommons(
-                        ( currentTransactionSchemaName.get().equals(replicatedSchema) ) && ((eventTable == null) || (!this.excludeTable(eventTable.getName()))),
+                        ( (eventTable == null) || (!this.excludeTable(eventTable.getName())) ),
                         null,
                         null,
                         dbName,

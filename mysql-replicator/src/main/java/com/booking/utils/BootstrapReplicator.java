@@ -3,6 +3,7 @@ package com.booking.utils;
 import com.booking.replication.applier.kafka.KafkaApplier;
 import com.booking.replication.applier.schema.registry.BCachedSchemaRegistryClient;
 import com.booking.replication.augmenter.ActiveSchemaManager;
+import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.model.event.format.avro.EventDataPresenterAvro;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.FullTableName;
@@ -31,6 +32,11 @@ public class BootstrapReplicator {
     }
 
     public void run() {
+
+        if ((boolean) configuration.get(Augmenter.Configuration.BOOTSTRAP) == false) {
+            LOG.log(Level.INFO, "Skipping active schema bootstrapping");
+            return;
+        }
         LOG.log(Level.INFO, "Running bootstrapping");
 
         ActiveSchemaManager activeSchemaManager = new ActiveSchemaManager(configuration);
@@ -76,8 +82,5 @@ public class BootstrapReplicator {
         } catch (Exception e) {
             LOG.log(Level.SEVERE, "Error while bootstrapping", e);
         }
-
-
     }
-
 }

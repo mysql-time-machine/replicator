@@ -163,12 +163,12 @@ public class Replicator {
                     Map<Integer, Collection<AugmentedEvent>> splitEventsMap = new HashMap<>();
                     for (AugmentedEvent event : events) {
                         this.metrics.getRegistry()
-                                .counter("hbase.streams.partitioner.event.apply.attempt").inc(1L);
+                                .counter("streams.partitioner.event.apply.attempt").inc(1L);
                         splitEventsMap.computeIfAbsent(
                                 this.partitioner.apply(event, tasks), partition -> new ArrayList<>()
                         ).add(event);
                         metrics.getRegistry()
-                                .counter("hbase.streams.partitioner.event.apply.success").inc(1L);
+                                .counter("streams.partitioner.event.apply.success").inc(1L);
                     }
                     for (Collection<AugmentedEvent> splitEvents : splitEventsMap.values()) {
                         this.destinationStream.push(splitEvents);

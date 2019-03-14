@@ -13,10 +13,6 @@ public interface CheckpointApplier extends BiConsumer<AugmentedEvent, Integer>, 
         NONE {
             @Override
             protected CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath, long period, boolean transactionEnabled) {
-//                BiConsumer<AugmentedEvent, Integer> cap =  (event, map) -> {
-//
-//                };
-//                return (CheckpointApplier) cap;
                 return new DummyCheckPointApplier();
             }
         },
@@ -46,7 +42,7 @@ public interface CheckpointApplier extends BiConsumer<AugmentedEvent, Integer>, 
         ).newInstance(
                 checkpointStorage,
                 checkpointPath,
-                Long.parseLong(configuration.getOrDefault(Configuration.PERIOD, "60000").toString()),
+                Long.parseLong(configuration.getOrDefault(Configuration.PERIOD, "5000").toString()),
                 transactionEnabled
         );
     }

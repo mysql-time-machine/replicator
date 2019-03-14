@@ -436,6 +436,8 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
         // Augmenter
         configuration.put(AugmenterContext.Configuration.TRANSACTION_BUFFER_LIMIT, String.valueOf(AUGMENTER_TRANSACTION_BUFFER_SIZE_LIMIT))
+        configuration.put(AugmenterContext.Configuration.TRANSACTIONS_ENABLED, true);
+
         configuration.put(AugmenterFilter.Configuration.FILTER_TYPE, AUGMENTER_FILTER_TYPE)
         configuration.put(AugmenterFilter.Configuration.FILTER_CONFIGURATION, AUGMENTER_FILTER_CONFIGURATION)
 

@@ -1,14 +1,13 @@
 [![][Build Status img]][Build Status]
 [![][Coverage Status img]][Coverage Status]
 [![][Known Vulnerabilities img]][Known Vulnerabilities]
-[![][Quality Gate img]][Quality Gate]
 [![][license img]][license]
 
 ## MySQL Replicator
 Replicates data changes from MySQL binlog to HBase or Kafka. In case of HBase, preserves the previous data versions. HBase storage is intended for auditing and analysis of historical data. In addition, special daily-changes tables can be maintained in HBase, which are convenient for fast and cheap imports from HBase to Hive. Replication to Kafka is intended for easy real-time access to a stream of data changes.
 
 ## Intro
-This readme file provides some basic documentation on how to get started. For more details, refer to official documentation at [mysql-time-machine](https://mysql-time-machine.github.io/).
+This readme file provides basic introduction on how to get started. For more details, refer to official documentation at [mysql-time-machine](https://mysql-time-machine.github.io/).
 
 ### Building required Docker images
 1. Run `mvn clean package` from the root of the `replicator` repository to build the MySQL Replicator distribution that will be used later;
@@ -161,13 +160,5 @@ limitations under the License.
 [Coverage Status img]:https://codecov.io/gh/mysql-time-machine/replicator/branch/master/graph/badge.svg
 [Known Vulnerabilities img]:https://snyk.io/test/github/mysql-time-machine/replicator/badge.svg
 [Known Vulnerabilities]:https://snyk.io/test/github/mysql-time-machine/replicator
-[Quality Gate img]:https://sonarcloud.io/api/badges/gate?key=com.booking%3Amysql-replicator
-[Quality Gate]:https://sonarcloud.io/dashboard?id=com.booking%3Amysql-replicator
-[Maven Central]:https://maven-badges.herokuapp.com/maven-central/com.booking/mysql-replicator
-[Maven Central img]:https://maven-badges.herokuapp.com/maven-central/com.booking/mysql-replicator/badge.svg
 [license]:LICENSE
 [license img]:https://img.shields.io/badge/license-Apache%202-blue.svg
-[License Check img]:https://app.fossa.io/api/projects/git%2Bgithub.com%2Fmysql-time-machine%2Freplicator.svg?type=shield
-[License Check]:https://app.fossa.io/projects/git%2Bgithub.com%2Fmysql-time-machine%2Freplicator?ref=badge_shield
-[Javadocs]:http://javadoc.io/doc/com.booking/mysql-replicator
-[Javadocs img]:http://javadoc.io/badge/com.booking/mysql-replicator.svg

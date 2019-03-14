@@ -53,6 +53,14 @@ public class CurrentTransaction {
         }
     }
 
+    public int getCurrentBufferSize() {
+        if (buffer != null && buffer.get() != null) {
+            return buffer.get().size();
+        } else {
+            return 0;
+        }
+    }
+
     public boolean add(AugmentedEvent event) {
         if (this.started.get() && !this.sizeLimitExceeded()) {
             return this.buffer.get().add(event);

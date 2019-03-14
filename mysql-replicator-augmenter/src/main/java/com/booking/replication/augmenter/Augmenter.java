@@ -108,8 +108,7 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
 
         try {
 
-            this.metrics.getRegistry()
-                    .counter("hbase.augmenter.apply.attempt").inc(1L);
+            this.metrics.getRegistry().counter("augmenter.apply.attempt").inc(1L);
 
             RawEventHeaderV4 eventHeader = rawEvent.getHeader();
             RawEventData eventData = rawEvent.getData();
@@ -118,15 +117,24 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
 
             if (this.context.shouldProcess()) {
 
+                this.metrics.getRegistry().counter("augmenter.apply.should_process.true").inc(1L);
+
                 if(this.context.isTransactionsEnabled()){
 
                     return processTransactionFlow(eventHeader, eventData);
                 }
+
                 AugmentedEvent augmentedEvent = getAugmentedEvent(eventHeader, eventData);
+
                 if (augmentedEvent == null) return null;
+
                 return Collections.singletonList(augmentedEvent);
             }
+
+            this.metrics.getRegistry().counter("augmenter.apply.should_process.false").inc(1L);
+
             return null;
+
         } finally {
             this.context.updatePosition();
         }
@@ -161,11 +169,8 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
             if (augmentedEvent == null) return null;
 
             if (this.context.getTransaction().started()) {
-
                 if (this.context.getTransaction().resuming() && this.context.getTransaction().sizeLimitExceeded()) {
-
                     Collection<AugmentedEvent> augmentedEvents = this.context.getTransaction().getAndClear();
-
                     this.context.getTransaction().add(augmentedEvent);
                     return augmentedEvents;
                 } else {

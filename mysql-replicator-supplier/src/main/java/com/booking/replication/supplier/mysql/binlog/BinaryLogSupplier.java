@@ -37,6 +37,7 @@ public class BinaryLogSupplier implements Supplier {
         String MYSQL_USERNAME = "mysql.username";
         String MYSQL_PASSWORD = "mysql.password";
         String POSITION_TYPE = "supplier.binlog.position.type";
+        String OVERRIDE_CHECKPOINT_START_POSITION = "override.checkpoint.start.position";
         String BINLOG_START_FILENAME = "supplier.binlog.start.filename";
         String BINLOG_START_POSITION = "supplier.binlog.start.position";
     }
@@ -48,6 +49,7 @@ public class BinaryLogSupplier implements Supplier {
     private final String username;
     private final String password;
     private final PositionType positionType;
+    private final Boolean positionOverride;
 
     private ExecutorService executor;
     private BinaryLogClient client;
@@ -61,6 +63,7 @@ public class BinaryLogSupplier implements Supplier {
         Object username = configuration.get(Configuration.MYSQL_USERNAME);
         Object password = configuration.get(Configuration.MYSQL_PASSWORD);
         Object positionType = configuration.getOrDefault(Configuration.POSITION_TYPE, PositionType.GTID);
+        Object positionOverride = configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_START_POSITION, false);
 
         Objects.requireNonNull(hostname, String.format("Configuration required: %s", Configuration.MYSQL_HOSTNAME));
         Objects.requireNonNull(schema, String.format("Configuration required: %s", Configuration.MYSQL_SCHEMA));
@@ -74,6 +77,7 @@ public class BinaryLogSupplier implements Supplier {
         this.username = username.toString();
         this.password = password.toString();
         this.positionType = PositionType.valueOf(positionType.toString());
+        this.positionOverride = (Boolean) positionOverride;
     }
 
     @SuppressWarnings("unchecked")
@@ -182,7 +186,7 @@ public class BinaryLogSupplier implements Supplier {
                             this.client.setServerId(checkpoint.getServerId());
 
                             // start from binlog position and filename
-                            if ((this.positionType == PositionType.ANY || this.positionType == PositionType.BINLOG) && checkpoint.getBinlog() != null) {
+                            if ((this.positionType == PositionType.ANY || this.positionType == PositionType.BINLOG || this.positionOverride) && checkpoint.getBinlog() != null) {
                                 LOG.info("Starting Binlog Client from binlog:position ->  " +
                                         checkpoint.getBinlog().getFilename() +
                                         ":" +

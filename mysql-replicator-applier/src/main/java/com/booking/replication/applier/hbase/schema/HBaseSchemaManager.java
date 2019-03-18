@@ -84,7 +84,7 @@ public class HBaseSchemaManager {
 
 
         if (!DRY_RUN) {
-
+            hbaseTableName = hbaseTableName.toLowerCase();
             try ( Admin admin = connection.getAdmin() ){
 
                 if (seenHBaseTables.containsKey(hbaseTableName)) {

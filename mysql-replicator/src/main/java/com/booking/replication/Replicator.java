@@ -20,7 +20,6 @@ import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.model.RawEvent;
 import com.booking.utils.BootstrapReplicator;
 import com.codahale.metrics.MetricRegistry;
-import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -47,6 +46,7 @@ public class Replicator {
         String OVERRIDE_CHECKPOINT_START_POSITION = "override.checkpoint.start.position";
         String OVERRIDE_CHECKPOINT_BINLOG_FILENAME = "override.checkpoint.binLog.filename";
         String OVERRIDE_CHECKPOINT_BINLOG_POSITION = "override.checkpoint.binLog.position";
+        String OVERRIDE_CHECKPOINT_GTID_SET = "override.checkpoint.gtidSet";
     }
 
     private static final Logger LOG = Logger.getLogger(Replicator.class.getName());
@@ -84,6 +84,7 @@ public class Replicator {
         boolean overrideCheckpointStartPosition = Boolean.parseBoolean(configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_START_POSITION, false).toString());
         String overrideCheckpointBinLogFileName = configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_BINLOG_FILENAME, "").toString();
         long overrideCheckpointBinlogPosition = Long.parseLong(configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_BINLOG_POSITION, "0").toString());
+        String overrideCheckpointGtidSet = configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_GTID_SET, "").toString();
 
 
         this.checkpointPath = checkpointPath.toString();
@@ -199,10 +200,16 @@ public class Replicator {
 
                 Replicator.LOG.log(Level.INFO, "starting supplier");
 
-                Checkpoint from = this.seeker.seek(this.getCheckpoint());
+                Checkpoint from = this.seeker.seek(this.loadSafeCheckpoint());
 
                 if(overrideCheckpointStartPosition){
-                    from = new Checkpoint(new Binlog(overrideCheckpointBinLogFileName, overrideCheckpointBinlogPosition));
+                    if (overrideCheckpointBinLogFileName != null && !overrideCheckpointBinLogFileName.equals("")) {
+                       from = new Checkpoint(new Binlog(overrideCheckpointBinLogFileName, overrideCheckpointBinlogPosition));
+                    } else if (overrideCheckpointGtidSet != null && !overrideCheckpointGtidSet.equals("")) {
+                       from = new Checkpoint(overrideCheckpointGtidSet);
+                    } else {
+                        throw new RuntimeException("Impossible case!");
+                    }
                 }
 
                 this.supplier.start(from);
@@ -235,7 +242,9 @@ public class Replicator {
             }
         });
 
-        this.supplier.onEvent(this.sourceStream::push);
+        this.supplier.onEvent((event) -> {
+            this.sourceStream.push(event);
+        });
 
         this.supplier.onException(exceptionHandle);
         this.sourceStream.onException(exceptionHandle);
@@ -247,7 +256,7 @@ public class Replicator {
         return this.applier;
     }
 
-    private Checkpoint getCheckpoint() throws IOException {
+    private Checkpoint loadSafeCheckpoint() throws IOException {
         Checkpoint checkpoint = this.coordinator.loadCheckpoint(this.checkpointPath);
 
         if (checkpoint == null && this.checkpointDefault != null) {
@@ -313,7 +322,7 @@ public class Replicator {
             Replicator.LOG.log(Level.INFO, "rewinding supplier");
 
             this.supplier.disconnect();
-            this.supplier.connect(this.seeker.seek(this.getCheckpoint()));
+            this.supplier.connect(this.seeker.seek(this.loadSafeCheckpoint()));
         } catch (IOException exception) {
             Replicator.LOG.log(Level.SEVERE, "error rewinding supplier", exception);
         }

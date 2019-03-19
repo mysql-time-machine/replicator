@@ -15,7 +15,9 @@ import com.booking.replication.commons.metrics.Metrics;
 import com.booking.replication.supplier.model.*;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 import com.codahale.metrics.MetricRegistry;
+import com.github.shyiko.mysql.binlog.event.EventType;
 
+import javax.swing.event.DocumentEvent;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.*;
@@ -27,6 +29,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static java.lang.Thread.sleep;
 
 public class AugmenterContext implements Closeable {
 
@@ -97,6 +101,7 @@ public class AugmenterContext implements Closeable {
     private final GTIDType gtidType;
     private final AtomicReference<String> gtidValue;
     private final AtomicReference<Byte> gtidFlags;
+    private final AtomicReference<String> gtidSet;
 
     private final AtomicReference<Collection<ColumnSchema>> columnsBefore;
     private final AtomicReference<String> createTableBefore;
@@ -164,6 +169,7 @@ public class AugmenterContext implements Closeable {
         this.gtidType = GTIDType.valueOf(configuration.getOrDefault(Configuration.GTID_TYPE, AugmenterContext.DEFAULT_GTID_TYPE).toString());
         this.gtidValue = new AtomicReference<>();
         this.gtidFlags = new AtomicReference<>();
+        this.gtidSet = new AtomicReference<>();
 
         this.columnsBefore = new AtomicReference<>();
         this.createTableBefore = new AtomicReference<>();
@@ -203,7 +209,7 @@ public class AugmenterContext implements Closeable {
         return transactionCounter;
     }
 
-    public synchronized void updateContext(RawEventHeaderV4 eventHeader, RawEventData eventData) {
+    public synchronized void updateContext(RawEventHeaderV4 eventHeader, RawEventData eventData, String lastGTIDSet) {
 
         this.metrics.getRegistry()
                 .counter("hbase.augmenter_context.update_header.attempt").inc(1L);
@@ -240,6 +246,10 @@ public class AugmenterContext implements Closeable {
                 );
                 break;
 
+            case UNKNOWN:
+                break;
+            case START_V3:
+                break;
             case QUERY:
 
                 QueryRawEventData queryRawEventData = QueryRawEventData.class.cast(eventData);
@@ -386,9 +396,20 @@ public class AugmenterContext implements Closeable {
                 break;
 
             case GTID:
+
                 this.metrics.getRegistry()
-                        .counter("hbase.augmenter_context.type.gtid").inc(1L);
+                        .counter("augmenter_context.type.gtid").inc(1L);
+
                 GTIDRawEventData gtidRawEventData = GTIDRawEventData.class.cast(eventData);
+                System.out.println("====== GTID =====> " + gtidRawEventData.getGTID());
+                System.out.println("------ GTIDSet -----> " + lastGTIDSet);
+                this.gtidSet.set(lastGTIDSet);
+                try {
+                    sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+
                 this.updateCommons(
                         false,
                         QueryAugmentedEventDataType.GTID,
@@ -453,6 +474,58 @@ public class AugmenterContext implements Closeable {
                 );
                 break;
 
+            case STOP:
+                break;
+            case INTVAR:
+                break;
+            case LOAD:
+                break;
+            case SLAVE:
+                break;
+            case CREATE_FILE:
+                break;
+            case APPEND_BLOCK:
+                break;
+            case EXEC_LOAD:
+                break;
+            case DELETE_FILE:
+                break;
+            case NEW_LOAD:
+                break;
+            case RAND:
+                break;
+            case USER_VAR:
+                break;
+            case FORMAT_DESCRIPTION:
+                break;
+            case BEGIN_LOAD_QUERY:
+                break;
+            case EXECUTE_LOAD_QUERY:
+                break;
+            case PRE_GA_WRITE_ROWS:
+                break;
+            case PRE_GA_UPDATE_ROWS:
+                break;
+            case PRE_GA_DELETE_ROWS:
+                break;
+            case INCIDENT:
+                break;
+            case HEARTBEAT:
+                break;
+            case IGNORABLE:
+                break;
+            case ROWS_QUERY:
+                break;
+            case ANONYMOUS_GTID:
+                break;
+            case PREVIOUS_GTIDS:
+                break;
+            case TRANSACTION_CONTEXT:
+                break;
+            case VIEW_CHANGE:
+                break;
+            case XA_PREPARE:
+                break;
             default:
                 this.metrics.getRegistry()
                         .counter("hbase.augmenter_context.type.default").inc(1L);
@@ -651,14 +724,22 @@ public class AugmenterContext implements Closeable {
         return this.eventTable.get();
     }
 
-    public Checkpoint getCheckpoint() {
+    public Checkpoint newCheckpoint() {
         return new Checkpoint(
                 this.timestamp.get(),
                 this.serverId.get(),
                 this.getGTID(),
-                this.getBinlog()
+                this.getBinlog(),
+                this.gtidSet.get()
         );
     }
+
+    public Checkpoint newCheckpointFromGTIDSet() {
+        return new Checkpoint(
+                this.gtidSet.get()
+        );
+    }
+
 
     public boolean isTransactionsEnabled() {
         return transactionsEnabled;

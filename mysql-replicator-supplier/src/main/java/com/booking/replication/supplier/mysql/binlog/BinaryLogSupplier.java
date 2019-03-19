@@ -17,11 +17,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static java.lang.Thread.sleep;
+
 public class BinaryLogSupplier implements Supplier {
+
     private static final Logger LOG = Logger.getLogger(BinaryLogSupplier.class.getName());
 
     public enum PositionType {
@@ -50,6 +54,7 @@ public class BinaryLogSupplier implements Supplier {
     private final String password;
     private final PositionType positionType;
     private final Boolean positionOverride;
+    private final AtomicReference<String> binlogClientGTIDSet;
 
     private ExecutorService executor;
     private BinaryLogClient client;
@@ -78,6 +83,7 @@ public class BinaryLogSupplier implements Supplier {
         this.password = password.toString();
         this.positionType = PositionType.valueOf(positionType.toString());
         this.positionOverride = (Boolean) positionOverride;
+        this.binlogClientGTIDSet = new AtomicReference<>();
     }
 
     @SuppressWarnings("unchecked")
@@ -106,6 +112,15 @@ public class BinaryLogSupplier implements Supplier {
         client.setEventDeserializer(eventDeserializer);
 
         return client;
+    }
+
+    @Override
+    public String getGTIDSet() {
+        return this.client.getGtidSet();
+    }
+
+    public void updateGTIDSet(String gtidSet) {
+        this.binlogClientGTIDSet.set(gtidSet);
     }
 
     @Override
@@ -169,7 +184,7 @@ public class BinaryLogSupplier implements Supplier {
                             this.client.registerEventListener(
                                     event -> {
                                         try {
-                                            this.consumer.accept(RawEvent.getRawEventProxy(new RawEventInvocationHandler(event)));
+                                            this.consumer.accept(RawEvent.getRawEventProxy(new RawEventInvocationHandler(this.client, event)));
                                         } catch (ReflectiveOperationException exception) {
                                             throw new RuntimeException(exception);
                                         }
@@ -178,37 +193,19 @@ public class BinaryLogSupplier implements Supplier {
                         }
 
                         if (checkpoint != null) {
-
-                            if (checkpoint.getGTID() != null && checkpoint.getGTID().getType() == GTIDType.PSEUDO) {
-                                throw new RuntimeException("PseudoGTID checkpoints are no longer supported. Last version of the replicator that supports pseudoGTIDs is v0.14.6. For all subsequent versions please use native GTIDs instead.");
-                            }
-
-                            this.client.setServerId(checkpoint.getServerId());
-
-                            // start from binlog position and filename
-                            if ((this.positionType == PositionType.ANY || this.positionType == PositionType.BINLOG || this.positionOverride) && checkpoint.getBinlog() != null) {
-                                LOG.info("Starting Binlog Client from binlog:position ->  " +
-                                        checkpoint.getBinlog().getFilename() +
-                                        ":" +
-                                        checkpoint.getBinlog().getPosition()
-                                );
-
-                                this.client.setBinlogFilename(checkpoint.getBinlog().getFilename());
-                                this.client.setBinlogPosition(checkpoint.getBinlog().getPosition());
-                            }
-
-                            // start from GTID
-                            if ((this.positionType == PositionType.GTID) && checkpoint.getGTID() != null && checkpoint.getGTID().getType() == GTIDType.REAL) {
-                                LOG.info("Starting Binlog Client from GTID checkpoint: " + checkpoint.getGTID().getValue());
-                                this.client.setGtidSet(checkpoint.getGTID().getValue());
-                            }
+                            LOG.info("Starting Binlog Client from GTIDSet checkpoint. GTIDSet: " + checkpoint.getGtidSet());
+                            this.client.setGtidSet(checkpoint.getGtidSet());
+                            this.binlogClientGTIDSet.set(this.client.getGtidSet());
+                            this.client.connect();
+                            LOG.info("Started binlog Client from GTIDSet checkpoint. GTIDSet: " + checkpoint.getGtidSet());
+                            sleep(3000);
+                            return;
                         }
 
-                        this.client.connect();
-
-                        return;
                     } catch (IOException exception) {
                         BinaryLogSupplier.LOG.log(Level.WARNING, String.format("error connecting to %s, falling over to the next one", hostname), exception);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
                     }
                 }
 

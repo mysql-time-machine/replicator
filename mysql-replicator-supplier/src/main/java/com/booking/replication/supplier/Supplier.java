@@ -24,6 +24,8 @@ public interface Supplier {
         String TYPE = "supplier.type";
     }
 
+    String getGTIDSet();
+
     void onEvent(Consumer<RawEvent> consumer);
 
     void onException(Consumer<Exception> handler);

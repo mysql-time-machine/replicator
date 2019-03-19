@@ -112,8 +112,9 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
 
             RawEventHeaderV4 eventHeader = rawEvent.getHeader();
             RawEventData eventData = rawEvent.getData();
+            String lastGTIDSet = rawEvent.getGTIDSet();
 
-            this.context.updateContext(eventHeader, eventData);
+            this.context.updateContext(eventHeader, eventData, lastGTIDSet);
 
             if (this.context.shouldProcess()) {
 

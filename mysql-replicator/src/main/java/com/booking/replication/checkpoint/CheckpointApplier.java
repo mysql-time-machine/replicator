@@ -42,7 +42,7 @@ public interface CheckpointApplier extends BiConsumer<AugmentedEvent, Integer>, 
         ).newInstance(
                 checkpointStorage,
                 checkpointPath,
-                Long.parseLong(configuration.getOrDefault(Configuration.PERIOD, "5000").toString()),
+                Long.parseLong(configuration.getOrDefault(Configuration.PERIOD, "30000").toString()),
                 transactionEnabled
         );
     }

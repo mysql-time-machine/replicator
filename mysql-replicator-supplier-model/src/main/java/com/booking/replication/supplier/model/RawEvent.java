@@ -3,6 +3,7 @@ package com.booking.replication.supplier.model;
 import java.io.Serializable;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * RawEvent extends RawEventProxyProvider so it has a method to get the
@@ -10,9 +11,15 @@ import java.lang.reflect.InvocationTargetException;
  */
 @SuppressWarnings("unused")
 public interface RawEvent extends Serializable, RawEventProxyProvider {
+
+    public AtomicReference<String> gtidSet = new AtomicReference<>();
+
     <Header extends RawEventHeader> Header getHeader();
 
     <Data extends RawEventData> Data getData();
+
+
+    String getGTIDSet();
 
     static RawEvent getRawEventProxy(InvocationHandler handler)
         throws

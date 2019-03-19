@@ -26,7 +26,7 @@ public class HeaderAugmenter {
             dbName = eventTable.getDatabase();
             tableName = eventTable.getName();
         }
-        return new AugmentedEventHeader(eventHeader.getTimestamp(), this.context.getCheckpoint(), type, dbName, tableName);
+        return new AugmentedEventHeader(eventHeader.getTimestamp(), this.context.newCheckpoint(), type, dbName, tableName);
     }
 
     private AugmentedEventType getAugmentedEventType(RawEventHeaderV4 eventHeader) {

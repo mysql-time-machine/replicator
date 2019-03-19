@@ -16,6 +16,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class CoordinatorCheckpointApplier implements CheckpointApplier {
+
     private static final Logger LOG = Logger.getLogger(CoordinatorCheckpointApplier.class.getName());
 
     private final CheckpointStorage storage;
@@ -37,13 +38,17 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
         this.lastCheckpointMap = new ConcurrentHashMap<>();
         this.executor = Executors.newSingleThreadScheduledExecutor();
         this.executor.scheduleAtFixedRate(() -> {
+
             Checkpoint minimumCheckpoint = null;
 
+            // TODO: improve this; currently minimumCheckpoint is just checkpoint with minimal timestamp
             for (Map.Entry<Integer, Long> entry : this.lastTimestampMap.entrySet()) {
+
                 if (entry.getValue() > this.lastExecution.get() && this.lastCheckpointMap.containsKey(entry.getKey())) {
+
                     Checkpoint checkpoint = this.lastCheckpointMap.get(entry.getKey());
 
-                    if (minimumCheckpoint == null || minimumCheckpoint.compareTo(checkpoint) < 0) {
+                    if (minimumCheckpoint == null ) {
                         minimumCheckpoint = checkpoint;
                     }
                 }
@@ -65,6 +70,7 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
     @Override
     public void accept(AugmentedEvent event, Integer task) {
         Checkpoint checkpoint = event.getHeader().getCheckpoint();
+
         AugmentedEventTransaction transaction = event.getHeader().getEventTransaction();
 
         this.lastTimestampMap.put(task, System.currentTimeMillis());

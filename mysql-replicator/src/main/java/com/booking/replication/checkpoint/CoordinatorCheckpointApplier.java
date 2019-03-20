@@ -55,6 +55,8 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
             }
 
             if (minimumCheckpoint != null) {
+
+                System.out.println("checkpointApplierExecutor minimumCheckpoint: " + minimumCheckpoint.getGtidSet());
                 try {
                     this.storage.saveCheckpoint(this.path, minimumCheckpoint);
                     CoordinatorCheckpointApplier.LOG.log(Level.INFO, "Last checkpoint: " + minimumCheckpoint.toString());
@@ -62,6 +64,8 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
                 } catch (IOException exception) {
                     CoordinatorCheckpointApplier.LOG.log(Level.WARNING, "error saving checkpoint", exception);
                 }
+            } else {
+                System.out.println("No minimum checkpoint");
             }
 
         }, period, period, TimeUnit.MILLISECONDS);
@@ -70,6 +74,7 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
     @Override
     public void accept(AugmentedEvent event, Integer task) {
         Checkpoint checkpoint = event.getHeader().getCheckpoint();
+        System.out.println("checkpointApplier: " + checkpoint.getGtidSet());
 
         AugmentedEventTransaction transaction = event.getHeader().getEventTransaction();
 

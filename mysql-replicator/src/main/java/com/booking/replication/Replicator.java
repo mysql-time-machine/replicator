@@ -200,16 +200,26 @@ public class Replicator {
 
                 Replicator.LOG.log(Level.INFO, "starting supplier");
 
-                Checkpoint from = this.seeker.seek(this.loadSafeCheckpoint());
+                Checkpoint from;
 
                 if(overrideCheckpointStartPosition){
+
                     if (overrideCheckpointBinLogFileName != null && !overrideCheckpointBinLogFileName.equals("")) {
-                       from = new Checkpoint(new Binlog(overrideCheckpointBinLogFileName, overrideCheckpointBinlogPosition));
+
+                        LOG.info("Checkpoint startup mode: override Binlog filename and position");
+                        from = new Checkpoint(new Binlog(overrideCheckpointBinLogFileName, overrideCheckpointBinlogPosition));
+
                     } else if (overrideCheckpointGtidSet != null && !overrideCheckpointGtidSet.equals("")) {
+
+                       LOG.info("Checkpoint startup mode: override gtidSet");
                        from = new Checkpoint(overrideCheckpointGtidSet);
+
                     } else {
                         throw new RuntimeException("Impossible case!");
                     }
+                } else {
+                    LOG.info("Checkpoint startup mode: loading safe checkpoint from zookeeper");
+                    from = this.loadSafeCheckpoint();
                 }
 
                 this.supplier.start(from);

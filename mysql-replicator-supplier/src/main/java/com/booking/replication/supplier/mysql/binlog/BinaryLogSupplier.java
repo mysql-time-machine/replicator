@@ -194,6 +194,7 @@ public class BinaryLogSupplier implements Supplier {
 
                         if (checkpoint != null) {
                             LOG.info("Starting Binlog Client from GTIDSet checkpoint. GTIDSet: " + checkpoint.getGtidSet());
+
                             this.client.setGtidSet(checkpoint.getGtidSet());
                             this.binlogClientGTIDSet.set(this.client.getGtidSet());
                             this.client.connect();

@@ -13,6 +13,19 @@ public class Checkpoint implements Serializable, Comparable<Checkpoint> {
     public Checkpoint() {
     }
 
+    public Checkpoint(String gtidSet) {
+        this.gtidSet = gtidSet;
+    }
+
+    public Checkpoint( Binlog binlog) {
+        this.binlog = binlog;
+    }
+
+    public Checkpoint( Binlog binlog, String gtidSet) {
+        this.binlog = binlog;
+        this.gtidSet = gtidSet;
+    }
+
     public Checkpoint(long timestamp, long serverId, GTID gtid, Binlog binlog) {
         this.timestamp = timestamp;
         this.serverId = serverId;
@@ -25,20 +38,6 @@ public class Checkpoint implements Serializable, Comparable<Checkpoint> {
         this.serverId = serverId;
         this.gtid = gtid;
         this.binlog = binlog;
-        this.gtidSet = gtidSet;
-
-    }
-
-    public Checkpoint( Binlog binlog) {
-        this.binlog = binlog;
-    }
-
-    public Checkpoint( Binlog binlog, String gtidSet) {
-        this.binlog = binlog;
-        this.gtidSet = gtidSet;
-    }
-
-    public Checkpoint(String gtidSet) {
         this.gtidSet = gtidSet;
     }
 
@@ -58,10 +57,6 @@ public class Checkpoint implements Serializable, Comparable<Checkpoint> {
         this.gtid = gtid;
     }
 
-    public void setBinlog(Binlog binlog) {
-        this.binlog = binlog;
-    }
-
     public void setGtidSet(String gtidSet) {
         this.gtidSet = gtidSet;
     }
@@ -76,10 +71,6 @@ public class Checkpoint implements Serializable, Comparable<Checkpoint> {
 
     public long getServerId() {
         return this.serverId;
-    }
-
-    public GTID getGTID() {
-        return this.gtid;
     }
 
     public Binlog getBinlog() {

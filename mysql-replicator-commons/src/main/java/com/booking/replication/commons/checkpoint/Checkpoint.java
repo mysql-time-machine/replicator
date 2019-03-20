@@ -129,6 +129,6 @@ public class Checkpoint implements Serializable, Comparable<Checkpoint> {
 
     @Override
     public String toString() {
-        return String.format("timestamp: %s | serverid: %s | gitid: %s | binlog: %s", timestamp, serverId, gtid, binlog);
+        return String.format("timestamp: %s | serverid: %s | gitid: %s | binlog: %s | gtidSet: %s", timestamp, serverId, gtid, binlog, gtidSet);
     }
 }

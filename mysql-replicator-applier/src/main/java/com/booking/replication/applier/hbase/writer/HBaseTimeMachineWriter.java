@@ -133,7 +133,12 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
             boolean result = false;
             try {
                 result = flushThreadBufferWithRetry(threadID); // false means all retries have failed
-                buffered.remove(threadID);
+
+                if ( result == true ) {
+                    buffered.remove(threadID);
+                } else {
+                    throw new RuntimeException("Exceeded retry limit when writing to HBase/BigTable");
+                }
 
                 bufferClearTime.set( Instant.now().toEpochMilli() );
             } catch (InterruptedException e) {

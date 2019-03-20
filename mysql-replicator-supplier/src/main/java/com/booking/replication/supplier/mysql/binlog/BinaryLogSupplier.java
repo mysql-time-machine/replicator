@@ -193,20 +193,20 @@ public class BinaryLogSupplier implements Supplier {
                         }
 
                         if (checkpoint != null) {
-                            LOG.info("Starting Binlog Client from GTIDSet checkpoint. GTIDSet: " + checkpoint.getGtidSet());
-
-                            this.client.setGtidSet(checkpoint.getGtidSet());
-                            this.binlogClientGTIDSet.set(this.client.getGtidSet());
-                            this.client.connect();
-                            LOG.info("Started binlog Client from GTIDSet checkpoint. GTIDSet: " + checkpoint.getGtidSet());
-                            sleep(3000);
+                            if (checkpoint.getGtidSet() != null && !checkpoint.getGtidSet().equals("")) {
+                                LOG.info("Starting Binlog Client from GTIDSet checkpoint. GTIDSet: " + checkpoint.getGtidSet());
+                                this.client.setGtidSet(checkpoint.getGtidSet());
+                                this.binlogClientGTIDSet.set(this.client.getGtidSet());
+                                this.client.connect();
+                                LOG.info("Started binlog Client from GTIDSet checkpoint. GTIDSet: " + checkpoint.getGtidSet());
+                            } else {
+                                this.client.setBinlogFilename(checkpoint.getBinlog().getFilename());
+                                this.client.setBinlogPosition(checkpoint.getBinlog().getPosition());
+                            }
                             return;
                         }
-
                     } catch (IOException exception) {
                         BinaryLogSupplier.LOG.log(Level.WARNING, String.format("error connecting to %s, falling over to the next one", hostname), exception);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
                     }
                 }
 

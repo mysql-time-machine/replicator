@@ -32,7 +32,7 @@ public class HBaseApplier implements Applier {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private final Metrics<?> metrics;
-    private int FLUSH_BUFFER_SIZE       = 1000;
+    private int FLUSH_BUFFER_SIZE       = 100;
     private int BUFFER_FLUSH_TIME_LIMIT = 30;
     private final boolean dryRun;
 

@@ -402,11 +402,6 @@ public class AugmenterContext implements Closeable {
 
                 GTIDRawEventData gtidRawEventData = GTIDRawEventData.class.cast(eventData);
                 this.gtidSet.set(lastGTIDSet);
-                try {
-                    sleep(100);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
 
                 this.updateCommons(
                         false,
@@ -496,19 +491,19 @@ public class AugmenterContext implements Closeable {
         if (timestamp.get() > previousTimestamp.get()) {
             long oldTc =  transactionCounter.getAndSet(0);
             long oldTimestamp = previousTimestamp.getAndSet(timestamp.get());
-            LOG.info("TransactionCounter Set to 0: " +
-                    " previousTimestamp => " + oldTimestamp +
-                    ", currentTimestamp => " + timestamp.get() +
-                    ", previousTransactionCounter => " + oldTc +
-                    ", currentTransactionCounter => " + transactionCounter.get());
+//            LOG.info("TransactionCounter Set to 0: " +
+//                    " previousTimestamp => " + oldTimestamp +
+//                    ", currentTimestamp => " + timestamp.get() +
+//                    ", previousTransactionCounter => " + oldTc +
+//                    ", currentTransactionCounter => " + transactionCounter.get());
 
         } else if (timestamp.get() == previousTimestamp.get()) {
             transactionCounter.incrementAndGet();
         } else if (timestamp.get() < previousTimestamp.get()) {
-            LOG.warning("Transactions out of order: " +
-                    "previousTimestamp => " + previousTimestamp.get() +
-                    ", currentTimestamp => " + timestamp.get() +
-                    ", transactionCounter => " + transactionCounter.get());
+//            LOG.warning("Transactions out of order: " +
+//                    "previousTimestamp => " + previousTimestamp.get() +
+//                    ", currentTimestamp => " + timestamp.get() +
+//                    ", transactionCounter => " + transactionCounter.get());
         } else {
             LOG.warning("This code should not be reachable");
         }

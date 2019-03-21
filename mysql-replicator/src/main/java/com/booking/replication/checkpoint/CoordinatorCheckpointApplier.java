@@ -6,6 +6,7 @@ import com.booking.replication.commons.checkpoint.CheckpointStorage;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -27,8 +28,7 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
     private final  Map<String, Map<Long, String>> serverTransactionUpperLimitToRange;
     private final Map<String, Checkpoint> gtidSetToCheckpoint;
 
-    private final List<Checkpoint> seenCheckpoints;
-
+    private final Map<Integer, CheckpointBuffer> seenCheckpoints;
 
     public CoordinatorCheckpointApplier(CheckpointStorage storage, String path, long period, boolean transactionEnabled) {
 
@@ -41,42 +41,54 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
         this.serverTransactionUpperLimitToRange = new TreeMap<>();
         this.gtidSetToCheckpoint = new TreeMap<>();
 
-        this.seenCheckpoints = new ArrayList<>();
+        this.seenCheckpoints = new ConcurrentHashMap<>();
 
         this.executor = Executors.newSingleThreadScheduledExecutor();
+
         this.executor.scheduleAtFixedRate(() -> {
 
-            synchronized (seenCheckpoints) {
-
-                if (seenCheckpoints.size() > 0) {
-
-                    Checkpoint safeCheckpoint = getSafeCheckpoint();
-
-                    if (safeCheckpoint != null) {
-
-                        LOG.info("checkpointApplierExecutor, storing safe checkpoint: " + safeCheckpoint.getGtidSet());
-                        try {
-                            this.storage.saveCheckpoint(this.path, safeCheckpoint);
-                            CoordinatorCheckpointApplier.LOG.log(Level.INFO, "Stored checkpoint: " + safeCheckpoint.toString());
-                            this.lastExecution.set(System.currentTimeMillis());
-                        } catch (IOException exception) {
-                            CoordinatorCheckpointApplier.LOG.log(Level.WARNING, "error saving checkpoint", exception);
-                        }
-                    } else {
-                        throw new RuntimeException("Could not find safe checkpoint. Not safe to continue running!");
-                    }
-                }
+            List<Checkpoint> checkpointsSeenSoFar = new ArrayList<>();
+            for (CheckpointBuffer checkpointBuffer: seenCheckpoints.values()) {
+                    checkpointsSeenSoFar.addAll(checkpointBuffer.getBufferedSoFar());
             }
 
+            int currentSize = checkpointsSeenSoFar.size();
+
+            if (currentSize > 0) {
+
+                Checkpoint safeCheckpoint = getSafeCheckpoint(checkpointsSeenSoFar);
+
+                if (safeCheckpoint != null) {
+
+                    LOG.info("CheckpointApplier, storing safe checkpoint: " + safeCheckpoint.getGtidSet());
+                    try {
+                        this.storage.saveCheckpoint(this.path, safeCheckpoint);
+                        CoordinatorCheckpointApplier.LOG.log(Level.INFO, "CheckpointApplier, stored checkpoint: " + safeCheckpoint.toString());
+                        this.lastExecution.set(System.currentTimeMillis());
+                    } catch (IOException exception) {
+                        CoordinatorCheckpointApplier.LOG.log(Level.WARNING, "error saving checkpoint", exception);
+                    }
+                } else {
+                    throw new RuntimeException("Could not find safe checkpoint. Not safe to continue running!");
+                }
+
+            }
         }, period, period, TimeUnit.MILLISECONDS);
     }
 
     @Override
-    public void accept(AugmentedEvent event, Integer task) {
+    public  void accept(AugmentedEvent event, Integer task) {
+
         synchronized (seenCheckpoints) {
-            Checkpoint checkpoint = event.getHeader().getCheckpoint();
-            seenCheckpoints.add(checkpoint);
+            if (seenCheckpoints.get(task) == null) {
+                seenCheckpoints.put(task, new CheckpointBuffer());
+            }
         }
+
+        Checkpoint checkpoint = event.getHeader().getCheckpoint();
+
+        seenCheckpoints.get(task).writeToBuffer(checkpoint);
+
     }
 
     @Override
@@ -91,10 +103,9 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
         }
     }
 
-    private Checkpoint getSafeCheckpoint() {
-
+    private synchronized Checkpoint getSafeCheckpoint(List<Checkpoint> checkpointsSeenSoFar) {
        Checkpoint safeCheckpoint;
-       for (Checkpoint checkpoint : seenCheckpoints) {
+       for (Checkpoint checkpoint : checkpointsSeenSoFar) {
            String seenGTIDSet = sortGTIDSet(checkpoint.getGtidSet());
            gtidSetToCheckpoint.put(seenGTIDSet, checkpoint);
            addGTIDSetToServersTransactionRangeMap(seenGTIDSet);

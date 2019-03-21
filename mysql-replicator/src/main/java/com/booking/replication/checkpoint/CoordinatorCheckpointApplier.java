@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public class CoordinatorCheckpointApplier implements CheckpointApplier {
 
@@ -28,9 +29,9 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
     private final  Map<String, Map<Long, String>> serverTransactionUpperLimitToRange;
     private final Map<String, Checkpoint> gtidSetToCheckpoint;
 
-    private final Map<Integer, CheckpointBuffer> seenCheckpoints;
+    private final Map<Integer, CheckpointBuffer> taskCheckpointBuffer;
 
-    public CoordinatorCheckpointApplier(CheckpointStorage storage, String path, long period, boolean transactionEnabled) {
+    public CoordinatorCheckpointApplier(CheckpointStorage storage, String path, long period,  boolean transactionEnabled) {
 
         this.storage = storage;
         this.path = path;
@@ -41,24 +42,30 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
         this.serverTransactionUpperLimitToRange = new TreeMap<>();
         this.gtidSetToCheckpoint = new TreeMap<>();
 
-        this.seenCheckpoints = new ConcurrentHashMap<>();
+        this.taskCheckpointBuffer = new ConcurrentHashMap<>();
 
         this.executor = Executors.newSingleThreadScheduledExecutor();
 
         this.executor.scheduleAtFixedRate(() -> {
 
             List<Checkpoint> checkpointsSeenSoFar = new ArrayList<>();
-            for (CheckpointBuffer checkpointBuffer: seenCheckpoints.values()) {
+            for (CheckpointBuffer checkpointBuffer: taskCheckpointBuffer.values()) {
                     checkpointsSeenSoFar.addAll(checkpointBuffer.getBufferedSoFar());
             }
 
-            int currentSize = checkpointsSeenSoFar.size();
+            List<Checkpoint> checkpointsSeenWithGtidSet = checkpointsSeenSoFar
+                    .stream()
+                    .filter(c -> (c.getGtidSet() != null && !c.getGtidSet().equals(""))).collect(Collectors.toList());
+
+            int currentSize = checkpointsSeenWithGtidSet.size();
+
+            LOG.info("Checkpoints seen in last " + period + "ms, [total/withGTIDSet]: " + checkpointsSeenSoFar.size() + "/" + checkpointsSeenWithGtidSet.size());
 
             if (currentSize > 0) {
 
                 Checkpoint safeCheckpoint = getSafeCheckpoint(checkpointsSeenSoFar);
 
-                if (safeCheckpoint != null) {
+                if (safeCheckpoint != null && !safeCheckpoint.getGtidSet().equals("")) {
 
                     LOG.info("CheckpointApplier, storing safe checkpoint: " + safeCheckpoint.getGtidSet());
                     try {
@@ -79,15 +86,15 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
     @Override
     public  void accept(AugmentedEvent event, Integer task) {
 
-        synchronized (seenCheckpoints) {
-            if (seenCheckpoints.get(task) == null) {
-                seenCheckpoints.put(task, new CheckpointBuffer());
+        synchronized (taskCheckpointBuffer) {
+            if (taskCheckpointBuffer.get(task) == null) {
+                taskCheckpointBuffer.put(task, new CheckpointBuffer());
             }
         }
 
         Checkpoint checkpoint = event.getHeader().getCheckpoint();
 
-        seenCheckpoints.get(task).writeToBuffer(checkpoint);
+        taskCheckpointBuffer.get(task).writeToBuffer(checkpoint);
 
     }
 
@@ -103,9 +110,11 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
         }
     }
 
-    private synchronized Checkpoint getSafeCheckpoint(List<Checkpoint> checkpointsSeenSoFar) {
+    private synchronized Checkpoint getSafeCheckpoint(List<Checkpoint> checkpointsSeenWithGtidSet) {
+
        Checkpoint safeCheckpoint;
-       for (Checkpoint checkpoint : checkpointsSeenSoFar) {
+
+       for (Checkpoint checkpoint : checkpointsSeenWithGtidSet) {
            String seenGTIDSet = sortGTIDSet(checkpoint.getGtidSet());
            gtidSetToCheckpoint.put(seenGTIDSet, checkpoint);
            addGTIDSetToServersTransactionRangeMap(seenGTIDSet);
@@ -125,12 +134,10 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
            gtidSetToCheckpoint.get(safeGTIDSet).getGtidSet()
        );
 
-       seenCheckpoints.clear();
        serverTransactionUpperLimitToRange.clear();
        serverTransactionUpperLimits.clear();
        serverTransactionRanges.clear();
        gtidSetToCheckpoint.clear();
-
 
        return safeCheckpoint;
     }

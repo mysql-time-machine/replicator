@@ -18,7 +18,6 @@ public interface RawEvent extends Serializable, RawEventProxyProvider {
 
     <Data extends RawEventData> Data getData();
 
-
     String getGTIDSet();
 
     static RawEvent getRawEventProxy(InvocationHandler handler)

@@ -206,12 +206,16 @@ public class Replicator {
 
                     if (overrideCheckpointBinLogFileName != null && !overrideCheckpointBinLogFileName.equals("")) {
 
-                        LOG.info("Checkpoint startup mode: override Binlog filename and position");
+                        LOG.info("Checkpoint startup mode: override Binlog filename and position:" +
+                                overrideCheckpointBinLogFileName +
+                                ":" +
+                                overrideCheckpointBinlogPosition);
+
                         from = new Checkpoint(new Binlog(overrideCheckpointBinLogFileName, overrideCheckpointBinlogPosition));
 
                     } else if (overrideCheckpointGtidSet != null && !overrideCheckpointGtidSet.equals("")) {
 
-                       LOG.info("Checkpoint startup mode: override gtidSet");
+                       LOG.info("Checkpoint startup mode: override gtidSet: " + overrideCheckpointGtidSet);
                        from = new Checkpoint(overrideCheckpointGtidSet);
 
                     } else {

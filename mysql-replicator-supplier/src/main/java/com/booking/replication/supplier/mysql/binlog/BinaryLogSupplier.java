@@ -202,6 +202,12 @@ public class BinaryLogSupplier implements Supplier {
                             } else {
                                 this.client.setBinlogFilename(checkpoint.getBinlog().getFilename());
                                 this.client.setBinlogPosition(checkpoint.getBinlog().getPosition());
+                                this.client.connect();
+                                LOG.info("Started binlog Client from binlogFilename and position: "
+                                        + checkpoint.getBinlog().getFilename()
+                                        + "/"
+                                        + checkpoint.getBinlog().getPosition()
+                                );
                             }
                             return;
                         }

@@ -84,7 +84,7 @@ public class TableNameMergePatternFilter implements AugmenterFilter {
         return filtered;
     }
 
-    private String getRewrittenName(String originalTableName) {
+    public String getRewrittenName(String originalTableName) {
         Matcher m = tableNameSufixPattern.matcher(originalTableName); // TODO: <- cache this
         if (m.find()) {
             String mergedTableName = originalTableName.replaceAll(pattern, "");

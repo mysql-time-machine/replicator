@@ -47,6 +47,8 @@ public class BinaryLogSupplier implements Supplier {
     }
 
     private final AtomicBoolean running;
+    private final AtomicBoolean connected;
+
     private final List<String> hostname;
     private final int port;
     private final String schema;
@@ -76,6 +78,7 @@ public class BinaryLogSupplier implements Supplier {
         Objects.requireNonNull(password, String.format("Configuration required: %s", Configuration.MYSQL_PASSWORD));
 
         this.running = new AtomicBoolean(false);
+        this.connected = new AtomicBoolean(false);
         this.hostname = this.getList(hostname);
         this.port = Integer.parseInt(port.toString());
         this.schema = schema.toString();
@@ -105,7 +108,7 @@ public class BinaryLogSupplier implements Supplier {
                 this.username,
                 this.password
         );
-        client.setHeartbeatInterval(TimeUnit.MILLISECONDS.toMillis(10));
+        client.setHeartbeatInterval(TimeUnit.MILLISECONDS.toMillis(1000));
 
         EventDeserializer eventDeserializer = new EventDeserializer();
         eventDeserializer.setCompatibilityMode(EventDeserializer.CompatibilityMode.CHAR_AND_BINARY_AS_BYTE_ARRAY);
@@ -149,12 +152,13 @@ public class BinaryLogSupplier implements Supplier {
     @Override
     public void connect(Checkpoint checkpoint) {
         if (this.client == null || !this.client.isConnected()) {
-            this.executor.submit(() -> {
+
                 for (String hostname : this.hostname) {
                     try {
                         this.client = this.getClient(hostname);
 
                         if (this.consumer != null) {
+
                             this.client.registerLifecycleListener(new BinaryLogClient.LifecycleListener() {
                                 @Override
                                 public void onConnect(BinaryLogClient client) {
@@ -181,6 +185,7 @@ public class BinaryLogSupplier implements Supplier {
                                     BinaryLogSupplier.LOG.log(Level.INFO, String.format("Binlog client disconnected from: %s", hostname));
                                 }
                             });
+
                             this.client.registerEventListener(
                                     event -> {
                                         try {
@@ -190,6 +195,7 @@ public class BinaryLogSupplier implements Supplier {
                                         }
                                     }
                             );
+
                         }
 
                         if (checkpoint != null) {
@@ -199,7 +205,13 @@ public class BinaryLogSupplier implements Supplier {
                                 this.binlogClientGTIDSet.set(this.client.getGtidSet());
                                 this.client.connect();
                                 LOG.info("Started binlog Client from GTIDSet checkpoint. GTIDSet: " + checkpoint.getGtidSet());
+                                this.connected.set(true);
                             } else {
+                                LOG.info("Starting binlog Client from binlogFilename and position: "
+                                        + checkpoint.getBinlog().getFilename()
+                                        + "/"
+                                        + checkpoint.getBinlog().getPosition()
+                                );
                                 this.client.setBinlogFilename(checkpoint.getBinlog().getFilename());
                                 this.client.setBinlogPosition(checkpoint.getBinlog().getPosition());
                                 this.client.connect();
@@ -208,21 +220,26 @@ public class BinaryLogSupplier implements Supplier {
                                         + "/"
                                         + checkpoint.getBinlog().getPosition()
                                 );
+                                this.connected.set(true);
                             }
-                            return;
+                        } else {
+                            throw new RuntimeException("No startup checkpoint provided.");
                         }
                     } catch (IOException exception) {
                         BinaryLogSupplier.LOG.log(Level.WARNING, String.format("error connecting to %s, falling over to the next one", hostname), exception);
                     }
                 }
 
-                if (this.running.get() && this.handler != null) {
-                    this.handler.accept(new IOException("error connecting"));
-                } else {
-                    BinaryLogSupplier.LOG.log(Level.SEVERE, "error connecting");
+                if (!this.connected.get()) {
+                    if (this.running.get() && this.handler != null) {
+                        this.handler.accept(new IOException("error connecting"));
+                    } else {
+                        BinaryLogSupplier.LOG.log(Level.SEVERE, "error connecting");
+                        throw  new RuntimeException("MySQL server pool depleted, could not connect to any of the provided hosts.");
+                    }
                 }
-            });
-        }
+                return;
+            }
     }
 
     @Override
@@ -231,11 +248,12 @@ public class BinaryLogSupplier implements Supplier {
             try {
                 this.client.disconnect();
                 this.client = null;
+                this.connected.set(false);
             } catch (IOException exception) {
                 BinaryLogSupplier.LOG.log(Level.SEVERE, "error disconnecting", exception);
             }
-        }else{
-            BinaryLogSupplier.LOG.log(Level.WARNING, "Trying to disconnect suppliet which is already disconnected");
+        } else {
+            BinaryLogSupplier.LOG.log(Level.WARNING, "Trying to disconnect supplier which is already disconnected");
         }
     }
 

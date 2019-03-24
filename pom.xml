@@ -39,6 +39,7 @@
         <avro.version>1.8.1</avro.version>
         <confluent.version>0.1.0</confluent.version>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+        <sonar.tests>src/test/java</sonar.tests>
     </properties>
 
     <modules>

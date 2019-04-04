@@ -133,7 +133,7 @@ public class HBaseApplier implements Applier {
 
         for (AugmentedEvent event : events) {
             this.metrics.getRegistry()
-                    .counter("hbas.thread_" + threadID + ".applier.events.seen").inc(1L);
+                    .counter("hbase.thread_" + threadID + ".applier.events.seen").inc(1L);
         }
 
         if (dryRun) {

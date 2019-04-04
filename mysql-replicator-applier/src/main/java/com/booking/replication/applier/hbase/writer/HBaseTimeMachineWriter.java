@@ -118,7 +118,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                 if (s) {
                     return true; // <- markedForCommit, will advance safe checkpoint
                 } else {
-                    throw new IOException("Failed to write buffer to HBase");
+                    throw new RuntimeException("Failed to write buffer to HBase");
                 }
             } else {
                 return true;

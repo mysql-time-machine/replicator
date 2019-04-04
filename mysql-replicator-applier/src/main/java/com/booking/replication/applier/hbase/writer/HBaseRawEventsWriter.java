@@ -80,7 +80,7 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
             buffered.remove(threadID);
             bufferClearTime = Instant.now().toEpochMilli();
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
         return  result;
     }
@@ -92,7 +92,7 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
             result = result && flushThreadBuffer(id);
 
             if ( result == false ) {
-                throw new IOException("Failed to forceFlush buffer for thread " + id + " to HBase");
+                throw new RuntimeException("Failed to forceFlush buffer for thread " + id + " to HBase");
             }
         }
 

@@ -80,8 +80,7 @@ public class HBaseSchemaManager {
         }
     }
 
-    public void createHBaseTableIfNotExists(String hbaseTableName) throws IOException {
-
+    public synchronized void createHBaseTableIfNotExists(String hbaseTableName) throws IOException {
 
         if (!DRY_RUN) {
             hbaseTableName = hbaseTableName.toLowerCase();

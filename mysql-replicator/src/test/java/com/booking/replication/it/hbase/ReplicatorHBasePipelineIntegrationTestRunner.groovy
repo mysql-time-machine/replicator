@@ -20,6 +20,7 @@ import com.booking.replication.it.hbase.impl.LongTransactionTestImpl
 import com.booking.replication.it.hbase.impl.PayloadTableTestImpl
 import com.booking.replication.it.hbase.impl.SplitTransactionTestImpl
 import com.booking.replication.it.hbase.impl.TableNameMergeFilterTestImpl
+import com.booking.replication.it.hbase.impl.TableWhiteListTest
 import com.booking.replication.it.util.HBase
 import com.booking.replication.supplier.Supplier
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier
@@ -80,12 +81,13 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     @Shared public static final String  BIGTABLE_INSTANCE = getBigTableInstance()
 
     @Shared private TESTS = [
-            new TableNameMergeFilterTestImpl(),
-            new TransmitInsertsTestImpl(),
-            new MicrosecondValidationTestImpl(),
-            new LongTransactionTestImpl(),
-            new PayloadTableTestImpl(),
-            new SplitTransactionTestImpl()
+            new TableWhiteListTest()
+//            new TableNameMergeFilterTestImpl(),
+//            new TransmitInsertsTestImpl(),
+//            new MicrosecondValidationTestImpl(),
+//            new LongTransactionTestImpl(),
+//            new PayloadTableTestImpl(),
+//            new SplitTransactionTestImpl()
     ]
 
     @Shared ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS)
@@ -436,7 +438,9 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
         // Augmenter
         configuration.put(AugmenterContext.Configuration.TRANSACTION_BUFFER_LIMIT, String.valueOf(AUGMENTER_TRANSACTION_BUFFER_SIZE_LIMIT))
-        configuration.put(AugmenterContext.Configuration.TRANSACTIONS_ENABLED, true);
+        configuration.put(AugmenterContext.Configuration.TRANSACTIONS_ENABLED, true)
+
+        configuration.put(AugmenterContext.Configuration.INCLUDE_TABLE, ['sometable_included'])
 
         configuration.put(AugmenterFilter.Configuration.FILTER_TYPE, AUGMENTER_FILTER_TYPE)
         configuration.put(AugmenterFilter.Configuration.FILTER_CONFIGURATION, AUGMENTER_FILTER_CONFIGURATION)

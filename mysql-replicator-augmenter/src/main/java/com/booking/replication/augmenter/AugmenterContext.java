@@ -21,6 +21,7 @@ import javax.swing.event.DocumentEvent;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -48,6 +49,7 @@ public class AugmenterContext implements Closeable {
         String ENUM_PATTERN = "augmenter.context.pattern.enum";
         String SET_PATTERN = "augmenter.context.pattern.set";
         String EXCLUDE_TABLE = "augmenter.context.exclude.table";
+        String INCLUDE_TABLE = "augmenter.context.include.table";
         String TRANSACTIONS_ENABLED = "augmenter.context.transactions.enabled";
     }
 
@@ -83,6 +85,9 @@ public class AugmenterContext implements Closeable {
     private final String binlogsBasePath;
 
     private final List<String> excludeTableList;
+
+    // in case of intersection, the include list overrides the exclude list
+    private final List<String> includeTableList;
 
     private volatile AtomicLong timestamp;
     private volatile AtomicLong previousTimestamp;
@@ -149,6 +154,7 @@ public class AugmenterContext implements Closeable {
         this.setPattern = this.getPattern(configuration, Configuration.SET_PATTERN, AugmenterContext.DEFAULT_SET_PATTERN);
         this.transactionsEnabled = Boolean.parseBoolean(configuration.getOrDefault(Configuration.TRANSACTIONS_ENABLED, "true").toString());
         this.excludeTableList = this.getList(configuration.get(Configuration.EXCLUDE_TABLE));
+        this.includeTableList = this.getList(configuration.get(Configuration.INCLUDE_TABLE));
 
         this.timestamp = new AtomicLong();
 
@@ -459,7 +465,13 @@ public class AugmenterContext implements Closeable {
                     tblName = eventTable.getName();
                 }
                 this.updateCommons(
-                        ( (eventTable == null) || (!this.excludeTable(eventTable.getName())) ),
+                        (
+                            (eventTable == null)
+                            ||
+                            (!this.excludeTable(eventTable.getName()))
+                            &&
+                            this.includeTable(eventTable.getName())
+                        ),
                         null,
                         null,
                         dbName,
@@ -636,6 +648,16 @@ public class AugmenterContext implements Closeable {
 
     private boolean excludeTable(String tableName) {
         return this.excludeTableList.contains(tableName);
+    }
+
+    private boolean includeTable(String tableName) {
+        // By default include all tables. If white list is explicitly specified
+        // then filter out all tables that are not on the white list.
+        if (this.includeTableList != null && this.includeTableList.size() > 0) {
+            return this.includeTableList.contains(tableName);
+        } else {
+            return true;
+        }
     }
 
     public void updatePosition() {

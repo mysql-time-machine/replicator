@@ -5,6 +5,7 @@ import com.booking.replication.applier.kafka.KafkaApplier;
 import com.booking.replication.applier.schema.registry.BCachedSchemaRegistryClient;
 import com.booking.replication.augmenter.ActiveSchemaManager;
 import com.booking.replication.augmenter.Augmenter;
+import com.booking.replication.commons.conf.MySQLConfiguration;
 import com.booking.replication.commons.services.ServicesControl;
 import com.booking.replication.commons.services.ServicesProvider;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
@@ -14,6 +15,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.testcontainers.containers.Network;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 
@@ -23,6 +25,7 @@ public class BootstrapReplicatorTest {
     private static final String MYSQL_PASSWORD = "replicator";
     private static final String MYSQL_ACTIVE_SCHEMA = "active_schema";
     private static final String KAFKA_REPLICATOR_TOPIC_NAME = "mytopic";
+    private static final String MYSQL_CONF_FILE = "my.cnf";
     private static final String MYSQL_INIT_SCRIPT = "mysql.init.sql";
     private static final String MYSQL_ROOT_USERNAME = "root";
     private static final boolean BOOTSTRAP_ACTIVE = true;
@@ -37,8 +40,28 @@ public class BootstrapReplicatorTest {
     public static void before() {
         ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS);
 
-        BootstrapReplicatorTest.mysqlBinaryLog = servicesProvider.startMySQL(BootstrapReplicatorTest.MYSQL_SCHEMA, BootstrapReplicatorTest.MYSQL_USERNAME, BootstrapReplicatorTest.MYSQL_PASSWORD, BootstrapReplicatorTest.MYSQL_INIT_SCRIPT);
-        BootstrapReplicatorTest.mysqlActiveSchema = servicesProvider.startMySQL(BootstrapReplicatorTest.MYSQL_ACTIVE_SCHEMA, BootstrapReplicatorTest.MYSQL_USERNAME, BootstrapReplicatorTest.MYSQL_PASSWORD);
+        MySQLConfiguration mySQLConfiguration = new MySQLConfiguration(
+                BootstrapReplicatorTest.MYSQL_SCHEMA,
+                BootstrapReplicatorTest.MYSQL_USERNAME,
+                BootstrapReplicatorTest.MYSQL_PASSWORD,
+                BootstrapReplicatorTest.MYSQL_CONF_FILE,
+                Collections.singletonList(BootstrapReplicatorTest.MYSQL_INIT_SCRIPT),
+                null,
+                null
+        );
+
+        MySQLConfiguration mySQLActiveSchemaConfiguration = new MySQLConfiguration(
+                BootstrapReplicatorTest.MYSQL_ACTIVE_SCHEMA,
+                BootstrapReplicatorTest.MYSQL_USERNAME,
+                BootstrapReplicatorTest.MYSQL_PASSWORD,
+                BootstrapReplicatorTest.MYSQL_CONF_FILE,
+                Collections.emptyList(),
+                null,
+                null
+        );
+
+        BootstrapReplicatorTest.mysqlBinaryLog = servicesProvider.startMySQL(mySQLConfiguration);
+        BootstrapReplicatorTest.mysqlActiveSchema = servicesProvider.startMySQL(mySQLActiveSchemaConfiguration);
         Network network = Network.newNetwork();
         BootstrapReplicatorTest.kafkaZk = servicesProvider.startZookeeper(network, "kafkaZk");
         BootstrapReplicatorTest.kafka = servicesProvider.startKafka(network, BootstrapReplicatorTest.KAFKA_REPLICATOR_TOPIC_NAME, 3, 1, "kafka");

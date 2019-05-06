@@ -11,6 +11,7 @@ import com.booking.replication.augmenter.Augmenter
 import com.booking.replication.augmenter.AugmenterContext
 import com.booking.replication.augmenter.AugmenterFilter
 import com.booking.replication.checkpoint.CheckpointApplier
+import com.booking.replication.commons.conf.MySQLConfiguration
 import com.booking.replication.commons.services.ServicesControl
 import com.booking.replication.commons.services.ServicesProvider
 import com.booking.replication.coordinator.Coordinator
@@ -63,6 +64,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     @Shared private static final String MYSQL_PASSWORD = "replicator"
     @Shared private static final String MYSQL_ACTIVE_SCHEMA = "active_schema"
     @Shared private static final String MYSQL_INIT_SCRIPT = "mysql.init.sql"
+    @Shared private static final String MYSQL_CONF_FILE = "my.cnf"
 
     @Shared private static final String ACTIVE_SCHEMA_INIT_SCRIPT = "active_schema.init.sql"
 
@@ -94,16 +96,26 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
     @Shared  ServicesControl zookeeper = servicesProvider.startZookeeper(network, "replicatorZK")
     @Shared  ServicesControl mysqlBinaryLog = servicesProvider.startMySQL(
-            MYSQL_SCHEMA,
-            MYSQL_USERNAME,
-            MYSQL_PASSWORD,
-            MYSQL_INIT_SCRIPT
+            new MySQLConfiguration(
+                    MYSQL_SCHEMA,
+                    MYSQL_USERNAME,
+                    MYSQL_PASSWORD,
+                    MYSQL_CONF_FILE,
+                    Collections.singletonList(MYSQL_INIT_SCRIPT),
+                    null,
+                    null
+            )
     )
     @Shared  ServicesControl mysqlActiveSchema = servicesProvider.startMySQL(
-            MYSQL_ACTIVE_SCHEMA,
-            MYSQL_USERNAME,
-            MYSQL_PASSWORD,
-            ACTIVE_SCHEMA_INIT_SCRIPT
+            new MySQLConfiguration(
+                    MYSQL_ACTIVE_SCHEMA,
+                    MYSQL_USERNAME,
+                    MYSQL_PASSWORD,
+                    MYSQL_CONF_FILE,
+                    Collections.singletonList(ACTIVE_SCHEMA_INIT_SCRIPT),
+                    null,
+                    null
+            )
     )
     @Shared ServicesControl hbase = servicesProvider.startHbase()
 

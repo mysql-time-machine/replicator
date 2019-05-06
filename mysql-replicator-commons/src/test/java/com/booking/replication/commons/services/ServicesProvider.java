@@ -1,5 +1,6 @@
 package com.booking.replication.commons.services;
 
+import com.booking.replication.commons.conf.MySQLConfiguration;
 import org.testcontainers.containers.Network;
 
 public interface ServicesProvider {
@@ -26,7 +27,7 @@ public interface ServicesProvider {
 
     ServicesControl startZookeeper(Network network, String networkAlias);
 
-    ServicesControl startMySQL(String schema, String username, String password, String... initScripts);
+    ServicesControl startMySQL(MySQLConfiguration mySQLConfiguration);
 
     ServicesControl startKafka(String topic, int partitions, int replicas);
 

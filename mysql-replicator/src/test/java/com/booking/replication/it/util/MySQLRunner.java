@@ -2,10 +2,11 @@ package com.booking.replication.it.util;
 
 import com.booking.replication.commons.conf.MySQLConfiguration;
 import com.booking.replication.commons.services.ServicesControl;
-import com.booking.replication.it.slave_failover.SlaveFailoverTest;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 import com.mysql.jdbc.Driver;
 import org.apache.commons.dbcp2.BasicDataSource;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.testcontainers.shaded.org.apache.commons.lang.text.StrSubstitutor;
 
 import java.io.BufferedReader;
@@ -13,11 +14,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.sql.*;
 import java.util.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
 
 public class MySQLRunner {
-    private static final Logger LOG = Logger.getLogger(MySQLRunner.class.getName());
+    private static final Logger LOG = LogManager.getLogger(MySQLRunner.class);
     private static final String CONNECTION_URL_FORMAT = "jdbc:mysql://%s:%d/%s";
 
     public boolean runMysqlScript(ServicesControl mysql,
@@ -29,7 +29,7 @@ public class MySQLRunner {
         BasicDataSource dataSource = initDatasource(mysql, configuration, Driver.class.getName(), runAsRoot);
         try (Connection connection = dataSource.getConnection()) {
             statement = connection.createStatement();
-            MySQLRunner.LOG.log(Level.INFO, "Executing query from " + scriptFilePath);
+            LOG.info("Executing query from " + scriptFilePath);
             String s;
             StringBuilder sb = new StringBuilder();
 
@@ -47,12 +47,12 @@ public class MySQLRunner {
             for (String query : inst) {
                 if (!query.trim().equals("")) {
                     statement.execute(query);
-                    MySQLRunner.LOG.log(Level.INFO, query);
+                    LOG.debug("Query executed - " + query);
                 }
             }
             return true;
         } catch (Exception exception) {
-            MySQLRunner.LOG.log(Level.WARNING, String.format("error executing query \"%s\": %s",
+            LOG.warn(String.format("error executing query \"%s\": %s",
                     scriptFilePath, exception.getMessage()));
             return false;
         }
@@ -67,17 +67,16 @@ public class MySQLRunner {
         BasicDataSource dataSource = initDatasource(mysql, configuration, Driver.class.getName(), runAsRoot);
         try (Connection connection = dataSource.getConnection()) {
             statement = connection.createStatement();
-            MySQLRunner.LOG.log(Level.INFO, "Executing query - " + query);
+            LOG.debug("Executing query - " + query);
 
             if (!query.trim().equals("")) {
                 statement.execute(query);
-                MySQLRunner.LOG.log(Level.INFO, query);
             }
 
             ResultSet result = statement.getResultSet();
             return convertResultSetToList(result);
         } catch (Exception exception) {
-            MySQLRunner.LOG.log(Level.WARNING, String.format("error executing query \"%s\": %s",
+            LOG.warn(String.format("error executing query \"%s\": %s",
                     query, exception.getMessage()));
             return null;
         }

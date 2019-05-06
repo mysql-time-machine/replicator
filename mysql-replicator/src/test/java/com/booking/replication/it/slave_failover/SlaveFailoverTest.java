@@ -1,8 +1,10 @@
 package com.booking.replication.it.slave_failover;
 
+import avro.shaded.com.google.common.collect.Maps;
 import com.booking.replication.Replicator;
 import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.Partitioner;
+import com.booking.replication.applier.count.CountApplier;
 import com.booking.replication.augmenter.ActiveSchemaManager;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.AugmenterContext;
@@ -15,7 +17,10 @@ import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.it.util.MySQLRunner;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.testcontainers.containers.Network;
@@ -24,15 +29,17 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static org.junit.Assume.assumeTrue;
 
 public class SlaveFailoverTest {
-    private static final Logger LOG = Logger.getLogger(SlaveFailoverTest.class.getName());
+    private static final Logger LOG = LogManager.getLogger(SlaveFailoverTest.class);
 
     private static String FILE_CHECKPOINT_PATH;
 
@@ -66,12 +73,27 @@ public class SlaveFailoverTest {
 
     private static Coordinator testCoordinator;
 
+    private static final ImmutableMap<String, Long> expectedSlave1Counts = ImmutableMap.of(
+            "QUERY", 2L,
+            "DELETE_ROWS", 2L,
+            "WRITE_ROWS", 14L,
+            "UPDATE_ROWS", 1L
+    );
+
+    private static final ImmutableMap<String, Long> expectedSlave2Counts = ImmutableMap.of(
+            "DELETE_ROWS", 2L,
+            "WRITE_ROWS", 1L,
+            "UPDATE_ROWS", 4L
+    );
+
 
     @BeforeClass
     public static void before() throws InterruptedException {
         ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS);
 
         Network network = Network.newNetwork();
+
+        LOG.info("Iniitializing mysql replication chain with 1 master and 2 slaves");
 
         mySQLMasterConfiguration = new MySQLConfiguration(
                 SlaveFailoverTest.MYSQL_SCHEMA,
@@ -131,6 +153,9 @@ public class SlaveFailoverTest {
         assumeTrue("File checkpoint failed to initialize",
                 initializeGtidCheckpoint(mysqlSlave1, mySQLSlave1Configuration));
 
+
+        LOG.info("Mysql replication chain initialized.. "
+                + "Sleeping for 30 seconds to propagate changes");
         // Sleep for 30 seconds for master-slave mysql chain to initialize
         // Alternatively can poll slaves to check their state
         TimeUnit.SECONDS.sleep(30);
@@ -189,9 +214,18 @@ public class SlaveFailoverTest {
                 Collections.emptyMap(),
                 false
         );
+        Assert.assertTrue(execBinLog);
 
         // Wait for events to get captured by replicator
         replicator.wait(30, TimeUnit.SECONDS);
+
+        // Validate if the event type counts from slave 1 queries match
+        if (replicator.getApplier() instanceof  CountApplier) {
+            Map<String, Long> eventCounts = ((CountApplier) replicator.getApplier()).getEventCounts();
+            LOG.info("Event Counts (slave 1) - " + eventCounts.toString());
+            Assert.assertTrue(Maps.difference(expectedSlave1Counts, eventCounts).areEqual());
+        }
+
         replicator.stop();
 
         // Re-Initialize and start replicator with slave 2
@@ -206,11 +240,19 @@ public class SlaveFailoverTest {
                 Collections.emptyMap(),
                 false
         );
+        Assert.assertTrue(execBinLog2);
 
         // Wait for events to get captured by replicator
         replicator.wait(30, TimeUnit.SECONDS);
+
+        // Validate if the event type counts from slave 2 queries match
+        if (replicator.getApplier() instanceof  CountApplier) {
+            Map<String, Long> eventCounts = ((CountApplier) replicator.getApplier()).getEventCounts();
+            LOG.info("Event Counts (slave 2) - " + eventCounts.toString());
+            Assert.assertTrue(Maps.difference(expectedSlave2Counts, eventCounts).areEqual());
+        }
+
         replicator.stop();
-        assert(execBinLog && execBinLog2);
     }
 
     private Map<String, Object> getConfiguration(ServicesControl mysql) {
@@ -239,7 +281,7 @@ public class SlaveFailoverTest {
 
         configuration.put(Partitioner.Configuration.TYPE, Partitioner.Type.TABLE_NAME.name());
 
-        configuration.put(Applier.Configuration.TYPE, Applier.Type.CONSOLE.name());
+        configuration.put(Applier.Configuration.TYPE, Applier.Type.COUNT.name());
         configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name());
         configuration.put(Replicator.Configuration.CHECKPOINT_PATH, FILE_CHECKPOINT_PATH);
 

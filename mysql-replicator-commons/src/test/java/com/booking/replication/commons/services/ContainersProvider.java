@@ -261,7 +261,8 @@ public final class ContainersProvider implements ServicesProvider {
                 mySQLConfiguration.getNetwork(),
                 ContainersProvider.MYSQL_STARTUP_WAIT_REGEX,
                 ContainersProvider.MYSQL_STARTUP_WAIT_TIMES,
-                mySQLConfiguration.getNetwork() == null)
+                // Cannot match exposed port in mysql as it can have conflicts
+                false)
                 .withEnv(envConfigs)
                 .withClasspathResourceMapping(mySQLConfiguration.getConfPath(), ContainersProvider.MYSQL_CONFIGURATION_PATH, BindMode.READ_ONLY
         );

@@ -52,7 +52,7 @@ public class SlaveFailoverTest {
     private static final MySQLRunner MYSQL_RUNNER = new MySQLRunner();
     private static final String MYSQL_TEST_SCRIPT = "mysql.init.sql";
     private static final String MYSQL_SLAVE2_TEST_SCRIPT = "mysql.slave2.test.sql";
-    private static final int TRANSACTION_LIMIT = 5;
+    private static final int TRANSACTION_LIMIT = 100;
 
     private static ServicesControl mysqlMaster;
     private static ServicesControl mysqlSlave1;
@@ -68,7 +68,7 @@ public class SlaveFailoverTest {
 
 
     @BeforeClass
-    public static void before() {
+    public static void before() throws InterruptedException {
         ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS);
 
         Network network = Network.newNetwork();
@@ -130,6 +130,10 @@ public class SlaveFailoverTest {
 
         assumeTrue("File checkpoint failed to initialize",
                 initializeGtidCheckpoint(mysqlSlave1, mySQLSlave1Configuration));
+
+        // Sleep for 30 seconds for master-slave mysql chain to initialize
+        // Alternatively can poll slaves to check their state
+        TimeUnit.SECONDS.sleep(30);
     }
 
     private static boolean initializeSlave(ServicesControl mysqlMaster,
@@ -190,8 +194,6 @@ public class SlaveFailoverTest {
         replicator.wait(30, TimeUnit.SECONDS);
         replicator.stop();
 
-        // Wait for replicator to reset
-        replicator.wait(30, TimeUnit.SECONDS);
         // Re-Initialize and start replicator with slave 2
         replicator = new Replicator(this.getConfiguration(mysqlSlave2));
         replicator.start();

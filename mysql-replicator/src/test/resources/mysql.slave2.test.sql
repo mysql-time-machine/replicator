@@ -17,7 +17,7 @@ COMMIT;
 
 BEGIN;
 
-DELETE FROM organisms WHERE id = 1;
-DELETE FROM organisms WHERE id = 2;
+DELETE FROM organisms WHERE id = 3;
+DELETE FROM organisms WHERE id = 4;
 
 COMMIT;

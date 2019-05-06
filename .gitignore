@@ -4,5 +4,5 @@
 dependency-reduced-pom.xml
 target
 
-# Avoid including generated files in GIT
-mysql-replicator-augmenter-model/src/main/java/replicator/
+# Avoid including generated definitions in git
+mysql-replicator-augmenter-model/src/main/java/com/booking/replication/augmenter/model/definitions/

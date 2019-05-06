@@ -1,5 +1,6 @@
 package com.booking.replication.augmenter.model.event.format.avro;
 
+import com.booking.replication.augmenter.model.definitions.DDL;
 import com.booking.replication.augmenter.model.event.*;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
@@ -16,7 +17,6 @@ import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import replicator.ddl;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -98,7 +98,7 @@ public class EventDataPresenterAvro {
         try {
             Schema avroSchema = createAvroSchema(ADD_META_FILEDS, CONVERT_BIN_TO_HEX, this.eventTable, this.columns);
             if (Objects.equals(this.eventType, "ddl")) {
-                final GenericRecord rec = new ddl(
+                final GenericRecord rec = new DDL(
                         this.sql,
                         avroSchema.toString(),
                         this.isCompatibleSchemaChange

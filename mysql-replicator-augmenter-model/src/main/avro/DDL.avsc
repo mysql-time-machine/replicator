@@ -1,7 +1,7 @@
 {
 	"type": "record",
-	"name": "ddl",
-	"namespace": "replicator",
+	"name": "DDL",
+	"namespace": "com.booking.replication.augmenter.model.definitions",
 	"fields": [{
 			"name": "query",
 			"type": [

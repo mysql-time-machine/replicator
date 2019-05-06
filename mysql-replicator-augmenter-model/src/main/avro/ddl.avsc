@@ -1,0 +1,30 @@
+{
+	"type": "record",
+	"name": "ddl",
+	"namespace": "replicator",
+	"fields": [{
+			"name": "query",
+			"type": [
+				"null",
+				"string"
+			],
+			"default": null
+		},
+		{
+			"name": "schema",
+			"type": [
+				"null",
+				"string"
+			],
+			"default": null
+		},
+		{
+			"name": "isCompatibleSchemaChange",
+			"type": [
+				"null",
+				"boolean"
+			],
+			"default": null
+		}
+	]
+}

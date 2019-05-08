@@ -20,7 +20,7 @@ public class FullTableName implements Serializable {
         if(name == null) return name;
         name = name.replaceAll("`", "");
         if ( name.contains(".") ) {
-            return name.split(".")[1];
+            return name.split("\\.")[1];
         }
         return name;
     }

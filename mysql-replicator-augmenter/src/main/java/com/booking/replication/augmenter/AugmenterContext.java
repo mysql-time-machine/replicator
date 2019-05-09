@@ -313,13 +313,14 @@ public class AugmenterContext implements Closeable {
                 else if ((matcher = this.ddlTablePattern.matcher(query)).find()) {
                     this.metrics.getRegistry()
                             .counter("augmenter_context.type.ddl_table").inc(1L);
-                    Boolean shouldProcess = (queryRawEventData.getDatabase().equals(replicatedSchema) );
+                    String tableName = matcher.group(4);
+                    Boolean shouldProcess = ( this.shouldProcessTable(tableName) && queryRawEventData.getDatabase().equals(replicatedSchema) );
                     this.updateCommons(
                             shouldProcess,
                             QueryAugmentedEventDataType.DDL_TABLE,
                             QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
                             queryRawEventData.getDatabase(),
-                            matcher.group(4)
+                            tableName
                     );
 
                     // Because we don't want to create tables for non-replicated schemas
@@ -465,13 +466,7 @@ public class AugmenterContext implements Closeable {
                     tblName = eventTable.getName();
                 }
                 this.updateCommons(
-                        (
-                            (eventTable == null)
-                            ||
-                            (!this.excludeTable(eventTable.getName()))
-                            &&
-                            this.includeTable(eventTable.getName())
-                        ),
+                        ( (eventTable == null) || this.shouldProcessTable(tblName) ),
                         null,
                         null,
                         dbName,
@@ -644,6 +639,10 @@ public class AugmenterContext implements Closeable {
         )
                 &&
                 this.getQueryOperationType() != ddlOpType);
+    }
+
+    private boolean shouldProcessTable(String tableName) {
+        return !this.excludeTable(tableName) && this.includeTable(tableName);
     }
 
     private boolean excludeTable(String tableName) {

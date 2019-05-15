@@ -10,6 +10,7 @@ import com.booking.replication.augmenter.ActiveSchemaManager;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.AugmenterContext;
 import com.booking.replication.checkpoint.CheckpointApplier;
+import com.booking.replication.commons.conf.MySQLConfiguration;
 import com.booking.replication.commons.services.ServicesControl;
 import com.booking.replication.commons.services.ServicesProvider;
 import com.booking.replication.controller.WebServer;
@@ -17,6 +18,7 @@ import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.coordinator.ZookeeperCoordinator;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
+import com.booking.utils.BootstrapReplicatorTest;
 import com.mysql.jdbc.Driver;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
@@ -66,6 +68,7 @@ public class ReplicatorKafkaTest {
     private static final String MYSQL_ACTIVE_SCHEMA = "active_schema";
     private static final String MYSQL_INIT_SCRIPT = "mysql.init.sql";
     private static final String MYSQL_TEST_SCRIPT = "mysql.binlog.test.sql";
+    private static final String MYSQL_CONF_FILE = "my.cnf";
     private static final int TRANSACTION_LIMIT = 5;
     private static final String CONNECTION_URL_FORMAT = "jdbc:mysql://%s:%d/%s";
 
@@ -87,8 +90,29 @@ public class ReplicatorKafkaTest {
         ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS);
 
         ReplicatorKafkaTest.zookeeper = servicesProvider.startZookeeper();
-        ReplicatorKafkaTest.mysqlBinaryLog = servicesProvider.startMySQL(ReplicatorKafkaTest.MYSQL_SCHEMA, ReplicatorKafkaTest.MYSQL_USERNAME, ReplicatorKafkaTest.MYSQL_PASSWORD, ReplicatorKafkaTest.MYSQL_INIT_SCRIPT);
-        ReplicatorKafkaTest.mysqlActiveSchema = servicesProvider.startMySQL(ReplicatorKafkaTest.MYSQL_ACTIVE_SCHEMA, ReplicatorKafkaTest.MYSQL_USERNAME, ReplicatorKafkaTest.MYSQL_PASSWORD);
+
+        MySQLConfiguration mySQLConfiguration = new MySQLConfiguration(
+                ReplicatorKafkaTest.MYSQL_SCHEMA,
+                ReplicatorKafkaTest.MYSQL_USERNAME,
+                ReplicatorKafkaTest.MYSQL_PASSWORD,
+                ReplicatorKafkaTest.MYSQL_CONF_FILE,
+                Collections.singletonList(ReplicatorKafkaTest.MYSQL_INIT_SCRIPT),
+                null,
+                null
+                );
+
+        MySQLConfiguration mySQLActiveSchemaConfiguration = new MySQLConfiguration(
+                ReplicatorKafkaTest.MYSQL_ACTIVE_SCHEMA,
+                ReplicatorKafkaTest.MYSQL_USERNAME,
+                ReplicatorKafkaTest.MYSQL_PASSWORD,
+                ReplicatorKafkaTest.MYSQL_CONF_FILE,
+                Collections.emptyList(),
+                null,
+                null
+        );
+
+        ReplicatorKafkaTest.mysqlBinaryLog = servicesProvider.startMySQL(mySQLConfiguration);
+        ReplicatorKafkaTest.mysqlActiveSchema = servicesProvider.startMySQL(mySQLActiveSchemaConfiguration);
         Network network = Network.newNetwork();
         ReplicatorKafkaTest.kafkaZk = servicesProvider.startZookeeper(network, "kafkaZk");
         ReplicatorKafkaTest.kafka = servicesProvider.startKafka(network, ReplicatorKafkaTest.KAFKA_REPLICATOR_TOPIC_NAME, ReplicatorKafkaTest.KAFKA_TOPIC_PARTITIONS, ReplicatorKafkaTest.KAFKA_TOPIC_REPLICAS, "kafka");

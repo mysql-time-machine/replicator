@@ -1,0 +1,23 @@
+[mysqld]
+server_id        = 2
+log-bin          = ./binlog
+log_slave_updates = TRUE
+gtid_mode=on
+enforce-gtid-consistency
+binlog-ignore-db = mysql
+binlog-ignore-db = performance_schema
+binlog_format    = ROW
+binlog_row_image = full
+max_binlog_size  = 100K
+collation-server = utf8_unicode_ci
+init-connect='SET NAMES utf8'
+character-set-server = utf8
+bind_address     = 0.0.0.0
+
+
+
+[client]
+default-character-set=utf8
+
+[mysql]
+default-character-set=utf8

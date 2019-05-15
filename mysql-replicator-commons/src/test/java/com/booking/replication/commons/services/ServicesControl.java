@@ -1,5 +1,7 @@
 package com.booking.replication.commons.services;
 
+import org.testcontainers.containers.GenericContainer;
+
 import java.io.Closeable;
 
 public interface ServicesControl extends Closeable {
@@ -15,4 +17,6 @@ public interface ServicesControl extends Closeable {
     default String getURL() {
         return String.format("%s:%d", this.getHost(), this.getPort());
     }
+
+    GenericContainer<?> getContainer();
 }

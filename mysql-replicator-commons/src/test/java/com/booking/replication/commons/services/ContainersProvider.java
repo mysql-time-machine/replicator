@@ -1,15 +1,19 @@
 package com.booking.replication.commons.services;
 
+import com.booking.replication.commons.conf.MySQLConfiguration;
 import com.github.dockerjava.api.model.PortBinding;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.FixedHostPortGenericContainer;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Logger;
 
 public final class ContainersProvider implements ServicesProvider {
@@ -33,6 +37,7 @@ public final class ContainersProvider implements ServicesProvider {
     private static final String MYSQL_USER_KEY = "MYSQL_USER";
     private static final String MYSQL_PASSWORD_KEY = "MYSQL_PASSWORD";
     private static final String MYSQL_CONFIGURATION_FILE = "my.cnf";
+    private static final String MYSQL_SLAVE_CONFIGURATION_FILE = "myslave.cnf";
     private static final String MYSQL_CONFIGURATION_PATH = "/etc/mysql/conf.d/my.cnf";
     private static final String MYSQL_INIT_SCRIPT_PATH = "/docker-entrypoint-initdb.d/%s";
     private static final String MYSQL_STARTUP_WAIT_REGEX = ".*mysqld: ready for connections.*\\n";
@@ -175,6 +180,9 @@ public final class ContainersProvider implements ServicesProvider {
 
         return new ServicesControl() {
             @Override
+            public GenericContainer<?> getContainer() { return mysql; }
+
+            @Override
             public void close() {
                 mysql.stop();
             }
@@ -196,6 +204,9 @@ public final class ContainersProvider implements ServicesProvider {
 
         return new ServicesControl() {
             @Override
+            public GenericContainer<?> getContainer() { return zookeeper; }
+
+            @Override
             public void close() {
                 zookeeper.stop();
             }
@@ -216,6 +227,9 @@ public final class ContainersProvider implements ServicesProvider {
         zookeeper.start();
         return new ServicesControl() {
             @Override
+            public GenericContainer<?> getContainer() { return zookeeper; }
+
+            @Override
             public void close() {
                 zookeeper.stop();
             }
@@ -229,7 +243,14 @@ public final class ContainersProvider implements ServicesProvider {
     }
 
     @Override
-    public ServicesControl startMySQL(String schema, String username, String password, String... initScripts) {
+    public ServicesControl startMySQL(MySQLConfiguration mySQLConfiguration) {
+
+        Map<String, String> envConfigs = new HashMap<>();
+        // Root password is mandatory for starting mysql docker instance
+        envConfigs.put(ContainersProvider.MYSQL_ROOT_PASSWORD_KEY, mySQLConfiguration.getPassword());
+        envConfigs.computeIfAbsent(ContainersProvider.MYSQL_DATABASE_KEY, val -> mySQLConfiguration.getSchema());
+        envConfigs.computeIfAbsent(ContainersProvider.MYSQL_USER_KEY, val -> mySQLConfiguration.getUsername());
+        envConfigs.computeIfAbsent(ContainersProvider.MYSQL_PASSWORD_KEY, val -> mySQLConfiguration.getPassword());
 
         GenericContainer<?> mysql = this.getContainer(
                 System.getProperty(
@@ -237,24 +258,27 @@ public final class ContainersProvider implements ServicesProvider {
                         VersionedPipelines.defaultTags.mysqlReplicantTag
                 ),
                 ContainersProvider.MYSQL_PORT,
-                null,
+                mySQLConfiguration.getNetwork(),
                 ContainersProvider.MYSQL_STARTUP_WAIT_REGEX,
                 ContainersProvider.MYSQL_STARTUP_WAIT_TIMES,
-                false
-        ).withEnv(ContainersProvider.MYSQL_ROOT_PASSWORD_KEY, password
-        ).withEnv(ContainersProvider.MYSQL_DATABASE_KEY, schema
-        ).withEnv(ContainersProvider.MYSQL_USER_KEY, username
-        ).withEnv(ContainersProvider.MYSQL_PASSWORD_KEY, password
-        ).withClasspathResourceMapping(ContainersProvider.MYSQL_CONFIGURATION_FILE, ContainersProvider.MYSQL_CONFIGURATION_PATH, BindMode.READ_ONLY
+                // Cannot match exposed port in mysql as it can have conflicts
+                false)
+                .withEnv(envConfigs)
+                .withClasspathResourceMapping(mySQLConfiguration.getConfPath(), ContainersProvider.MYSQL_CONFIGURATION_PATH, BindMode.READ_ONLY
         );
 
-        for (String initScript : initScripts) {
+        for (String initScript : mySQLConfiguration.getInitScripts()) {
             mysql.withClasspathResourceMapping(initScript, String.format(ContainersProvider.MYSQL_INIT_SCRIPT_PATH, initScript), BindMode.READ_ONLY);
         }
+
+        mysql.withNetworkAliases(mySQLConfiguration.getNetworkAlias());
 
         mysql.start();
 
         return new ServicesControl() {
+            @Override
+            public GenericContainer<?> getContainer() { return mysql; }
+
             @Override
             public void close() {
                 mysql.stop();
@@ -300,6 +324,9 @@ public final class ContainersProvider implements ServicesProvider {
 
         return new ServicesControl() {
             @Override
+            public GenericContainer<?> getContainer() { return kafka; }
+
+            @Override
             public void close() {
                 kafka.stop();
                 zookeeper.stop();
@@ -342,6 +369,9 @@ public final class ContainersProvider implements ServicesProvider {
         kafka.start();
 
         return new ServicesControl() {
+            @Override
+            public GenericContainer<?> getContainer() { return kafka; }
+
             @Override
             public void close() {
                 kafka.stop();
@@ -390,6 +420,9 @@ public final class ContainersProvider implements ServicesProvider {
 
         return new ServicesControl() {
             @Override
+            public GenericContainer<?> getContainer() { return kafka; }
+
+            @Override
             public void close() {
                 kafka.stop();
                 zookeeper.stop();
@@ -426,6 +459,9 @@ public final class ContainersProvider implements ServicesProvider {
 
         return new ServicesControl() {
             @Override
+            public GenericContainer<?> getContainer() { return schemaRegistry; }
+
+            @Override
             public void close() {
                 schemaRegistry.stop();
             }
@@ -453,6 +489,8 @@ public final class ContainersProvider implements ServicesProvider {
         hbase.start();
 
         return new ServicesControl() {
+            @Override
+            public GenericContainer<?> getContainer() { return hbase; }
 
             @Override
             public void close() {

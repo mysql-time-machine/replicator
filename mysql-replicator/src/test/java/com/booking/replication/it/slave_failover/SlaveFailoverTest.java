@@ -190,6 +190,7 @@ public class SlaveFailoverTest {
         try {
             File tempFile = File.createTempFile("replicator_checkpoint", null);
             FILE_CHECKPOINT_PATH = tempFile.getAbsolutePath();
+            LOG.info("Created checkpoint file: " + FILE_CHECKPOINT_PATH);
             PrintWriter out = new PrintWriter(FILE_CHECKPOINT_PATH);
             out.println(cp);
             out.close();
@@ -228,10 +229,6 @@ public class SlaveFailoverTest {
 
         replicator.stop();
 
-        // Re-Initialize and start replicator with slave 2
-        replicator = new Replicator(this.getConfiguration(mysqlSlave2));
-        replicator.start();
-
         // Run some more queries on master
         boolean execBinLog2 = MYSQL_RUNNER.runMysqlScript(
                 mysqlMaster,
@@ -241,6 +238,10 @@ public class SlaveFailoverTest {
                 false
         );
         Assert.assertTrue(execBinLog2);
+
+        // Re-Initialize and start replicator with slave 2
+        replicator = new Replicator(this.getConfiguration(mysqlSlave2));
+        replicator.start();
 
         // Wait for events to get captured by replicator
         replicator.wait(30, TimeUnit.SECONDS);

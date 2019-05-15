@@ -1,5 +1,6 @@
 package com.booking.replication.augmenter.model.event.format.avro;
 
+import com.booking.replication.augmenter.model.definitions.DDL;
 import com.booking.replication.augmenter.model.event.*;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
@@ -9,7 +10,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
-import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.BinaryEncoder;
 import org.apache.avro.io.DatumWriter;
@@ -28,43 +28,11 @@ public class EventDataPresenterAvro {
 
     private static final boolean CONVERT_BIN_TO_HEX = true;
     private static final boolean ADD_META_FILEDS = true;
-    private static final String DDL_SCHEMA = "{\n" +
-            "  \"type\": \"record\",\n" +
-            "  \"name\": \"ddl\",\n" +
-            "  \"namespace\": \"replicator\",\n" +
-            "  \"fields\": [\n" +
-            "    {\n" +
-            "      \"name\": \"query\",\n" +
-            "      \"type\": [\n" +
-            "        \"null\",\n" +
-            "        \"string\"\n" +
-            "      ],\n" +
-            "      \"default\": null\n" +
-            "    },\n" +
-            "    {\n" +
-            "      \"name\": \"schema\",\n" +
-            "      \"type\": [\n" +
-            "        \"null\",\n" +
-            "        \"string\"\n" +
-            "      ],\n" +
-            "      \"default\": null\n" +
-            "    },\n" +
-            "    {\n" +
-            "      \"name\": \"isCompatibleSchemaChange\",\n" +
-            "      \"type\": [\n" +
-            "        \"null\",\n" +
-            "        \"boolean\"\n" +
-            "      ],\n" +
-            "      \"default\": null\n" +
-            "    }\n" +
-            "  ]\n" +
-            "}";
 
     private Collection<ColumnSchema> columns;
     private Collection<AugmentedRow> rows;
     private FullTableName eventTable;
     private AugmentedEventHeader header;
-    boolean useLogicalTypes = false;
     private String eventType;
     private String sql;
     private boolean skipRow;
@@ -129,14 +97,12 @@ public class EventDataPresenterAvro {
         if (this.skipRow) return new ArrayList<>();
         try {
             Schema avroSchema = createAvroSchema(ADD_META_FILEDS, CONVERT_BIN_TO_HEX, this.eventTable, this.columns);
-
             if (Objects.equals(this.eventType, "ddl")) {
-                Schema.Parser parser = new Schema.Parser();
-                Schema schema = parser.parse(DDL_SCHEMA);
-                final GenericRecord rec = new GenericData.Record(schema);
-                rec.put("query", this.sql);
-                rec.put("schema", avroSchema.toString());
-                rec.put("isCompatibleSchemaChange", this.isCompatibleSchemaChange);
+                final GenericRecord rec = new DDL(
+                        this.sql,
+                        avroSchema.toString(),
+                        this.isCompatibleSchemaChange
+                );
                 return Collections.singletonList(rec);
             }
             ArrayList<GenericRecord> records = new ArrayList<>();

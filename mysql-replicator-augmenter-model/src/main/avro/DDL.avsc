@@ -1,0 +1,30 @@
+{
+	"type": "record",
+	"name": "DDL",
+	"namespace": "com.booking.replication.augmenter.model.definitions",
+	"fields": [{
+			"name": "query",
+			"type": [
+				"null",
+				"string"
+			],
+			"default": null
+		},
+		{
+			"name": "schema",
+			"type": [
+				"null",
+				"string"
+			],
+			"default": null
+		},
+		{
+			"name": "isCompatibleSchemaChange",
+			"type": [
+				"null",
+				"boolean"
+			],
+			"default": null
+		}
+	]
+}

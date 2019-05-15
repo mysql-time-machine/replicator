@@ -9,10 +9,7 @@ import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -197,6 +194,8 @@ public class BinaryLogSupplier implements Supplier {
                             );
 
                         }
+
+                        this.client.setServerId(new Random().nextLong() );
 
                         if (checkpoint != null) {
                             if (checkpoint.getGtidSet() != null && !checkpoint.getGtidSet().equals("")) {

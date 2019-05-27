@@ -250,6 +250,8 @@ public class AugmenterContext implements Closeable {
                         rotateRawEventData.getBinlogFilename(),
                         rotateRawEventData.getBinlogPosition()
                 );
+
+                LOG.info(" File ROTATE : " + rotateRawEventData.getBinlogFilename());
                 break;
 
             case UNKNOWN:

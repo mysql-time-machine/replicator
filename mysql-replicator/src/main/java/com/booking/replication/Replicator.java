@@ -20,19 +20,20 @@ import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.model.RawEvent;
 import com.booking.utils.BootstrapReplicator;
 import com.codahale.metrics.MetricRegistry;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+
 import org.apache.commons.cli.*;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 
 public class Replicator {
 
@@ -49,7 +50,7 @@ public class Replicator {
         String OVERRIDE_CHECKPOINT_GTID_SET = "override.checkpoint.gtidSet";
     }
 
-    private static final Logger LOG = Logger.getLogger(Replicator.class.getName());
+    private static final Logger LOG = LogManager.getLogger(Replicator.class);
     private static final String COMMAND_LINE_SYNTAX = "java -jar mysql-replicator-<version>.jar";
 
     private final String checkpointPath;
@@ -183,12 +184,12 @@ public class Replicator {
 
             if (ForceRewindException.class.isInstance(exception)) {
 
-                Replicator.LOG.log(Level.WARNING, exception.getMessage());
+                Replicator.LOG.warn(exception.getMessage(), exception);
                 this.rewind();
 
             } else {
 
-                Replicator.LOG.log(Level.SEVERE, "error", exception);
+                Replicator.LOG.error(exception.getMessage(), exception);
                 this.stop();
 
             }
@@ -196,15 +197,15 @@ public class Replicator {
 
         this.coordinator.onLeadershipTake(() -> {
             try {
-                Replicator.LOG.log(Level.INFO, "starting replicator");
+                Replicator.LOG.info("starting replicator");
 
-                Replicator.LOG.log(Level.INFO, "starting streams applier");
+                Replicator.LOG.info("starting streams applier");
                 this.destinationStream.start();
 
-                Replicator.LOG.log(Level.INFO, "starting streams supplier");
+                Replicator.LOG.info("starting streams supplier");
                 this.sourceStream.start();
 
-                Replicator.LOG.log(Level.INFO, "starting supplier");
+                Replicator.LOG.info("starting supplier");
 
                 Checkpoint from;
 
@@ -242,7 +243,7 @@ public class Replicator {
 
                 this.supplier.start(from);
 
-                Replicator.LOG.log(Level.INFO, "replicator started");
+                Replicator.LOG.info("replicator started");
             } catch (IOException | InterruptedException exception) {
                 exceptionHandle.accept(exception);
             }
@@ -250,21 +251,21 @@ public class Replicator {
 
         this.coordinator.onLeadershipLose(() -> {
             try {
-                Replicator.LOG.log(Level.INFO, "stopping replicator");
+                Replicator.LOG.info("stopping replicator");
 
-                Replicator.LOG.log(Level.INFO, "stopping supplier");
+                Replicator.LOG.info("stopping supplier");
                 this.supplier.stop();
 
-                Replicator.LOG.log(Level.INFO, "stopping streams supplier");
+                Replicator.LOG.info("stopping streams supplier");
                 this.sourceStream.stop();
 
-                Replicator.LOG.log(Level.INFO, "stopping streams applier");
+                Replicator.LOG.info("stopping streams applier");
                 this.destinationStream.stop();
 
-                Replicator.LOG.log(Level.INFO, "stopping web server");
+                Replicator.LOG.info("stopping web server");
                 this.webServer.stop();
 
-                Replicator.LOG.log(Level.INFO, "replicator stopped");
+                Replicator.LOG.info("replicator stopped");
             } catch (IOException | InterruptedException exception) {
                 exceptionHandle.accept(exception);
             }
@@ -296,14 +297,14 @@ public class Replicator {
 
     public void start() {
 
-        Replicator.LOG.log(Level.INFO, "starting webserver");
+        Replicator.LOG.info("starting webserver");
         try {
             this.webServer.start();
         } catch (IOException e) {
-            Replicator.LOG.log(Level.SEVERE, "error starting webserver", e);
+            Replicator.LOG.error("error starting webserver", e);
         }
 
-        Replicator.LOG.log(Level.INFO, "starting coordinator");
+        Replicator.LOG.info("starting coordinator");
         this.coordinator.start();
     }
 
@@ -317,42 +318,42 @@ public class Replicator {
 
     public void stop() {
         try {
-            Replicator.LOG.log(Level.INFO, "stopping coordinator");
+            Replicator.LOG.info("stopping coordinator");
             this.coordinator.stop();
 
-            Replicator.LOG.log(Level.INFO, "closing augmenter");
+            Replicator.LOG.info("closing augmenter");
             this.augmenter.close();
 
-            Replicator.LOG.log(Level.INFO, "closing seeker");
+            Replicator.LOG.info("closing seeker");
             this.seeker.close();
 
-            Replicator.LOG.log(Level.INFO, "closing partitioner");
+            Replicator.LOG.info("closing partitioner");
             this.partitioner.close();
 
-            Replicator.LOG.log(Level.INFO, "closing applier");
+            Replicator.LOG.info("closing applier");
             this.applier.close();
 
-            Replicator.LOG.log(Level.INFO, "stopping web server");
+            Replicator.LOG.info("stopping web server");
             this.webServer.stop();
 
-            Replicator.LOG.log(Level.INFO, "closing metrics applier");
+            Replicator.LOG.info("closing metrics applier");
             this.metrics.close();
 
-            Replicator.LOG.log(Level.INFO, "closing checkpoint applier");
+            Replicator.LOG.info("closing checkpoint applier");
             this.checkpointApplier.close();
         } catch (IOException exception) {
-            Replicator.LOG.log(Level.SEVERE, "error stopping coordinator", exception);
+            Replicator.LOG.error("error stopping coordinator", exception);
         }
     }
 
     public void rewind() {
         try {
-            Replicator.LOG.log(Level.INFO, "rewinding supplier");
+            Replicator.LOG.info("rewinding supplier");
 
             this.supplier.disconnect();
             this.supplier.connect(this.seeker.seek(this.loadSafeCheckpoint()));
         } catch (IOException exception) {
-            Replicator.LOG.log(Level.SEVERE, "error rewinding supplier", exception);
+            Replicator.LOG.error("error rewinding supplier", exception);
         }
     }
 
@@ -426,7 +427,7 @@ public class Replicator {
                 replicator.start();
             }
         } catch (Exception exception) {
-            LOG.log(Level.SEVERE, "Error in replicator", exception);
+            LOG.error("Error in replicator", exception);
             new HelpFormatter().printHelp(Replicator.COMMAND_LINE_SYNTAX, null, options, exception.getMessage());
         }
     }

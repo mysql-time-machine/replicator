@@ -14,46 +14,43 @@ import com.booking.replication.commons.checkpoint.GTIDType;
 import com.booking.replication.commons.metrics.Metrics;
 import com.booking.replication.supplier.model.*;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
-import com.codahale.metrics.MetricRegistry;
-import com.github.shyiko.mysql.binlog.event.EventType;
 
-import javax.swing.event.DocumentEvent;
+import com.codahale.metrics.MetricRegistry;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static java.lang.Thread.sleep;
 
 public class AugmenterContext implements Closeable {
 
     public interface Configuration {
-        String TRANSACTION_BUFFER_CLASS = "augmenter.context.transaction.buffer.class";
-        String TRANSACTION_BUFFER_LIMIT = "augmenter.context.transaction.buffer.limit";
-        String GTID_TYPE = "augmenter.context.gtid.type";
-        String BEGIN_PATTERN = "augmenter.context.pattern.begin";
-        String COMMIT_PATTERN = "augmenter.context.pattern.commit";
-        String DDL_DEFINER_PATTERN = "augmenter.context.pattern.ddl.definer";
-        String DDL_TABLE_PATTERN = "augmenter.context.pattern.ddl.table";
-        String DDL_TEMPORARY_TABLE_PATTERN = "augmenter.context.pattern.ddl.temporary.table";
-        String DDL_VIEW_PATTERN = "augmenter.context.pattern.ddl.view";
-        String DDL_ANALYZE_PATTERN = "augmenter.context.pattern.ddl.analyze";
-        String ENUM_PATTERN = "augmenter.context.pattern.enum";
-        String SET_PATTERN = "augmenter.context.pattern.set";
-        String EXCLUDE_TABLE = "augmenter.context.exclude.table";
-        String INCLUDE_TABLE = "augmenter.context.include.table";
-        String TRANSACTIONS_ENABLED = "augmenter.context.transactions.enabled";
+        String TRANSACTION_BUFFER_CLASS     = "augmenter.context.transaction.buffer.class";
+        String TRANSACTION_BUFFER_LIMIT     = "augmenter.context.transaction.buffer.limit";
+        String GTID_TYPE                    = "augmenter.context.gtid.type";
+        String BEGIN_PATTERN                = "augmenter.context.pattern.begin";
+        String COMMIT_PATTERN               = "augmenter.context.pattern.commit";
+        String DDL_DEFINER_PATTERN          = "augmenter.context.pattern.ddl.definer";
+        String DDL_TABLE_PATTERN            = "augmenter.context.pattern.ddl.table";
+        String DDL_TEMPORARY_TABLE_PATTERN  = "augmenter.context.pattern.ddl.temporary.table";
+        String DDL_VIEW_PATTERN             = "augmenter.context.pattern.ddl.view";
+        String DDL_ANALYZE_PATTERN          = "augmenter.context.pattern.ddl.analyze";
+        String ENUM_PATTERN                 = "augmenter.context.pattern.enum";
+        String SET_PATTERN                  = "augmenter.context.pattern.set";
+        String EXCLUDE_TABLE                = "augmenter.context.exclude.table";
+        String INCLUDE_TABLE                = "augmenter.context.include.table";
+        String TRANSACTIONS_ENABLED         = "augmenter.context.transactions.enabled";
     }
 
-    private static final Logger LOG = Logger.getLogger(AugmenterContext.class.getName());
+    private static final Logger LOG = LogManager.getLogger(AugmenterContext.class);
 
     private static final int DEFAULT_TRANSACTION_LIMIT = 1000;
     private static final String DEFAULT_GTID_TYPE = GTIDType.REAL.name();
@@ -277,7 +274,7 @@ public class AugmenterContext implements Closeable {
                             null
                     );
                     if (!this.transaction.begin()) {
-                        AugmenterContext.LOG.log(Level.WARNING, "transaction already started");
+                        AugmenterContext.LOG.warn("transaction already started");
                     }
 
                 }
@@ -296,7 +293,7 @@ public class AugmenterContext implements Closeable {
                             .counter("hbase.augmenter_context.type.commit").inc(1L);
 
                     if (!this.transaction.commit(eventHeader.getTimestamp(), transactionCounter.get())) {
-                        AugmenterContext.LOG.log(Level.WARNING, "transaction already markedForCommit");
+                        AugmenterContext.LOG.warn("transaction already markedForCommit");
                     }
                 }
                 // ddl definer
@@ -400,7 +397,7 @@ public class AugmenterContext implements Closeable {
                 );
 
                 if (!this.transaction.commit(xidRawEventData.getXID(), eventHeader.getTimestamp(), transactionCounter.get())) {
-                    AugmenterContext.LOG.log(Level.WARNING, "transaction already markedForCommit");
+                    AugmenterContext.LOG.warn("transaction already markedForCommit");
                 }
                 break;
 
@@ -494,7 +491,7 @@ public class AugmenterContext implements Closeable {
 
         if (transactionCounter.get() > 9998L) {
             transactionCounter.set(0L);
-            LOG.warning("TransactionCounter counter is overflowed, resetting to 0.");
+            LOG.warn("TransactionCounter counter is overflowed, resetting to 0.");
         }
 
         if (timestamp.get() > previousTimestamp.get()) {
@@ -509,12 +506,12 @@ public class AugmenterContext implements Closeable {
         } else if (timestamp.get() == previousTimestamp.get()) {
             transactionCounter.incrementAndGet();
         } else if (timestamp.get() < previousTimestamp.get()) {
-//            LOG.warning("Transactions out of order: " +
+//            LOG.warn("Transactions out of order: " +
 //                    "previousTimestamp => " + previousTimestamp.get() +
 //                    ", currentTimestamp => " + timestamp.get() +
 //                    ", transactionCounter => " + transactionCounter.get());
         } else {
-            LOG.warning("This code should not be reachable");
+            LOG.warn("This code should not be reachable");
         }
     }
 
@@ -850,7 +847,7 @@ public class AugmenterContext implements Closeable {
         try {
             stringifiedCellValues = Stringifier.stringifyRowCellsValues(eventType, columnSchemas, includedColumns, row, cache);
         } catch (Exception e) {
-            LOG.log(Level.SEVERE, "Error while deserializing row: Eventtype: " + eventType + " table: " + this.getEventTable() + ", row: " + row.getAfter().toString());
+            LOG.error("Error while deserializing row: Eventtype: " + eventType + " table: " + this.getEventTable() + ", row: " + row.getAfter().toString(), e);
             throw e;
         }
 

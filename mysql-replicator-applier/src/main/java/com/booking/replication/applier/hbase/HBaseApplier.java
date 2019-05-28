@@ -75,7 +75,7 @@ public class HBaseApplier implements Applier {
             LOG.info("Created HBaseApplierWriter.");
 
         } catch (IOException | NoSuchAlgorithmException e) {
-            e.printStackTrace();
+            LOG.error(e.getMessage(), e);
         }
 
         if (hbaseSchemaManager == null) {
@@ -156,7 +156,7 @@ public class HBaseApplier implements Applier {
         try {
             doSchemaLog(events);
         } catch (IOException e) {
-            e.printStackTrace();
+            LOG.error(e.getMessage(), e);
         } catch (SchemaTransitionException e) {
            throw  new RuntimeException("SchemaTransitionException",e);
         }

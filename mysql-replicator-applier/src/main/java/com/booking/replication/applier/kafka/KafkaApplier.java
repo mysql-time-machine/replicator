@@ -24,8 +24,9 @@ import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -37,7 +38,8 @@ public class KafkaApplier implements Applier {
 
     private final String dataFormat;
 
-    private static final Logger LOG = LoggerFactory.getLogger(KafkaApplier.class);
+    private static final Logger LOG = LogManager.getLogger(KafkaApplier.class);
+
     private final String metricBase;
     private KafkaAvroSerializer kafkaAvroSerializer;
     private SchemaRegistryClient schemaRegistryClient;

@@ -12,6 +12,9 @@ import com.booking.replication.commons.checkpoint.ForceRewindException;
 import com.booking.replication.supplier.model.*;
 import com.booking.replication.commons.metrics.Metrics;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.sql.SQLException;
@@ -20,11 +23,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-import java.util.logging.Logger;
 
 public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>, Closeable {
 
-    private static final Logger LOG = Logger.getLogger(Augmenter.class.getName());
+    private static final Logger LOG = LogManager.getLogger(Augmenter.class);
 
     public enum SchemaType {
 

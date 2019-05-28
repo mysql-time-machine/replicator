@@ -19,10 +19,8 @@ import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.io.compress.Compression;
 import org.apache.hadoop.hbase.util.Bytes;
 
-//import org.apache.hadoop.hbase.util.RegionSplitter;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,6 +29,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * Created by bdevetak on 27/11/15.
  */
 public class HBaseSchemaManager {
+
+    private static final Logger LOG = LogManager.getLogger(HBaseSchemaManager.class);
 
     private final Configuration hbaseConfig;
 
@@ -56,7 +56,6 @@ public class HBaseSchemaManager {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private static final Logger LOG = LoggerFactory.getLogger(HBaseSchemaManager.class);
 
     public HBaseSchemaManager(Map<String, Object> configuration) {
 
@@ -74,8 +73,7 @@ public class HBaseSchemaManager {
                 connection = ConnectionFactory.createConnection(storageConfig.getConfig());
                 LOG.info("HBaseSchemaManager successfully established connection to HBase.");
             } catch (IOException e) {
-                LOG.error("HBaseSchemaManager could not connect to HBase");
-                e.printStackTrace();
+                LOG.error("HBaseSchemaManager could not connect to HBase", e);
             }
         }
     }

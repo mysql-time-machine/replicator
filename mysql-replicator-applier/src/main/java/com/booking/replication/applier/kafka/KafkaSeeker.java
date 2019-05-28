@@ -16,6 +16,9 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.InvalidPartitionsException;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -27,16 +30,15 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class KafkaSeeker implements Seeker {
+
     public interface Configuration {
         String TOPIC = "kafka.topic";
         String CONSUMER_PREFIX = "kafka.consumer.";
     }
 
-    private static final Logger LOG = Logger.getLogger(KafkaSeeker.class.getName());
+    private static final Logger LOG = LogManager.getLogger(KafkaSeeker.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final String topic;
@@ -61,7 +63,7 @@ public class KafkaSeeker implements Seeker {
 
     @Override
     public Checkpoint seek(Checkpoint checkpoint) {
-        KafkaSeeker.LOG.log(Level.INFO,"seeking for last events");
+        KafkaSeeker.LOG.info("seeking for last events");
 
         try (Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(this.configuration, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
             this.totalPartitions = consumer.partitionsFor(this.topic).stream().mapToInt(PartitionInfo::partition).max().orElseThrow(() -> new InvalidPartitionsException("partitions not found")) + 1;
@@ -129,7 +131,7 @@ public class KafkaSeeker implements Seeker {
 
                     soughtEvents.add(event);
 
-                    KafkaSeeker.LOG.log(Level.INFO, String.format("sought partition %d", partition));
+                    KafkaSeeker.LOG.info(String.format("sought partition %d", partition));
                 }
             }
 

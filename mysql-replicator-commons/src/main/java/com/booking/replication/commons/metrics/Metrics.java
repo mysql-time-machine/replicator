@@ -2,18 +2,18 @@ package com.booking.replication.commons.metrics;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Reporter;
+
 import org.eclipse.jetty.server.Server;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
+
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public abstract class Metrics<CloseableReporter extends Closeable & Reporter> implements Closeable {
-    private static final Logger LOG = Logger.getLogger(Metrics.class.getName());
+    private static final Logger LOG = LogManager.getLogger(Metrics.class);
 
     public enum Type {
 
@@ -59,7 +59,7 @@ public abstract class Metrics<CloseableReporter extends Closeable & Reporter> im
 
         public Metrics<?> getInstance(){
             if(instance == null){
-                Metrics.LOG.log(Level.SEVERE, "Metrics.build(configuration) should have been called during starting the replicator");
+                Metrics.LOG.fatal("Metrics.build(configuration) should have been called during starting the replicator");
             }
             return  instance;
         }

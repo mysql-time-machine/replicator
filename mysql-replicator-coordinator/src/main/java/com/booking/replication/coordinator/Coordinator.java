@@ -2,6 +2,9 @@ package com.booking.replication.coordinator;
 
 import com.booking.replication.commons.checkpoint.CheckpointStorage;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
@@ -10,11 +13,9 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public abstract class Coordinator implements LeaderCoordinator, CheckpointStorage {
-    private static final Logger LOG = Logger.getLogger(Coordinator.class.getName());
+    private static final Logger LOG = LogManager.getLogger(Coordinator.class);
 
     public enum Type {
         ZOOKEEPER {
@@ -78,12 +79,12 @@ public abstract class Coordinator implements LeaderCoordinator, CheckpointStorag
                     try {
                         this.takeRunnable.get().run();
                     } catch (Exception exception) {
-                        Coordinator.LOG.log(Level.SEVERE, "error taking leadership", exception);
+                        Coordinator.LOG.error("error taking leadership", exception);
                     }
 
                     this.semaphore.acquire();
             } catch (Exception exception) {
-                Coordinator.LOG.log(Level.WARNING, "cannot take leadership");
+                Coordinator.LOG.warn("cannot take leadership");
             } finally {
                 if (!this.lostLeadership.getAndSet(true)) {
                     this.hasLeadership.set(false);
@@ -116,7 +117,7 @@ public abstract class Coordinator implements LeaderCoordinator, CheckpointStorag
                 this.executor.shutdown();
                 this.executor.awaitTermination(5L, TimeUnit.SECONDS);
             } catch (InterruptedException exception) {
-                Coordinator.LOG.log(Level.SEVERE, "error stopping coordinator", exception);
+                Coordinator.LOG.error("error stopping coordinator", exception);
             } finally {
                 this.executor.shutdownNow();
             }
@@ -133,7 +134,7 @@ public abstract class Coordinator implements LeaderCoordinator, CheckpointStorag
                 remainMillis -= sleepMillis;
             }
         } catch (InterruptedException exception) {
-            Coordinator.LOG.log(Level.SEVERE, "error waiting coordinator", exception);
+            Coordinator.LOG.error("error waiting coordinator", exception);
         }
     }
 

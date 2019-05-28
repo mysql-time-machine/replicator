@@ -142,7 +142,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
 
                 bufferClearTime.set( Instant.now().toEpochMilli() );
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                LOG.error(e.getMessage(), e);
             }
             return result;
         }

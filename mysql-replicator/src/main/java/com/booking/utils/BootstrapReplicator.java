@@ -8,8 +8,11 @@ import com.booking.replication.augmenter.model.event.format.avro.EventDataPresen
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.FullTableName;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
+
 import org.apache.avro.Schema;
 import org.apache.commons.dbcp2.BasicDataSource;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -17,14 +20,12 @@ import java.sql.ResultSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Creates active schema db,tables and publishes schema setSink schema registry if necessary.
  */
 public class BootstrapReplicator {
-    private static final Logger LOG = Logger.getLogger(BootstrapReplicator.class.getName());
+    private static final Logger LOG = LogManager.getLogger(BootstrapReplicator.class);
     private final Map<String, Object> configuration;
 
     public BootstrapReplicator(Map<String, Object> configuration) {
@@ -34,10 +35,10 @@ public class BootstrapReplicator {
     public void run() {
 
         if ((boolean) configuration.get(Augmenter.Configuration.BOOTSTRAP) == false) {
-            LOG.log(Level.INFO, "Skipping active schema bootstrapping");
+            LOG.info("Skipping active schema bootstrapping");
             return;
         }
-        LOG.log(Level.INFO, "Running bootstrapping");
+        LOG.info("Running bootstrapping");
 
         ActiveSchemaManager activeSchemaManager = new ActiveSchemaManager(configuration);
         boolean dbCreated = activeSchemaManager.createDbIfNotExists(configuration);
@@ -78,9 +79,9 @@ public class BootstrapReplicator {
                 LOG.info("Registering " + schemaKey + " in schemaregistry.");
                 schemaRegistryClient.register(schemaKey, avroSchema);
             }
-            LOG.log(Level.INFO, "Finished bootstrapping.");
+            LOG.info("Finished bootstrapping.");
         } catch (Exception e) {
-            LOG.log(Level.SEVERE, "Error while bootstrapping", e);
+            LOG.error("Error while bootstrapping", e);
         }
     }
 }

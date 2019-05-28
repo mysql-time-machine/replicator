@@ -34,11 +34,13 @@ import org.apache.hadoop.hbase.client.*
 import org.apache.hadoop.hbase.util.Bytes
 import org.testcontainers.containers.Network
 
+import org.apache.logging.log4j.Logger
+import org.apache.logging.log4j.LogManager;
+
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.sql.Statement
 import java.util.concurrent.TimeUnit
-import java.util.logging.Logger
 
 import spock.lang.Shared
 import spock.lang.Specification
@@ -46,7 +48,7 @@ import spock.lang.Unroll
 
 class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
-    @Shared private static final Logger LOG = Logger.getLogger(ReplicatorHBasePipelineIntegrationTestRunner.class.getName())
+    @Shared private static final Logger LOG = LogManager.getLogger(ReplicatorHBasePipelineIntegrationTestRunner.class)
 
     // TODO: add integration test for buffer size limit exceeded (rewind mode)
     @Shared private static final int AUGMENTER_TRANSACTION_BUFFER_SIZE_LIMIT = 100

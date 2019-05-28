@@ -18,18 +18,21 @@ import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.coordinator.ZookeeperCoordinator;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
-import com.booking.utils.BootstrapReplicatorTest;
+
 import com.mysql.jdbc.Driver;
+
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
+
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.*;
 import org.apache.commons.dbcp2.BasicDataSource;
+
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -37,6 +40,11 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -45,16 +53,12 @@ import org.testcontainers.containers.Network;
 import java.io.*;
 import java.sql.Connection;
 
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 
 public class ReplicatorKafkaTest {
-    private static final Logger LOG = Logger.getLogger(ReplicatorKafkaTest.class.getName());
+    private static final Logger LOG = LogManager.getLogger(ReplicatorKafkaTest.class);
 
     private static final String ZOOKEEPER_LEADERSHIP_PATH = "/replicator/leadership";
     private static final String ZOOKEEPER_CHECKPOINT_PATH = "/replicator/checkpoint";
@@ -154,7 +158,7 @@ public class ReplicatorKafkaTest {
                     System.out.println(deserialize.toString());
 //                    AugmentedEvent augmentedEvent = AugmentedEvent.fromJSON(record.key(), record.value());
 
-//                    ReplicatorKafkaTest.LOG.log(Level.INFO, new String(augmentedEvent.toJSON()));
+//                    ReplicatorKafkaTest.LOG.info(new String(augmentedEvent.toJSON()));
 
                     System.out.println(new String(record.key()));
 
@@ -175,7 +179,7 @@ public class ReplicatorKafkaTest {
             reader = new BufferedReader(new FileReader(scriptFilePath));
             String line;
             // read script line by line
-            ReplicatorKafkaTest.LOG.log(Level.INFO, "Executing query from " + scriptFilePath);
+            ReplicatorKafkaTest.LOG.info("Executing query from " + scriptFilePath);
             String s;
             StringBuilder sb = new StringBuilder();
 
@@ -190,12 +194,12 @@ public class ReplicatorKafkaTest {
             for (String query : inst) {
                 if (!query.trim().equals("")) {
                     statement.execute(query);
-                    ReplicatorKafkaTest.LOG.log(Level.INFO, query);
+                    ReplicatorKafkaTest.LOG.info(query);
                 }
             }
             return true;
         } catch (Exception exception) {
-            ReplicatorKafkaTest.LOG.log(Level.WARNING, String.format("error executing query \"%s\": %s", scriptFilePath, exception.getMessage()));
+            ReplicatorKafkaTest.LOG.warn(String.format("error executing query \"%s\": %s", scriptFilePath, exception.getMessage()));
             return false;
         }
 

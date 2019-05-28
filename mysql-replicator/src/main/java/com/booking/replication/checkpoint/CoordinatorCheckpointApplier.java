@@ -12,13 +12,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import java.util.stream.Collectors;
 
 public class CoordinatorCheckpointApplier implements CheckpointApplier {
 
-    private static final Logger LOG = Logger.getLogger(CoordinatorCheckpointApplier.class.getName());
+    private static final Logger LOG = LogManager.getLogger(CoordinatorCheckpointApplier.class);
 
     private final CheckpointStorage storage;
     private final String path;
@@ -64,10 +64,10 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
                     LOG.info("CheckpointApplier, storing safe checkpoint: " + safeCheckpoint.getGtidSet());
                     try {
                         this.storage.saveCheckpoint(this.path, safeCheckpoint);
-                        CoordinatorCheckpointApplier.LOG.log(Level.INFO, "CheckpointApplier, stored checkpoint: " + safeCheckpoint.toString());
+                        CoordinatorCheckpointApplier.LOG.info("CheckpointApplier, stored checkpoint: " + safeCheckpoint.toString());
                         this.lastExecution.set(System.currentTimeMillis());
                     } catch (IOException exception) {
-                        CoordinatorCheckpointApplier.LOG.log(Level.WARNING, "error saving checkpoint", exception);
+                        CoordinatorCheckpointApplier.LOG.info( "error saving checkpoint", exception);
                     }
                 } else {
                     throw new RuntimeException("Could not find safe checkpoint. Not safe to continue running!");

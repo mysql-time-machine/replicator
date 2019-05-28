@@ -1,11 +1,13 @@
 package com.booking.replication.streams;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.util.Objects;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.function.*;
-import java.util.logging.Logger;
 
 public final class StreamsBuilder<Input, Output> implements
         StreamsBuilderFrom<Input, Output>,
@@ -13,7 +15,7 @@ public final class StreamsBuilder<Input, Output> implements
         StreamsBuilderTo<Input, Output>,
         StreamsBuilderPost<Input, Output>,
         StreamsBuilderBuild<Input, Output> {
-    private static final Logger LOG = Logger.getLogger(StreamsBuilder.class.getName());
+    private static final Logger LOG = LogManager.getLogger(StreamsBuilder.class);
 
     private int threads;
     private int tasks;

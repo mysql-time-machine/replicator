@@ -9,8 +9,8 @@ import com.booking.replication.commons.metrics.Metrics;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -22,6 +22,8 @@ import java.util.stream.Collectors;
  * This class generates HBase mutations and keys
  */
 public class HBaseApplierMutationGenerator {
+
+    private static final Logger LOGGER = LogManager.getLogger(HBaseApplierMutationGenerator.class);
 
     private final Metrics<?> metrics;
 
@@ -77,8 +79,6 @@ public class HBaseApplierMutationGenerator {
     private static final byte[] XID                          = Bytes.toBytes(AugmenterModel.Configuration.XID_FIELD_NAME);
 
     private final Map<String, Object> configuration;
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(HBaseApplierMutationGenerator.class);
 
     // Constructor
     public HBaseApplierMutationGenerator(Map<String, Object> configuration, Metrics<?> metrics)

@@ -3,9 +3,14 @@ package com.booking.replication.applier.hbase;
 import com.booking.replication.applier.hbase.conf.BigTableStorageConfig;
 import com.booking.replication.applier.hbase.conf.HBaseStorageConfig;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.util.Map;
 
 public interface StorageConfig {
+
+    Logger LOG = LogManager.getLogger(StorageConfig.class);
 
     org.apache.hadoop.conf.Configuration getConfig();
 
@@ -41,7 +46,7 @@ public interface StorageConfig {
                     ).toString()
             ).newInstance(configuration);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error(e.getMessage(), e);
         }
         return null;
     }

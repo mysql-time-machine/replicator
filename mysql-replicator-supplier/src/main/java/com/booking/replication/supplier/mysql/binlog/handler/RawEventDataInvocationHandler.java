@@ -2,6 +2,9 @@ package com.booking.replication.supplier.mysql.binlog.handler;
 
 import com.github.shyiko.mysql.binlog.event.EventData;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -9,6 +12,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class RawEventDataInvocationHandler implements InvocationHandler {
+
+    private static final Logger LOG = LogManager.getLogger(RawEventDataInvocationHandler.class);
+
     private EventData eventData;
     private Map<String, Method> methodMap;
 
@@ -34,7 +40,7 @@ public class RawEventDataInvocationHandler implements InvocationHandler {
                     try {
                         return this.eventData.getClass().getMethod(method.getName());
                     } catch (NoSuchMethodException exception) {
-                        exception.printStackTrace();
+                        LOG.error(exception.getMessage(), exception);
                         throw new RuntimeException(exception);
                     }
                 }

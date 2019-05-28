@@ -6,6 +6,9 @@ import com.booking.replication.applier.hbase.HBaseApplier;
 import com.booking.replication.applier.kafka.KafkaApplier;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collection;
@@ -13,6 +16,9 @@ import java.util.Map;
 import java.util.function.Function;
 
 public interface Applier extends Function<Collection<AugmentedEvent>, Boolean>, Closeable {
+
+    Logger LOG = LogManager.getLogger(Applier.class);
+
     boolean forceFlush();
 
     enum Type {
@@ -58,7 +64,7 @@ public interface Applier extends Function<Collection<AugmentedEvent>, Boolean>, 
                     configuration.getOrDefault(Configuration.TYPE, Type.HBASE.name()).toString()
             ).newInstance(configuration);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error(e.getMessage(), e);
         }
         return null;
     }

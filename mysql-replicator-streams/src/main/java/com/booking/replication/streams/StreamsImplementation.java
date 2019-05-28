@@ -6,11 +6,12 @@ import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public final class StreamsImplementation<Input, Output> implements Streams<Input, Output> {
-    private static final Logger LOG = Logger.getLogger(StreamsImplementation.class.getName());
+    private static final Logger LOG = LogManager.getLogger(StreamsImplementation.class);
 
     private final int threads;
     private final int tasks;
@@ -73,7 +74,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
                 while (true) {
                     int size = StreamsImplementation.this.queues[task].size();
                     if (size > 9000) {
-                        LOG.warning("Queues are getting big. Queue #" + task + " size: " + size);
+                        LOG.warn("Queues are getting big. Queue #" + task + " size: " + size);
                     }
                     try {
                         return StreamsImplementation.this.queues[task].takeFirst();
@@ -108,7 +109,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
         });
         this.running = new AtomicBoolean();
         this.handling = new AtomicBoolean();
-        this.handler = (exception) -> StreamsImplementation.LOG.log(Level.SEVERE, "error inside streams", exception);
+        this.handler = (exception) -> StreamsImplementation.LOG.error("error inside streams", exception);
     }
 
     private void process(Input input, int task) {
@@ -129,7 +130,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
                 this.handling.set(false);
             }).start();
         } else {
-            StreamsImplementation.LOG.log(Level.SEVERE, "error inside streams", exception);
+            StreamsImplementation.LOG.error("error inside streams", exception);
         }
     }
 
@@ -224,7 +225,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
 
             try {
                 if (!StreamsImplementation.this.queues[this.partitioner.apply(input, this.tasks)].offer(input, this.queueTimeout, TimeUnit.SECONDS)) {
-                    LOG.warning("Push: offer timeout");
+                    LOG.warn("Push: offer timeout");
                     this.handleException(new StreamsException(String.format("Max waiting time exceeded while writing setSink internal buffer: %d", this.queueTimeout)));
                 }
             } catch (InterruptedException exception) {

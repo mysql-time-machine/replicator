@@ -7,6 +7,7 @@ import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.FullTableName;
 import com.booking.replication.augmenter.model.schema.TableSchema;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
@@ -15,15 +16,17 @@ import org.apache.avro.io.BinaryEncoder;
 import org.apache.avro.io.DatumWriter;
 import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumWriter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.*;
 
 public class EventDataPresenterAvro {
-    private static final Logger LOG = LoggerFactory.getLogger(EventDataPresenterAvro.class);
+    private static final Logger LOG = LogManager.getLogger(EventDataPresenterAvro.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private static final boolean CONVERT_BIN_TO_HEX = true;

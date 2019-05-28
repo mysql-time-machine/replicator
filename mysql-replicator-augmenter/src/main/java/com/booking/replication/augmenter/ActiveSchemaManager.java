@@ -4,7 +4,10 @@ import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.SchemaAtPositionCache;
 import com.booking.replication.augmenter.model.schema.TableSchema;
 import com.mysql.jdbc.Driver;
+
 import org.apache.commons.dbcp2.BasicDataSource;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.sql.*;
@@ -13,27 +16,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class ActiveSchemaManager implements SchemaManager {
 
     public interface Configuration {
-        String MYSQL_DRIVER_CLASS = "augmenter.schema.active.mysql.driver.class";
-        String MYSQL_HOSTNAME = "augmenter.schema.active.mysql.hostname";
-        String MYSQL_PORT = "augmenter.schema.active.mysql.port";
-        String MYSQL_SCHEMA = "augmenter.schema.active.mysql.schema";
-        String MYSQL_USERNAME = "augmenter.schema.active.mysql.username";
-        String MYSQL_PASSWORD = "augmenter.schema.active.mysql.password";
+        String MYSQL_DRIVER_CLASS   = "augmenter.schema.active.mysql.driver.class";
+        String MYSQL_HOSTNAME       = "augmenter.schema.active.mysql.hostname";
+        String MYSQL_PORT           = "augmenter.schema.active.mysql.port";
+        String MYSQL_SCHEMA         = "augmenter.schema.active.mysql.schema";
+        String MYSQL_USERNAME       = "augmenter.schema.active.mysql.username";
+        String MYSQL_PASSWORD       = "augmenter.schema.active.mysql.password";
 
-        String BINLOG_MYSQL_HOSTNAME = "mysql.hostname";
-        String BINLOG_MYSQL_PORT = "mysql.port";
-        String BINLOG_MYSQL_SCHEMA = "mysql.schema";
-        String BINLOG_MYSQL_USERNAME = "mysql.username";
-        String BINLOG_MYSQL_PASSWORD = "mysql.password";
+        String BINLOG_MYSQL_HOSTNAME    = "mysql.hostname";
+        String BINLOG_MYSQL_PORT        = "mysql.port";
+        String BINLOG_MYSQL_SCHEMA      = "mysql.schema";
+        String BINLOG_MYSQL_USERNAME    = "mysql.username";
+        String BINLOG_MYSQL_PASSWORD    = "mysql.password";
     }
 
-    private static final Logger LOG = Logger.getLogger(ActiveSchemaManager.class.getName());
+    private static final Logger LOG = LogManager.getLogger(ActiveSchemaManager.class);
 
     private static final String DEFAULT_MYSQL_DRIVER_CLASS = Driver.class.getName();
 
@@ -59,8 +60,7 @@ public class ActiveSchemaManager implements SchemaManager {
                 TableSchema ts = SchemaHelpers.computeTableSchema(tableName, ActiveSchemaManager.this.dataSource, ActiveSchemaManager.this.binlogDataSource);
                 return ts;
             } catch (Exception e) {
-                ActiveSchemaManager.LOG.log(
-                        Level.WARNING,
+                ActiveSchemaManager.LOG.warn(
                         String.format("error listing columns from table \"%s\" : %s", tableName, e.getMessage()),
                         e
                 );
@@ -70,12 +70,12 @@ public class ActiveSchemaManager implements SchemaManager {
     }
 
     public BasicDataSource initDatasource(Map<String, Object> configuration) {
-        Object driverClass = configuration.getOrDefault(Configuration.MYSQL_DRIVER_CLASS, ActiveSchemaManager.DEFAULT_MYSQL_DRIVER_CLASS);
-        Object hostname = configuration.get(Configuration.MYSQL_HOSTNAME);
-        Object port = configuration.getOrDefault(Configuration.MYSQL_PORT, "3306");
-        Object schema = configuration.get(Configuration.MYSQL_SCHEMA);
-        Object username = configuration.get(Configuration.MYSQL_USERNAME);
-        Object password = configuration.get(Configuration.MYSQL_PASSWORD);
+        Object driverClass  = configuration.getOrDefault(Configuration.MYSQL_DRIVER_CLASS, ActiveSchemaManager.DEFAULT_MYSQL_DRIVER_CLASS);
+        Object hostname     = configuration.get(Configuration.MYSQL_HOSTNAME);
+        Object port         = configuration.getOrDefault(Configuration.MYSQL_PORT, "3306");
+        Object schema       = configuration.get(Configuration.MYSQL_SCHEMA);
+        Object username     = configuration.get(Configuration.MYSQL_USERNAME);
+        Object password     = configuration.get(Configuration.MYSQL_PASSWORD);
 
         Objects.requireNonNull(hostname, String.format("Configuration required: %s", Configuration.MYSQL_HOSTNAME));
         Objects.requireNonNull(schema, String.format("Configuration required: %s", Configuration.MYSQL_SCHEMA));
@@ -89,8 +89,8 @@ public class ActiveSchemaManager implements SchemaManager {
         Object driverClass = configuration.getOrDefault(Configuration.MYSQL_DRIVER_CLASS, ActiveSchemaManager.DEFAULT_MYSQL_DRIVER_CLASS);
 
         Object hostname = configuration.get(Configuration.BINLOG_MYSQL_HOSTNAME);
-        Object port = configuration.getOrDefault(Configuration.BINLOG_MYSQL_PORT, "3306");
-        Object schema = configuration.get(Configuration.BINLOG_MYSQL_SCHEMA);
+        Object port     = configuration.getOrDefault(Configuration.BINLOG_MYSQL_PORT, "3306");
+        Object schema   = configuration.get(Configuration.BINLOG_MYSQL_SCHEMA);
         Object username = configuration.get(Configuration.BINLOG_MYSQL_USERNAME);
         Object password = configuration.get(Configuration.BINLOG_MYSQL_PASSWORD);
 
@@ -125,12 +125,12 @@ public class ActiveSchemaManager implements SchemaManager {
     }
 
     public boolean createDbIfNotExists(Map<String, Object> configuration) {
-        Object driverClass = configuration.getOrDefault(Configuration.MYSQL_DRIVER_CLASS, ActiveSchemaManager.DEFAULT_MYSQL_DRIVER_CLASS);
-        Object hostname = configuration.get(Configuration.MYSQL_HOSTNAME);
-        Object port = configuration.getOrDefault(Configuration.MYSQL_PORT, "3306");
-        Object schema1 = configuration.get(Configuration.MYSQL_SCHEMA);
-        Object username = configuration.get(Configuration.MYSQL_USERNAME);
-        Object password = configuration.get(Configuration.MYSQL_PASSWORD);
+        Object driverClass  = configuration.getOrDefault(Configuration.MYSQL_DRIVER_CLASS, ActiveSchemaManager.DEFAULT_MYSQL_DRIVER_CLASS);
+        Object hostname     = configuration.get(Configuration.MYSQL_HOSTNAME);
+        Object port         = configuration.getOrDefault(Configuration.MYSQL_PORT, "3306");
+        Object schema1      = configuration.get(Configuration.MYSQL_SCHEMA);
+        Object username     = configuration.get(Configuration.MYSQL_USERNAME);
+        Object password     = configuration.get(Configuration.MYSQL_PASSWORD);
 
         Objects.requireNonNull(hostname, String.format("Configuration required: %s", Configuration.MYSQL_HOSTNAME));
         Objects.requireNonNull(schema1, String.format("Configuration required: %s", Configuration.MYSQL_SCHEMA));
@@ -152,7 +152,7 @@ public class ActiveSchemaManager implements SchemaManager {
             PreparedStatement createDb = conn.prepareStatement("CREATE DATABASE " + schema);
             return createDb.execute();
         } catch (SQLException e) {
-            LOG.log(Level.SEVERE, "Could not establist connection to: " + hostname, e);
+            LOG.error("Could not establist connection to: " + hostname, e);
         }
         return false;
     }
@@ -186,7 +186,7 @@ public class ActiveSchemaManager implements SchemaManager {
             }
             return executed;
         } catch (SQLException exception) {
-            ActiveSchemaManager.LOG.log(Level.WARNING, String.format("error executing query \"%s\": %s", query, exception.getMessage()));
+            ActiveSchemaManager.LOG.warn(String.format("error executing query \"%s\": %s", query, exception.getMessage()));
             return false;
         }
     }
@@ -235,7 +235,7 @@ public class ActiveSchemaManager implements SchemaManager {
                 return null;
             }
         } catch (SQLException exception) {
-            ActiveSchemaManager.LOG.log(Level.WARNING, String.format("error getting create table from table \"%s\"", tableName, exception.getMessage()));
+            ActiveSchemaManager.LOG.warn(String.format("error getting create table from table \"%s\"", tableName, exception.getMessage()));
             return null;
         }
     }

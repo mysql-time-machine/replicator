@@ -1,12 +1,15 @@
 package com.booking.replication.supplier.mysql.binlog;
 
 import com.booking.replication.commons.checkpoint.Checkpoint;
-import com.booking.replication.commons.checkpoint.GTIDType;
 import com.booking.replication.supplier.model.RawEvent;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.handler.RawEventInvocationHandler;
+
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.*;
@@ -16,14 +19,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import static java.lang.Thread.sleep;
 
 public class BinaryLogSupplier implements Supplier {
 
-    private static final Logger LOG = Logger.getLogger(BinaryLogSupplier.class.getName());
+    private static final Logger LOG = LogManager.getLogger(BinaryLogSupplier.class);
 
     public enum PositionType {
         ANY,
@@ -32,15 +31,15 @@ public class BinaryLogSupplier implements Supplier {
     }
 
     public interface Configuration {
-        String MYSQL_HOSTNAME = "mysql.hostname";
-        String MYSQL_PORT = "mysql.port";
-        String MYSQL_SCHEMA = "mysql.schema";
-        String MYSQL_USERNAME = "mysql.username";
-        String MYSQL_PASSWORD = "mysql.password";
-        String POSITION_TYPE = "supplier.binlog.position.type";
-        String OVERRIDE_CHECKPOINT_START_POSITION = "override.checkpoint.start.position";
-        String BINLOG_START_FILENAME = "supplier.binlog.start.filename";
-        String BINLOG_START_POSITION = "supplier.binlog.start.position";
+        String MYSQL_HOSTNAME                       = "mysql.hostname";
+        String MYSQL_PORT                           = "mysql.port";
+        String MYSQL_SCHEMA                         = "mysql.schema";
+        String MYSQL_USERNAME                       = "mysql.username";
+        String MYSQL_PASSWORD                       = "mysql.password";
+        String POSITION_TYPE                        = "supplier.binlog.position.type";
+        String OVERRIDE_CHECKPOINT_START_POSITION   = "override.checkpoint.start.position";
+        String BINLOG_START_FILENAME                = "supplier.binlog.start.filename";
+        String BINLOG_START_POSITION                = "supplier.binlog.start.position";
     }
 
     private final AtomicBoolean running;
@@ -61,12 +60,12 @@ public class BinaryLogSupplier implements Supplier {
     private Consumer<Exception> handler;
 
     public BinaryLogSupplier(Map<String, Object> configuration) {
-        Object hostname = configuration.get(Configuration.MYSQL_HOSTNAME);
-        Object port = configuration.getOrDefault(Configuration.MYSQL_PORT, "3306");
-        Object schema = configuration.get(Configuration.MYSQL_SCHEMA);
-        Object username = configuration.get(Configuration.MYSQL_USERNAME);
-        Object password = configuration.get(Configuration.MYSQL_PASSWORD);
-        Object positionType = configuration.getOrDefault(Configuration.POSITION_TYPE, PositionType.GTID);
+        Object hostname         = configuration.get(Configuration.MYSQL_HOSTNAME);
+        Object port             = configuration.getOrDefault(Configuration.MYSQL_PORT, "3306");
+        Object schema           = configuration.get(Configuration.MYSQL_SCHEMA);
+        Object username         = configuration.get(Configuration.MYSQL_USERNAME);
+        Object password         = configuration.get(Configuration.MYSQL_PASSWORD);
+        Object positionType     = configuration.getOrDefault(Configuration.POSITION_TYPE, PositionType.GTID);
         Object positionOverride = configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_START_POSITION, false);
 
         Objects.requireNonNull(hostname, String.format("Configuration required: %s", Configuration.MYSQL_HOSTNAME));
@@ -74,16 +73,16 @@ public class BinaryLogSupplier implements Supplier {
         Objects.requireNonNull(username, String.format("Configuration required: %s", Configuration.MYSQL_USERNAME));
         Objects.requireNonNull(password, String.format("Configuration required: %s", Configuration.MYSQL_PASSWORD));
 
-        this.running = new AtomicBoolean(false);
-        this.connected = new AtomicBoolean(false);
-        this.hostname = this.getList(hostname);
-        this.port = Integer.parseInt(port.toString());
-        this.schema = schema.toString();
-        this.username = username.toString();
-        this.password = password.toString();
-        this.positionType = PositionType.valueOf(positionType.toString());
-        this.positionOverride = (Boolean) positionOverride;
-        this.binlogClientGTIDSet = new AtomicReference<>();
+        this.running                = new AtomicBoolean(false);
+        this.connected              = new AtomicBoolean(false);
+        this.hostname               = this.getList(hostname);
+        this.port                   = Integer.parseInt(port.toString());
+        this.schema                 = schema.toString();
+        this.username               = username.toString();
+        this.password               = password.toString();
+        this.positionType           = PositionType.valueOf(positionType.toString());
+        this.positionOverride       = (Boolean) positionOverride;
+        this.binlogClientGTIDSet    = new AtomicReference<>();
     }
 
     @SuppressWarnings("unchecked")
@@ -136,7 +135,7 @@ public class BinaryLogSupplier implements Supplier {
     @Override
     public void start(Checkpoint checkpoint) {
         if (!this.running.getAndSet(true)) {
-            BinaryLogSupplier.LOG.log(Level.INFO, "starting binary log supplier connecting");
+            BinaryLogSupplier.LOG.info("starting binary log supplier connecting");
 
             if (this.executor == null) {
                 this.executor = Executors.newSingleThreadExecutor();
@@ -159,7 +158,7 @@ public class BinaryLogSupplier implements Supplier {
                             this.client.registerLifecycleListener(new BinaryLogClient.LifecycleListener() {
                                 @Override
                                 public void onConnect(BinaryLogClient client) {
-                                    BinaryLogSupplier.LOG.log(Level.INFO,
+                                    BinaryLogSupplier.LOG.info(
                                             String.format("Binlog client connected to:%s : %s, %s",
                                                     hostname,
                                                     client.getBinlogFilename(),
@@ -169,17 +168,17 @@ public class BinaryLogSupplier implements Supplier {
 
                                 @Override
                                 public void onCommunicationFailure(BinaryLogClient client, Exception ex) {
-                                    BinaryLogSupplier.LOG.log(Level.SEVERE, String.format("Binlog client had communication failure :%s, %s", hostname, ex.getMessage()));
+                                    BinaryLogSupplier.LOG.error(String.format("Binlog client had communication failure :%s, %s", hostname, ex.getMessage()));
                                 }
 
                                 @Override
                                 public void onEventDeserializationFailure(BinaryLogClient client, Exception ex) {
-                                    BinaryLogSupplier.LOG.log(Level.SEVERE, String.format("Binlog client had Event deserialization failure : %s, %s", hostname, ex.getMessage()));
+                                    BinaryLogSupplier.LOG.error(String.format("Binlog client had Event deserialization failure : %s, %s", hostname, ex.getMessage()));
                                 }
 
                                 @Override
                                 public void onDisconnect(BinaryLogClient client) {
-                                    BinaryLogSupplier.LOG.log(Level.INFO, String.format("Binlog client disconnected from: %s", hostname));
+                                    BinaryLogSupplier.LOG.info(String.format("Binlog client disconnected from: %s", hostname));
                                 }
                             });
 
@@ -225,7 +224,7 @@ public class BinaryLogSupplier implements Supplier {
                             throw new RuntimeException("No startup checkpoint provided.");
                         }
                     } catch (IOException exception) {
-                        BinaryLogSupplier.LOG.log(Level.WARNING, String.format("error connecting to %s, falling over to the next one", hostname), exception);
+                        BinaryLogSupplier.LOG.warn(String.format("error connecting to %s, falling over to the next one", hostname), exception);
                     }
                 }
 
@@ -233,7 +232,7 @@ public class BinaryLogSupplier implements Supplier {
                     if (this.running.get() && this.handler != null) {
                         this.handler.accept(new IOException("error connecting"));
                     } else {
-                        BinaryLogSupplier.LOG.log(Level.SEVERE, "error connecting");
+                        BinaryLogSupplier.LOG.error("error connecting");
                         throw  new RuntimeException("MySQL server pool depleted, could not connect to any of the provided hosts.");
                     }
                 }
@@ -249,17 +248,17 @@ public class BinaryLogSupplier implements Supplier {
                 this.client = null;
                 this.connected.set(false);
             } catch (IOException exception) {
-                BinaryLogSupplier.LOG.log(Level.SEVERE, "error disconnecting", exception);
+                BinaryLogSupplier.LOG.error("error disconnecting", exception);
             }
         } else {
-            BinaryLogSupplier.LOG.log(Level.WARNING, "Trying to disconnect supplier which is already disconnected");
+            BinaryLogSupplier.LOG.warn("Trying to disconnect supplier which is already disconnected");
         }
     }
 
     @Override
     public void stop() {
         if (this.running.getAndSet(false)) {
-            BinaryLogSupplier.LOG.log(Level.INFO, "stopping binary log supplier connecting");
+            BinaryLogSupplier.LOG.info("stopping binary log supplier connecting");
 
             this.disconnect();
 

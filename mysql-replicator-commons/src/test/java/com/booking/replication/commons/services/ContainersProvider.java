@@ -2,23 +2,23 @@ package com.booking.replication.commons.services;
 
 import com.booking.replication.commons.conf.MySQLConfiguration;
 import com.github.dockerjava.api.model.PortBinding;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.FixedHostPortGenericContainer;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Logger;
 
 public final class ContainersProvider implements ServicesProvider {
 
-    private static final Logger LOG = Logger.getLogger(ContainersProvider.class.getName());
+    private static final Logger LOG = LogManager.getLogger(ContainersProvider.class);
 
 //    // Tags
 //    private static final String MYSQL_DOCKER_IMAGE_DEFAULT = "mysql:5.6.38";

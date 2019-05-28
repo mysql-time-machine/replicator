@@ -3,24 +3,22 @@ package com.booking.replication.augmenter.model.format;
 import com.booking.replication.augmenter.model.row.RowBeforeAfter;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.Serializable;
 import java.math.BigInteger;
-import java.nio.CharBuffer;
 import java.nio.charset.StandardCharsets;
-import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.logging.Logger;
 import java.util.stream.IntStream;
-import java.util.stream.StreamSupport;
 
 public class Stringifier {
 
-    private static final Logger LOG = Logger.getLogger(Stringifier.class.getName());
+    private static final Logger LOG = LogManager.getLogger(Stringifier.class);
 
     public static Map<String, Map<String, String>> stringifyRowCellsValues(
             String eventType,
@@ -151,7 +149,7 @@ public class Stringifier {
 
                 case "timestamp": // created as java.sql.Timestamp in binlog connector
                     if (! (cellValue instanceof java.sql.Timestamp) ) {
-                       LOG.warning("binlog parser has changed java type for timestamp!");
+                       LOG.warn("binlog parser has changed java type for timestamp!");
                     }
 
                     // a workaround for UTC-enforcement by mysql-binlog-connector

@@ -83,7 +83,7 @@ public class HBaseRowKeyMapper {
         try {
             md = MessageDigest.getInstance(HBaseRowKeyMapper.DIGEST_ALGORITHM);
         } catch( NoSuchAlgorithmException e ) {
-            e.printStackTrace();
+            LOG.error("No MD5 Algorithm found", e);
             throw new RuntimeException("No MD5 Algorithm found");
         }
 

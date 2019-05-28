@@ -2,12 +2,16 @@ package com.booking.replication.coordinator;
 
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.leader.LeaderLatch;
 import org.apache.curator.framework.recipes.leader.LeaderLatchListener;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.CreateMode;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -16,17 +20,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class ZookeeperCoordinator extends Coordinator {
-    private static final Logger LOG = Logger.getLogger(ZookeeperCoordinator.class.getName());
+    private static final Logger LOG = LogManager.getLogger(ZookeeperCoordinator.class);
 
     public interface Configuration {
-        String LEADERSHIP_PATH = "zookeeper.leadership.path";
-        String CONNECTION_STRING = "zookeeper.connection.string";
-        String RETRY_INITIAL_SLEEP = "zookeeper.retry.initial.sleep";
-        String RETRY_MAXIMUM_ATTEMPTS = "zookeeper.retry.maximum.attempts";
+        String LEADERSHIP_PATH          = "zookeeper.leadership.path";
+        String CONNECTION_STRING        = "zookeeper.connection.string";
+        String RETRY_INITIAL_SLEEP      = "zookeeper.retry.initial.sleep";
+        String RETRY_MAXIMUM_ATTEMPTS   = "zookeeper.retry.maximum.attempts";
     }
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -36,17 +38,24 @@ public class ZookeeperCoordinator extends Coordinator {
     private final AtomicBoolean running;
 
     public ZookeeperCoordinator(Map<String, Object> configuration) {
-        Object leadershipPath = configuration.get(Configuration.LEADERSHIP_PATH);
-        Object connectionString = configuration.get(Configuration.CONNECTION_STRING);
-        Object retryInitialSleep = configuration.getOrDefault(Configuration.RETRY_INITIAL_SLEEP, "1000");
+        Object leadershipPath       = configuration.get(Configuration.LEADERSHIP_PATH);
+        Object connectionString     = configuration.get(Configuration.CONNECTION_STRING);
+        Object retryInitialSleep    = configuration.getOrDefault(Configuration.RETRY_INITIAL_SLEEP, "1000");
         Object retryMaximumAttempts = configuration.getOrDefault(Configuration.RETRY_MAXIMUM_ATTEMPTS, "3");
 
         Objects.requireNonNull(leadershipPath, String.format("Configuration required: %s", Configuration.LEADERSHIP_PATH));
         Objects.requireNonNull(connectionString, String.format("Configuration required: %s", Configuration.CONNECTION_STRING));
 
-        this.client = CuratorFrameworkFactory.newClient(String.join(",", this.getList(connectionString)), new ExponentialBackoffRetry(Integer.parseInt(retryInitialSleep.toString()), Integer.parseInt(retryMaximumAttempts.toString())));
-        this.latch = new LeaderLatch(this.client, leadershipPath.toString());
-        this.running = new AtomicBoolean();
+        this.client = CuratorFrameworkFactory.newClient(
+                String.join(",",this.getList(connectionString)),
+                new ExponentialBackoffRetry(
+                        Integer.parseInt(retryInitialSleep.toString()),
+                        Integer.parseInt(retryMaximumAttempts.toString())
+                )
+        );
+
+        this.latch      = new LeaderLatch(this.client, leadershipPath.toString());
+        this.running    = new AtomicBoolean();
 
         this.latch.addListener(new LeaderLatchListener() {
             @Override
@@ -123,7 +132,7 @@ public class ZookeeperCoordinator extends Coordinator {
     @Override
     public void awaitLeadership() {
         try {
-            ZookeeperCoordinator.LOG.log(Level.INFO, "Waiting for leadership.");
+            ZookeeperCoordinator.LOG.info("Waiting for leadership.");
             this.latch.await();
         } catch (InterruptedException | EOFException exception) {
             throw new RuntimeException(exception);

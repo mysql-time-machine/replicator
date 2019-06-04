@@ -12,7 +12,7 @@ import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
 import com.booking.replication.augmenter.util.AugmentedEventRowExtractor;
 import com.booking.replication.commons.metrics.Metrics;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.hadoop.hbase.client.Put;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -28,12 +28,17 @@ import static java.util.stream.Collectors.toList;
 
 public class HBaseApplier implements Applier {
 
-    private static final Logger LOG = LogManager.getLogger(com.booking.replication.applier.hbase.HBaseApplier.class);
+    private static final Logger LOG = LogManager.getLogger(HBaseApplier.class);
+
+    private static final int DEFAULT_FLUSH_BUFFER_SIZE        = 1000;
+    private static final int DEFAULT_BUFFER_FLUSH_TIME_LIMIT  = 30;
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private final Metrics<?> metrics;
-    private int FLUSH_BUFFER_SIZE       = 1000;
-    private int BUFFER_FLUSH_TIME_LIMIT = 30;
+
+    private final int FLUSH_BUFFER_SIZE;
+    private final int BUFFER_FLUSH_TIME_LIMIT;
+
     private final boolean dryRun;
 
     private HBaseSchemaManager hbaseSchemaManager;
@@ -53,6 +58,8 @@ public class HBaseApplier implements Applier {
         String HBASE_USE_SNAPPY         = "applier.hbase.snappy";
         String DRYRUN                   = "applier.hbase.dryrun";
         String PAYLOAD_TABLE_NAME       = "applier.hbase.payload.table.name";
+        String FLUSH_BUFFER_SIZE        = "applier.hbase.buffer.size";
+        String BUFFER_FLUSH_TIME_LIMIT  = "applier.hbase.buffer.time.limit";
     }
 
     @SuppressWarnings("unused")
@@ -61,6 +68,22 @@ public class HBaseApplier implements Applier {
         this.configuration = configuration;
 
         this.dryRun = (boolean) configuration.get(Configuration.DRYRUN);
+
+        if (configuration.containsKey(Configuration.FLUSH_BUFFER_SIZE)) {
+            FLUSH_BUFFER_SIZE = (int) configuration.get(Configuration.FLUSH_BUFFER_SIZE);
+        }else {
+            FLUSH_BUFFER_SIZE = DEFAULT_FLUSH_BUFFER_SIZE;
+        }
+
+        LOG.info("HBase FLUSH_BUFFER_SIZE set to " + FLUSH_BUFFER_SIZE);
+
+        if (configuration.containsKey(Configuration.BUFFER_FLUSH_TIME_LIMIT)) {
+            BUFFER_FLUSH_TIME_LIMIT= (int) configuration.get(Configuration.BUFFER_FLUSH_TIME_LIMIT);
+        }else {
+            BUFFER_FLUSH_TIME_LIMIT = DEFAULT_BUFFER_FLUSH_TIME_LIMIT;
+        }
+
+        LOG.info("HBase BUFFER_FLUSH_TIME_LIMIT to " + BUFFER_FLUSH_TIME_LIMIT);
 
         this.metrics = Metrics.getInstance(configuration);
         this.storageConfig = StorageConfig.build(configuration);
@@ -87,8 +110,6 @@ public class HBaseApplier implements Applier {
         }
 
     }
-
-
 
     /**
      * Logic of Operation:

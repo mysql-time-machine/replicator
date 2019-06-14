@@ -3,27 +3,30 @@ package com.booking.replication.checkpoint;
 import com.booking.replication.augmenter.AugmenterContext;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.commons.checkpoint.CheckpointStorage;
+import com.codahale.metrics.MetricRegistry;
 
 import java.io.Closeable;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
+import static com.booking.replication.augmenter.AugmenterContext.Configuration.TRANSACTIONS_ENABLED;
+
 public interface CheckpointApplier extends BiConsumer<AugmentedEvent, Integer>, Closeable {
     enum Type {
         NONE {
             @Override
-            protected CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath, long period, boolean transactionEnabled) {
+            protected CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath, long period, boolean transactionEnabled, MetricRegistry metricRegistry) {
                 return new DummyCheckPointApplier();
             }
         },
         COORDINATOR {
             @Override
-            protected CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath, long period, boolean transactionEnabled) {
-                return new CoordinatorCheckpointApplier(checkpointStorage, checkpointPath, period, transactionEnabled);
+            protected CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath, long period, boolean transactionEnabled, MetricRegistry metricRegistry) {
+                return new CoordinatorCheckpointApplier(checkpointStorage, checkpointPath, period, transactionEnabled, metricRegistry);
             }
         };
 
-        protected abstract CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath, long period, boolean transactionEnabled);
+        protected abstract CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath, long period, boolean transactionEnabled, MetricRegistry metricRegistry);
     }
 
     interface Configuration {
@@ -35,15 +38,16 @@ public interface CheckpointApplier extends BiConsumer<AugmentedEvent, Integer>, 
     default void close() {
     }
 
-    static CheckpointApplier build(Map<String, Object> configuration, CheckpointStorage checkpointStorage, String checkpointPath) {
-        boolean transactionEnabled = Boolean.parseBoolean(configuration.getOrDefault(AugmenterContext.Configuration.TRANSACTIONS_ENABLED, "true").toString());
+    static CheckpointApplier build(Map<String, Object> configuration, CheckpointStorage checkpointStorage, String checkpointPath, MetricRegistry metricRegistry) {
+        boolean transactionEnabled = Boolean.parseBoolean(configuration.getOrDefault(TRANSACTIONS_ENABLED, "true").toString());
         return CheckpointApplier.Type.valueOf(
                 configuration.getOrDefault(Configuration.TYPE, Type.NONE.name()).toString()
         ).newInstance(
                 checkpointStorage,
                 checkpointPath,
                 Long.parseLong(configuration.getOrDefault(Configuration.PERIOD, "5000").toString()),
-                transactionEnabled
+                transactionEnabled,
+                metricRegistry
         );
     }
 }

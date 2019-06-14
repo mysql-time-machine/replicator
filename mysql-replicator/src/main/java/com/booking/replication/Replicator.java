@@ -115,8 +115,10 @@ public class Replicator {
 
         this.applier = Applier.build(configuration);
 
-        this.checkpointApplier = CheckpointApplier.build(configuration, this.coordinator, this.checkpointPath);
-
+        this.checkpointApplier = CheckpointApplier.build(configuration,
+                this.coordinator,
+                this.checkpointPath,
+                this.metrics.getRegistry());
 
         // --------------------------------------------------------------------
         // Setup streams/pipelines:
@@ -155,6 +157,8 @@ public class Replicator {
                         this.checkpointApplier.accept(event, task);
                     }
                 }).build();
+
+        this.destinationStream.registerMetric(this.metrics.getRegistry());
 
         this.sourceStream = Streams.<RawEvent>builder()
                 .usePushMode()

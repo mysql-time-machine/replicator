@@ -1,5 +1,7 @@
 package com.booking.replication.checkpoint;
 
+import com.codahale.metrics.Gauge;
+
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.CheckpointStorage;
@@ -12,9 +14,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+
+import com.codahale.metrics.MetricRegistry;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
 import java.util.stream.Collectors;
+
 
 public class CoordinatorCheckpointApplier implements CheckpointApplier {
 
@@ -23,22 +29,28 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
     private final CheckpointStorage storage;
     private final String path;
     private final AtomicLong lastExecution;
+    private final AtomicLong lastCheckpointTime;
     private final ScheduledExecutorService executor;
     private final GtidSetAlgebra gtidSetAlgebra;
 
     private final Map<Integer, CheckpointBuffer> taskCheckpointBuffer;
 
-    public CoordinatorCheckpointApplier(CheckpointStorage storage, String path, long period,  boolean transactionEnabled) {
+    private final String METRIC_KEY = MetricRegistry.name("coordinator", "timediff");
+
+    public CoordinatorCheckpointApplier(CheckpointStorage storage, String path, long period,  boolean transactionEnabled, MetricRegistry metricRegistry) {
 
         this.storage = storage;
         this.path = path;
-        this.lastExecution = new AtomicLong();
+        this.lastExecution      = new AtomicLong();
+        this.lastCheckpointTime = new AtomicLong();
 
         this.gtidSetAlgebra = new GtidSetAlgebra();
 
         this.taskCheckpointBuffer = new ConcurrentHashMap<>();
 
         this.executor = Executors.newSingleThreadScheduledExecutor();
+
+        metricRegistry.register(METRIC_KEY, (Gauge<Long>)() -> (System.currentTimeMillis() - this.lastCheckpointTime.get()) /1000 );
 
         this.executor.scheduleAtFixedRate(() -> {
 
@@ -65,6 +77,7 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
                     try {
                         this.storage.saveCheckpoint(this.path, safeCheckpoint);
                         CoordinatorCheckpointApplier.LOG.info("CheckpointApplier, stored checkpoint: " + safeCheckpoint.toString());
+                        this.lastCheckpointTime.set(safeCheckpoint.getTimestamp());
                         this.lastExecution.set(System.currentTimeMillis());
                     } catch (IOException exception) {
                         CoordinatorCheckpointApplier.LOG.info( "error saving checkpoint", exception);
@@ -103,6 +116,4 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
             this.executor.shutdownNow();
         }
     }
-
-
 }

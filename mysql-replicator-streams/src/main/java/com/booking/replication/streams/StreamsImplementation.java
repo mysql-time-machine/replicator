@@ -7,6 +7,8 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.*;
 
+import com.booking.replication.commons.metrics.QueuesMetricSet;
+import com.codahale.metrics.MetricRegistry;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -29,6 +31,8 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
 
     private ExecutorService executor;
     private Consumer<Exception> handler;
+
+    private final String METRIC_PREFIX = MetricRegistry.name("streams", "tasks", "queue");
 
     @SuppressWarnings("unchecked")
     StreamsImplementation(
@@ -110,6 +114,11 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
         this.running = new AtomicBoolean();
         this.handling = new AtomicBoolean();
         this.handler = (exception) -> StreamsImplementation.LOG.error("error inside streams", exception);
+    }
+
+    public void registerMetric(MetricRegistry metricRegistry) {
+        metricRegistry.register(METRIC_PREFIX, new QueuesMetricSet<Input>(this.queues));
+
     }
 
     private void process(Input input, int task) {

@@ -50,6 +50,7 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
 
         this.executor = Executors.newSingleThreadScheduledExecutor();
 
+        metricRegistry.remove(METRIC_KEY);
         metricRegistry.register(METRIC_KEY, (Gauge<Long>)() -> (System.currentTimeMillis() - this.lastCheckpointTime.get()) /1000 );
 
         this.executor.scheduleAtFixedRate(() -> {

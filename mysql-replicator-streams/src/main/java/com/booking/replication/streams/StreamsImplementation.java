@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.*;
 
 import com.booking.replication.commons.metrics.QueuesMetricSet;
+import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -117,8 +118,8 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     }
 
     public void registerMetric(MetricRegistry metricRegistry) {
+        metricRegistry.removeMatching(MetricFilter.startsWith(METRIC_PREFIX));
         metricRegistry.register(METRIC_PREFIX, new QueuesMetricSet<Input>(this.queues));
-
     }
 
     private void process(Input input, int task) {

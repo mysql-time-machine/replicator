@@ -19,6 +19,7 @@ import com.codahale.metrics.MetricRegistry;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 
@@ -35,9 +36,7 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
 
     private final Map<Integer, CheckpointBuffer> taskCheckpointBuffer;
 
-    private final String METRIC_KEY = MetricRegistry.name("coordinator", "timediff");
-
-    public CoordinatorCheckpointApplier(CheckpointStorage storage, String path, long period,  boolean transactionEnabled, MetricRegistry metricRegistry) {
+    public CoordinatorCheckpointApplier(CheckpointStorage storage, String path, long period,  boolean transactionEnabled, Consumer<Checkpoint> callback) {
 
         this.storage = storage;
         this.path = path;
@@ -49,9 +48,6 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
         this.taskCheckpointBuffer = new ConcurrentHashMap<>();
 
         this.executor = Executors.newSingleThreadScheduledExecutor();
-
-        metricRegistry.remove(METRIC_KEY);
-        metricRegistry.register(METRIC_KEY, (Gauge<Long>)() -> (System.currentTimeMillis() - this.lastCheckpointTime.get()) /1000 );
 
         this.executor.scheduleAtFixedRate(() -> {
 
@@ -77,6 +73,7 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
                     LOG.info("CheckpointApplier, storing safe checkpoint: " + safeCheckpoint.getGtidSet());
                     try {
                         this.storage.saveCheckpoint(this.path, safeCheckpoint);
+                        callback.accept(safeCheckpoint);
                         CoordinatorCheckpointApplier.LOG.info("CheckpointApplier, stored checkpoint: " + safeCheckpoint.toString());
                         this.lastCheckpointTime.set(safeCheckpoint.getTimestamp());
                         this.lastExecution.set(System.currentTimeMillis());

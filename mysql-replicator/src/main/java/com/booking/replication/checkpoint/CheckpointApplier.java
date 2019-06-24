@@ -2,12 +2,14 @@ package com.booking.replication.checkpoint;
 
 import com.booking.replication.augmenter.AugmenterContext;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
+import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.CheckpointStorage;
 import com.codahale.metrics.MetricRegistry;
 
 import java.io.Closeable;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 import static com.booking.replication.augmenter.AugmenterContext.Configuration.TRANSACTIONS_ENABLED;
 
@@ -15,18 +17,18 @@ public interface CheckpointApplier extends BiConsumer<AugmentedEvent, Integer>, 
     enum Type {
         NONE {
             @Override
-            protected CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath, long period, boolean transactionEnabled, MetricRegistry metricRegistry) {
+            protected CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath, long period, boolean transactionEnabled, Consumer<Checkpoint> callback) {
                 return new DummyCheckPointApplier();
             }
         },
         COORDINATOR {
             @Override
-            protected CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath, long period, boolean transactionEnabled, MetricRegistry metricRegistry) {
-                return new CoordinatorCheckpointApplier(checkpointStorage, checkpointPath, period, transactionEnabled, metricRegistry);
+            protected CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath, long period, boolean transactionEnabled, Consumer<Checkpoint> callback) {
+                return new CoordinatorCheckpointApplier(checkpointStorage, checkpointPath, period, transactionEnabled, callback);
             }
         };
 
-        protected abstract CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath, long period, boolean transactionEnabled, MetricRegistry metricRegistry);
+        protected abstract CheckpointApplier newInstance(CheckpointStorage checkpointStorage, String checkpointPath, long period, boolean transactionEnabled, Consumer<Checkpoint> callback);
     }
 
     interface Configuration {
@@ -38,7 +40,7 @@ public interface CheckpointApplier extends BiConsumer<AugmentedEvent, Integer>, 
     default void close() {
     }
 
-    static CheckpointApplier build(Map<String, Object> configuration, CheckpointStorage checkpointStorage, String checkpointPath, MetricRegistry metricRegistry) {
+    static CheckpointApplier build(Map<String, Object> configuration, CheckpointStorage checkpointStorage, String checkpointPath, Consumer<Checkpoint> callback) {
         boolean transactionEnabled = Boolean.parseBoolean(configuration.getOrDefault(TRANSACTIONS_ENABLED, "true").toString());
         return CheckpointApplier.Type.valueOf(
                 configuration.getOrDefault(Configuration.TYPE, Type.NONE.name()).toString()
@@ -47,7 +49,7 @@ public interface CheckpointApplier extends BiConsumer<AugmentedEvent, Integer>, 
                 checkpointPath,
                 Long.parseLong(configuration.getOrDefault(Configuration.PERIOD, "5000").toString()),
                 transactionEnabled,
-                metricRegistry
+                callback
         );
     }
 }

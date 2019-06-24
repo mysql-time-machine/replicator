@@ -12,6 +12,7 @@ import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.ForceRewindException;
 import com.booking.replication.commons.map.MapFlatter;
 import com.booking.replication.commons.metrics.Metrics;
+import com.booking.replication.commons.metrics.QueuesMetricSet;
 import com.booking.replication.controller.WebServer;
 import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.streams.Streams;
@@ -19,6 +20,8 @@ import com.booking.replication.supplier.Supplier;
 
 import com.booking.replication.supplier.model.RawEvent;
 import com.booking.utils.BootstrapReplicator;
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -118,7 +121,8 @@ public class Replicator {
         this.checkpointApplier = CheckpointApplier.build(configuration,
                 this.coordinator,
                 this.checkpointPath,
-                this.metrics.getRegistry());
+                checkpoint -> this.metrics.updateMeter(MetricRegistry.name(configuration.get(Metrics.Configuration.BASE_PATH).toString(), "coordinator", "timediff"),
+                        System.currentTimeMillis() - checkpoint.getTimestamp()));
 
         // --------------------------------------------------------------------
         // Setup streams/pipelines:
@@ -158,7 +162,9 @@ public class Replicator {
                     }
                 }).build();
 
-        this.destinationStream.registerMetric(this.metrics.getRegistry());
+        String METRIC_PREFIX = MetricRegistry.name(configuration.get(Metrics.Configuration.BASE_PATH).toString(), "streams", "tasks", "queue");
+
+        this.metrics.getRegistry().register(METRIC_PREFIX, (Gauge<Integer>) () -> this.destinationStream.size());
 
         this.sourceStream = Streams.<RawEvent>builder()
                 .usePushMode()
@@ -181,6 +187,8 @@ public class Replicator {
                     }
                     return true;
                 }).build();
+
+        this.metrics.getRegistry().register(METRIC_PREFIX, (Gauge<Integer>) () -> this.sourceStream.size());
 
         Consumer<Exception> exceptionHandle = (exception) -> {
 
@@ -213,7 +221,7 @@ public class Replicator {
 
                 Checkpoint from;
 
-                if(overrideCheckpointStartPosition){
+                if (overrideCheckpointStartPosition) {
 
                     if (overrideCheckpointBinLogFileName != null && !overrideCheckpointBinLogFileName.equals("")) {
 
@@ -228,10 +236,10 @@ public class Replicator {
 
                     } else if (overrideCheckpointGtidSet != null && !overrideCheckpointGtidSet.equals("")) {
 
-                       LOG.info("Checkpoint startup mode: override gtidSet: " + overrideCheckpointGtidSet);
-                       from = this.seeker.seek(
-                               new Checkpoint(overrideCheckpointGtidSet)
-                       );
+                        LOG.info("Checkpoint startup mode: override gtidSet: " + overrideCheckpointGtidSet);
+                        from = this.seeker.seek(
+                                new Checkpoint(overrideCheckpointGtidSet)
+                        );
 
                     } else {
                         throw new RuntimeException("Impossible case!");
@@ -241,7 +249,7 @@ public class Replicator {
                     LOG.info("Checkpoint startup mode: loading safe checkpoint from zookeeper");
 
                     from = this.seeker.seek(
-                        this.loadSafeCheckpoint()
+                            this.loadSafeCheckpoint()
                     );
                 }
 
@@ -410,7 +418,7 @@ public class Replicator {
                             new File(line.getOptionValue("secret-file")),
                             new TypeReference<Map<String, String>>() {
 
-                    }));
+                            }));
                 }
 
                 if (line.hasOption("supplier")) {

@@ -33,8 +33,6 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     private ExecutorService executor;
     private Consumer<Exception> handler;
 
-    private final String METRIC_PREFIX = MetricRegistry.name("streams", "tasks", "queue");
-
     @SuppressWarnings("unchecked")
     StreamsImplementation(
             int threads,
@@ -115,11 +113,6 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
         this.running = new AtomicBoolean();
         this.handling = new AtomicBoolean();
         this.handler = (exception) -> StreamsImplementation.LOG.error("error inside streams", exception);
-    }
-
-    public void registerMetric(MetricRegistry metricRegistry) {
-        metricRegistry.removeMatching(MetricFilter.startsWith(METRIC_PREFIX));
-        metricRegistry.register(METRIC_PREFIX, new QueuesMetricSet<Input>(this.queues));
     }
 
     private void process(Input input, int task) {

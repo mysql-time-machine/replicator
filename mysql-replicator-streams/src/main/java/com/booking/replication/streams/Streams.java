@@ -4,6 +4,7 @@ import com.codahale.metrics.MetricRegistry;
 
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 @SuppressWarnings("unused")
 public interface Streams<Input, Output> {
@@ -18,8 +19,6 @@ public interface Streams<Input, Output> {
     void onException(Consumer<Exception> handler);
 
     void push(Input input);
-
-    void registerMetric(MetricRegistry metricRegistry);
 
     int size();
 

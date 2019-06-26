@@ -19,6 +19,7 @@ import com.booking.replication.supplier.Supplier;
 
 import com.booking.replication.supplier.model.RawEvent;
 import com.booking.utils.BootstrapReplicator;
+import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -33,6 +34,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 public class Replicator {
@@ -66,9 +68,14 @@ public class Replicator {
     private final String errorCounter;
     private final CheckpointApplier checkpointApplier;
     private final WebServer webServer;
+    private final AtomicLong checkPointDelay;
 
     private final Streams<Collection<AugmentedEvent>, Collection<AugmentedEvent>> destinationStream;
     private final Streams<RawEvent, Collection<AugmentedEvent>> sourceStream;
+
+    private final String METRIC_COORDINATOR_DELAY               = MetricRegistry.name("coordinator", "delay");
+    private final String METRIC_STREAM_DESTINATION_QUEUE_SIZE   = MetricRegistry.name("streams", "destination", "queue", "size");
+    private final String METRIC_STREAM_SOURCE_QUEUE_SIZE        = MetricRegistry.name("streams", "source", "queue", "size");
 
     public Replicator(final Map<String, Object> configuration) {
 
@@ -115,8 +122,15 @@ public class Replicator {
 
         this.applier = Applier.build(configuration);
 
-        this.checkpointApplier = CheckpointApplier.build(configuration, this.coordinator, this.checkpointPath);
+        this.checkPointDelay = new AtomicLong(0L);
 
+        this.checkpointApplier = CheckpointApplier.build(configuration,
+                this.coordinator,
+                this.checkpointPath,
+                safeCheckpoint -> this.checkPointDelay.set((System.currentTimeMillis() - safeCheckpoint.getTimestamp()) / 1000)
+        );
+
+        this.metrics.register(METRIC_COORDINATOR_DELAY, (Gauge<Long>) () -> this.checkPointDelay.get());
 
         // --------------------------------------------------------------------
         // Setup streams/pipelines:
@@ -156,6 +170,8 @@ public class Replicator {
                     }
                 }).build();
 
+        this.metrics.register(METRIC_STREAM_DESTINATION_QUEUE_SIZE,(Gauge<Integer>) () -> this.destinationStream.size());
+
         this.sourceStream = Streams.<RawEvent>builder()
                 .usePushMode()
                 .process(this.augmenter)
@@ -177,6 +193,8 @@ public class Replicator {
                     }
                     return true;
                 }).build();
+
+        this.metrics.register(METRIC_STREAM_SOURCE_QUEUE_SIZE, (Gauge<Integer>) () -> this.sourceStream.size());
 
         Consumer<Exception> exceptionHandle = (exception) -> {
 

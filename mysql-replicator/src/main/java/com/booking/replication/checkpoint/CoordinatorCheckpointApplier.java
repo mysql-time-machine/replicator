@@ -14,6 +14,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class CoordinatorCheckpointApplier implements CheckpointApplier {
@@ -28,7 +30,7 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
 
     private final Map<Integer, CheckpointBuffer> taskCheckpointBuffer;
 
-    public CoordinatorCheckpointApplier(CheckpointStorage storage, String path, long period,  boolean transactionEnabled) {
+    public CoordinatorCheckpointApplier(CheckpointStorage storage, String path, long period,  boolean transactionEnabled, Consumer<Checkpoint> safeCheckpointCallback) {
 
         this.storage = storage;
         this.path = path;
@@ -66,6 +68,7 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
                         this.storage.saveCheckpoint(this.path, safeCheckpoint);
                         CoordinatorCheckpointApplier.LOG.info("CheckpointApplier, stored checkpoint: " + safeCheckpoint.toString());
                         this.lastExecution.set(System.currentTimeMillis());
+                        safeCheckpointCallback.accept(safeCheckpoint);
                     } catch (IOException exception) {
                         CoordinatorCheckpointApplier.LOG.info( "error saving checkpoint", exception);
                     }

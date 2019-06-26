@@ -36,6 +36,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 public class Replicator {
@@ -69,6 +70,7 @@ public class Replicator {
     private final String errorCounter;
     private final CheckpointApplier checkpointApplier;
     private final WebServer webServer;
+    private final AtomicLong checkPointDelay;
 
     private final Streams<Collection<AugmentedEvent>, Collection<AugmentedEvent>> destinationStream;
     private final Streams<RawEvent, Collection<AugmentedEvent>> sourceStream;
@@ -118,12 +120,14 @@ public class Replicator {
 
         this.applier = Applier.build(configuration);
 
+        this.checkPointDelay = new AtomicLong(0L);
         this.checkpointApplier = CheckpointApplier.build(configuration,
                 this.coordinator,
                 this.checkpointPath,
-                checkpoint -> this.metrics.updateMeter(MetricRegistry.name(configuration.get(Metrics.Configuration.BASE_PATH).toString(), "coordinator", "timediff"),
-                        System.currentTimeMillis() - checkpoint.getTimestamp()));
+                checkpoint -> this.checkPointDelay.set(System.currentTimeMillis() - checkpoint.getTimestamp()));
 
+        this.metrics.getRegistry().register(MetricRegistry.name(configuration.get(Metrics.Configuration.BASE_PATH).toString(), "coordinator", "timediff"),
+                (Gauge<Long>) this.checkPointDelay::get);
         // --------------------------------------------------------------------
         // Setup streams/pipelines:
         //

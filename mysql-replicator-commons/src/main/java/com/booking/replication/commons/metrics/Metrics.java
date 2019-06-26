@@ -1,5 +1,6 @@
 package com.booking.replication.commons.metrics;
 
+import com.codahale.metrics.Metric;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Reporter;
 
@@ -92,6 +93,21 @@ public abstract class Metrics<CloseableReporter extends Closeable & Reporter> im
 
     public void updateMeter(String name, long val) {
         this.registry.meter(name).mark(val);
+    }
+
+    public <T extends Metric> T register(String name, T metric) {
+
+        final String fullName = MetricRegistry.name(basePath, name);
+
+        if (this.registry.remove(fullName)) {
+            LOG.warn(String.format("Metric %s already registered.", fullName));
+        }
+
+        T response = this.registry.register(fullName, metric);
+
+        LOG.info(String.format("Metric %s registered", fullName));
+
+        return response;
     }
 
     @Override

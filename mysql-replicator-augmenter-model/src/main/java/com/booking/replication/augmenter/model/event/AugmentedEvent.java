@@ -44,10 +44,6 @@ public class AugmentedEvent implements Serializable {
         return eventDataPresenterAvro.convertAugumentedEventDataToAvro();
     }
 
-    public AugmentedEventHeader headerToAvro()
-    {
-        return this.header;
-    }
 
     public byte[] toJSONPrettyPrint() throws IOException {
         return AugmentedEvent.MAPPER.writerWithDefaultPrettyPrinter().writeValueAsBytes(this);

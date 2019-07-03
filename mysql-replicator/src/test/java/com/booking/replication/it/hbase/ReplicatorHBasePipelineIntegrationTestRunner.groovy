@@ -59,7 +59,10 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     @Shared private static final String ZOOKEEPER_LEADERSHIP_PATH = "/replicator/leadership"
     @Shared private static final String ZOOKEEPER_CHECKPOINT_PATH = "/replicator/checkpoint"
 
-    @Shared private static final String CHECKPOINT_DEFAULT = "{\"timestamp\": 0, \"serverId\": 1, \"gtid\": null, \"binlog\": {\"filename\": \"binlog.000001\", \"position\": 4}}"
+    @Shared private static final String CHECKPOINT_DEFAULT = "{\"timestamp\": 0, " +
+            "\"serverId\": 1,\"gtidSet\": \"%s\", \"gtid\": null, " +
+            "\"binlog\": {\"filename\": \"\", \"position\": \"\"}}"
+    ;
 
     @Shared private static final String MYSQL_SCHEMA = "replicator"
     @Shared private static final String MYSQL_ROOT_USERNAME = "root"

@@ -115,6 +115,7 @@ public class KafkaApplier implements Applier {
 
     @Override
     public Boolean apply(Collection<AugmentedEvent> events) {
+
         if (Objects.equals(this.dataFormat, MessageFormat.AVRO)) {
 
             try {
@@ -141,7 +142,7 @@ public class KafkaApplier implements Applier {
                         ProducerRecord<byte[], byte[]> record = new ProducerRecord<>(
                                 this.topic,
                                 partition,
-                                KafkaApplier.MAPPER.writeValueAsBytes(event.headerToAvro()),
+                                KafkaApplier.MAPPER.writeValueAsBytes(event.getHeader()),
                                 serialized,
                                 new RecordHeaders().add(new RecordHeader("meta", event.getHeader().headerString().getBytes()))
                         );
@@ -170,6 +171,8 @@ public class KafkaApplier implements Applier {
                 for (AugmentedEvent event : events) {
                     int partition = this.partitioner.apply(event, this.totalPartitions);
 
+                    byte[] data = KafkaApplier.MAPPER.writeValueAsBytes(event.getData());
+
                     this.producers.computeIfAbsent(
                             partition, key -> this.getProducer()
                     ).send(new ProducerRecord<>(
@@ -177,7 +180,7 @@ public class KafkaApplier implements Applier {
                             partition,
                             event.getHeader().getTimestamp(),
                             KafkaApplier.MAPPER.writeValueAsBytes(event.getHeader()),
-                            KafkaApplier.MAPPER.writeValueAsBytes(event.getData())
+                            data
                     ));
 
                     writeMetrics(event, 1);

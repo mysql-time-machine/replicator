@@ -15,6 +15,7 @@ import org.apache.avro.Schema;
 import java.io.IOException;
 import java.util.*;
 
+// TODO: remove this and update to: https://github.com/confluentinc/schema-registry/pull/1009
 // This class is identical to CachedSchemaRegistry except register method which uses hashmap instead of identityHashMap there by not recognising similar schemas
 //        IdentityHashMap<Schema, String> myIhashmap = new IdentityHashMap<Schema, String>();
 //        HashMap<Schema, String> myhashmap = new HashMap<Schema, String>();

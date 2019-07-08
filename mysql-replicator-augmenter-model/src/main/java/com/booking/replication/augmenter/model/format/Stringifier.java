@@ -36,84 +36,64 @@ public class Stringifier {
 
                 Serializable[] rowByteSlicesForInsert = row.getAfter().get();
 
-                for (int columnIndex = 0, rowIndex = 0; columnIndex < columns.size() && rowIndex < rowByteSlicesForInsert.length; columnIndex++) {
+                addToStringifiedCellValues(stringifiedCellValues, columns, includedColumns, cache,
+                        new Serializable[][]{rowByteSlicesForInsert}, new String[]{"value"});
 
-                    if (includedColumns.get(columnIndex)) {
-
-                        ColumnSchema column = columns.get(columnIndex);
-
-                        String columnName = column.getName();
-                        String columnType = column.getType().toLowerCase();
-
-                        Serializable cellValue = rowByteSlicesForInsert[rowIndex++];
-                        String collation = column.getCollation();
-
-                        String stringifiedCellValue = Stringifier.stringifyCellValue(cache, columnType, cellValue, collation);
-
-                        stringifiedCellValues.put(columnName, new HashMap<>());
-                        stringifiedCellValues.get(columnName).put("value", stringifiedCellValue);
-                    }
-                }
             } else if (eventType.equals("UPDATE")) {
 
                 Serializable[] rowByteSlicesForUpdateBefore = row.getBefore().get();
-                Serializable[] rowByteSlicesForUpdateAfter = row.getAfter().get();
+                Serializable[] rowByteSlicesForUpdateAfter  = row.getAfter().get();
 
-                // Here we assume the included columns before are also included after. It should always be the case for update statement.
-                for (int columnIndex = 0, sliceIndex = 0; columnIndex < columns.size() && sliceIndex < rowByteSlicesForUpdateAfter.length; columnIndex++) {
+                addToStringifiedCellValues(stringifiedCellValues, columns, includedColumns, cache,
+                        new Serializable[][]{rowByteSlicesForUpdateBefore, rowByteSlicesForUpdateAfter},
+                        new String[]{"value_before", "value_after"});
 
-                    if (includedColumns.get(columnIndex)) {
-
-                        ColumnSchema column = columns.get(columnIndex);
-
-                        String columnName = column.getName();
-                        String columnType = column.getType().toLowerCase();
-
-                        String collation = column.getCollation();
-
-                        Serializable cellValueBefore = rowByteSlicesForUpdateBefore[sliceIndex];
-                        Serializable cellValueAfter = rowByteSlicesForUpdateAfter[sliceIndex];
-
-                        String stringifiedCellValueBefore = Stringifier.stringifyCellValue(cache, columnType, cellValueBefore, collation);
-                        String stringifiedCellValueAfter = Stringifier.stringifyCellValue(cache, columnType, cellValueAfter, collation);
-
-                        stringifiedCellValues.put(columnName, new HashMap<>());
-                        stringifiedCellValues.get(columnName).put("value_before", stringifiedCellValueBefore);
-                        stringifiedCellValues.get(columnName).put("value_after", stringifiedCellValueAfter);
-
-                        sliceIndex++;
-                    }
-                }
             } else if (eventType.equals("DELETE")) {
 
                 Serializable[] rowByteSlicesForDelete = row.getBefore().get();
 
-                for (int columnIndex = 0, rowIndex = 0; columnIndex < columns.size() && rowIndex < rowByteSlicesForDelete.length; columnIndex++) {
+                addToStringifiedCellValues(stringifiedCellValues, columns, includedColumns, cache,
+                        new Serializable[][]{rowByteSlicesForDelete}, new String[]{"value"});
 
-                    if (includedColumns.get(columnIndex)) {
-
-                        ColumnSchema column = columns.get(columnIndex);
-
-                        String columnName = column.getName();
-                        String columnType = column.getType().toLowerCase();
-
-                        Serializable cellValue = rowByteSlicesForDelete[rowIndex++];
-                        String collation = column.getCollation();
-
-                        String stringifiedCellValue = Stringifier.stringifyCellValue(cache, columnType, cellValue, collation);
-
-                        stringifiedCellValues.put(columnName, new HashMap<>());
-                        stringifiedCellValues.get(columnName).put("value", stringifiedCellValue);
-                    }
-                }
             } else {
                 throw new RuntimeException("Invalid event type in stringifier: " + eventType);
             }
-        }
-        else {
+        } else {
             throw new RuntimeException("Invalid data. Columns list cannot be null!");
         }
         return stringifiedCellValues;
+    }
+
+    public static void addToStringifiedCellValues(Map<String, Map<String, String>> stringifiedCellValues,
+                                                  List<ColumnSchema> columns,
+                                                  BitSet includedColumns,
+                                                  Map<String, String[]> cache,
+                                                  Serializable[][] rowByteSlices,
+                                                  String[] values) {
+
+        Serializable[] firstRowByteSlices = rowByteSlices[0];
+
+        for (int columnIndex = 0, rowIndex = 0; columnIndex < columns.size() && rowIndex < firstRowByteSlices.length; columnIndex++) {
+
+            if (includedColumns.get(columnIndex)) {
+
+                ColumnSchema column = columns.get(columnIndex);
+
+                String columnName = column.getName();
+                String columnType = column.getType().toLowerCase();
+                String collation  = column.getCollation();
+
+                stringifiedCellValues.put(columnName, new HashMap<>());
+
+                for(int i=0; i< rowByteSlices.length; ++i) {
+                    Serializable cellValue = rowByteSlices[i][rowIndex];
+                    String stringifiedCellValue = Stringifier.stringifyCellValue(cache, columnType, cellValue, collation);
+                    stringifiedCellValues.get(columnName).put(values[i], stringifiedCellValue);
+                }
+
+                rowIndex++;
+            }
+        }
     }
 
     // todo use cellValueDeserializer

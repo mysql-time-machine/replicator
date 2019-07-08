@@ -64,7 +64,7 @@ public class Stringifier {
         return stringifiedCellValues;
     }
 
-    public static void addToStringifiedCellValues(Map<String, Map<String, String>> stringifiedCellValues,
+    private static void addToStringifiedCellValues(Map<String, Map<String, String>> stringifiedCellValues,
                                                   List<ColumnSchema> columns,
                                                   BitSet includedColumns,
                                                   Map<String, String[]> cache,

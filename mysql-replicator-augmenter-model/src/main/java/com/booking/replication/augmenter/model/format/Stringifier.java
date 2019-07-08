@@ -51,7 +51,7 @@ public class Stringifier {
                         String stringifiedCellValue = Stringifier.stringifyCellValue(cache, columnType, cellValue, collation);
 
                         stringifiedCellValues.put(columnName, new HashMap<>());
-                        stringifiedCellValues.get(columnName).put("value_after", stringifiedCellValue);
+                        stringifiedCellValues.get(columnName).put("value", stringifiedCellValue);
                     }
                 }
             } else if (eventType.equals("UPDATE")) {

@@ -41,8 +41,11 @@ public class ActiveSchemaManager implements SchemaManager {
     private static final String CONNECTION_URL_FORMAT = "jdbc:mysql://%s:%d/%s";
     private static final String BARE_CONNECTION_URL_FORMAT = "jdbc:mysql://%s:%d";
 
-    public static final String LIST_COLUMNS_SQL = "SHOW FULL COLUMNS FROM %s";
     public static final String SHOW_CREATE_TABLE_SQL = "SHOW CREATE TABLE %s";
+    public static final String LIST_COLUMNS_SQL = "SELECT COLUMN_NAME, COLUMN_TYPE, COLLATION_NAME, IS_NULLABLE, "
+            + "COLUMN_KEY, COLUMN_DEFAULT,EXTRA, PRIVILEGES, COLUMN_COMMENT, DATA_TYPE "
+            + " FROM INFORMATION_SCHEMA.COLUMNS "
+            + " WHERE TABLE_SCHEMA  = '%s' AND TABLE_NAME = '%s'";
 
     private final BasicDataSource dataSource;
     private final BasicDataSource binlogDataSource;
@@ -55,9 +58,12 @@ public class ActiveSchemaManager implements SchemaManager {
         this.dataSource = initDatasource(configuration);
         this.binlogDataSource = initBinlogDatasource(configuration);
         this.schemaAtPositionCache = new SchemaAtPositionCache();
+
+        String schema = getMysqlSchema(configuration);
+
         this.computeTableSchemaLambda = (tableName) -> {
             try {
-                TableSchema ts = SchemaHelpers.computeTableSchema(tableName, ActiveSchemaManager.this.dataSource, ActiveSchemaManager.this.binlogDataSource);
+                TableSchema ts = SchemaHelpers.computeTableSchema(schema, tableName, ActiveSchemaManager.this.dataSource, ActiveSchemaManager.this.binlogDataSource);
                 return ts;
             } catch (Exception e) {
                 ActiveSchemaManager.LOG.warn(
@@ -67,6 +73,13 @@ public class ActiveSchemaManager implements SchemaManager {
                 return null;
             }
         };
+    }
+
+    private String getMysqlSchema(Map<String, Object> configuration) {
+        Object schema       = configuration.get(Configuration.MYSQL_SCHEMA);
+        Objects.requireNonNull(schema, String.format("Configuration required: %s", Configuration.MYSQL_SCHEMA));
+
+        return schema.toString();
     }
 
     public BasicDataSource initDatasource(Map<String, Object> configuration) {

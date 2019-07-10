@@ -14,7 +14,7 @@ import java.util.function.Function;
 
 public class SchemaHelpers {
 
-    public static TableSchema computeTableSchema(String tableName, BasicDataSource dataSource, DataSource binlogDataSource) {
+    public static TableSchema computeTableSchema(String schema, String tableName, BasicDataSource dataSource, DataSource binlogDataSource) {
 
         try (Connection connection = dataSource.getConnection()) {
             Statement statementListColumns = connection.createStatement();
@@ -28,13 +28,11 @@ public class SchemaHelpers {
             List<ColumnSchema> columnList = new ArrayList<>();
             String tableCreateStatement = null;
 
-            // TODO: get this info from information_schema instead of 'show full columns from'
-            //       to avoid dealing with columns indexes
             ResultSet resultSet = null;
             SchemaHelpers.createTableIfNotExists(tableName, connection, binlogDataSource);
 
             resultSet = statementListColumns.executeQuery(
-                    String.format(ActiveSchemaManager.LIST_COLUMNS_SQL, tableName)
+                    String.format(ActiveSchemaManager.LIST_COLUMNS_SQL, schema, tableName)
             );
             while (resultSet.next()) {
 

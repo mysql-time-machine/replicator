@@ -7,6 +7,7 @@ import java.io.Serializable;
 @SuppressWarnings("unused")
 public class ColumnSchema implements Serializable {
     private String name;
+    private DataType dataType;
     private String columnType;
     private boolean nullable;
     private String key;
@@ -21,6 +22,7 @@ public class ColumnSchema implements Serializable {
 
     public ColumnSchema(
             String name,
+            DataType dataType,
             String columnType,
             String collation,
             boolean nullable,
@@ -28,17 +30,22 @@ public class ColumnSchema implements Serializable {
             String valueDefault,
             String extra
         ) {
-        this.name = name;
-        this.columnType = columnType;
-        this.collation = collation;
-        this.nullable = nullable;
-        this.key = key;
-        this.valueDefault = valueDefault;
-        this.extra = extra;
+        this.name           = name;
+        this.dataType       = dataType;
+        this.columnType     = columnType;
+        this.collation      = collation;
+        this.nullable       = nullable;
+        this.key            = key;
+        this.valueDefault   = valueDefault;
+        this.extra          = extra;
     }
 
     public String getName() {
         return this.name;
+    }
+
+    public DataType getDataType() {
+        return this.dataType;
     }
 
     public String getColumnType() {
@@ -68,6 +75,7 @@ public class ColumnSchema implements Serializable {
     public ColumnSchema deepCopy() {
 
         String name         = this.getName();
+        DataType dataType   = this.getDataType();
         String columnType   = this.getColumnType();
         String collation    = (this.getCollation() == null) ? null : this.getCollation();
         boolean nullable    = new Boolean(this.isNullable());
@@ -76,7 +84,7 @@ public class ColumnSchema implements Serializable {
         String extra        = this.getExtra();
 
         ColumnSchema columnSchemaCopy = new ColumnSchema(
-            name, columnType, collation, nullable, key, valueDefault, extra
+            name, dataType, columnType, collation, nullable, key, valueDefault, extra
         );
 
         return columnSchemaCopy;

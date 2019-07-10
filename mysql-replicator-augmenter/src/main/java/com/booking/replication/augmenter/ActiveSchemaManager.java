@@ -42,6 +42,7 @@ public class ActiveSchemaManager implements SchemaManager {
     private static final String BARE_CONNECTION_URL_FORMAT = "jdbc:mysql://%s:%d";
 
     public static final String SHOW_CREATE_TABLE_SQL = "SHOW CREATE TABLE %s";
+
     public static final String LIST_COLUMNS_SQL = "SELECT COLUMN_NAME, COLUMN_TYPE, COLLATION_NAME, IS_NULLABLE, "
             + "COLUMN_KEY, COLUMN_DEFAULT,EXTRA, PRIVILEGES, COLUMN_COMMENT, DATA_TYPE "
             + " FROM INFORMATION_SCHEMA.COLUMNS "

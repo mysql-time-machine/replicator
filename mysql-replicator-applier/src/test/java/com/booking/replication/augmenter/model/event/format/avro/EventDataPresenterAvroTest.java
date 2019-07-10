@@ -2,6 +2,7 @@ package com.booking.replication.augmenter.model.event.format.avro;
 
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
+import com.booking.replication.augmenter.model.schema.DataType;
 import com.booking.replication.augmenter.model.schema.FullTableName;
 import org.apache.avro.Schema;
 import org.junit.Test;
@@ -17,6 +18,7 @@ public class EventDataPresenterAvroTest {
         ArrayList<ColumnSchema> columns = new ArrayList<>();
         columns.add(new ColumnSchema(
                 "col1",
+                DataType.INT,
                 "int(11)",
                 "NULL",
                 true,
@@ -26,6 +28,7 @@ public class EventDataPresenterAvroTest {
         ));
         columns.add(new ColumnSchema(
                 "col2",
+                DataType.INT,
                 "int(11)",
                 "NULL",
                 true,
@@ -35,6 +38,7 @@ public class EventDataPresenterAvroTest {
         ));
         columns.add(new ColumnSchema(
                 "col3",
+                DataType.ENUM,
                 "enum('boolean','integer','string','date','datetime','boolarray','intarray','stringarray','datearray','enum')",
                 "NULL",
                 true,

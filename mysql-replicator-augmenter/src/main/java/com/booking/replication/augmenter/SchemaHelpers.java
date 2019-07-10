@@ -1,6 +1,7 @@
 package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
+import com.booking.replication.augmenter.model.schema.DataType;
 import com.booking.replication.augmenter.model.schema.FullTableName;
 import com.booking.replication.augmenter.model.schema.TableSchema;
 import org.apache.commons.dbcp2.BasicDataSource;
@@ -36,18 +37,21 @@ public class SchemaHelpers {
             );
             while (resultSet.next()) {
 
-                String collation = resultSet.getString(3);
+                String collation = resultSet.getString("COLLATION_NAME");
 
-                boolean nullable = (resultSet.getString(4).equals("NO") ? false : true);
+                boolean nullable = (resultSet.getString("IS_NULLABLE").equals("NO") ? false : true);
+
+                DataType dataType = DataType.byCode(resultSet.getString("DATA_TYPE"));
 
                 columnList.add(new ColumnSchema(
-                        resultSet.getString(1),
-                        resultSet.getString(2),
+                        resultSet.getString("COLUMN_NAME"),
+                        dataType,
+                        resultSet.getString("COLUMN_TYPE"),
                         collation,
                         nullable,
-                        resultSet.getString(5),
-                        resultSet.getString(6),
-                        resultSet.getString(7)
+                        resultSet.getString("COLUMN_KEY"),
+                        resultSet.getString("COLUMN_DEFAULT"),
+                        resultSet.getString("EXTRA")
                 ));
             }
 

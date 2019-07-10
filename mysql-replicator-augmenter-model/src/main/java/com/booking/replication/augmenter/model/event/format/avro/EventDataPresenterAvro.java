@@ -154,7 +154,7 @@ public class EventDataPresenterAvro {
 
             String columnName = col.getName();
 
-            String colType = col.getType();
+            String colType = col.getColumnType();
             if (colType.startsWith("boolean")) {
 
                 // mysql stores it as tinyint

@@ -80,7 +80,7 @@ public class Stringifier {
                 ColumnSchema column = columns.get(columnIndex);
 
                 String columnName = column.getName();
-                String columnType = column.getType().toLowerCase();
+                String columnType = column.getColumnType().toLowerCase();
                 String collation  = column.getCollation();
 
                 stringifiedCellValues.put(columnName, new HashMap<>());

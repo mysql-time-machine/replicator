@@ -7,7 +7,7 @@ import java.io.Serializable;
 @SuppressWarnings("unused")
 public class ColumnSchema implements Serializable {
     private String name;
-    private String type;
+    private String columnType;
     private boolean nullable;
     private String key;
     private String valueDefault;
@@ -17,12 +17,11 @@ public class ColumnSchema implements Serializable {
     @JsonIgnore
     public boolean primary; // temp transition
 
-    public ColumnSchema() {
-    }
+    public ColumnSchema() { }
 
     public ColumnSchema(
             String name,
-            String type,
+            String columnType,
             String collation,
             boolean nullable,
             String key,
@@ -30,7 +29,7 @@ public class ColumnSchema implements Serializable {
             String extra
         ) {
         this.name = name;
-        this.type = type;
+        this.columnType = columnType;
         this.collation = collation;
         this.nullable = nullable;
         this.key = key;
@@ -38,13 +37,12 @@ public class ColumnSchema implements Serializable {
         this.extra = extra;
     }
 
-
     public String getName() {
         return this.name;
     }
 
-    public String getType() {
-        return this.type;
+    public String getColumnType() {
+        return this.columnType;
     }
 
     public String getCollation() {
@@ -69,16 +67,16 @@ public class ColumnSchema implements Serializable {
 
     public ColumnSchema deepCopy() {
 
-        String name = new String(this.getName());
-        String type = new String(this.getType());
-        String collation = (this.getCollation() == null) ? null : new String(this.getCollation());
-        boolean nullable = new Boolean(this.isNullable());
-        String key = new String(this.getKey());
-        String valueDefault = (this.getValueDefault() == null) ? "NULL" : new String(this.getValueDefault());
-        String extra = new String(this.getExtra());
+        String name         = this.getName();
+        String columnType   = this.getColumnType();
+        String collation    = (this.getCollation() == null) ? null : this.getCollation();
+        boolean nullable    = new Boolean(this.isNullable());
+        String key          = this.getKey();
+        String valueDefault = (this.getValueDefault() == null) ? "NULL" : this.getValueDefault();
+        String extra        = this.getExtra();
 
         ColumnSchema columnSchemaCopy = new ColumnSchema(
-            name, type, collation, nullable, key, valueDefault, extra
+            name, columnType, collation, nullable, key, valueDefault, extra
         );
 
         return columnSchemaCopy;

@@ -1,6 +1,5 @@
 package com.booking.replication.augmenter.model.deserializer;
 
-import com.booking.replication.augmenter.model.format.Stringifier;
 import com.booking.replication.augmenter.model.row.RowBeforeAfter;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 
@@ -49,7 +48,7 @@ public class RowValueDeserializer {
                         ColumnSchema column = columns.get(columnIndex);
 
                         String columnName = column.getName();
-                        String columnType = column.getType().toLowerCase();
+                        String columnType = column.getColumnType().toLowerCase();
 
                         String collation = column.getCollation();
 
@@ -71,7 +70,7 @@ public class RowValueDeserializer {
                         ColumnSchema column = columns.get(columnIndex);
 
                         String columnName = column.getName();
-                        String columnType = column.getType().toLowerCase();
+                        String columnType = column.getColumnType().toLowerCase();
 
                         Serializable cellValue = rowByteSlicesForDelete[rowIndex++];
                         String collation = column.getCollation();

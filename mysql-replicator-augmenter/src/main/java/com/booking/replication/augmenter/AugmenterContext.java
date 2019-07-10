@@ -873,7 +873,7 @@ public class AugmenterContext implements Closeable {
         Map<String, String[]> cache = new HashMap<>();
 
         for (ColumnSchema column : columns) {
-            String columnType = column.getType().toLowerCase();
+            String columnType = column.getColumnType().toLowerCase();
 
             if (((matcher = this.enumPattern.matcher(columnType)).find() && matcher.groupCount() > 0) || ((matcher = this.setPattern.matcher(columnType)).find() && matcher.groupCount() > 0)) {
                 String[] members = matcher.group(0).split(",");

@@ -31,7 +31,7 @@ public class CellValueDeserializer {
 
     public static Object deserialize(Map<String, String[]> cache, ColumnSchema columnSchema, Serializable cellValue, String collation) {
         Object deserializedCellValue = null;
-        String columnType = columnSchema.getType();
+        String columnType = columnSchema.getColumnType();
 
         if (cellValue == null) {
             return null; // TODO: option for configuring null handling

@@ -205,7 +205,11 @@ public class SlaveFailoverTest {
     public void testReplicator() {
         // Initialize and start replicator with slave 1
         Replicator replicator = new Replicator(this.getConfiguration(mysqlSlave1));
-        replicator.start();
+        try {
+            replicator.start();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         // Run some initial queries on master
         boolean execBinLog = MYSQL_RUNNER.runMysqlScript(
@@ -241,7 +245,11 @@ public class SlaveFailoverTest {
 
         // Re-Initialize and start replicator with slave 2
         replicator = new Replicator(this.getConfiguration(mysqlSlave2));
-        replicator.start();
+        try {
+            replicator.start();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         // Wait for events to get captured by replicator
         replicator.wait(30, TimeUnit.SECONDS);

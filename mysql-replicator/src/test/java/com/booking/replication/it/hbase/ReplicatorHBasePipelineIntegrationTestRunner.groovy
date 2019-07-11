@@ -57,7 +57,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     @Shared private static final int NUMBER_OF_TASKS = 3
 
     @Shared private static final String ZOOKEEPER_LEADERSHIP_PATH = "/replicator/leadership"
-    @Shared private static final String ZOOKEEPER_CHECKPOINT_PATH = "/replicator/checkpoint"
+    @Shared private static final String ZOOKEEPER_CHECKPOINT_PATH = "/replicator/binlogCheckpoint"
 
     @Shared private static final String CHECKPOINT_DEFAULT = "{\"timestamp\": 0, \"serverId\": 1, \"gtid\": null, \"binlog\": {\"filename\": \"binlog.000001\", \"position\": 4}}"
 

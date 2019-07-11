@@ -18,6 +18,7 @@ import com.booking.replication.streams.Streams;
 import com.booking.replication.supplier.Supplier;
 
 import com.booking.replication.supplier.model.RawEvent;
+import com.booking.replication.supplier.model.RawEventHeaderV4;
 import com.booking.utils.BootstrapReplicator;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
@@ -27,8 +28,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
 import org.apache.commons.cli.*;
+import org.apache.flink.api.common.typeinfo.Types;
+import org.apache.flink.runtime.state.filesystem.FsStateBackend;
+import org.apache.flink.runtime.state.memory.MemoryStateBackend;
+import org.apache.flink.streaming.api.TimeCharacteristic;
+import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.File;
 import java.io.IOException;
@@ -55,23 +65,25 @@ public class Replicator {
     private static final Logger LOG = LogManager.getLogger(Replicator.class);
     private static final String COMMAND_LINE_SYNTAX = "java -jar mysql-replicator-<version>.jar";
 
-    private final String checkpointPath;
+//    private final String checkpointPath;
     private final String checkpointDefault;
-    private final Coordinator coordinator;
-    private final Supplier supplier;
-    private final Augmenter augmenter;
+//    private final Coordinator coordinator;
+//    private final Supplier supplier;
     private final AugmenterFilter augmenterFilter;
-    private final Seeker seeker;
+//    private final Seeker seeker;
     private final Partitioner partitioner;
     private final Applier applier;
     private final Metrics<?> metrics;
     private final String errorCounter;
-    private final CheckpointApplier checkpointApplier;
+//    private final CheckpointApplier checkpointApplier;
     private final WebServer webServer;
     private final AtomicLong checkPointDelay;
 
-    private final Streams<Collection<AugmentedEvent>, Collection<AugmentedEvent>> destinationStream;
-    private final Streams<RawEvent, Collection<AugmentedEvent>> sourceStream;
+    private final StreamExecutionEnvironment env;
+    private BinlogSource source;
+
+//    private final Streams<Collection<AugmentedEvent>, Collection<AugmentedEvent>> destinationStream;
+//    private final Streams<RawEvent, Collection<AugmentedEvent>> sourceStream;
 
     private final String METRIC_COORDINATOR_DELAY               = MetricRegistry.name("coordinator", "delay");
     private final String METRIC_STREAM_DESTINATION_QUEUE_SIZE   = MetricRegistry.name("streams", "destination", "queue", "size");
@@ -94,9 +106,6 @@ public class Replicator {
         long overrideCheckpointBinlogPosition = Long.parseLong(configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_BINLOG_POSITION, "0").toString());
         String overrideCheckpointGtidSet = configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_GTID_SET, "").toString();
 
-
-        this.checkpointPath = checkpointPath.toString();
-
         this.checkpointDefault = (checkpointDefault != null) ? (checkpointDefault.toString()) : (null);
 
         this.webServer = WebServer.build(configuration);
@@ -108,15 +117,9 @@ public class Replicator {
                 "error"
         );
 
-        this.coordinator = Coordinator.build(configuration);
 
-        this.supplier = Supplier.build(configuration);
-
-        this.augmenter = Augmenter.build(configuration);
 
         this.augmenterFilter = AugmenterFilter.build(configuration);
-
-        this.seeker = Seeker.build(configuration);
 
         this.partitioner = Partitioner.build(configuration);
 
@@ -124,226 +127,141 @@ public class Replicator {
 
         this.checkPointDelay = new AtomicLong(0L);
 
-        this.checkpointApplier = CheckpointApplier.build(configuration,
-                this.coordinator,
-                this.checkpointPath,
-                safeCheckpoint -> this.checkPointDelay.set((System.currentTimeMillis() - safeCheckpoint.getTimestamp()) / 1000)
-        );
-
         this.metrics.register(METRIC_COORDINATOR_DELAY, (Gauge<Long>) () -> this.checkPointDelay.get());
 
-        // --------------------------------------------------------------------
-        // Setup streams/pipelines:
+
+        //////////////////////////////////////////////////////////////////////////
+        // Custom Streams Implementation
         //
-        // Notes:
-        //
-        //  Supplying the input data has three modes:
-        //      1. Short Circuit Push:
-        //          - Input data for this stream/data-pipeline will be provided by
-        //            by calling the push() method of the pipeline instance, which will not
-        //            use any queues but will directly pass the item to the process()
-        //            method.
-        //      2. Queued Push:
-        //          - If pipeline has a queue then the push() method will default to
-        //            adding items to that queue and then internal consumer is automatically
-        //            initialized as the poller of that queue
-        //      3. Pull:
-        //          - There is no queue and the internal consumer is passed as a lambda
-        //            function which knows hot to get data from an external data source.
-        this.destinationStream = Streams.<Collection<AugmentedEvent>>builder()
-                .threads(threads)
-                .tasks(tasks)
-                .partitioner((events, totalPartitions) -> {
-                    this.metrics.getRegistry()
-                            .counter("hbase.streams.destination.partitioner.event.apply.attempt").inc(1L);
-                    Integer partitionNumber = this.partitioner.apply(events.iterator().next(), totalPartitions);
-                    this.metrics.getRegistry()
-                            .counter("hbase.streams.destination.partitioner.event.apply.success").inc(1L);
-                    return partitionNumber;
-                })
-                .useDefaultQueueType()
-                .usePushMode()
-                .setSink(this.applier)
-                .post((events, task) -> {
-                    for (AugmentedEvent event : events) {
-                        this.checkpointApplier.accept(event, task);
-                    }
-                }).build();
+        //        this.destinationStream = Streams.<Collection<AugmentedEvent>>builder()
+        //                .threads(threads)
+        //                .tasks(tasks)
+        //                .partitioner((events, totalPartitions) -> {
+        //                    this.metrics.getRegistry()
+        //                            .counter("hbase.streams.destination.partitioner.event.apply.attempt").inc(1L);
+        //                    Integer partitionNumber = this.partitioner.apply(events.iterator().next(), totalPartitions);
+        //                    this.metrics.getRegistry()
+        //                            .counter("hbase.streams.destination.partitioner.event.apply.success").inc(1L);
+        //                    return partitionNumber;
+        //                })
+        //                .useDefaultQueueType()
+        //                .usePushMode()
+        //                .setSink(this.applier)
+        //                .post((events, task) -> {
+        //                    for (AugmentedEvent event : events) {
+        //                        this.checkpointApplier.accept(event, task);
+        //                    }
+        //                }).build();
 
-        this.metrics.register(METRIC_STREAM_DESTINATION_QUEUE_SIZE,(Gauge<Integer>) () -> this.destinationStream.size());
+        //        this.metrics.register(METRIC_STREAM_DESTINATION_QUEUE_SIZE,(Gauge<Integer>) () -> this.destinationStream.size());
 
-        this.sourceStream = Streams.<RawEvent>builder()
-                .usePushMode()
-                .process(this.augmenter)
-                .process(this.seeker)
-                .process(this.augmenterFilter)
-                .setSink((events) -> {
-                    Map<Integer, Collection<AugmentedEvent>> splitEventsMap = new HashMap<>();
-                    for (AugmentedEvent event : events) {
-                        this.metrics.getRegistry()
-                                .counter("streams.partitioner.event.apply.attempt").inc(1L);
-                        splitEventsMap.computeIfAbsent(
-                                this.partitioner.apply(event, tasks), partition -> new ArrayList<>()
-                        ).add(event);
-                        metrics.getRegistry()
-                                .counter("streams.partitioner.event.apply.success").inc(1L);
-                    }
-                    for (Collection<AugmentedEvent> splitEvents : splitEventsMap.values()) {
-                        this.destinationStream.push(splitEvents);
-                    }
-                    return true;
-                }).build();
+        //        this.sourceStream = Streams.<RawEvent>builder()
+        //                .usePushMode()
+        //                .process(this.augmenter)
+        //                .process(this.seeker)
+        //                .process(this.augmenterFilter)
+        //                .setSink((events) -> {
+        //                    Map<Integer, Collection<AugmentedEvent>> splitEventsMap = new HashMap<>();
+        //                    for (AugmentedEvent event : events) {
+        //                        this.metrics.getRegistry()
+        //                                .counter("streams.partitioner.event.apply.attempt").inc(1L);
+        //                        splitEventsMap.computeIfAbsent(
+        //                                this.partitioner.apply(event, tasks), partition -> new ArrayList<>()
+        //                        ).add(event);
+        //                        metrics.getRegistry()
+        //                                .counter("streams.partitioner.event.apply.success").inc(1L);
+        //                    }
+        //                    for (Collection<AugmentedEvent> splitEvents : splitEventsMap.values()) {
+        //                        //this.destinationStream.push(splitEvents);
+        //                        System.out.println("splitEvents -> " + splitEvents.size());
+        //                    }
+        //                    return true;
+        //                }).build();
 
-        this.metrics.register(METRIC_STREAM_SOURCE_QUEUE_SIZE, (Gauge<Integer>) () -> this.sourceStream.size());
+        //        this.metrics.register(METRIC_STREAM_SOURCE_QUEUE_SIZE, (Gauge<Integer>) () -> this.sourceStream.size());
 
-        Consumer<Exception> exceptionHandle = (exception) -> {
+        ////////////////////////////////////////////////////////////////////////
+        // Experimenting with Flink - Work In progress
+        env = StreamExecutionEnvironment.createLocalEnvironment();
 
-            this.metrics.incrementCounter(this.errorCounter, 1);
+        env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime);
 
-            if (ForceRewindException.class.isInstance(exception)) {
+        try {
 
-                Replicator.LOG.warn(exception.getMessage(), exception);
-                this.rewind();
+            this.source = new BinlogSource(
+                    configuration,
+                    overrideCheckpointStartPosition,
+                    overrideCheckpointBinLogFileName,
+                    overrideCheckpointBinlogPosition,
+                    overrideCheckpointGtidSet
+            );
 
-            } else {
+                DataStream<AugmentedEvent> streamSource = env
+                        .addSource(
+                                source
+                        ).forceNonParallel();
 
-                Replicator.LOG.error(exception.getMessage(), exception);
-                this.stop();
+                DataStream<AugmentedEvent> dataStream =
+                        ((SingleOutputStreamOperator<AugmentedEvent>) streamSource)
+                                .forceNonParallel();
 
+                dataStream
+                        .map(augmentedEvent-> {
+                                System.out.println(augmentedEvent.toJSON());
+                                return augmentedEvent;
+                        })
+                        .addSink(new SinkFunction<AugmentedEvent>() {
+                            @Override
+                            public void invoke(AugmentedEvent augmentedEvent) throws Exception {
+                                    System.out.println("Sink: " + augmentedEvent.toJSONPrettyPrint());
+                            }
+                        });
+
+            } catch (IOException exception) {
+//                exceptionHandle.accept(exception);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-        };
 
-        this.coordinator.onLeadershipTake(() -> {
-            try {
-                Replicator.LOG.info("starting replicator");
-
-                Replicator.LOG.info("starting streams applier");
-                this.destinationStream.start();
-
-                Replicator.LOG.info("starting streams supplier");
-                this.sourceStream.start();
-
-                Replicator.LOG.info("starting supplier");
-
-                Checkpoint from;
-
-                if(overrideCheckpointStartPosition){
-
-                    if (overrideCheckpointBinLogFileName != null && !overrideCheckpointBinLogFileName.equals("")) {
-
-                        LOG.info("Checkpoint startup mode: override Binlog filename and position:" +
-                                overrideCheckpointBinLogFileName +
-                                ":" +
-                                overrideCheckpointBinlogPosition);
-
-                        from = this.seeker.seek(
-                                new Checkpoint(new Binlog(overrideCheckpointBinLogFileName, overrideCheckpointBinlogPosition))
-                        );
-
-                    } else if (overrideCheckpointGtidSet != null && !overrideCheckpointGtidSet.equals("")) {
-
-                       LOG.info("Checkpoint startup mode: override gtidSet: " + overrideCheckpointGtidSet);
-                       from = this.seeker.seek(
-                               new Checkpoint(overrideCheckpointGtidSet)
-                       );
-
-                    } else {
-                        throw new RuntimeException("Impossible case!");
-                    }
-
-                } else {
-                    LOG.info("Checkpoint startup mode: loading safe checkpoint from zookeeper");
-
-                    from = this.seeker.seek(
-                        this.loadSafeCheckpoint()
-                    );
-                }
-
-                this.supplier.start(from);
-
-                Replicator.LOG.info("replicator started");
-            } catch (IOException | InterruptedException exception) {
-                exceptionHandle.accept(exception);
-            }
-        });
-
-        this.coordinator.onLeadershipLose(() -> {
-            try {
-                Replicator.LOG.info("stopping replicator");
-
-                Replicator.LOG.info("stopping supplier");
-                this.supplier.stop();
-
-                Replicator.LOG.info("stopping streams supplier");
-                this.sourceStream.stop();
-
-                Replicator.LOG.info("stopping streams applier");
-                this.destinationStream.stop();
-
-                Replicator.LOG.info("stopping web server");
-                this.webServer.stop();
-
-                Replicator.LOG.info("replicator stopped");
-            } catch (IOException | InterruptedException exception) {
-                exceptionHandle.accept(exception);
-            }
-        });
-
-        this.supplier.onEvent((event) -> {
-            this.sourceStream.push(event);
-        });
-
-        this.supplier.onException(exceptionHandle);
-        this.sourceStream.onException(exceptionHandle);
-        this.destinationStream.onException(exceptionHandle);
+//        this.supplier.onException(exceptionHandle);
 
     }
+
 
     public Applier getApplier() {
         return this.applier;
     }
 
-    private Checkpoint loadSafeCheckpoint() throws IOException {
-        Checkpoint checkpoint = this.coordinator.loadCheckpoint(this.checkpointPath);
 
-        if (checkpoint == null && this.checkpointDefault != null) {
-            checkpoint = new ObjectMapper().readValue(this.checkpointDefault, Checkpoint.class);
-        }
-
-        return checkpoint;
-    }
-
-    public void start() {
+    public void start() throws Exception {
 
         Replicator.LOG.info("starting webserver");
+
         try {
             this.webServer.start();
         } catch (IOException e) {
             Replicator.LOG.error("error starting webserver", e);
         }
 
-        Replicator.LOG.info("starting coordinator");
-        this.coordinator.start();
+        env.execute("Flink Streaming Java API Skeleton");
+
+        Replicator.LOG.info("Flink env started");
+
     }
 
     public void wait(long timeout, TimeUnit unit) {
-        this.coordinator.wait(timeout, unit);
+//        this.coordinator.wait(timeout, unit);
     }
 
-    public void join() {
-        this.coordinator.join();
-    }
+
 
     public void stop() {
         try {
-            Replicator.LOG.info("stopping coordinator");
-            this.coordinator.stop();
 
-            Replicator.LOG.info("closing augmenter");
-            this.augmenter.close();
+            Replicator.LOG.info("Stopping Binlog Flink Source");
+            this.source.cancel();
 
-            Replicator.LOG.info("closing seeker");
-            this.seeker.close();
+            // =================================
 
             Replicator.LOG.info("closing partitioner");
             this.partitioner.close();
@@ -357,23 +275,39 @@ public class Replicator {
             Replicator.LOG.info("closing metrics applier");
             this.metrics.close();
 
-            Replicator.LOG.info("closing checkpoint applier");
-            this.checkpointApplier.close();
+//            Replicator.LOG.info("closing checkpoint applier");
+//            this.checkpointApplier.close();
+
         } catch (IOException exception) {
             Replicator.LOG.error("error stopping coordinator", exception);
         }
     }
 
-    public void rewind() {
-        try {
-            Replicator.LOG.info("rewinding supplier");
+///////////////////////////////////////////////////////////////////////////////
+//
+//    private Consumer<Exception> exceptionHandle = (exception) -> {
+//
+////        this.metrics.incrementCounter(this.errorCounter, 1);
+//
+//        if (ForceRewindException.class.isInstance(exception)) {
+//
+////            Replicator.LOG.warn(exception.getMessage(), exception);
+////            this.rewind();
+//
+//        } else {
+//
+////            Replicator.LOG.error(exception.getMessage(), exception);
+////            this.stop();
+//
+//        }
+//    };
 
-            this.supplier.disconnect();
-            this.supplier.connect(this.seeker.seek(this.loadSafeCheckpoint()));
-        } catch (IOException exception) {
-            Replicator.LOG.error("error rewinding supplier", exception);
-        }
-    }
+//    public void rewind() {
+//        Replicator.LOG.info("rewinding supplier");
+//        throw new NotImplementedException();
+////            this.supplier.disconnect();
+////            this.supplier.connect(this.seeker.seek(this.loadSafeCheckpoint()));
+//    }
 
     /*
      * Start the JVM with the argument -Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager

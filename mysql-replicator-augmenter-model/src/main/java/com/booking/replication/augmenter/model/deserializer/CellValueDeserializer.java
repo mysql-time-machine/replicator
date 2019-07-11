@@ -138,7 +138,7 @@ public class CellValueDeserializer {
                             items.add(members[index]);
                         }
                     }
-                    deserializedCellValue = String.valueOf(items.toArray(new String[0]));
+                    deserializedCellValue = String.join(",", items.toArray(new String[items.size()]));
                 } else {
                     deserializedCellValue = null;
                 }

@@ -12,11 +12,11 @@ import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiFunction;
 
-public interface Partitioner extends BiFunction<AugmentedEvent, Integer, Integer>, Closeable {
+public interface ReplicatorPartitioner extends BiFunction<AugmentedEvent, Integer, Integer>, Closeable {
     enum Type {
         TABLE_NAME {
             @Override
-            protected Partitioner newInstance(Map<String, Object> configuration) {
+            protected ReplicatorPartitioner newInstance(Map<String, Object> configuration) {
                 return (event, totalPartitions) -> {
                     if (TableAugmentedEventData.class.isInstance(event.getData())) {
                         FullTableName eventTable = TableAugmentedEventData.class.cast(event.getData()).getEventTable();
@@ -34,7 +34,7 @@ public interface Partitioner extends BiFunction<AugmentedEvent, Integer, Integer
         },
         XXID {
             @Override
-            protected Partitioner newInstance(Map<String, Object> configuration) {
+            protected ReplicatorPartitioner newInstance(Map<String, Object> configuration) {
                 return (event, totalPartitions) -> {
                     if (event.getHeader().getEventTransaction() != null) {
                         AugmentedEventTransaction transaction = event.getHeader().getEventTransaction();
@@ -47,7 +47,7 @@ public interface Partitioner extends BiFunction<AugmentedEvent, Integer, Integer
         },
         TRID {
             @Override
-            protected Partitioner newInstance(Map<String, Object> configuration) {
+            protected ReplicatorPartitioner newInstance(Map<String, Object> configuration) {
 
                 return (event, totalPartitions) -> {
 
@@ -64,18 +64,18 @@ public interface Partitioner extends BiFunction<AugmentedEvent, Integer, Integer
         },
         RANDOM {
             @Override
-            protected Partitioner newInstance(Map<String, Object> configuration) {
+            protected ReplicatorPartitioner newInstance(Map<String, Object> configuration) {
                 return (event, totalPartitions) -> ThreadLocalRandom.current().nextInt(totalPartitions);
             }
         },
         NONE {
             @Override
-            protected  Partitioner newInstance(Map<String, Object> configuration) {
+            protected ReplicatorPartitioner newInstance(Map<String, Object> configuration) {
                 return (event, totalPartitions) -> 0;
             }
         };
 
-        protected abstract Partitioner newInstance(Map<String, Object> configuration);
+        protected abstract ReplicatorPartitioner newInstance(Map<String, Object> configuration);
     }
 
     interface Configuration {
@@ -86,8 +86,8 @@ public interface Partitioner extends BiFunction<AugmentedEvent, Integer, Integer
     default void close() throws IOException {
     }
 
-    static Partitioner build(Map<String, Object> configuration) {
-        return Partitioner.Type.valueOf(
+    static ReplicatorPartitioner build(Map<String, Object> configuration) {
+        return ReplicatorPartitioner.Type.valueOf(
                 configuration.getOrDefault(Configuration.TYPE, Type.TRID.name()).toString()
         ).newInstance(configuration);
     }

@@ -2,8 +2,9 @@ package com.booking.replication.it.slave_failover;
 
 import avro.shaded.com.google.common.collect.Maps;
 import com.booking.replication.Replicator;
+import com.booking.replication.ReplicatorStandaloneApplication;
 import com.booking.replication.applier.Applier;
-import com.booking.replication.applier.Partitioner;
+import com.booking.replication.applier.ReplicatorPartitioner;
 import com.booking.replication.applier.count.CountApplier;
 import com.booking.replication.augmenter.ActiveSchemaManager;
 import com.booking.replication.augmenter.Augmenter;
@@ -204,8 +205,12 @@ public class SlaveFailoverTest {
     @Test
     public void testReplicator() {
         // Initialize and start replicator with slave 1
-        Replicator replicator = new Replicator(this.getConfiguration(mysqlSlave1));
-        replicator.start();
+        ReplicatorStandaloneApplication replicator = new ReplicatorStandaloneApplication(this.getConfiguration(mysqlSlave1));
+        try {
+            replicator.start();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         // Run some initial queries on master
         boolean execBinLog = MYSQL_RUNNER.runMysqlScript(
@@ -240,8 +245,12 @@ public class SlaveFailoverTest {
         Assert.assertTrue(execBinLog2);
 
         // Re-Initialize and start replicator with slave 2
-        replicator = new Replicator(this.getConfiguration(mysqlSlave2));
-        replicator.start();
+        replicator = new ReplicatorStandaloneApplication(this.getConfiguration(mysqlSlave2));
+        try {
+            replicator.start();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         // Wait for events to get captured by replicator
         replicator.wait(30, TimeUnit.SECONDS);
@@ -280,11 +289,11 @@ public class SlaveFailoverTest {
         configuration.put(Supplier.Configuration.TYPE, Supplier.Type.BINLOG.name());
         configuration.put(Augmenter.Configuration.SCHEMA_TYPE, Augmenter.SchemaType.ACTIVE.name());
 
-        configuration.put(Partitioner.Configuration.TYPE, Partitioner.Type.TABLE_NAME.name());
+        configuration.put(ReplicatorPartitioner.Configuration.TYPE, ReplicatorPartitioner.Type.TABLE_NAME.name());
 
         configuration.put(Applier.Configuration.TYPE, Applier.Type.COUNT.name());
         configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name());
-        configuration.put(Replicator.Configuration.CHECKPOINT_PATH, FILE_CHECKPOINT_PATH);
+        configuration.put(ReplicatorStandaloneApplication.Configuration.CHECKPOINT_PATH, FILE_CHECKPOINT_PATH);
 
         return configuration;
     }

@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.Map;
 
 public class ConsoleApplier implements Applier {
+
     private static final Logger LOG = LogManager.getLogger(ConsoleApplier.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -22,10 +23,12 @@ public class ConsoleApplier implements Applier {
     public Boolean apply(Collection<AugmentedEvent> events) {
         try {
             for (AugmentedEvent event : events) {
-//                ConsoleApplier.LOG.info(ConsoleApplier.MAPPER.writeValueAsString(event));
-                ConsoleApplier.LOG.info(ConsoleApplier.MAPPER.writeValueAsString(event));
+                if (event != null) {
+                    ConsoleApplier.LOG.info(ConsoleApplier.MAPPER.writeValueAsString(event));
+                } else {
+                    ConsoleApplier.LOG.warn("received null event!");
+                }
             }
-
             return true;
         } catch (JsonProcessingException exception) {
             ConsoleApplier.LOG.error("error converting to json", exception);

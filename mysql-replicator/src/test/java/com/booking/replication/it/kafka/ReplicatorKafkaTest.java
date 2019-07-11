@@ -1,8 +1,9 @@
 package com.booking.replication.it.kafka;
 
 import com.booking.replication.Replicator;
+import com.booking.replication.ReplicatorStandaloneApplication;
 import com.booking.replication.applier.Applier;
-import com.booking.replication.applier.Partitioner;
+import com.booking.replication.applier.ReplicatorPartitioner;
 import com.booking.replication.applier.Seeker;
 import com.booking.replication.applier.kafka.KafkaApplier;
 import com.booking.replication.applier.kafka.KafkaSeeker;
@@ -16,6 +17,7 @@ import com.booking.replication.commons.services.ServicesProvider;
 import com.booking.replication.controller.WebServer;
 import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.coordinator.ZookeeperCoordinator;
+import com.booking.replication.flink.ReplicatorFlinkApplication;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 
@@ -73,7 +75,7 @@ public class ReplicatorKafkaTest {
     private static final String MYSQL_INIT_SCRIPT = "mysql.init.sql";
     private static final String MYSQL_TEST_SCRIPT = "mysql.binlog.test.sql";
     private static final String MYSQL_CONF_FILE = "my.cnf";
-    private static final int TRANSACTION_LIMIT = 5;
+    private static final int TRANSACTION_LIMIT = 500;
     private static final String CONNECTION_URL_FORMAT = "jdbc:mysql://%s:%d/%s";
 
     private static final String KAFKA_REPLICATOR_TOPIC_NAME = "replicator";
@@ -125,7 +127,7 @@ public class ReplicatorKafkaTest {
 
     @Test
     public void testReplicator() throws Exception {
-        Replicator replicator = new Replicator(this.getConfiguration());
+        ReplicatorStandaloneApplication replicator = new ReplicatorStandaloneApplication(this.getConfiguration());
 
         replicator.start();
 
@@ -273,14 +275,14 @@ public class ReplicatorKafkaTest {
         configuration.put(Augmenter.Configuration.SCHEMA_TYPE, Augmenter.SchemaType.ACTIVE.name());
         configuration.put(Seeker.Configuration.TYPE, Seeker.Type.KAFKA.name());
 
-        configuration.put(Partitioner.Configuration.TYPE, Partitioner.Type.TABLE_NAME.name());
+        configuration.put(ReplicatorPartitioner.Configuration.TYPE, ReplicatorPartitioner.Type.TABLE_NAME.name());
 
         configuration.put(Applier.Configuration.TYPE, Applier.Type.KAFKA.name());
         configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name());
-        configuration.put(Replicator.Configuration.CHECKPOINT_PATH, ReplicatorKafkaTest.ZOOKEEPER_CHECKPOINT_PATH);
-        configuration.put(Replicator.Configuration.CHECKPOINT_DEFAULT, ReplicatorKafkaTest.CHECKPOINT_DEFAULT);
-        configuration.put(Replicator.Configuration.REPLICATOR_THREADS, String.valueOf(ReplicatorKafkaTest.KAFKA_TOPIC_PARTITIONS));
-        configuration.put(Replicator.Configuration.REPLICATOR_TASKS, String.valueOf(ReplicatorKafkaTest.KAFKA_TOPIC_PARTITIONS));
+        configuration.put(ReplicatorStandaloneApplication.Configuration.CHECKPOINT_PATH, ReplicatorKafkaTest.ZOOKEEPER_CHECKPOINT_PATH);
+        configuration.put(ReplicatorStandaloneApplication.Configuration.CHECKPOINT_DEFAULT, ReplicatorKafkaTest.CHECKPOINT_DEFAULT);
+        configuration.put(ReplicatorStandaloneApplication.Configuration.REPLICATOR_THREADS, String.valueOf(ReplicatorKafkaTest.KAFKA_TOPIC_PARTITIONS));
+        configuration.put(ReplicatorStandaloneApplication.Configuration.REPLICATOR_TASKS, String.valueOf(ReplicatorKafkaTest.KAFKA_TOPIC_PARTITIONS));
 
         return configuration;
     }

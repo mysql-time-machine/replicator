@@ -21,6 +21,14 @@ public class AugmentedEvent implements Serializable {
     public AugmentedEvent() {
     }
 
+    public String getTransactionUUID() {
+        if (this.getHeader().getEventTransaction() != null) {
+            return this.header.getEventTransaction().getIdentifier();
+        } else {
+            return "";
+        }
+    }
+
     public AugmentedEvent(AugmentedEventHeader header, AugmentedEventData data) {
         this.header = header;
         this.data = data;
@@ -37,6 +45,10 @@ public class AugmentedEvent implements Serializable {
     @JsonIgnore
     public byte[] toJSON() throws IOException {
         return AugmentedEvent.MAPPER.writeValueAsBytes(this);
+    }
+
+    public String toJSONString() throws IOException {
+        return AugmentedEvent.MAPPER.writeValueAsString(this);
     }
 
     public List<GenericRecord> dataToAvro() throws IOException{

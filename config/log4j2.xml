@@ -12,7 +12,7 @@
     <Logger name="org.apache.zookeeper" level="warn" additivity="false">
         <AppenderRef ref="Console" />
     </Logger>
-    <Logger name="com.booking.replication.checkpoint.CoordinatorCheckpointApplier" level="warn" additivity="false">
+    <Logger name="com.booking.replication.binlogCheckpoint.CoordinatorCheckpointApplier" level="warn" additivity="false">
         <AppenderRef ref="Console" />
     </Logger>
     <Logger name="com.github.shyiko.mysql.binlog" level="all" additivity="false">

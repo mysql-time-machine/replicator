@@ -40,6 +40,7 @@ public class BinaryLogSupplier implements Supplier {
         String OVERRIDE_CHECKPOINT_START_POSITION   = "override.checkpoint.start.position";
         String BINLOG_START_FILENAME                = "supplier.binlog.start.filename";
         String BINLOG_START_POSITION                = "supplier.binlog.start.position";
+        String GTID_FALLBACK_TO_PURGED              = "supplier.binlog.start.gtid.fallback.to.purged";
     }
 
     private final AtomicBoolean running;
@@ -53,6 +54,7 @@ public class BinaryLogSupplier implements Supplier {
     private final PositionType positionType;
     private final Boolean positionOverride;
     private final AtomicReference<String> binlogClientGTIDSet;
+    private final boolean GtidSetFallbackToPurged;
 
     private ExecutorService executor;
     private BinaryLogClient client;
@@ -68,21 +70,24 @@ public class BinaryLogSupplier implements Supplier {
         Object positionType     = configuration.getOrDefault(Configuration.POSITION_TYPE, PositionType.GTID);
         Object positionOverride = configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_START_POSITION, false);
 
+        Object gtidSetFallback  = configuration.getOrDefault(Configuration.GTID_FALLBACK_TO_PURGED, false);
+
         Objects.requireNonNull(hostname, String.format("Configuration required: %s", Configuration.MYSQL_HOSTNAME));
         Objects.requireNonNull(schema, String.format("Configuration required: %s", Configuration.MYSQL_SCHEMA));
         Objects.requireNonNull(username, String.format("Configuration required: %s", Configuration.MYSQL_USERNAME));
         Objects.requireNonNull(password, String.format("Configuration required: %s", Configuration.MYSQL_PASSWORD));
 
-        this.running                = new AtomicBoolean(false);
-        this.connected              = new AtomicBoolean(false);
-        this.hostname               = this.getList(hostname);
-        this.port                   = Integer.parseInt(port.toString());
-        this.schema                 = schema.toString();
-        this.username               = username.toString();
-        this.password               = password.toString();
-        this.positionType           = PositionType.valueOf(positionType.toString());
-        this.positionOverride       = (Boolean) positionOverride;
-        this.binlogClientGTIDSet    = new AtomicReference<>();
+        this.running                 = new AtomicBoolean(false);
+        this.connected               = new AtomicBoolean(false);
+        this.hostname                = this.getList(hostname);
+        this.port                    = Integer.parseInt(port.toString());
+        this.schema                  = schema.toString();
+        this.username                = username.toString();
+        this.password                = password.toString();
+        this.positionType            = PositionType.valueOf(positionType.toString());
+        this.positionOverride        = (Boolean) positionOverride;
+        this.binlogClientGTIDSet     = new AtomicReference<>();
+        this.GtidSetFallbackToPurged = (boolean) gtidSetFallback;
     }
 
     @SuppressWarnings("unchecked")
@@ -109,6 +114,7 @@ public class BinaryLogSupplier implements Supplier {
         EventDeserializer eventDeserializer = new EventDeserializer();
         eventDeserializer.setCompatibilityMode(EventDeserializer.CompatibilityMode.CHAR_AND_BINARY_AS_BYTE_ARRAY);
         client.setEventDeserializer(eventDeserializer);
+        client.setGtidSetFallbackToPurged(this.GtidSetFallbackToPurged);
 
         return client;
     }
@@ -159,7 +165,7 @@ public class BinaryLogSupplier implements Supplier {
                                 @Override
                                 public void onConnect(BinaryLogClient client) {
                                     BinaryLogSupplier.LOG.info(
-                                            String.format("Binlog client connected to:%s : %s, %s",
+                                            String.format("Binlog client connected to:%s : %s, %s, %s",
                                                     hostname,
                                                     client.getBinlogFilename(),
                                                     client.getBinlogPosition(),
@@ -198,13 +204,25 @@ public class BinaryLogSupplier implements Supplier {
 
                         if (checkpoint != null) {
                             if (checkpoint.getGtidSet() != null && !checkpoint.getGtidSet().equals("")) {
+
                                 LOG.info("Starting Binlog Client from GTIDSet checkpoint. GTIDSet: " + checkpoint.getGtidSet());
                                 this.client.setGtidSet(checkpoint.getGtidSet());
                                 this.binlogClientGTIDSet.set(this.client.getGtidSet());
                                 this.client.connect();
                                 LOG.info("Started binlog Client from GTIDSet checkpoint. GTIDSet: " + checkpoint.getGtidSet());
                                 this.connected.set(true);
+
+                            } else if (this.GtidSetFallbackToPurged) {
+
+                                LOG.info("Starting Binlog Client in gtidSetFallbackToPurged mode");
+                                this.client.setGtidSet("");
+                                this.binlogClientGTIDSet.set(this.client.getGtidSet());
+                                this.client.connect();;
+                                this.connected.set(true);
+                                LOG.info("Started binlog Client gtidSetFallbackToPurged mode");
+
                             } else {
+
                                 LOG.info("Starting binlog Client from binlogFilename and position: "
                                         + checkpoint.getBinlog().getFilename()
                                         + "/"
@@ -219,6 +237,7 @@ public class BinaryLogSupplier implements Supplier {
                                         + checkpoint.getBinlog().getPosition()
                                 );
                                 this.connected.set(true);
+
                             }
                         } else {
                             throw new RuntimeException("No startup checkpoint provided.");

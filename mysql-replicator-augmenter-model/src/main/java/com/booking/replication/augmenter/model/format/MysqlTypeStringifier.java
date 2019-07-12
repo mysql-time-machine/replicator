@@ -54,20 +54,27 @@ public class MysqlTypeStringifier {
 
             case BIT: {
                 final BitSet data = (BitSet) cellValue;
+
+                if (data.length() == 0) {
+                    return "0";
+                }
+
                 final StringBuilder buffer = new StringBuilder(data.length());
                 IntStream.range(0, data.length()).mapToObj(i -> data.get(i) ? '1' : '0').forEach(buffer::append);
                 return buffer.reverse().toString();
             }
 
             case DATE: {
-                // created as java.util.Date in binlog connector
+                // created as java.sql.Date in binlog connector
                 return cellValue.toString();
             }
 
             case TIMESTAMP: {
                 // created as java.sql.Timestamp in binlog connector
+
                 if (! (cellValue instanceof java.sql.Timestamp) ) {
                     LOG.warn("binlog parser has changed java type for timestamp!");
+                    return NULL_STRING;
                 }
 
                 // a workaround for UTC-enforcement by mysql-binlog-connector

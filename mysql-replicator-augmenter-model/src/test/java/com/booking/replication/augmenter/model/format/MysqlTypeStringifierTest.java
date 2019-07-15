@@ -6,6 +6,10 @@ import org.junit.Test;
 
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.BitSet;
 import java.util.Calendar;
 
@@ -76,13 +80,14 @@ public class MysqlTypeStringifierTest {
         String expected, actual;
 
         {
-            /*
-            *   Timestamp = 1577797200000
-            *   UTC       = Tuesday, December 31, 2019 13:00:00
-            *   AMS LOCAL = Tuesday, December 31, 2019 14:00:00 GMT+01:00
-             * */
-            testTimestamp = new Timestamp(1577797200000L);
-            expected    = "1577793600000";
+            Long timeStamp = 1577797200000L;
+            testTimestamp = new Timestamp(timeStamp);
+
+            String tzId = ZonedDateTime.now().getZone().toString();
+            ZoneId zoneId = ZoneId.of(tzId);
+            LocalDateTime aLDT = Instant.ofEpochMilli(timeStamp).atZone(zoneId).toLocalDateTime();
+            Integer offset  = ZonedDateTime.from(aLDT.atZone(ZoneId.of(tzId))).getOffset().getTotalSeconds();
+            expected = String.valueOf(timeStamp - offset * 1000);
 
             actual = MysqlTypeStringifier.convertToString(testTimestamp, null, dataType, columnType , null);
             assertEquals(expected, actual);

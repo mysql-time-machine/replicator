@@ -1,14 +1,22 @@
 package com.booking.replication.streams;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.Objects;
-import java.util.concurrent.*;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.*;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 public final class StreamsImplementation<Input, Output> implements Streams<Input, Output> {
     private static final Logger LOG = LogManager.getLogger(StreamsImplementation.class);
@@ -115,8 +123,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     private void process(Input input, int task) {
         if (input != null && this.filter.test(input)) {
             Output output = this.process.apply(input);
-            if (output == null) {
-            }
+
             if (output != null && this.sink.apply(output)) {
                 this.post.accept(input, task);
             }
@@ -209,13 +216,11 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
             } catch (Exception exception) {
                 this.handleException(exception);
             }
-        }
-
-        // if queues are available then dataSupplierFn is internally initialized
-        // to a lambda that polls the queue. This happens even if dataSupplierFn
-        // is specified in pipeline configuration, it will still get overridden
-        // by queue poller.
-        else if (this.queues != null) {
+        } else if (this.queues != null) {
+            // if queues are available then dataSupplierFn is internally initialized
+            // to a lambda that polls the queue. This happens even if dataSupplierFn
+            // is specified in pipeline configuration, it will still get overridden
+            // by queue poller.
 
             Objects.requireNonNull(this.queues, "queues must not be null");
 

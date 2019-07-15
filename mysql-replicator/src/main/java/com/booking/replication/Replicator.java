@@ -16,9 +16,9 @@ import com.booking.replication.controller.WebServer;
 import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.streams.Streams;
 import com.booking.replication.supplier.Supplier;
-
 import com.booking.replication.supplier.model.RawEvent;
 import com.booking.utils.BootstrapReplicator;
+
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 
@@ -26,13 +26,21 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
-import org.apache.commons.cli.*;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -127,7 +135,7 @@ public class Replicator {
         this.checkpointApplier = CheckpointApplier.build(configuration,
                 this.coordinator,
                 this.checkpointPath,
-                safeCheckpoint -> this.checkPointDelay.set((System.currentTimeMillis() - safeCheckpoint.getTimestamp()) / 1000)
+            safeCheckpoint -> this.checkPointDelay.set((System.currentTimeMillis() - safeCheckpoint.getTimestamp()) / 1000)
         );
 
         this.metrics.register(METRIC_COORDINATOR_DELAY, (Gauge<Long>) () -> this.checkPointDelay.get());
@@ -227,30 +235,25 @@ public class Replicator {
 
                 Checkpoint from;
 
-                if(overrideCheckpointStartPosition){
-
+                if (overrideCheckpointStartPosition) {
                     if (overrideCheckpointBinLogFileName != null && !overrideCheckpointBinLogFileName.equals("")) {
 
-                        LOG.info("Checkpoint startup mode: override Binlog filename and position:" +
-                                overrideCheckpointBinLogFileName +
-                                ":" +
-                                overrideCheckpointBinlogPosition);
+                        LOG.info("Checkpoint startup mode: override Binlog filename and position:"
+                                + overrideCheckpointBinLogFileName
+                                + ":"
+                                + overrideCheckpointBinlogPosition);
 
                         from = this.seeker.seek(
                                 new Checkpoint(new Binlog(overrideCheckpointBinLogFileName, overrideCheckpointBinlogPosition))
                         );
 
                     } else if (overrideCheckpointGtidSet != null && !overrideCheckpointGtidSet.equals("")) {
+                        LOG.info("Checkpoint startup mode: override gtidSet: " + overrideCheckpointGtidSet);
 
-                       LOG.info("Checkpoint startup mode: override gtidSet: " + overrideCheckpointGtidSet);
-                       from = this.seeker.seek(
-                               new Checkpoint(overrideCheckpointGtidSet)
-                       );
-
+                        from = this.seeker.seek(new Checkpoint(overrideCheckpointGtidSet));
                     } else {
                         throw new RuntimeException("Impossible case!");
                     }
-
                 } else {
                     LOG.info("Checkpoint startup mode: loading safe checkpoint from zookeeper");
 
@@ -422,9 +425,7 @@ public class Replicator {
                 if (line.hasOption("secret-file")) {
                     configuration.putAll(new ObjectMapper().readValue(
                             new File(line.getOptionValue("secret-file")),
-                            new TypeReference<Map<String, String>>() {
-
-                    }));
+                            new TypeReference<Map<String, String>>() {}));
                 }
 
                 if (line.hasOption("supplier")) {

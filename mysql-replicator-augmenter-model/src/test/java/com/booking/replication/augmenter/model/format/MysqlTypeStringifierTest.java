@@ -18,6 +18,556 @@ import static org.junit.Assert.assertEquals;
 public class MysqlTypeStringifierTest {
 
     @Test
+    public void testCharTypeLatinCharacterSet() {
+        DataType dataType = DataType.CHAR;
+        String columnType = "char(30)";
+
+        String collation = "latin1_swedish_ci";
+
+        byte[] testByteArr;
+        String expected, actual;
+
+        {
+            testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
+            expected    = "orange";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
+            expected    = "Orange";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
+            expected    = "ORANGE";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -19, 97, 115};
+            expected    = "Buenos días";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -23, 101};
+            expected    = "bonne journée";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+    }
+
+    @Test
+    public void testCharTypeUtf8CharacterSet() {
+        DataType dataType = DataType.CHAR;
+        String columnType = "char(30)";
+
+        String collation = "utf8_general_ci";
+
+        byte[] testByteArr;
+        String expected, actual;
+
+        {
+            testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
+            expected    = "orange";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
+            expected    = "Orange";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
+            expected    = "ORANGE";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -61, -83, 97, 115};
+            expected    = "Buenos días";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -61, -87, 101};
+            expected    = "bonne journée";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {-26, -105, -87, -28, -72, -118, -27, -91, -67};
+            expected    = "早上好";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+    }
+
+    @Test
+    public void testVarcharTypeLatinCharacterSet() {
+        DataType dataType = DataType.VARCHAR;
+        String columnType = "varchar(30)";
+
+        String collation = "latin1_swedish_ci";
+
+        byte[] testByteArr;
+        String expected, actual;
+
+        {
+            testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
+            expected    = "orange";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
+            expected    = "Orange";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
+            expected    = "ORANGE";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -19, 97, 115};
+            expected    = "Buenos días";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -23, 101};
+            expected    = "bonne journée";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+    }
+
+    @Test
+    public void testVarcharTypeUtf8CharacterSet() {
+        DataType dataType = DataType.VARCHAR;
+        String columnType = "varchar(30)";
+
+        String collation = "utf8_general_ci";
+
+        byte[] testByteArr;
+        String expected, actual;
+
+        {
+            testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
+            expected    = "orange";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
+            expected    = "Orange";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
+            expected    = "ORANGE";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -61, -83, 97, 115};
+            expected    = "Buenos días";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -61, -87, 101};
+            expected    = "bonne journée";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {-26, -105, -87, -28, -72, -118, -27, -91, -67};
+            expected    = "早上好";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+    }
+
+    @Test
+    public void testTextTypeLatinCharacterSet() {
+        DataType dataType = DataType.TEXT;
+        String columnType = "text";
+
+        String collation = "latin1_swedish_ci";
+
+        byte[] testByteArr;
+        String expected, actual;
+
+        {
+            testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
+            expected    = "orange";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
+            expected    = "Orange";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
+            expected    = "ORANGE";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -19, 97, 115};
+            expected    = "Buenos días";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -23, 101};
+            expected    = "bonne journée";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+    }
+
+    @Test
+    public void testTextTypeUtf8CharacterSet() {
+        DataType dataType = DataType.TEXT;
+        String columnType = "text";
+
+        String collation = "utf8_general_ci";
+
+        byte[] testByteArr;
+        String expected, actual;
+
+        {
+            testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
+            expected    = "orange";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
+            expected    = "Orange";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
+            expected    = "ORANGE";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -61, -83, 97, 115};
+            expected    = "Buenos días";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -61, -87, 101};
+            expected    = "bonne journée";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {-26, -105, -87, -28, -72, -118, -27, -91, -67};
+            expected    = "早上好";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+    }
+
+    @Test
+    public void testMediumTextTypeLatinCharacterSet() {
+        DataType dataType = DataType.TEXT;
+        String columnType = "mediumtext";
+
+        String collation = "latin1_swedish_ci";
+
+        byte[] testByteArr;
+        String expected, actual;
+
+        {
+            testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
+            expected    = "orange";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
+            expected    = "Orange";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
+            expected    = "ORANGE";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -19, 97, 115};
+            expected    = "Buenos días";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -23, 101};
+            expected    = "bonne journée";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+    }
+
+    @Test
+    public void testMediumTextTypeUtf8CharacterSet() {
+        DataType dataType = DataType.MEDIUMTEXT;
+        String columnType = "mediumtext";
+
+        String collation = "utf8_general_ci";
+
+        byte[] testByteArr;
+        String expected, actual;
+
+        {
+            testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
+            expected    = "orange";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
+            expected    = "Orange";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
+            expected    = "ORANGE";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -61, -83, 97, 115};
+            expected    = "Buenos días";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -61, -87, 101};
+            expected    = "bonne journée";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {-26, -105, -87, -28, -72, -118, -27, -91, -67};
+            expected    = "早上好";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+    }
+
+    @Test
+    public void testTinyTextTypeLatinCharacterSet() {
+        DataType dataType = DataType.TEXT;
+        String columnType = "tinytext";
+
+        String collation = "latin1_swedish_ci";
+
+        byte[] testByteArr;
+        String expected, actual;
+
+        {
+            testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
+            expected    = "orange";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
+            expected    = "Orange";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
+            expected    = "ORANGE";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -19, 97, 115};
+            expected    = "Buenos días";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -23, 101};
+            expected    = "bonne journée";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+    }
+
+    @Test
+    public void testTinyTextTypeUtf8CharacterSet() {
+        DataType dataType = DataType.TINYTEXT;
+        String columnType = "tinytext";
+
+        String collation = "utf8_general_ci";
+
+        byte[] testByteArr;
+        String expected, actual;
+
+        {
+            testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
+            expected    = "orange";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
+            expected    = "Orange";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
+            expected    = "ORANGE";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -61, -83, 97, 115};
+            expected    = "Buenos días";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -61, -87, 101};
+            expected    = "bonne journée";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {-26, -105, -87, -28, -72, -118, -27, -91, -67};
+            expected    = "早上好";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            assertEquals(expected, actual);
+        }
+    }
+
+    @Test
     public void testBitType() {
         DataType dataType = DataType.BIT;
         String columnType = "bit(5)";

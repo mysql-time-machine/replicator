@@ -1,8 +1,6 @@
 package com.booking.replication.applier.hbase.conf;
 
-import com.booking.replication.applier.hbase.HBaseApplier;
 import com.booking.replication.applier.hbase.StorageConfig;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 
 import java.util.Map;

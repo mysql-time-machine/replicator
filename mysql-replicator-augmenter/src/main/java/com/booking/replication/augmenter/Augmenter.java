@@ -9,8 +9,11 @@ import com.booking.replication.augmenter.model.schema.SchemaAtPositionCache;
 import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
 import com.booking.replication.augmenter.model.schema.TableSchema;
 import com.booking.replication.commons.checkpoint.ForceRewindException;
-import com.booking.replication.supplier.model.*;
 import com.booking.replication.commons.metrics.Metrics;
+
+import com.booking.replication.supplier.model.RawEvent;
+import com.booking.replication.supplier.model.RawEventData;
+import com.booking.replication.supplier.model.RawEventHeaderV4;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -33,8 +36,7 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
         NONE {
 
             @Override
-            protected SchemaManager newInstance(Map<String, Object> configuration)
-            {
+            protected SchemaManager newInstance(Map<String, Object> configuration) {
                 return new SchemaManager() {
                     @Override
                     public boolean execute(String tableName, String query) {
@@ -122,13 +124,15 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
 
                 this.metrics.getRegistry().counter("augmenter.apply.should_process.true").inc(1L);
 
-                if(this.context.isTransactionsEnabled()){
+                if (this.context.isTransactionsEnabled()) {
                     return processTransactionFlow(eventHeader, eventData);
                 }
 
                 AugmentedEvent augmentedEvent = getAugmentedEvent(eventHeader, eventData);
 
-                if (augmentedEvent == null) return null;
+                if (augmentedEvent == null) {
+                    return null;
+                }
 
                 return Collections.singletonList(augmentedEvent);
             }
@@ -165,10 +169,11 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
                     return null;
                 }
             }
-
         } else { // commit not reached
             AugmentedEvent augmentedEvent = getAugmentedEvent(eventHeader, eventData);
-            if (augmentedEvent == null) return null;
+            if (augmentedEvent == null) {
+                return null;
+            }
 
             if (this.context.getTransaction().started()) {
                 if (this.context.getTransaction().resuming() && this.context.getTransaction().sizeLimitExceeded()) {

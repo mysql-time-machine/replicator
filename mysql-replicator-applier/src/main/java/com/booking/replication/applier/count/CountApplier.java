@@ -28,11 +28,12 @@ public class CountApplier implements Applier {
 
     @Override
     public Boolean apply(Collection<AugmentedEvent> events) {
-            events.forEach(
-                    event -> eventCounts.put(event.getHeader().getEventType().name(),
-                            eventCounts.get(event.getHeader().getEventType().name()) == null ? 1 :
-                            eventCounts.get(event.getHeader().getEventType().name()) + 1)
-            );
-            return true;
+        events.forEach(
+            event -> eventCounts.put(event.getHeader().getEventType().name(),
+                    eventCounts.get(event.getHeader().getEventType().name()) == null ? 1 :
+                    eventCounts.get(event.getHeader().getEventType().name()) + 1)
+        );
+
+        return true;
     }
 }

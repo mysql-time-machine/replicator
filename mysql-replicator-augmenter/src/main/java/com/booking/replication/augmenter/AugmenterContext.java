@@ -6,13 +6,26 @@ import com.booking.replication.augmenter.model.event.QueryAugmentedEventDataType
 import com.booking.replication.augmenter.model.format.Stringifier;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.augmenter.model.row.RowBeforeAfter;
-import com.booking.replication.augmenter.model.schema.*;
+import com.booking.replication.augmenter.model.schema.ColumnSchema;
+import com.booking.replication.augmenter.model.schema.FullTableName;
+import com.booking.replication.augmenter.model.schema.SchemaAtPositionCache;
+import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
+import com.booking.replication.augmenter.model.schema.SchemaTransitionSequence;
+import com.booking.replication.augmenter.model.schema.TableSchema;
 import com.booking.replication.commons.checkpoint.Binlog;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.GTID;
 import com.booking.replication.commons.checkpoint.GTIDType;
 import com.booking.replication.commons.metrics.Metrics;
-import com.booking.replication.supplier.model.*;
+import com.booking.replication.supplier.model.GTIDRawEventData;
+import com.booking.replication.supplier.model.QueryRawEventData;
+import com.booking.replication.supplier.model.RawEventData;
+import com.booking.replication.supplier.model.RawEventHeaderV4;
+import com.booking.replication.supplier.model.RawEventType;
+import com.booking.replication.supplier.model.RotateRawEventData;
+import com.booking.replication.supplier.model.TableIdRawEventData;
+import com.booking.replication.supplier.model.TableMapRawEventData;
+import com.booking.replication.supplier.model.XIDRawEventData;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 
 import com.codahale.metrics.MetricRegistry;
@@ -277,10 +290,8 @@ public class AugmenterContext implements Closeable {
                         AugmenterContext.LOG.warn("transaction already started");
                     }
 
-                }
-
-                // commit
-                else if (this.commitPattern.matcher(query).find()) {
+                } else if (this.commitPattern.matcher(query).find()) {
+                    // commit
                     this.updateCommons(
                             true,
                             QueryAugmentedEventDataType.COMMIT,
@@ -295,9 +306,8 @@ public class AugmenterContext implements Closeable {
                     if (!this.transaction.commit(eventHeader.getTimestamp(), transactionCounter.get())) {
                         AugmenterContext.LOG.warn("transaction already markedForCommit");
                     }
-                }
-                // ddl definer
-                else if ((matcher = this.ddlDefinerPattern.matcher(query)).find()) {
+                } else if ((matcher = this.ddlDefinerPattern.matcher(query)).find()) {
+                    // ddl definer
                     this.metrics.getRegistry()
                             .counter("hbase.augmenter_context.type.ddl_definer").inc(1L);
                     this.updateCommons(
@@ -307,9 +317,8 @@ public class AugmenterContext implements Closeable {
                             queryRawEventData.getDatabase(),
                             null
                     );
-                }
-                // ddl table
-                else if ((matcher = this.ddlTablePattern.matcher(query)).find()) {
+                } else if ((matcher = this.ddlTablePattern.matcher(query)).find()) {
+                    // ddl table
                     this.metrics.getRegistry()
                             .counter("augmenter_context.type.ddl_table").inc(1L);
                     String tableName = matcher.group(4);
@@ -334,9 +343,8 @@ public class AugmenterContext implements Closeable {
                                 .counter("hbase.augmenter_context.type.ddl_table.should_process.false").inc(1L);
                     }
 
-                }
-                // ddl temp table
-                else if ((matcher = this.ddlTemporaryTablePattern.matcher(query)).find()) {
+                } else if ((matcher = this.ddlTemporaryTablePattern.matcher(query)).find()) {
+                    // ddl temp table
                     this.metrics.getRegistry()
                             .counter("hbase.augmenter_context.type.ddl_temp_table").inc(1L);
                     this.updateCommons(
@@ -346,9 +354,8 @@ public class AugmenterContext implements Closeable {
                             queryRawEventData.getDatabase(),
                             matcher.group(4)
                     );
-                }
-                // ddl view
-                else if ((matcher = this.ddlViewPattern.matcher(query)).find()) {
+                } else if ((matcher = this.ddlViewPattern.matcher(query)).find()) {
+                    // ddl view
                     this.metrics.getRegistry()
                             .counter("hbase.augmenter_context.type.ddl_view").inc(1L);
                     this.updateCommons(
@@ -494,24 +501,8 @@ public class AugmenterContext implements Closeable {
             LOG.warn("TransactionCounter counter is overflowed, resetting to 0.");
         }
 
-        if (timestamp.get() > previousTimestamp.get()) {
-            long oldTc =  transactionCounter.getAndSet(0);
-            long oldTimestamp = previousTimestamp.getAndSet(timestamp.get());
-//            LOG.info("TransactionCounter Set to 0: " +
-//                    " previousTimestamp => " + oldTimestamp +
-//                    ", currentTimestamp => " + timestamp.get() +
-//                    ", previousTransactionCounter => " + oldTc +
-//                    ", currentTransactionCounter => " + transactionCounter.get());
-
-        } else if (timestamp.get() == previousTimestamp.get()) {
+        if (timestamp.get() == previousTimestamp.get()) {
             transactionCounter.incrementAndGet();
-        } else if (timestamp.get() < previousTimestamp.get()) {
-//            LOG.warn("Transactions out of order: " +
-//                    "previousTimestamp => " + previousTimestamp.get() +
-//                    ", currentTimestamp => " + timestamp.get() +
-//                    ", transactionCounter => " + transactionCounter.get());
-        } else {
-            LOG.warn("This code should not be reachable");
         }
     }
 
@@ -633,11 +624,8 @@ public class AugmenterContext implements Closeable {
 
     private boolean isDDLAndIsNot(QueryAugmentedEventDataOperationType ddlOpType) {
         return ((this.queryType.get() == QueryAugmentedEventDataType.DDL_TABLE
-                ||
-                this.queryType.get() == QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE
-        )
-                &&
-                this.getQueryOperationType() != ddlOpType);
+                || this.queryType.get() == QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE )
+                && this.getQueryOperationType() != ddlOpType);
     }
 
     private boolean shouldProcessTable(String tableName) {
@@ -683,6 +671,10 @@ public class AugmenterContext implements Closeable {
 
     public FullTableName getEventTable() {
         return this.eventTable.get();
+    }
+
+    public FullTableName getEventTable(long tableId) {
+        return this.schemaCache.get().getTableIdToTableNameMap().get(tableId);
     }
 
     public Checkpoint newCheckpoint() {
@@ -755,10 +747,6 @@ public class AugmenterContext implements Closeable {
         } else {
             return null;
         }
-    }
-
-    public FullTableName getEventTable(long tableId) {
-        return this.schemaCache.get().getTableIdToTableNameMap().get(tableId);
     }
 
     public Collection<Boolean> getIncludedColumns(BitSet includedColumns) {

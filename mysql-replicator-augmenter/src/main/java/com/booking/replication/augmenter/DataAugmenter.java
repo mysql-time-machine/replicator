@@ -48,7 +48,10 @@ public class DataAugmenter {
                 this.context.incrementRowCounterMetrics(eventHeader.getEventType(), eventRowsBeforeAfter.size());
 
                 Collection<ColumnSchema> columns = this.context.getColumns(writeRowsRawEventData.getTableId());
-                if(columns == null) return null;
+                if (columns == null) {
+                    return null;
+                }
+
                 return new WriteRowsAugmentedEventData(
 
                         this.context.getEventTable(writeRowsRawEventData.getTableId()),
@@ -80,7 +83,10 @@ public class DataAugmenter {
 
                 this.context.incrementRowCounterMetrics(eventHeader.getEventType(), rowsBeforeAfterUpdate.size());
                 Collection<ColumnSchema> columns1 = this.context.getColumns(updateRowsRawEventData.getTableId());
-                if(columns1 == null) return null;
+                if (columns1 == null) {
+                    return null;
+                }
+
                 return new UpdateRowsAugmentedEventData(
 
                         this.context.getEventTable(updateRowsRawEventData.getTableId()),
@@ -115,7 +121,10 @@ public class DataAugmenter {
                 this.context.incrementRowCounterMetrics(eventHeader.getEventType(), rowsBeforeAfterDelete.size());
 
                 Collection<ColumnSchema> columns2 = this.context.getColumns(deleteRowsRawEventData.getTableId());
-                if(columns2 == null) return null;
+                if (columns2 == null) {
+                    return null;
+                }
+
                 return new DeleteRowsAugmentedEventData(
                         this.context.getEventTable(deleteRowsRawEventData.getTableId()),
                         this.context.getIncludedColumns(deleteRowsRawEventData.getIncludedColumns()),

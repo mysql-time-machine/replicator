@@ -76,7 +76,7 @@ public class CurrentTransaction {
             Collection<AugmentedEvent> augmentedEventQueue = this.buffer.getAndSet(
                     (this.resuming.get())
                             ? (this.getBufferInstance())
-                            :(null)
+                            : (null)
             );
             Collection<AugmentedEvent> augmentedEventList = new ArrayList<>();
 
@@ -112,13 +112,13 @@ public class CurrentTransaction {
         }
     }
 
+    public boolean commit(long timestamp, long transactionSequenceNumber) {
+        return this.commit(CurrentTransaction.DEFAULT_XXID, timestamp, transactionSequenceNumber);
+    }
+
     public void rewind() {
         this.resuming.set(true);
         this.buffer.set(this.getBufferInstance());
-    }
-
-    public boolean commit(long timestamp, long transactionSequenceNumber) {
-        return this.commit(CurrentTransaction.DEFAULT_XXID, timestamp, transactionSequenceNumber);
     }
 
     public boolean started() {

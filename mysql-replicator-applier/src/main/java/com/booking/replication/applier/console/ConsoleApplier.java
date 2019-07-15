@@ -2,8 +2,10 @@ package com.booking.replication.applier.console;
 
 import com.booking.replication.applier.Applier;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -22,7 +24,6 @@ public class ConsoleApplier implements Applier {
     public Boolean apply(Collection<AugmentedEvent> events) {
         try {
             for (AugmentedEvent event : events) {
-//                ConsoleApplier.LOG.info(ConsoleApplier.MAPPER.writeValueAsString(event));
                 ConsoleApplier.LOG.info(ConsoleApplier.MAPPER.writeValueAsString(event));
             }
 

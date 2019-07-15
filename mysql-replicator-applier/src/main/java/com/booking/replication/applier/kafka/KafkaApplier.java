@@ -7,9 +7,12 @@ import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.event.QueryAugmentedEventData;
 import com.booking.replication.commons.map.MapFilter;
 import com.booking.replication.commons.metrics.Metrics;
+
 import com.codahale.metrics.MetricRegistry;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
@@ -150,7 +153,7 @@ public class KafkaApplier implements Applier {
                         this.producers.computeIfAbsent(
                                 partition, key -> this.getProducer()
                         ).send(record, (metadata, exception) -> {
-                            if (exception != null){
+                            if (exception != null) {
                                 // todo: collect producer errors and decide if we have to throw exception here
                                 // 1. Exception occurred while writing to kafka:
                                 // org.apache.kafka.common.errors.NotLeaderForPartitionException: This server is not the leader for that topic-partition. (A warning. No message is lost)
@@ -203,13 +206,21 @@ public class KafkaApplier implements Applier {
     private void handleIncompatibleSchemaChange(AugmentedEvent event) throws IOException {
         if (event.getData() instanceof QueryAugmentedEventData) {
             List<GenericRecord> genericRecords = event.dataToAvro();
-            if (genericRecords.size() != 1) return;
+
+            if (genericRecords.size() != 1) {
+                return;
+            }
+
             GenericRecord genericRecord = genericRecords.get(0);
             try {
                 Schema schema = new Schema.Parser().parse((String) genericRecord.get("schema"));
                 String subject = event.getHeader().schemaKey() + "-value";
-                boolean b = this.schemaRegistryClient.testCompatibility(subject, schema);
-                if (b) return;
+                boolean testCompatibility = this.schemaRegistryClient.testCompatibility(subject, schema);
+
+                if (testCompatibility) {
+                    return;
+                }
+
                 QueryAugmentedEventData eventData = (QueryAugmentedEventData) event.getData();
                 eventData.setSchemaCompatibilityFlag(false);
 

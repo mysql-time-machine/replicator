@@ -4,22 +4,27 @@ import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.DataType;
 import com.booking.replication.augmenter.model.schema.FullTableName;
 import com.booking.replication.augmenter.model.schema.TableSchema;
+
 import org.apache.commons.dbcp2.BasicDataSource;
 
-import javax.sql.DataSource;
-import java.net.ConnectException;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
+
+import javax.sql.DataSource;
 
 public class SchemaHelpers {
 
     public static TableSchema computeTableSchema(String schema, String tableName, BasicDataSource dataSource, DataSource binlogDataSource) {
 
         try (Connection connection = dataSource.getConnection()) {
-            Statement statementListColumns = connection.createStatement();
-            Statement statementShowCreateTable = connection.createStatement();
+            Statement statementListColumns      = connection.createStatement();
+            Statement statementShowCreateTable  = connection.createStatement();
 
             //  connection.getSchema() returns null for MySQL, so we do this ugly hack
             // TODO: find nicer way
@@ -27,14 +32,15 @@ public class SchemaHelpers {
             String schemaName = terms[terms.length - 1];
 
             List<ColumnSchema> columnList = new ArrayList<>();
-            String tableCreateStatement = null;
+            String tableCreateStatement;
 
-            ResultSet resultSet = null;
+            ResultSet resultSet;
             SchemaHelpers.createTableIfNotExists(tableName, connection, binlogDataSource);
 
             resultSet = statementListColumns.executeQuery(
                     String.format(ActiveSchemaManager.LIST_COLUMNS_SQL, schema, tableName)
             );
+
             while (resultSet.next()) {
 
                 String collation = resultSet.getString("COLLATION_NAME");

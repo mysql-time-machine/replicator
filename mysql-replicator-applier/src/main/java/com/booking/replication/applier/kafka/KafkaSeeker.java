@@ -5,8 +5,10 @@ import com.booking.replication.applier.Seeker;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.event.AugmentedEventHeader;
 import com.booking.replication.commons.checkpoint.Checkpoint;
-
 import com.booking.replication.commons.map.MapFilter;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -18,8 +20,6 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;

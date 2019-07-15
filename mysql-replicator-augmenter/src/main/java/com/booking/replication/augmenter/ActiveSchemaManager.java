@@ -3,6 +3,7 @@ package com.booking.replication.augmenter;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.SchemaAtPositionCache;
 import com.booking.replication.augmenter.model.schema.TableSchema;
+
 import com.mysql.jdbc.Driver;
 
 import org.apache.commons.dbcp2.BasicDataSource;
@@ -10,7 +11,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -214,7 +219,10 @@ public class ActiveSchemaManager implements SchemaManager {
     public List<ColumnSchema> listColumns(String tableName) {
         TableSchema tableSchema =
                 this.schemaAtPositionCache.getTableColumns(tableName, this.computeTableSchemaLambda);
-        if (tableSchema == null) return null;
+        if (tableSchema == null) {
+            return null;
+        }
+
         return (List<ColumnSchema>) tableSchema.getColumnSchemas();
     }
 
@@ -224,8 +232,11 @@ public class ActiveSchemaManager implements SchemaManager {
             PreparedStatement stmt = conn.prepareStatement("SHOW TABLES");
             ArrayList<String> tables = new ArrayList<>();
             ResultSet resultSet = stmt.executeQuery();
-            while (resultSet.next())
+
+            while (resultSet.next()) {
                 tables.add(resultSet.getString(1));
+            }
+
             return tables;
         }
     }

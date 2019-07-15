@@ -1,9 +1,9 @@
 package com.booking.replication.applier;
 
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
-import com.booking.replication.augmenter.model.schema.FullTableName;
 import com.booking.replication.augmenter.model.event.AugmentedEventTransaction;
 import com.booking.replication.augmenter.model.event.TableAugmentedEventData;
+import com.booking.replication.augmenter.model.schema.FullTableName;
 
 import java.io.Closeable;
 import java.io.IOException;

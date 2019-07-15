@@ -62,7 +62,7 @@ public class AugmentedRow {
         // times during one second, but in different events. The additional logic is added in
         // TimestampOrganizer which protects the ordering of changes in cases when the same row
         // is altered multiple times in the same event.
-//        this.microsecondTransactionOffset = null; // transactionCounter * 100; // one inc <=> 0.1ms
+        // this.microsecondTransactionOffset = null; // transactionCounter * 100; // one inc <=> 0.1ms
 
         this.eventType = eventType;
 

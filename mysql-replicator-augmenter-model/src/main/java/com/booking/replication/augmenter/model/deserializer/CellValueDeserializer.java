@@ -2,7 +2,6 @@ package com.booking.replication.augmenter.model.deserializer;
 
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 
-import javax.xml.bind.DatatypeConverter;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -14,6 +13,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
+import javax.xml.bind.DatatypeConverter;
+
 public class CellValueDeserializer {
 
     private static String binaryToHexString(byte[] value, Integer displayWidth) {
@@ -21,8 +22,11 @@ public class CellValueDeserializer {
             // zerofill rest of the bytes
             byte[] zerofilledValue = new byte[displayWidth];
             for (int i = 0; i < displayWidth; i++) {
-                if (i >= value.length) zerofilledValue[i] = 0;
-                else zerofilledValue[i] = value[i];
+                if (i >= value.length) {
+                    zerofilledValue[i] = 0;
+                } else {
+                    zerofilledValue[i] = value[i];
+                }
             }
             return DatatypeConverter.printHexBinary(zerofilledValue);
         }
@@ -48,17 +52,17 @@ public class CellValueDeserializer {
             return deserializedCellValue;
         }
 
-        if (columnType.contains("decimal") ||
-                columnType.contains("numeric")) {
+        if (columnType.contains("decimal")
+                || columnType.contains("numeric")) {
             //todo: get precision and decide data type
             BigDecimal cellValue1 = (BigDecimal) cellValue;
             deserializedCellValue = cellValue1.toPlainString();
             ;
         }
 
-        if (columnType.contains("timestamp") ||
-                columnType.contains("date") ||
-                columnType.contains("time")) {
+        if (columnType.contains("timestamp")
+                || columnType.contains("date")
+                || columnType.contains("time")) {
             //todo: Change it to timestamp (long).
             deserializedCellValue = cellValue.toString();
         }
@@ -72,38 +76,38 @@ public class CellValueDeserializer {
 
         if (columnType.contains("tinyint")) {
             if (columnType.contains("unsigned")) {
-                int a = (Integer) cellValue;
-                byte x1 = (byte) a;
+                int intValue = (Integer) cellValue;
+                byte x1 = (byte) intValue;
                 deserializedCellValue = Byte.toUnsignedInt(x1);
             } else {
                 deserializedCellValue = cellValue;
             }
         } else if (columnType.contains("smallint")) {
             if (columnType.contains("unsigned")) {
-                int a = (Integer) cellValue;
-                short x1 = (short) a;
+                int intValue = (Integer) cellValue;
+                short x1 = (short) intValue;
                 deserializedCellValue = Short.toUnsignedInt(x1);
             } else {
                 deserializedCellValue = cellValue;
             }
         } else if (columnType.contains("mediumint")) {
             if (columnType.contains("unsigned")) {
-                int a = (Integer) cellValue;
-                deserializedCellValue = a & 0xffffff;
+                int intValue = (Integer) cellValue;
+                deserializedCellValue = intValue & 0xffffff;
             } else {
                 deserializedCellValue = cellValue;
             }
         } else if (columnType.contains("bigint")) {
             if (columnType.contains("unsigned")) {
-                long a = (Long) cellValue;
-                deserializedCellValue = Long.toUnsignedString(a);
+                long longValue = (Long) cellValue;
+                deserializedCellValue = Long.toUnsignedString(longValue);
             } else {
                 deserializedCellValue = cellValue;
             }
         } else if (columnType.contains("int")) {
             if (columnType.contains("unsigned")) {
-                int a = (Integer) cellValue;
-                deserializedCellValue = Integer.toUnsignedLong(a);
+                int intValue = (Integer) cellValue;
+                deserializedCellValue = Integer.toUnsignedLong(intValue);
             } else {
                 deserializedCellValue = cellValue;
             }
@@ -150,12 +154,12 @@ public class CellValueDeserializer {
     }
 
     private static Integer getDisplayWidth(String columnType) {
-        String pattern = "binary\\((\\d+)\\)";
-        Pattern r = Pattern.compile(pattern);
-        Matcher m = r.matcher(columnType);
+        String patternString = "binary\\((\\d+)\\)";
+        Pattern pattern = Pattern.compile(patternString);
+        Matcher matcher = pattern.matcher(columnType);
 
-        if (m.find()) {
-            return Integer.parseInt(m.group(1));
+        if (matcher.find()) {
+            return Integer.parseInt(matcher.group(1));
         } else {
             return null;
         }

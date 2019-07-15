@@ -1,8 +1,8 @@
 package com.booking.replication.augmenter.model.event;
 
+import com.booking.replication.augmenter.model.schema.FullTableName;
 import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
 import com.booking.replication.augmenter.model.schema.TableSchema;
-import com.booking.replication.augmenter.model.schema.FullTableName;
 
 @SuppressWarnings("unused")
 public class QueryAugmentedEventData implements TableAugmentedEventData {
@@ -22,7 +22,9 @@ public class QueryAugmentedEventData implements TableAugmentedEventData {
     public QueryAugmentedEventData() {
     }
 
-    public QueryAugmentedEventData(QueryAugmentedEventDataType queryType, QueryAugmentedEventDataOperationType operationType, FullTableName eventTable, long threadId, long executionTime, int errorCode, String sql, TableSchema before, TableSchema after) {
+    public QueryAugmentedEventData(QueryAugmentedEventDataType queryType, QueryAugmentedEventDataOperationType operationType,
+                                   FullTableName eventTable, long threadId, long executionTime, int errorCode, String sql,
+                                   TableSchema before, TableSchema after) {
         this.queryType = queryType;
         this.operationType = operationType;
         this.eventTable = eventTable;
@@ -75,15 +77,15 @@ public class QueryAugmentedEventData implements TableAugmentedEventData {
         return isDDL;
     }
 
-    public void setDDL(boolean DDL) {
-        isDDL = DDL;
+    public void setDDL(boolean isDDL) {
+        this.isDDL = isDDL;
     }
 
-    public void setSchemaCompatibilityFlag(boolean isCompatibleSchemaChange){
+    public void setSchemaCompatibilityFlag(boolean isCompatibleSchemaChange) {
         this.isCompatibleSchemaChange = isCompatibleSchemaChange;
     }
 
-    public boolean getIsCompatibleSchemaChange(){
+    public boolean getIsCompatibleSchemaChange() {
         return this.isCompatibleSchemaChange;
     }
 

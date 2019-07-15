@@ -12,8 +12,8 @@ public class JMXMetrics extends Metrics<JmxReporter> {
 
     private static JMXMetrics instance;
 
-    public static JMXMetrics getInstance(Map<String, Object> configuration){
-        if(instance == null){
+    public static JMXMetrics getInstance(Map<String, Object> configuration) {
+        if (instance == null) {
             instance = new JMXMetrics(configuration);
         }
         return instance;

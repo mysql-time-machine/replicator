@@ -7,7 +7,12 @@ import java.util.Objects;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
-import java.util.function.*;
+
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 public final class StreamsBuilder<Input, Output> implements
         StreamsBuilderFrom<Input, Output>,
@@ -167,7 +172,7 @@ public final class StreamsBuilder<Input, Output> implements
                 this.dataSupplierFn,
                 this.filter,
                 input -> {
-                    Output output = (this.process != null)?(this.process.apply(input)):((Output) input);
+                    Output output = (this.process != null) ? (this.process.apply(input)) : ((Output) input);
                     if (output != null) {
                         return process.apply(output);
                     } else {

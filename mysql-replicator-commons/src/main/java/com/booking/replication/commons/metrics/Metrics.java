@@ -4,9 +4,9 @@ import com.codahale.metrics.Metric;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Reporter;
 
-import org.eclipse.jetty.server.Server;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.eclipse.jetty.server.Server;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -58,8 +58,8 @@ public abstract class Metrics<CloseableReporter extends Closeable & Reporter> im
 
         protected abstract Metrics<?> newInstance(Map<String, Object> configuration, Server server);
 
-        public Metrics<?> getInstance(){
-            if(instance == null){
+        public Metrics<?> getInstance() {
+            if (instance == null) {
                 Metrics.LOG.fatal("Metrics.build(configuration) should have been called during starting the replicator");
             }
             return  instance;
@@ -115,7 +115,7 @@ public abstract class Metrics<CloseableReporter extends Closeable & Reporter> im
         this.reporter.close();
     }
 
-    public String basePath(){
+    public String basePath() {
         return basePath;
     }
 
@@ -127,9 +127,9 @@ public abstract class Metrics<CloseableReporter extends Closeable & Reporter> im
         ).newInstance(configuration, server);
     }
 
-    public static Metrics<?> getInstance(Map<String, Object> configuration){
+    public static Metrics<?> getInstance(Map<String, Object> configuration) {
         return Metrics.Type.valueOf(
                 configuration.getOrDefault(Configuration.TYPE, Type.CONSOLE.name()).toString()
         ).getInstance();
     }
- }
+}

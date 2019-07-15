@@ -28,8 +28,7 @@ public class ColumnSchema implements Serializable {
             boolean nullable,
             String key,
             String valueDefault,
-            String extra
-        ) {
+            String extra) {
         this.name           = name;
         this.dataType       = dataType;
         this.columnType     = columnType;

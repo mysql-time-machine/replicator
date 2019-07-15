@@ -17,11 +17,16 @@ public class FullTableName implements Serializable {
     }
 
     private String cleaned(String name) {
-        if(name == null) return name;
+        if (name == null) {
+            return name;
+        }
+
         name = name.replaceAll("`", "");
+
         if ( name.contains(".") ) {
             return name.split("\\.")[1];
         }
+
         return name;
     }
 

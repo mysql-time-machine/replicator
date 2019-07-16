@@ -152,7 +152,7 @@ public class ColumnSchema implements Cloneable, Serializable {
             return (ColumnSchema) this.clone();
         } catch (CloneNotSupportedException ex) {
             LOG.warn("Not able to clone ColumnSchema", ex);
-        } finally {
+
             ColumnSchema schema = new ColumnSchema(
                     this.name,
                     this.dataType,

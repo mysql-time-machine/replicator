@@ -32,7 +32,6 @@ public class SchemaHelpers {
             String schemaName = terms[terms.length - 1];
 
             List<ColumnSchema> columnList = new ArrayList<>();
-            String tableCreateStatement;
 
             ResultSet resultSet;
             SchemaHelpers.createTableIfNotExists(tableName, connection, binlogDataSource);
@@ -43,29 +42,36 @@ public class SchemaHelpers {
 
             while (resultSet.next()) {
 
-                String collation = resultSet.getString("COLLATION_NAME");
-
-                boolean nullable = (resultSet.getString("IS_NULLABLE").equals("NO") ? false : true);
+                boolean isNullable = (resultSet.getString("IS_NULLABLE").equals("NO") ? false : true);
 
                 DataType dataType = DataType.byCode(resultSet.getString("DATA_TYPE"));
 
-                columnList.add(new ColumnSchema(
+                ColumnSchema columnSchema = new ColumnSchema(
                         resultSet.getString("COLUMN_NAME"),
                         dataType,
                         resultSet.getString("COLUMN_TYPE"),
-                        collation,
-                        nullable,
+                        isNullable,
                         resultSet.getString("COLUMN_KEY"),
-                        resultSet.getString("COLUMN_DEFAULT"),
                         resultSet.getString("EXTRA")
-                ));
+                );
+
+                columnSchema
+                        .setCollation(resultSet.getString("COLLATION_NAME"))
+                        .setDefaultValue(resultSet.getString("COLUMN_DEFAULT"))
+                        .setDateTimePrecision(resultSet.getInt("DATETIME_PRECISION"))
+                        .setCharMaxLength(resultSet.getInt("CHARACTER_MAXIMUM_LENGTH"))
+                        .setCharOctetLength(resultSet.getInt("CHARACTER_OCTET_LENGTH"))
+                        .setNumericPrecision(resultSet.getInt("NUMERIC_PRECISION"))
+                        .setNumericScale(resultSet.getInt("NUMERIC_SCALE"));
+
+                columnList.add(columnSchema);
             }
 
             ResultSet showCreateTableResultSet = statementShowCreateTable.executeQuery(
                     String.format(ActiveSchemaManager.SHOW_CREATE_TABLE_SQL, tableName)
             );
             ResultSetMetaData showCreateTableResultSetMetadata = showCreateTableResultSet.getMetaData();
-            tableCreateStatement = SchemaHelpers.getCreateTableStatement(tableName, showCreateTableResultSet, showCreateTableResultSetMetadata);
+            String tableCreateStatement = SchemaHelpers.getCreateTableStatement(tableName, showCreateTableResultSet, showCreateTableResultSetMetadata);
 
 
             return new TableSchema(new FullTableName(schemaName, tableName),

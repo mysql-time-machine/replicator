@@ -16,36 +16,16 @@ public class EventDataPresenterAvroTest {
     public void testDefaultValuesInGeneratedAvroSchema() throws Exception {
         EventDataPresenterAvro dataPresenter = new EventDataPresenterAvro(new AugmentedEvent());
         ArrayList<ColumnSchema> columns = new ArrayList<>();
-        columns.add(new ColumnSchema(
-                "col1",
-                DataType.INT,
-                "int(11)",
-                "NULL",
-                true,
-                "",
-                null,
-                ""
-        ));
-        columns.add(new ColumnSchema(
-                "col2",
-                DataType.INT,
-                "int(11)",
-                "NULL",
-                true,
-                "",
-                "10",
-                ""
-        ));
-        columns.add(new ColumnSchema(
-                "col3",
-                DataType.ENUM,
-                "enum('boolean','integer','string','date','datetime','boolarray','intarray','stringarray','datearray','enum')",
-                "NULL",
-                true,
-                "",
-                "string",
-                ""
-        ));
+
+        columns.add(new ColumnSchema("col1", DataType.INT, "int(11)", true, "", ""));
+
+        columns.add(new ColumnSchema("col2", DataType.INT, "int(11)", true, "", "")
+                .setDefaultValue("10"));
+
+        columns.add(new ColumnSchema("col3", DataType.ENUM,
+                "enum('boolean','integer','string','date','datetime','boolarray','intarray','stringarray','datearray','enum')", true, "", "")
+                .setDefaultValue("string"));
+
         Schema avroSchema = dataPresenter.createAvroSchema(false, true,
                 new FullTableName("db", "table"),
                 columns);
@@ -53,5 +33,4 @@ public class EventDataPresenterAvroTest {
         assertEquals(expected, avroSchema.toString());
 
     }
-
 }

@@ -2,18 +2,31 @@ package com.booking.replication.augmenter.model.schema;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.Serializable;
 
 @SuppressWarnings("unused")
-public class ColumnSchema implements Serializable {
+public class ColumnSchema implements Cloneable, Serializable {
+    private static final Logger LOG = LogManager.getLogger(ColumnSchema.class);
+
     private String name;
-    private DataType dataType;
     private String columnType;
-    private boolean nullable;
     private String key;
     private String valueDefault;
     private String extra;
     private String collation;
+
+    private DataType dataType;
+
+    private Integer charMaxLength;
+    private Integer charOctetLength;
+    private Integer numericPrecision;
+    private Integer numericScale;
+    private Integer dateTimePrecision;
+
+    private boolean isNullable;
 
     @JsonIgnore
     public boolean primary; // temp transition
@@ -21,22 +34,61 @@ public class ColumnSchema implements Serializable {
     public ColumnSchema() { }
 
     public ColumnSchema(
-            String name,
+            String columnName,
             DataType dataType,
             String columnType,
-            String collation,
-            boolean nullable,
+            boolean isNullable,
             String key,
-            String valueDefault,
-            String extra) {
-        this.name           = name;
-        this.dataType       = dataType;
-        this.columnType     = columnType;
-        this.collation      = collation;
-        this.nullable       = nullable;
-        this.key            = key;
-        this.valueDefault   = valueDefault;
-        this.extra          = extra;
+            String extra
+    ) {
+        this.name       = columnName;
+        this.dataType   = dataType;
+        this.columnType = columnType;
+        this.isNullable = isNullable;
+        this.key        = key;
+        this.extra      = extra;
+    }
+
+    public ColumnSchema setDefaultValue(String defaultValue) {
+        this.valueDefault = defaultValue;
+
+        return this;
+    }
+
+    public ColumnSchema setCollation(String collation) {
+        this.collation  = collation;
+
+        return this;
+    }
+
+    public ColumnSchema setCharMaxLength(Integer charMaxLength) {
+        this.charMaxLength = charMaxLength;
+
+        return this;
+    }
+
+    public ColumnSchema setCharOctetLength(Integer charOctetLength) {
+        this.charOctetLength = charOctetLength;
+
+        return this;
+    }
+
+    public ColumnSchema setNumericPrecision(Integer numericPrecision) {
+        this.numericPrecision = numericPrecision;
+
+        return this;
+    }
+
+    public ColumnSchema setNumericScale(Integer numericScale) {
+        this.numericScale = numericScale;
+
+        return this;
+    }
+
+    public ColumnSchema setDateTimePrecision(Integer dateTimePrecision) {
+        this.dateTimePrecision = dateTimePrecision;
+
+        return this;
     }
 
     public String getName() {
@@ -56,7 +108,7 @@ public class ColumnSchema implements Serializable {
     }
 
     public boolean isNullable() {
-        return this.nullable;
+        return this.isNullable;
     }
 
     public String getKey() {
@@ -71,25 +123,54 @@ public class ColumnSchema implements Serializable {
         return this.extra;
     }
 
-    public ColumnSchema deepCopy() {
+    public Integer getCharMaxLength() {
+        return charMaxLength;
+    }
 
-        String name         = this.getName();
-        DataType dataType   = this.getDataType();
-        String columnType   = this.getColumnType();
-        String collation    = (this.getCollation() == null) ? null : this.getCollation();
-        boolean nullable    = new Boolean(this.isNullable());
-        String key          = this.getKey();
-        String valueDefault = (this.getValueDefault() == null) ? "NULL" : this.getValueDefault();
-        String extra        = this.getExtra();
+    public Integer getCharOctetLength() {
+        return charOctetLength;
+    }
 
-        ColumnSchema columnSchemaCopy = new ColumnSchema(
-            name, dataType, columnType, collation, nullable, key, valueDefault, extra
-        );
+    public Integer getNumericPrecision() {
+        return numericPrecision;
+    }
 
-        return columnSchemaCopy;
+    public Integer getNumericScale() {
+        return numericScale;
+    }
+
+    public Integer getDateTimePrecision() {
+        return dateTimePrecision;
     }
 
     public boolean isPrimary() {
         return key.equalsIgnoreCase("PRI");
+    }
+
+    public ColumnSchema deepCopy() {
+        try {
+            return (ColumnSchema) this.clone();
+        } catch (CloneNotSupportedException ex) {
+            LOG.warn("Not able to clone ColumnSchema", ex);
+        } finally {
+            ColumnSchema schema = new ColumnSchema(
+                    this.name,
+                    this.dataType,
+                    this.columnType,
+                    this.isNullable,
+                    this.key,
+                    this.extra
+            );
+
+            schema.setDefaultValue(this.valueDefault)
+                    .setCharMaxLength(this.charMaxLength)
+                    .setCharOctetLength(this.charOctetLength)
+                    .setCollation(this.collation)
+                    .setDateTimePrecision(this.dateTimePrecision)
+                    .setNumericPrecision(this.numericPrecision)
+                    .setNumericScale(this.numericScale);
+
+            return schema;
+        }
     }
 }

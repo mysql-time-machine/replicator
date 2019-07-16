@@ -1,5 +1,6 @@
 package com.booking.replication.augmenter.model.format;
 
+import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.DataType;
 
 import org.apache.logging.log4j.LogManager;
@@ -29,7 +30,12 @@ public class MysqlTypeStringifier {
     private static final Long UNSIGNED_INT_MASK         = 0x00000000FFFFFFFFL;
     private static final Long DEFAULT_MASK              = 0xFFFFFFFFFFFFFFFFL;
 
-    public static String convertToString(Serializable cellValue, String collation, DataType dataType, String columnType, String[] groupValues) {
+    public static String convertToString(Serializable cellValue, ColumnSchema columnSchema, String[] groupValues) {
+
+        String collation    = columnSchema.getCollation();
+        String columnType   = columnSchema.getColumnType();
+
+        DataType dataType   = columnSchema.getDataType();
 
         if (cellValue == null) {
             return NULL_STRING;

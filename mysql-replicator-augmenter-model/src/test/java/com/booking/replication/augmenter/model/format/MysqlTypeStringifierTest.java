@@ -1,5 +1,6 @@
 package com.booking.replication.augmenter.model.format;
 
+import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.DataType;
 
 import org.junit.Test;
@@ -19,10 +20,8 @@ public class MysqlTypeStringifierTest {
 
     @Test
     public void testCharTypeLatinCharacterSet() {
-        DataType dataType = DataType.CHAR;
-        String columnType = "char(30)";
-
-        String collation = "latin1_swedish_ci";
+        ColumnSchema schema = new ColumnSchema("name", DataType.CHAR, "char(30)", true, "", "");
+        schema.setCollation("latin1_swedish_ci");
 
         byte[] testByteArr;
         String expected, actual;
@@ -31,7 +30,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -39,7 +38,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
             expected    = "Orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -47,7 +46,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
             expected    = "ORANGE";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -55,7 +54,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -19, 97, 115};
             expected    = "Buenos días";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -63,17 +62,15 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -23, 101};
             expected    = "bonne journée";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testCharTypeUtf8CharacterSet() {
-        DataType dataType = DataType.CHAR;
-        String columnType = "char(30)";
-
-        String collation = "utf8_general_ci";
+        ColumnSchema schema = new ColumnSchema("name", DataType.CHAR, "char(30)", true, "", "");
+        schema.setCollation("utf8_general_ci");
 
         byte[] testByteArr;
         String expected, actual;
@@ -82,7 +79,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -90,7 +87,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
             expected    = "Orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -98,7 +95,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
             expected    = "ORANGE";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -106,7 +103,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -61, -83, 97, 115};
             expected    = "Buenos días";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -114,7 +111,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -61, -87, 101};
             expected    = "bonne journée";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -122,17 +119,15 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {-26, -105, -87, -28, -72, -118, -27, -91, -67};
             expected    = "早上好";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testVarcharTypeLatinCharacterSet() {
-        DataType dataType = DataType.VARCHAR;
-        String columnType = "varchar(30)";
-
-        String collation = "latin1_swedish_ci";
+        ColumnSchema schema = new ColumnSchema("name", DataType.VARCHAR, "varchar(30)", true, "", "");
+        schema.setCollation("latin1_swedish_ci");
 
         byte[] testByteArr;
         String expected, actual;
@@ -141,7 +136,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -149,7 +144,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
             expected    = "Orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -157,7 +152,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
             expected    = "ORANGE";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -165,7 +160,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -19, 97, 115};
             expected    = "Buenos días";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -173,17 +168,15 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -23, 101};
             expected    = "bonne journée";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testVarcharTypeUtf8CharacterSet() {
-        DataType dataType = DataType.VARCHAR;
-        String columnType = "varchar(30)";
-
-        String collation = "utf8_general_ci";
+        ColumnSchema schema = new ColumnSchema("name", DataType.VARCHAR, "varchar(30)", true, "", "");
+        schema.setCollation("utf8_general_ci");
 
         byte[] testByteArr;
         String expected, actual;
@@ -192,7 +185,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -200,7 +193,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
             expected    = "Orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -208,7 +201,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
             expected    = "ORANGE";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -216,7 +209,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -61, -83, 97, 115};
             expected    = "Buenos días";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -224,7 +217,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -61, -87, 101};
             expected    = "bonne journée";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -232,17 +225,15 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {-26, -105, -87, -28, -72, -118, -27, -91, -67};
             expected    = "早上好";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testTextTypeLatinCharacterSet() {
-        DataType dataType = DataType.TEXT;
-        String columnType = "text";
-
-        String collation = "latin1_swedish_ci";
+        ColumnSchema schema = new ColumnSchema("name", DataType.TEXT, "text", true, "", "");
+        schema.setCollation("latin1_swedish_ci");
 
         byte[] testByteArr;
         String expected, actual;
@@ -251,7 +242,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -259,7 +250,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
             expected    = "Orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -267,7 +258,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
             expected    = "ORANGE";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -275,7 +266,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -19, 97, 115};
             expected    = "Buenos días";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -283,17 +274,15 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -23, 101};
             expected    = "bonne journée";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testTextTypeUtf8CharacterSet() {
-        DataType dataType = DataType.TEXT;
-        String columnType = "text";
-
-        String collation = "utf8_general_ci";
+        ColumnSchema schema = new ColumnSchema("name", DataType.TEXT, "text", true, "", "");
+        schema.setCollation("utf8_general_ci");
 
         byte[] testByteArr;
         String expected, actual;
@@ -302,7 +291,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -310,7 +299,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
             expected    = "Orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -318,7 +307,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
             expected    = "ORANGE";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -326,7 +315,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -61, -83, 97, 115};
             expected    = "Buenos días";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -334,7 +323,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -61, -87, 101};
             expected    = "bonne journée";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -342,17 +331,15 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {-26, -105, -87, -28, -72, -118, -27, -91, -67};
             expected    = "早上好";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testMediumTextTypeLatinCharacterSet() {
-        DataType dataType = DataType.TEXT;
-        String columnType = "mediumtext";
-
-        String collation = "latin1_swedish_ci";
+        ColumnSchema schema = new ColumnSchema("name", DataType.MEDIUMTEXT, "mediumtext", true, "", "");
+        schema.setCollation("latin1_swedish_ci");
 
         byte[] testByteArr;
         String expected, actual;
@@ -361,7 +348,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -369,7 +356,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
             expected    = "Orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -377,7 +364,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
             expected    = "ORANGE";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -385,7 +372,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -19, 97, 115};
             expected    = "Buenos días";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -393,17 +380,15 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -23, 101};
             expected    = "bonne journée";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testMediumTextTypeUtf8CharacterSet() {
-        DataType dataType = DataType.MEDIUMTEXT;
-        String columnType = "mediumtext";
-
-        String collation = "utf8_general_ci";
+        ColumnSchema schema = new ColumnSchema("name", DataType.MEDIUMTEXT, "mediumtext", true, "", "");
+        schema.setCollation("utf8_general_ci");
 
         byte[] testByteArr;
         String expected, actual;
@@ -412,7 +397,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -420,7 +405,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
             expected    = "Orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -428,7 +413,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
             expected    = "ORANGE";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -436,7 +421,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -61, -83, 97, 115};
             expected    = "Buenos días";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -444,7 +429,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -61, -87, 101};
             expected    = "bonne journée";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -452,17 +437,15 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {-26, -105, -87, -28, -72, -118, -27, -91, -67};
             expected    = "早上好";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testTinyTextTypeLatinCharacterSet() {
-        DataType dataType = DataType.TEXT;
-        String columnType = "tinytext";
-
-        String collation = "latin1_swedish_ci";
+        ColumnSchema schema = new ColumnSchema("name", DataType.TINYTEXT, "tinytext", true, "", "");
+        schema.setCollation("latin1_swedish_ci");
 
         byte[] testByteArr;
         String expected, actual;
@@ -471,7 +454,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -479,7 +462,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
             expected    = "Orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -487,7 +470,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
             expected    = "ORANGE";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -495,7 +478,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -19, 97, 115};
             expected    = "Buenos días";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -503,17 +486,15 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -23, 101};
             expected    = "bonne journée";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testTinyTextTypeUtf8CharacterSet() {
-        DataType dataType = DataType.TINYTEXT;
-        String columnType = "tinytext";
-
-        String collation = "utf8_general_ci";
+        ColumnSchema schema = new ColumnSchema("name", DataType.TINYTEXT, "tinytext", true, "", "");
+        schema.setCollation("utf8_general_ci");
 
         byte[] testByteArr;
         String expected, actual;
@@ -522,7 +503,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -530,7 +511,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
             expected    = "Orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -538,7 +519,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
             expected    = "ORANGE";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -546,7 +527,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -61, -83, 97, 115};
             expected    = "Buenos días";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -554,7 +535,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -61, -87, 101};
             expected    = "bonne journée";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -562,15 +543,14 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {-26, -105, -87, -28, -72, -118, -27, -91, -67};
             expected    = "早上好";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, collation, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testBitType() {
-        DataType dataType = DataType.BIT;
-        String columnType = "bit(5)";
+        ColumnSchema schema = new ColumnSchema("id", DataType.BIT, "bit(5)", true, "", "");
 
         BitSet testBit;
         String expected, actual;
@@ -583,7 +563,7 @@ public class MysqlTypeStringifierTest {
 
             expected    = "11001";
 
-            actual = MysqlTypeStringifier.convertToString(testBit, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testBit, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -591,13 +571,15 @@ public class MysqlTypeStringifierTest {
             testBit     = new BitSet();
             expected    = "0";
 
-            actual = MysqlTypeStringifier.convertToString(testBit, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testBit, schema, null);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testDateType() {
+        ColumnSchema schema = new ColumnSchema("dt", DataType.DATE, "date", true, "", "");
+
         DataType dataType = DataType.DATE;
         String columnType = "date";
 
@@ -608,7 +590,7 @@ public class MysqlTypeStringifierTest {
             testDate   = new Date(2019 - 1900, Calendar.FEBRUARY, 1);
             expected    = "2019-02-01";
 
-            actual = MysqlTypeStringifier.convertToString(testDate, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testDate, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -616,15 +598,14 @@ public class MysqlTypeStringifierTest {
             testDate   = new Date(2019 - 1900, Calendar.DECEMBER, 31);
             expected    = "2019-12-31";
 
-            actual = MysqlTypeStringifier.convertToString(testDate, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testDate, schema, null);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testTimestampType() {
-        DataType dataType = DataType.TIMESTAMP;
-        String columnType = "timestamp";
+        ColumnSchema schema = new ColumnSchema("ts", DataType.TIMESTAMP, "timestamp", true, "", "");
 
         Timestamp testTimestamp;
         String expected, actual;
@@ -639,15 +620,14 @@ public class MysqlTypeStringifierTest {
             Integer offset  = ZonedDateTime.from(aLDT.atZone(ZoneId.of(tzId))).getOffset().getTotalSeconds();
             expected = String.valueOf(timeStamp - offset * 1000);
 
-            actual = MysqlTypeStringifier.convertToString(testTimestamp, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testTimestamp, schema, null);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testEnumType() {
-        DataType dataType = DataType.ENUM;
-        String columnType = "enum('apple','banana','orange')";
+        ColumnSchema schema = new ColumnSchema("fruit", DataType.ENUM, "enum('apple','banana','orange')", true, "", "");
 
         String[] groupValues = new String[] {"apple", "banana", "orange"};
 
@@ -658,7 +638,7 @@ public class MysqlTypeStringifierTest {
             testValue   = 1;
             expected    = "apple";
 
-            actual = MysqlTypeStringifier.convertToString(testValue, null, dataType, columnType , groupValues);
+            actual = MysqlTypeStringifier.convertToString(testValue, schema, groupValues);
             assertEquals(expected, actual);
         }
 
@@ -666,7 +646,7 @@ public class MysqlTypeStringifierTest {
             testValue   = 2;
             expected    = "banana";
 
-            actual = MysqlTypeStringifier.convertToString(testValue, null, dataType, columnType , groupValues);
+            actual = MysqlTypeStringifier.convertToString(testValue, schema, groupValues);
             assertEquals(expected, actual);
         }
 
@@ -674,15 +654,14 @@ public class MysqlTypeStringifierTest {
             testValue   = 3;
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testValue, null, dataType, columnType , groupValues);
+            actual = MysqlTypeStringifier.convertToString(testValue, schema, groupValues);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testSetType() {
-        DataType dataType = DataType.SET;
-        String columnType = "set('apple','banana','orange')";
+        ColumnSchema schema = new ColumnSchema("fruit", DataType.SET, "set('apple','banana','orange')", true, "", "");
 
         String[] groupValues = new String[] {"apple", "banana", "orange"};
 
@@ -693,7 +672,7 @@ public class MysqlTypeStringifierTest {
             testValue   = 1L;
             expected    = "apple";
 
-            actual = MysqlTypeStringifier.convertToString(testValue, null, dataType, columnType , groupValues);
+            actual = MysqlTypeStringifier.convertToString(testValue, schema, groupValues);
             assertEquals(expected, actual);
         }
 
@@ -701,7 +680,7 @@ public class MysqlTypeStringifierTest {
             testValue   = 2L;
             expected    = "banana";
 
-            actual = MysqlTypeStringifier.convertToString(testValue, null, dataType, columnType , groupValues);
+            actual = MysqlTypeStringifier.convertToString(testValue, schema, groupValues);
             assertEquals(expected, actual);
         }
 
@@ -709,7 +688,7 @@ public class MysqlTypeStringifierTest {
             testValue   = 3L;
             expected    = "apple,banana";
 
-            actual = MysqlTypeStringifier.convertToString(testValue, null, dataType, columnType , groupValues);
+            actual = MysqlTypeStringifier.convertToString(testValue, schema, groupValues);
             assertEquals(expected, actual);
         }
 
@@ -717,7 +696,7 @@ public class MysqlTypeStringifierTest {
             testValue   = 4L;
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testValue, null, dataType, columnType , groupValues);
+            actual = MysqlTypeStringifier.convertToString(testValue, schema, groupValues);
             assertEquals(expected, actual);
         }
 
@@ -725,7 +704,7 @@ public class MysqlTypeStringifierTest {
             testValue   = 5L;
             expected    = "apple,orange";
 
-            actual = MysqlTypeStringifier.convertToString(testValue, null, dataType, columnType , groupValues);
+            actual = MysqlTypeStringifier.convertToString(testValue, schema, groupValues);
             assertEquals(expected, actual);
         }
 
@@ -733,7 +712,7 @@ public class MysqlTypeStringifierTest {
             testValue   = 6L;
             expected    = "banana,orange";
 
-            actual = MysqlTypeStringifier.convertToString(testValue, null, dataType, columnType , groupValues);
+            actual = MysqlTypeStringifier.convertToString(testValue, schema, groupValues);
             assertEquals(expected, actual);
         }
 
@@ -741,15 +720,14 @@ public class MysqlTypeStringifierTest {
             testValue   = 7L;
             expected    = "apple,banana,orange";
 
-            actual = MysqlTypeStringifier.convertToString(testValue, null, dataType, columnType , groupValues);
+            actual = MysqlTypeStringifier.convertToString(testValue, schema, groupValues);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testSignedTinyInt() {
-        DataType dataType = DataType.TINYINT;
-        String columnType = "tinyint(4)";
+        ColumnSchema schema = new ColumnSchema("id", DataType.TINYINT, "tinyint(4)", true, "", "");
 
         Integer testTinyInteger;
         String expected, actual;
@@ -758,7 +736,7 @@ public class MysqlTypeStringifierTest {
             testTinyInteger = 0;
             expected        = "0";
 
-            actual = MysqlTypeStringifier.convertToString(testTinyInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testTinyInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -766,7 +744,7 @@ public class MysqlTypeStringifierTest {
             testTinyInteger = 127;
             expected        = "127";
 
-            actual = MysqlTypeStringifier.convertToString(testTinyInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testTinyInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -774,15 +752,14 @@ public class MysqlTypeStringifierTest {
             testTinyInteger = -128;
             expected        = "-128";
 
-            actual = MysqlTypeStringifier.convertToString(testTinyInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testTinyInteger, schema, null);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testUnsignedTinyInt() {
-        DataType dataType = DataType.TINYINT;
-        String columnType = "tinyint(3) unsigned";
+        ColumnSchema schema = new ColumnSchema("id", DataType.TINYINT, "tinyint(4) unsigned", true, "", "");
 
         Integer testTinyInteger;
         String expected, actual;
@@ -791,7 +768,7 @@ public class MysqlTypeStringifierTest {
             testTinyInteger = 0;
             expected        = "0";
 
-            actual = MysqlTypeStringifier.convertToString(testTinyInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testTinyInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -799,7 +776,7 @@ public class MysqlTypeStringifierTest {
             testTinyInteger = 127;
             expected        = "127";
 
-            actual = MysqlTypeStringifier.convertToString(testTinyInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testTinyInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -807,7 +784,7 @@ public class MysqlTypeStringifierTest {
             testTinyInteger = -128;
             expected        = "128";
 
-            actual = MysqlTypeStringifier.convertToString(testTinyInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testTinyInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -815,15 +792,14 @@ public class MysqlTypeStringifierTest {
             testTinyInteger = -1;
             expected        = "255";
 
-            actual = MysqlTypeStringifier.convertToString(testTinyInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testTinyInteger, schema, null);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testSignedSmallInt() {
-        DataType dataType = DataType.SMALLINT;
-        String columnType = "smallint(6)";
+        ColumnSchema schema = new ColumnSchema("id", DataType.SMALLINT, "smallint(6)", true, "", "");
 
         Integer testSmallInteger;
         String expected, actual;
@@ -832,7 +808,7 @@ public class MysqlTypeStringifierTest {
             testSmallInteger    = 0;
             expected            = "0";
 
-            actual = MysqlTypeStringifier.convertToString(testSmallInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testSmallInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -840,7 +816,7 @@ public class MysqlTypeStringifierTest {
             testSmallInteger    = 32767;
             expected            = "32767";
 
-            actual = MysqlTypeStringifier.convertToString(testSmallInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testSmallInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -848,15 +824,14 @@ public class MysqlTypeStringifierTest {
             testSmallInteger    = -32768;
             expected            = "-32768";
 
-            actual = MysqlTypeStringifier.convertToString(testSmallInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testSmallInteger, schema, null);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testUnsignedSmallInt() {
-        DataType dataType = DataType.SMALLINT;
-        String columnType = "smallint(5) unsigned";
+        ColumnSchema schema = new ColumnSchema("id", DataType.SMALLINT, "smallint(6) unsigned", true, "", "");
 
         Integer testSmallInteger;
         String expected, actual;
@@ -865,7 +840,7 @@ public class MysqlTypeStringifierTest {
             testSmallInteger    = 0;
             expected            = "0";
 
-            actual = MysqlTypeStringifier.convertToString(testSmallInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testSmallInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -873,7 +848,7 @@ public class MysqlTypeStringifierTest {
             testSmallInteger    = 32767;
             expected            = "32767";
 
-            actual = MysqlTypeStringifier.convertToString(testSmallInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testSmallInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -881,7 +856,7 @@ public class MysqlTypeStringifierTest {
             testSmallInteger    = -32768;
             expected            = "32768";
 
-            actual = MysqlTypeStringifier.convertToString(testSmallInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testSmallInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -889,15 +864,14 @@ public class MysqlTypeStringifierTest {
             testSmallInteger    = -1;
             expected            = "65535";
 
-            actual = MysqlTypeStringifier.convertToString(testSmallInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testSmallInteger, schema, null);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testSignedMediumInt() {
-        DataType dataType = DataType.MEDIUMINT;
-        String columnType = "mediumint(9)";
+        ColumnSchema schema = new ColumnSchema("id", DataType.MEDIUMINT, "mediumint(9)", true, "", "");
 
         Integer testMediumInteger;
         String expected, actual;
@@ -906,7 +880,7 @@ public class MysqlTypeStringifierTest {
             testMediumInteger   = 0;
             expected            = "0";
 
-            actual = MysqlTypeStringifier.convertToString(testMediumInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testMediumInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -914,7 +888,7 @@ public class MysqlTypeStringifierTest {
             testMediumInteger   = 8388607;
             expected            = "8388607";
 
-            actual = MysqlTypeStringifier.convertToString(testMediumInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testMediumInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -922,15 +896,14 @@ public class MysqlTypeStringifierTest {
             testMediumInteger   = -8388608;
             expected            = "-8388608";
 
-            actual = MysqlTypeStringifier.convertToString(testMediumInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testMediumInteger, schema, null);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testUnsignedMediumInt() {
-        DataType dataType = DataType.MEDIUMINT;
-        String columnType = "mediumint(8) unsigned";
+        ColumnSchema schema = new ColumnSchema("id", DataType.MEDIUMINT, "mediumint(9) unsigned", true, "", "");
 
         Integer testMediumInteger;
         String expected, actual;
@@ -939,7 +912,7 @@ public class MysqlTypeStringifierTest {
             testMediumInteger   = 0;
             expected            = "0";
 
-            actual = MysqlTypeStringifier.convertToString(testMediumInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testMediumInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -947,7 +920,7 @@ public class MysqlTypeStringifierTest {
             testMediumInteger   = 8388607;
             expected            = "8388607";
 
-            actual = MysqlTypeStringifier.convertToString(testMediumInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testMediumInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -955,7 +928,7 @@ public class MysqlTypeStringifierTest {
             testMediumInteger   = -8388608;
             expected            = "8388608";
 
-            actual = MysqlTypeStringifier.convertToString(testMediumInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testMediumInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -963,15 +936,14 @@ public class MysqlTypeStringifierTest {
             testMediumInteger   = -1;
             expected            = "16777215";
 
-            actual = MysqlTypeStringifier.convertToString(testMediumInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testMediumInteger, schema, null);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testSignedInt() {
-        DataType dataType = DataType.INT;
-        String columnType = "int(11)";
+        ColumnSchema schema = new ColumnSchema("id", DataType.INT, "int(11)", true, "", "");
 
         Integer testInteger;
         String expected, actual;
@@ -980,7 +952,7 @@ public class MysqlTypeStringifierTest {
             testInteger = 0;
             expected    = "0";
 
-            actual = MysqlTypeStringifier.convertToString(testInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -988,7 +960,7 @@ public class MysqlTypeStringifierTest {
             testInteger = 2147483647;
             expected    = "2147483647";
 
-            actual = MysqlTypeStringifier.convertToString(testInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -996,15 +968,14 @@ public class MysqlTypeStringifierTest {
             testInteger = -2147483648;
             expected    = "-2147483648";
 
-            actual = MysqlTypeStringifier.convertToString(testInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testInteger, schema, null);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testUnsignedInt() {
-        DataType dataType = DataType.INT;
-        String columnType = "int(10) unsigned";
+        ColumnSchema schema = new ColumnSchema("id", DataType.INT, "int(10) unsigned", true, "", "");
 
         Integer testInteger;
         String expected, actual;
@@ -1013,7 +984,7 @@ public class MysqlTypeStringifierTest {
             testInteger = 0;
             expected    = "0";
 
-            actual = MysqlTypeStringifier.convertToString(testInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -1021,7 +992,7 @@ public class MysqlTypeStringifierTest {
             testInteger = 2147483647;
             expected    = "2147483647";
 
-            actual = MysqlTypeStringifier.convertToString(testInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -1029,7 +1000,7 @@ public class MysqlTypeStringifierTest {
             testInteger = -2147483648;
             expected    = "2147483648";
 
-            actual = MysqlTypeStringifier.convertToString(testInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -1037,15 +1008,14 @@ public class MysqlTypeStringifierTest {
             testInteger = -1;
             expected    = "4294967295";
 
-            actual = MysqlTypeStringifier.convertToString(testInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testInteger, schema, null);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testSignedBigInt() {
-        DataType dataType = DataType.BIGINT;
-        String columnType = "bigint(20)";
+        ColumnSchema schema = new ColumnSchema("id", DataType.BIGINT, "bigint(20)", true, "", "");
 
         Long testBigInteger;
         String expected, actual;
@@ -1054,7 +1024,7 @@ public class MysqlTypeStringifierTest {
             testBigInteger  = 0L;
             expected        = "0";
 
-            actual = MysqlTypeStringifier.convertToString(testBigInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testBigInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -1062,7 +1032,7 @@ public class MysqlTypeStringifierTest {
             testBigInteger  = 9223372036854775807L;
             expected        = "9223372036854775807";
 
-            actual = MysqlTypeStringifier.convertToString(testBigInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testBigInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -1070,15 +1040,14 @@ public class MysqlTypeStringifierTest {
             testBigInteger  = -9223372036854775808L;
             expected        = "-9223372036854775808";
 
-            actual = MysqlTypeStringifier.convertToString(testBigInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testBigInteger, schema, null);
             assertEquals(expected, actual);
         }
     }
 
     @Test
     public void testUnsignedBigInt() {
-        DataType dataType = DataType.BIGINT;
-        String columnType = "bigint(20) unsigned";
+        ColumnSchema schema = new ColumnSchema("id", DataType.BIGINT, "bigint(20) unsigned", true, "", "");
 
         Long testBigInteger;
         String expected, actual;
@@ -1087,7 +1056,7 @@ public class MysqlTypeStringifierTest {
             testBigInteger  = 0L;
             expected        = "0";
 
-            actual = MysqlTypeStringifier.convertToString(testBigInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testBigInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -1095,7 +1064,7 @@ public class MysqlTypeStringifierTest {
             testBigInteger  = 9223372036854775807L;
             expected        = "9223372036854775807";
 
-            actual = MysqlTypeStringifier.convertToString(testBigInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testBigInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -1103,7 +1072,7 @@ public class MysqlTypeStringifierTest {
             testBigInteger  = -9223372036854775808L;
             expected        = "9223372036854775808";
 
-            actual = MysqlTypeStringifier.convertToString(testBigInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testBigInteger, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -1111,7 +1080,7 @@ public class MysqlTypeStringifierTest {
             testBigInteger  = -1L;
             expected        = "18446744073709551615";
 
-            actual = MysqlTypeStringifier.convertToString(testBigInteger, null, dataType, columnType , null);
+            actual = MysqlTypeStringifier.convertToString(testBigInteger, schema, null);
             assertEquals(expected, actual);
         }
     }

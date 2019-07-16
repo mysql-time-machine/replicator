@@ -82,16 +82,14 @@ public class Stringifier {
 
                 String columnName = column.getName();
                 String columnType = column.getColumnType().toLowerCase();
-                String collation  = column.getCollation();
-
-                DataType dataType = column.getDataType();
 
                 stringifiedCellValues.put(columnName, new HashMap<>());
 
                 for (int i = 0; i < rowByteSlices.length; ++i) {
                     Serializable cellValue = rowByteSlices[i][rowIndex];
-                    String stringifiedCellValue = MysqlTypeStringifier.convertToString(cellValue, collation, dataType,
-                            columnType, cache.get(columnType));
+
+                    String stringifiedCellValue = MysqlTypeStringifier.convertToString(cellValue, column, cache.get(columnType));
+
                     stringifiedCellValues.get(columnName).put(values[i], stringifiedCellValue);
                 }
 

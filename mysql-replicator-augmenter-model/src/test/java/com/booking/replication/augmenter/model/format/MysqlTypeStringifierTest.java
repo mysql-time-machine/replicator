@@ -5,6 +5,7 @@ import com.booking.replication.augmenter.model.schema.DataType;
 
 import org.junit.Test;
 
+import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -1131,6 +1132,22 @@ public class MysqlTypeStringifierTest {
             expected        = "18446744073709551615";
 
             actual = MysqlTypeStringifier.convertToString(testBigInteger, schema, null);
+            assertEquals(expected, actual);
+        }
+    }
+
+    @Test
+    public void testBigDecimal() {
+        ColumnSchema schema = new ColumnSchema("currency", DataType.DECIMAL, " decimal(5,3)", true, "", "");
+
+        BigDecimal testBigDecimal;
+        String expected, actual;
+
+        {
+            testBigDecimal  = new BigDecimal("99.122");
+            expected        = "99.122";
+
+            actual = MysqlTypeStringifier.convertToString(testBigDecimal, schema, null);
             assertEquals(expected, actual);
         }
     }

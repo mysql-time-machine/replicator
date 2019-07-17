@@ -16,6 +16,10 @@
             <groupId>com.booking.replication</groupId>
             <artifactId>mysql-replicator-commons</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.github.shyiko</groupId>
+            <artifactId>mysql-binlog-connector-java</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

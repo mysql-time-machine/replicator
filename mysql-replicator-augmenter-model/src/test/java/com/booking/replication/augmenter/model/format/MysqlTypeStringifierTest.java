@@ -1183,4 +1183,26 @@ public class MysqlTypeStringifierTest {
             assertEquals(expected, actual);
         }
     }
+
+    @Test
+    public void testJson() {
+        ColumnSchema schema = new ColumnSchema("jsn", DataType.JSON, "json", true, "", "");
+
+        byte[] testJson;
+        String expected, actual;
+
+        {
+            testJson  = new byte[]{0, 3, 0, 77, 0, 25, 0, 2, 0, 27, 0, 4, 0, 31, 0, 10, 0, 12, 41, 0, 12, 49, 0, 0, 57,
+                    0, 111, 115, 110, 97, 109, 101, 114, 101, 115, 111, 108, 117, 116, 105, 111, 110, 7, 87, 105, 110,
+                    100, 111, 119, 115, 7, 70, 105, 114, 101, 102, 111, 120, 2, 0, 20, 0, 18, 0, 1, 0, 19, 0, 1, 0, 5,
+                    0, 10, 5, 64, 6, 120, 121};
+
+            expected    = "{\"os\":\"Windows\",\"name\":\"Firefox\",\"resolution\":{\"x\":2560,\"y\":1600}}";
+
+            actual = MysqlTypeStringifier.convertToString(testJson, schema, null);
+            assertEquals(expected, actual);
+        }
+
+
+    }
 }

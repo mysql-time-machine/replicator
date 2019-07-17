@@ -3,9 +3,12 @@ package com.booking.replication.augmenter.model.format;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.DataType;
 
+import com.github.shyiko.mysql.binlog.event.deserialization.json.JsonBinary;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -14,6 +17,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 import java.util.stream.IntStream;
@@ -77,6 +81,18 @@ public class MysqlTypeStringifier {
                 }
             }
 
+            case JSON: {
+                byte[] bytes = (byte[]) cellValue;
+                try {
+                    return JsonBinary.parseAsString(bytes);
+                } catch (IOException ex) {
+                    LOG.error(
+                            String.format("Could not parse JSON string Column Name : %s, byte[]%s",
+                                    columnSchema.getName(), Arrays.toString(bytes)), ex);
+                    return  NULL_STRING;
+                }
+            }
+
             case BIT: {
                 final BitSet data = (BitSet) cellValue;
 
@@ -88,8 +104,6 @@ public class MysqlTypeStringifier {
                 IntStream.range(0, data.length()).mapToObj(i -> data.get(i) ? '1' : '0').forEach(buffer::append);
                 return buffer.reverse().toString();
             }
-
-
 
             case TIMESTAMP: {
                 // created as java.sql.Timestamp in binlog connector

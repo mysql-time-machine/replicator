@@ -28,6 +28,8 @@ after_success:
 services:
   - docker
 
+dist: trusty
+
 addons:
   hosts:
     - HBASE_HOST

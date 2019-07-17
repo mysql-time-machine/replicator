@@ -107,7 +107,9 @@ public class BinaryLogSupplier implements Supplier {
         client.setHeartbeatInterval(TimeUnit.MILLISECONDS.toMillis(1000));
 
         EventDeserializer eventDeserializer = new EventDeserializer();
-        eventDeserializer.setCompatibilityMode(EventDeserializer.CompatibilityMode.CHAR_AND_BINARY_AS_BYTE_ARRAY);
+        eventDeserializer.setCompatibilityMode(
+                EventDeserializer.CompatibilityMode.CHAR_AND_BINARY_AS_BYTE_ARRAY,
+                EventDeserializer.CompatibilityMode.DATE_AND_TIME_AS_LONG);
         client.setEventDeserializer(eventDeserializer);
 
         return client;

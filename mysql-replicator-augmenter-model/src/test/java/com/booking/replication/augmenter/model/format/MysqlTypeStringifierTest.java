@@ -6,14 +6,7 @@ import com.booking.replication.augmenter.model.schema.DataType;
 import org.junit.Test;
 
 import java.math.BigDecimal;
-import java.sql.Date;
-import java.sql.Timestamp;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.BitSet;
-import java.util.Calendar;
 
 import static org.junit.Assert.assertEquals;
 
@@ -631,23 +624,12 @@ public class MysqlTypeStringifierTest {
     public void testDateType() {
         ColumnSchema schema = new ColumnSchema("dt", DataType.DATE, "date", true, "", "");
 
-        DataType dataType = DataType.DATE;
-        String columnType = "date";
-
-        Date testDate;
+        Long testDate;
         String expected, actual;
 
         {
-            testDate   = new Date(2019 - 1900, Calendar.FEBRUARY, 1);
+            testDate   = 1548979200000L;
             expected    = "2019-02-01";
-
-            actual = MysqlTypeStringifier.convertToString(testDate, schema, null);
-            assertEquals(expected, actual);
-        }
-
-        {
-            testDate   = new Date(2019 - 1900, Calendar.DECEMBER, 31);
-            expected    = "2019-12-31";
 
             actual = MysqlTypeStringifier.convertToString(testDate, schema, null);
             assertEquals(expected, actual);
@@ -658,18 +640,12 @@ public class MysqlTypeStringifierTest {
     public void testTimestampType() {
         ColumnSchema schema = new ColumnSchema("ts", DataType.TIMESTAMP, "timestamp", true, "", "");
 
-        Timestamp testTimestamp;
+        Long testTimestamp;
         String expected, actual;
 
         {
-            Long timeStamp = 1577797200000L;
-            testTimestamp = new Timestamp(timeStamp);
-
-            String tzId = ZonedDateTime.now().getZone().toString();
-            ZoneId zoneId = ZoneId.of(tzId);
-            LocalDateTime aLDT = Instant.ofEpochMilli(timeStamp).atZone(zoneId).toLocalDateTime();
-            Integer offset  = ZonedDateTime.from(aLDT.atZone(ZoneId.of(tzId))).getOffset().getTotalSeconds();
-            expected = String.valueOf(timeStamp - offset * 1000);
+            testTimestamp   = 1548982800000L;
+            expected        = "2019-02-01 01:00:00";
 
             actual = MysqlTypeStringifier.convertToString(testTimestamp, schema, null);
             assertEquals(expected, actual);

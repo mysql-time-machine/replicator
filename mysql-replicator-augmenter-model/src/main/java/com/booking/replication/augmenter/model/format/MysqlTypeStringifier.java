@@ -12,14 +12,13 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.sql.Date;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.stream.IntStream;
 
 import javax.xml.bind.DatatypeConverter;
@@ -28,6 +27,9 @@ public class MysqlTypeStringifier {
 
     private static final Logger LOG = LogManager.getLogger(MysqlTypeStringifier.class);
 
+    private static final SimpleDateFormat DATE_FORMAT       = new SimpleDateFormat("yyyy-MM-dd");
+    private static final SimpleDateFormat TIMESTAMP_FORMAT  = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
     private static final String NULL_STRING = "NULL";
 
     private static final Long UNSIGNED_TINYINT_MASK     = 0x00000000000000FFL;
@@ -35,6 +37,11 @@ public class MysqlTypeStringifier {
     private static final Long UNSIGNED_MEDIUMINT_MASK   = 0x0000000000FFFFFFL;
     private static final Long UNSIGNED_INT_MASK         = 0x00000000FFFFFFFFL;
     private static final Long DEFAULT_MASK              = 0xFFFFFFFFFFFFFFFFL;
+
+    static {
+        DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
+        TIMESTAMP_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
+    }
 
     public static String convertToString(Serializable cellValue, ColumnSchema columnSchema, String[] groupValues) {
 
@@ -105,23 +112,14 @@ public class MysqlTypeStringifier {
                 return buffer.reverse().toString();
             }
 
+            case DATE: {
+                Date dt = new Date((Long) cellValue);
+                return DATE_FORMAT.format(dt);
+            }
+
             case TIMESTAMP: {
-                // created as java.sql.Timestamp in binlog connector
-
-                if (! (cellValue instanceof java.sql.Timestamp) ) {
-                    LOG.warn("binlog parser has changed java type for timestamp!");
-                    return NULL_STRING;
-                }
-
-                // a workaround for UTC-enforcement by mysql-binlog-connector
-                String tzId = ZonedDateTime.now().getZone().toString();
-                ZoneId zoneId = ZoneId.of(tzId);
-                Long timestamp =  ((java.sql.Timestamp) cellValue).getTime();
-                LocalDateTime aLDT = Instant.ofEpochMilli(timestamp).atZone(zoneId).toLocalDateTime();
-                Integer offset  = ZonedDateTime.from(aLDT.atZone(ZoneId.of(tzId))).getOffset().getTotalSeconds();
-                timestamp = timestamp - offset * 1000;
-
-                return String.valueOf(timestamp);
+                Date dt = new Date((Long) cellValue);
+                return TIMESTAMP_FORMAT.format(dt);
             }
 
             case DATETIME:
@@ -194,11 +192,9 @@ public class MysqlTypeStringifier {
                     return String.valueOf(maskAndGet(cellValue, DEFAULT_MASK));
                 }
             }
-            case DATE:
             case FLOAT:
             case DOUBLE:
             case DECIMAL: {
-                //DATE      converted as java.sql.Date
                 //FLOT      converted as java.lang.Float
                 //Double    converted as java.lang.Double
                 //Decimal   converted as java.math.BigDecimal

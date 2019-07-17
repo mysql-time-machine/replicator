@@ -1138,7 +1138,7 @@ public class MysqlTypeStringifierTest {
 
     @Test
     public void testBigDecimal() {
-        ColumnSchema schema = new ColumnSchema("currency", DataType.DECIMAL, " decimal(5,3)", true, "", "");
+        ColumnSchema schema = new ColumnSchema("currency", DataType.DECIMAL, "decimal(5,3)", true, "", "");
 
         BigDecimal testBigDecimal;
         String expected, actual;
@@ -1148,6 +1148,38 @@ public class MysqlTypeStringifierTest {
             expected        = "99.122";
 
             actual = MysqlTypeStringifier.convertToString(testBigDecimal, schema, null);
+            assertEquals(expected, actual);
+        }
+    }
+
+    @Test
+    public void testFloat() {
+        ColumnSchema schema = new ColumnSchema("currency", DataType.FLOAT, "float(5,3)", true, "", "");
+
+        Float testFloat;
+        String expected, actual;
+
+        {
+            testFloat   = new Float("99.122");
+            expected    = "99.122";
+
+            actual = MysqlTypeStringifier.convertToString(testFloat, schema, null);
+            assertEquals(expected, actual);
+        }
+    }
+
+    @Test
+    public void testDouble() {
+        ColumnSchema schema = new ColumnSchema("currency", DataType.DOUBLE, "double(5,3)", true, "", "");
+
+        Double testDouble;
+        String expected, actual;
+
+        {
+            testDouble  = new Double("99.122");
+            expected    = "99.122";
+
+            actual = MysqlTypeStringifier.convertToString(testDouble, schema, null);
             assertEquals(expected, actual);
         }
     }

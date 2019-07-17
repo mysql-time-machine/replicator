@@ -7,7 +7,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.Serializable;
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -90,10 +89,7 @@ public class MysqlTypeStringifier {
                 return buffer.reverse().toString();
             }
 
-            case DATE: {
-                // created as java.sql.Date in binlog connector
-                return cellValue.toString();
-            }
+
 
             case TIMESTAMP: {
                 // created as java.sql.Timestamp in binlog connector
@@ -184,11 +180,16 @@ public class MysqlTypeStringifier {
                     return String.valueOf(maskAndGet(cellValue, DEFAULT_MASK));
                 }
             }
-
+            case DATE:
+            case FLOAT:
+            case DOUBLE:
             case DECIMAL: {
-                BigDecimal decimal = (BigDecimal) cellValue;
+                //DATE      converted as java.sql.Date
+                //FLOT      converted as java.lang.Float
+                //Double    converted as java.lang.Double
+                //Decimal   converted as java.math.BigDecimal
 
-                return decimal.toString();
+                return cellValue.toString();
             }
 
             case UNKNOWN:

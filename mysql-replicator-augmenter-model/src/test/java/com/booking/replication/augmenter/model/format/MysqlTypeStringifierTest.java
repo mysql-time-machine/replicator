@@ -19,6 +19,56 @@ import static org.junit.Assert.assertEquals;
 public class MysqlTypeStringifierTest {
 
     @Test
+    public void testBinaryType() {
+        ColumnSchema schema = new ColumnSchema("code", DataType.BINARY, "binary(10)", true, "", "");
+        schema.setCharMaxLength(10);
+
+        byte[] testByteArr;
+        String expected, actual;
+
+        {
+            testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
+            expected    = "6F72616E676500000000";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
+            expected    = "4F72616E676500000000";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            assertEquals(expected, actual);
+        }
+    }
+
+    @Test
+    public void testVarBinaryType() {
+        ColumnSchema schema = new ColumnSchema("code", DataType.VARBINARY, "binary(10)", true, "", "");
+        schema.setCharMaxLength(10);
+
+        byte[] testByteArr;
+        String expected, actual;
+
+        {
+            testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
+            expected    = "6F72616E676500000000";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
+            expected    = "4F72616E676500000000";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            assertEquals(expected, actual);
+        }
+    }
+
+    @Test
     public void testCharTypeLatinCharacterSet() {
         ColumnSchema schema = new ColumnSchema("name", DataType.CHAR, "char(30)", true, "", "");
         schema.setCollation("latin1_swedish_ci");

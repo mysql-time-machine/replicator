@@ -18,6 +18,8 @@ import java.util.BitSet;
 import java.util.List;
 import java.util.stream.IntStream;
 
+import javax.xml.bind.DatatypeConverter;
+
 public class MysqlTypeStringifier {
 
     private static final Logger LOG = LogManager.getLogger(MysqlTypeStringifier.class);
@@ -44,6 +46,23 @@ public class MysqlTypeStringifier {
         boolean isUnsigned = columnType.contains("unsigned");
 
         switch (dataType) {
+            case BINARY:
+            case VARBINARY: {
+                byte[] bytes = (byte[]) cellValue;
+
+                if (bytes.length == columnSchema.getCharMaxLength()) {
+                    return DatatypeConverter.printHexBinary(bytes);
+                } else {
+                    byte[] bytesWithPadding = new byte[columnSchema.getCharMaxLength()];
+
+                    for (int i = 0; i < bytesWithPadding.length; ++i) {
+                        bytesWithPadding[i] = (i < bytes.length) ? bytes[i] : 0;
+                    }
+
+                    return DatatypeConverter.printHexBinary(bytesWithPadding);
+                }
+            }
+
             case CHAR:
             case VARCHAR:
             case TEXT:

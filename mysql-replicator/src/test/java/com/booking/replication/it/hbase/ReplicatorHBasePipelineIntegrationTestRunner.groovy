@@ -60,7 +60,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     @Shared private static final String ZOOKEEPER_CHECKPOINT_PATH = "/replicator/checkpoint"
 
     @Shared private static final String CHECKPOINT_DEFAULT = "{\"timestamp\": 0, " +
-            "\"serverId\": 1,\"gtidSet\": \"%s\", \"gtid\": null, " +
+            "\"serverId\": 1,\"gtidSet\": \"\", \"gtid\": null, " +
             "\"binlog\": {\"filename\": \"\", \"position\": \"\"}}"
     ;
 
@@ -88,13 +88,13 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     @Shared public static final String  BIGTABLE_INSTANCE = getBigTableInstance()
 
     @Shared private TESTS = [
-            new TableWhiteListTest()
-//            new TableNameMergeFilterTestImpl(),
-//            new TransmitInsertsTestImpl(),
-//            new MicrosecondValidationTestImpl(),
-//            new LongTransactionTestImpl(),
-//            new PayloadTableTestImpl(),
-//            new SplitTransactionTestImpl()
+            new TableWhiteListTest(),
+            new TableNameMergeFilterTestImpl(),
+            new TransmitInsertsTestImpl(),
+            new MicrosecondValidationTestImpl(),
+            new LongTransactionTestImpl(),
+            new PayloadTableTestImpl(),
+            new SplitTransactionTestImpl()
     ]
 
     @Shared ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS)

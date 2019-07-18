@@ -309,7 +309,7 @@ public class Replicator {
     private Checkpoint loadSafeCheckpoint() throws IOException {
         Checkpoint checkpoint = this.coordinator.loadCheckpoint(this.checkpointPath);
 
-        if (checkpoint == null && this.checkpointDefault != null) {
+        if (checkpoint == null && this.checkpointDefault != null && !"".equals(this.checkpointDefault) ) {
             checkpoint = new ObjectMapper().readValue(this.checkpointDefault, Checkpoint.class);
         }
 

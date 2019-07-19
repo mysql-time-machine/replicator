@@ -215,6 +215,12 @@ public class MysqlTypeStringifier {
 
             case UNKNOWN:
             default: {
+
+                if (cellValue instanceof byte[]) {
+                    byte[] bytes = (byte[]) cellValue;
+                    return DatatypeConverter.printHexBinary(bytes);
+                }
+
                 LOG.error(String.format("The datatype is %s hence returning %s ", dataType.getCode(), NULL_STRING));
                 return NULL_STRING;
             }

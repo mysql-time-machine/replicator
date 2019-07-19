@@ -637,6 +637,22 @@ public class MysqlTypeStringifierTest {
     }
 
     @Test
+    public void testDateTimeType() {
+        ColumnSchema schema = new ColumnSchema("ts", DataType.DATETIME, "datetime", true, "", "");
+
+        Long testDateTime;
+        String expected, actual;
+
+        {
+            testDateTime    = 1548982800123L;
+            expected        = "2019-02-01 01:00:00.123";
+
+            actual = MysqlTypeStringifier.convertToString(testDateTime, schema, null);
+            assertEquals(expected, actual);
+        }
+    }
+
+    @Test
     public void testTimestampType() {
         ColumnSchema schema = new ColumnSchema("ts", DataType.TIMESTAMP, "timestamp", true, "", "");
 

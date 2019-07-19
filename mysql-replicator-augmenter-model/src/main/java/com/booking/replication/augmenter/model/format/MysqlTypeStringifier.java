@@ -117,12 +117,12 @@ public class MysqlTypeStringifier {
                 return DATE_FORMAT.format(dt);
             }
 
+            case DATETIME:
             case TIMESTAMP: {
                 Date dt = new Date((Long) cellValue);
                 return TIMESTAMP_FORMAT.format(dt);
             }
 
-            case DATETIME:
             case TIME: {
                 // this is not reliable outside of UTC
                 return NULL_STRING;

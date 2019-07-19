@@ -48,16 +48,15 @@ import java.util.function.Consumer;
 public class Replicator {
 
     public interface Configuration {
-        String CHECKPOINT_PATH = "checkpoint.path";
-        String CHECKPOINT_DEFAULT = "checkpoint.default";
-        String REPLICATOR_THREADS = "replicator.threads";
-        String REPLICATOR_TASKS = "replicator.tasks";
-        String REPLICATOR_QUEUE_SIZE = "replicator.queue.size";
-        String REPLICATOR_QUEUE_TIMEOUT = "replicator.queue.timeout";
-        String OVERRIDE_CHECKPOINT_START_POSITION = "override.checkpoint.start.position";
-        String OVERRIDE_CHECKPOINT_BINLOG_FILENAME = "override.checkpoint.binLog.filename";
-        String OVERRIDE_CHECKPOINT_BINLOG_POSITION = "override.checkpoint.binLog.position";
-        String OVERRIDE_CHECKPOINT_GTID_SET = "override.checkpoint.gtidSet";
+        String CHECKPOINT_PATH      = "checkpoint.path";
+        String CHECKPOINT_DEFAULT   = "checkpoint.default";
+        String REPLICATOR_THREADS   = "replicator.threads";
+        String REPLICATOR_TASKS     = "replicator.tasks";
+
+        String OVERRIDE_CHECKPOINT_START_POSITION   = "override.checkpoint.start.position";
+        String OVERRIDE_CHECKPOINT_BINLOG_FILENAME  = "override.checkpoint.binLog.filename";
+        String OVERRIDE_CHECKPOINT_BINLOG_POSITION  = "override.checkpoint.binLog.position";
+        String OVERRIDE_CHECKPOINT_GTID_SET         = "override.checkpoint.gtidSet";
     }
 
     private static final Logger LOG = LogManager.getLogger(Replicator.class);
@@ -94,13 +93,11 @@ public class Replicator {
 
         int threads = Integer.parseInt(configuration.getOrDefault(Configuration.REPLICATOR_THREADS, "1").toString());
         int tasks = Integer.parseInt(configuration.getOrDefault(Configuration.REPLICATOR_TASKS, "1").toString());
-        int queueSize = Integer.parseInt(configuration.getOrDefault(Configuration.REPLICATOR_QUEUE_SIZE, "10000").toString());
-        long queueTimeout = Long.parseLong(configuration.getOrDefault(Configuration.REPLICATOR_QUEUE_TIMEOUT, "300").toString());
 
         boolean overrideCheckpointStartPosition = Boolean.parseBoolean(configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_START_POSITION, false).toString());
         String overrideCheckpointBinLogFileName = configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_BINLOG_FILENAME, "").toString();
-        long overrideCheckpointBinlogPosition = Long.parseLong(configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_BINLOG_POSITION, "0").toString());
-        String overrideCheckpointGtidSet = configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_GTID_SET, "").toString();
+        long overrideCheckpointBinlogPosition   = Long.parseLong(configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_BINLOG_POSITION, "0").toString());
+        String overrideCheckpointGtidSet        = configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_GTID_SET, "").toString();
 
 
         this.checkpointPath = checkpointPath.toString();
@@ -116,19 +113,13 @@ public class Replicator {
                 "error"
         );
 
-        this.coordinator = Coordinator.build(configuration);
-
-        this.supplier = Supplier.build(configuration);
-
-        this.augmenter = Augmenter.build(configuration);
-
-        this.augmenterFilter = AugmenterFilter.build(configuration);
-
-        this.seeker = Seeker.build(configuration);
-
-        this.partitioner = Partitioner.build(configuration);
-
-        this.applier = Applier.build(configuration);
+        this.coordinator        = Coordinator.build(configuration);
+        this.supplier           = Supplier.build(configuration);
+        this.augmenter          = Augmenter.build(configuration);
+        this.augmenterFilter    = AugmenterFilter.build(configuration);
+        this.seeker             = Seeker.build(configuration);
+        this.partitioner        = Partitioner.build(configuration);
+        this.applier            = Applier.build(configuration);
 
         this.checkPointDelay = new AtomicLong(0L);
 
@@ -299,7 +290,6 @@ public class Replicator {
         this.supplier.onException(exceptionHandle);
         this.sourceStream.onException(exceptionHandle);
         this.destinationStream.onException(exceptionHandle);
-
     }
 
     public Applier getApplier() {
@@ -331,10 +321,6 @@ public class Replicator {
 
     public void wait(long timeout, TimeUnit unit) {
         this.coordinator.wait(timeout, unit);
-    }
-
-    public void join() {
-        this.coordinator.join();
     }
 
     public void stop() {
@@ -391,7 +377,6 @@ public class Replicator {
         options.addOption(Option.builder().longOpt("applier").argName("applier").desc("the applier setSink be used").hasArg().build());
         options.addOption(Option.builder().longOpt("secret-file").argName("filename").desc("the secret file which has Mysql user/password config (JSON)").hasArg().build());
 
-
         try {
             CommandLine line = new DefaultParser().parse(options, arguments);
 
@@ -435,7 +420,6 @@ public class Replicator {
                 if (line.hasOption("applier")) {
                     configuration.put(Applier.Configuration.TYPE, line.getOptionValue("applier").toUpperCase());
                 }
-
 
                 new BootstrapReplicator(configuration).run();
 

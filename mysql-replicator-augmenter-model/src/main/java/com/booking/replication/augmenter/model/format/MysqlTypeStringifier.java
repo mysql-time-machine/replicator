@@ -13,6 +13,7 @@ import java.io.Serializable;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.sql.Date;
+import java.sql.Time;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,6 +29,7 @@ public class MysqlTypeStringifier {
     private static final Logger LOG = LogManager.getLogger(MysqlTypeStringifier.class);
 
     private static final SimpleDateFormat DATE_FORMAT       = new SimpleDateFormat("yyyy-MM-dd");
+    private static final SimpleDateFormat TIME_FORMAT       = new SimpleDateFormat("HH:mm:ss.SSS");
     private static final SimpleDateFormat TIMESTAMP_FORMAT  = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
     private static final String NULL_STRING = "NULL";
@@ -40,6 +42,7 @@ public class MysqlTypeStringifier {
 
     static {
         DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
+        TIME_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
         TIMESTAMP_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
 
@@ -124,8 +127,8 @@ public class MysqlTypeStringifier {
             }
 
             case TIME: {
-                // this is not reliable outside of UTC
-                return NULL_STRING;
+                Time time = new Time((Long) cellValue);
+                return TIME_FORMAT.format(time);
             }
 
             case ENUM: {

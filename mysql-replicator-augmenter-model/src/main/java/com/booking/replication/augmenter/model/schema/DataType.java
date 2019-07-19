@@ -30,8 +30,8 @@ public enum DataType {
     LONGTEXT("LONGTEXT"),
 
     TINYBLOB("TINYBLOB"),
-    BLOB("BLOB"),
     MEDIUMBLOB("MEDIUMBLOB"),
+    BLOB("BLOB"),
     LONGBLOB("LONGBLOB"),
 
     BIT("BIT"),

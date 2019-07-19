@@ -63,6 +63,70 @@ public class MysqlTypeStringifierTest {
     }
 
     @Test
+    public void testTinyBlobType() {
+        ColumnSchema schema = new ColumnSchema("code", DataType.TINYBLOB, "tinyblob", true, "", "");
+
+        byte[] testByteArr;
+        String expected, actual;
+
+        {
+            testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
+            expected    = "6F72616E6765";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            assertEquals(expected, actual);
+        }
+    }
+
+    @Test
+    public void testMediumBlobType() {
+        ColumnSchema schema = new ColumnSchema("code", DataType.MEDIUMBLOB, "mediumblob", true, "", "");
+
+        byte[] testByteArr;
+        String expected, actual;
+
+        {
+            testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
+            expected    = "6F72616E6765";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            assertEquals(expected, actual);
+        }
+    }
+
+    @Test
+    public void testBlobType() {
+        ColumnSchema schema = new ColumnSchema("code", DataType.BLOB, "blob", true, "", "");
+
+        byte[] testByteArr;
+        String expected, actual;
+
+        {
+            testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
+            expected    = "6F72616E6765";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            assertEquals(expected, actual);
+        }
+    }
+
+    @Test
+    public void testLongBlobType() {
+        ColumnSchema schema = new ColumnSchema("code", DataType.LONGBLOB, "longblob", true, "", "");
+
+        byte[] testByteArr;
+        String expected, actual;
+
+        {
+            testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
+            expected    = "6F72616E6765";
+
+            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            assertEquals(expected, actual);
+        }
+    }
+
+    @Test
     public void testCharTypeLatinCharacterSet() {
         ColumnSchema schema = new ColumnSchema("name", DataType.CHAR, "char(30)", true, "", "");
         schema.setCollation("latin1_swedish_ci");

@@ -77,6 +77,14 @@ public class MysqlTypeStringifier {
                 }
             }
 
+            case TINYBLOB:
+            case MEDIUMBLOB:
+            case BLOB:
+            case LONGBLOB: {
+                byte[] bytes = (byte[]) cellValue;
+                return DatatypeConverter.printHexBinary(bytes);
+            }
+
             case CHAR:
             case VARCHAR:
             case TEXT:

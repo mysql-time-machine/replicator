@@ -37,23 +37,22 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class KafkaApplier implements Applier {
+    private static final Logger LOG = LogManager.getLogger(KafkaApplier.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final String dataFormat;
 
-    private static final Logger LOG = LogManager.getLogger(KafkaApplier.class);
-
-    private final String metricBase;
     private KafkaAvroSerializer kafkaAvroSerializer;
     private SchemaRegistryClient schemaRegistryClient;
 
-    public interface Configuration {
-        String TOPIC = "kafka.topic";
-        String SCHEMA_REGISTRY_URL = "kafka.schema.registry.url";
-        String PRODUCER_PREFIX = "kafka.producer.";
+    private final String metricBase;
 
-        String BASE_PATH = "events";
-        String FORMAT = "kafka.message.format";
+    public interface Configuration {
+        String TOPIC                = "kafka.topic";
+        String SCHEMA_REGISTRY_URL  = "kafka.schema.registry.url";
+        String PRODUCER_PREFIX      = "kafka.producer.";
+        String FORMAT               = "kafka.message.format";
     }
 
     public interface MessageFormat {
@@ -63,30 +62,34 @@ public class KafkaApplier implements Applier {
 
     private final Map<Integer, Producer<byte[], byte[]>> producers;
     private final Map<String, Object> configuration;
-    private final String topic;
-    private final int totalPartitions;
-    private final Partitioner partitioner;
+
     private final Metrics<?> metrics;
+    private final Partitioner partitioner;
+
+    private final String topic;
     private final String delayName;
+
+    private final int totalPartitions;
 
     public KafkaApplier(Map<String, Object> configuration) {
         Object topic = configuration.get(Configuration.TOPIC);
 
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
 
-        this.producers = new ConcurrentHashMap<>();
-        this.configuration = new MapFilter(configuration).filter(Configuration.PRODUCER_PREFIX);
-        this.topic = topic.toString();
-        this.totalPartitions = this.getTotalPartitions();
-        this.partitioner = Partitioner.build(configuration);
-        this.metrics = Metrics.getInstance(configuration);
-        this.dataFormat = configuration.get(Configuration.FORMAT) == null ? MessageFormat.AVRO : String.valueOf(configuration.get(Configuration.FORMAT));
+        this.producers          = new ConcurrentHashMap<>();
+        this.configuration      = new MapFilter(configuration).filter(Configuration.PRODUCER_PREFIX);
+        this.topic              = topic.toString();
+        this.totalPartitions    = this.getTotalPartitions();
+        this.partitioner        = Partitioner.build(configuration);
+        this.metrics            = Metrics.getInstance(configuration);
+        this.dataFormat         = configuration.get(Configuration.FORMAT) == null ? MessageFormat.AVRO : String.valueOf(configuration.get(Configuration.FORMAT));
 
-        Object schemaRegistryUrlConfig = configuration.get(Configuration.SCHEMA_REGISTRY_URL);
         if (Objects.equals(dataFormat, MessageFormat.AVRO)) {
-            Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.SCHEMA_REGISTRY_URL));
+            Object schemaRegistryUrlConfig = configuration.get(Configuration.SCHEMA_REGISTRY_URL);
+            Objects.requireNonNull(schemaRegistryUrlConfig, String.format("Configuration required: %s", Configuration.SCHEMA_REGISTRY_URL));
+
             this.schemaRegistryClient = new BCachedSchemaRegistryClient(String.valueOf(schemaRegistryUrlConfig), 2000);
-            this.kafkaAvroSerializer = new KafkaAvroSerializer(this.schemaRegistryClient);
+            this.kafkaAvroSerializer  = new KafkaAvroSerializer(this.schemaRegistryClient);
         }
 
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
@@ -95,6 +98,7 @@ public class KafkaApplier implements Applier {
                 String.valueOf(configuration.getOrDefault(Metrics.Configuration.BASE_PATH, "events")),
                 "delay"
         );
+
         this.metricBase = MetricRegistry.name(this.metrics.basePath(), "kafka");
     }
 
@@ -105,14 +109,6 @@ public class KafkaApplier implements Applier {
     private int getTotalPartitions() {
         try (Producer<byte[], byte[]> producer = this.getProducer()) {
             return producer.partitionsFor(this.topic).stream().mapToInt(PartitionInfo::partition).max().orElseThrow(() -> new InvalidPartitionsException("partitions not found")) + 1;
-        }
-    }
-
-    private List<String> getList(Object object) {
-        if (List.class.isInstance(object)) {
-            return (List<String>) object;
-        } else {
-            return Collections.singletonList(object.toString());
         }
     }
 

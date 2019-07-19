@@ -24,7 +24,7 @@ public class UpdateRowsAugmentedEventData implements TableAugmentedEventData {
             Collection<Boolean> includedColumns,
             Collection<ColumnSchema> columns,
             Collection<AugmentedRow> augmentedRows
-        ) {
+    ) {
 
         this.eventTable = eventTable;
         this.includedColumnsBeforeUpdate = includedColumnsBeforeUpdate;

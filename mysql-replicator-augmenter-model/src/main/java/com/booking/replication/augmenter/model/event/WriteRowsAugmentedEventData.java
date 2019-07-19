@@ -23,7 +23,7 @@ public class WriteRowsAugmentedEventData implements TableAugmentedEventData {
             Collection<Boolean> includedColumns,
             Collection<ColumnSchema> columns,
             Collection<AugmentedRow> augmentedRows
-        ) {
+    ) {
         this.eventTable = eventTable;
         this.includedColumns = includedColumns;
         this.columns = columns;
@@ -47,5 +47,7 @@ public class WriteRowsAugmentedEventData implements TableAugmentedEventData {
         return this.columns;
     }
 
-    public Collection<AugmentedRow> getAugmentedRows() { return this.augmentedRows; }
+    public Collection<AugmentedRow> getAugmentedRows() {
+        return this.augmentedRows;
+    }
 }

@@ -3,6 +3,7 @@ package com.booking.replication.supplier.mysql.binlog.handler;
 import com.booking.replication.supplier.model.RawEventData;
 import com.booking.replication.supplier.model.RawEventHeaderV4;
 import com.booking.replication.supplier.model.RawEventType;
+
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.event.Event;
 
@@ -28,8 +29,8 @@ public class RawEventInvocationHandler implements InvocationHandler {
                 .distinct()
                 .collect(
                         Collectors.toMap(
-                                (value) -> value.getSimpleName().replace("Raw", "").toLowerCase(),
-                                (value) -> value
+                            (value) -> value.getSimpleName().replace("Raw", "").toLowerCase(),
+                            (value) -> value
                         )
                 );
     }
@@ -59,11 +60,9 @@ public class RawEventInvocationHandler implements InvocationHandler {
             } else {
                 return null;
             }
-        }
-        else if (method.getName().equals("getGTIDSet")) {
+        } else if (method.getName().equals("getGTIDSet")) {
             return this.gtidSet;
-        }
-        else {
+        } else {
             return this.event.getClass().getMethod(method.getName()).invoke(this.event);
         }
     }

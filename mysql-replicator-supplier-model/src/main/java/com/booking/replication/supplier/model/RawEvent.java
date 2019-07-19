@@ -25,8 +25,8 @@ public interface RawEvent extends Serializable, RawEventProxyProvider {
             NoSuchMethodException,
             IllegalAccessException,
             InvocationTargetException,
-            InstantiationException
-    {
+            InstantiationException {
+
         return RawEventProxyProvider.getProxy(RawEvent.class, handler);
     }
 }

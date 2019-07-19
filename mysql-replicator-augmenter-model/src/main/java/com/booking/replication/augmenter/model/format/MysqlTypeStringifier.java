@@ -28,7 +28,7 @@ public class MysqlTypeStringifier {
     private static final Logger LOG = LogManager.getLogger(MysqlTypeStringifier.class);
 
     private static final SimpleDateFormat DATE_FORMAT       = new SimpleDateFormat("yyyy-MM-dd");
-    private static final SimpleDateFormat TIMESTAMP_FORMAT  = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private static final SimpleDateFormat TIMESTAMP_FORMAT  = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
     private static final String NULL_STRING = "NULL";
 

@@ -644,8 +644,8 @@ public class MysqlTypeStringifierTest {
         String expected, actual;
 
         {
-            testTimestamp   = 1548982800000L;
-            expected        = "2019-02-01 01:00:00";
+            testTimestamp   = 1548982800123L;
+            expected        = "2019-02-01 01:00:00.123";
 
             actual = MysqlTypeStringifier.convertToString(testTimestamp, schema, null);
             assertEquals(expected, actual);

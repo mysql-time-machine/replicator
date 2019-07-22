@@ -79,9 +79,8 @@ public class BinlogSource implements SourceFunction<AugmentedEvent>, Checkpointe
 
             try {
 
-                System.out.println("incoming event: " + event.getHeader().getEventType().getDefinition().getName());
-
                 Collection<AugmentedEvent> augmentedEvents = augmenter.apply(event);
+
 
                 if (augmentedEvents != null) {
                     for (AugmentedEvent augmentedEvent : augmentedEvents) {
@@ -154,9 +153,7 @@ public class BinlogSource implements SourceFunction<AugmentedEvent>, Checkpointe
 
                 System.out.println("Source: main loop count #" + count); // this is ordered;
 
-                System.out.println("try to read from queue");
                 AugmentedEvent augmentedEvent = incomingAugmentedEvents.take();
-                System.out.println("got event from the queue");
 
                 sourceContext.collect(augmentedEvent);
 

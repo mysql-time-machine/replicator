@@ -6,6 +6,7 @@ import com.booking.replication.applier.Seeker;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.AugmenterFilter;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
+import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
 import com.booking.replication.checkpoint.CheckpointApplier;
 import com.booking.replication.commons.checkpoint.Binlog;
 import com.booking.replication.commons.checkpoint.Checkpoint;
@@ -188,6 +189,7 @@ public class Replicator {
 
         try {
 
+            // TODO: make this nicer - all params should come from configuration
             this.source = new BinlogSource(
                     configuration,
                     overrideCheckpointStartPosition,
@@ -207,13 +209,20 @@ public class Replicator {
 
                 dataStream
                         .map(augmentedEvent-> {
-                                System.out.println(augmentedEvent.toJSON());
-                                return augmentedEvent;
+                            // Placeholder for testing
+                            if (augmentedEvent.getOptionalPayload() != null) {
+                                if (augmentedEvent.getOptionalPayload() instanceof SchemaSnapshot) {
+                                    System.out.println("SchemaSnapshot Before: " + ((SchemaSnapshot) augmentedEvent.getOptionalPayload()).getSchemaBefore());
+                                    System.out.println("SchemaSnapshot DDL: " + ((SchemaSnapshot) augmentedEvent.getOptionalPayload()).getSchemaTransitionSequence());
+                                    System.out.println("SchemaSnapshot After: " + ((SchemaSnapshot) augmentedEvent.getOptionalPayload()).getSchemaAfter());
+                                }
+                            }
+                            return augmentedEvent;
                         })
                         .addSink(new SinkFunction<AugmentedEvent>() {
                             @Override
                             public void invoke(AugmentedEvent augmentedEvent) throws Exception {
-                                    System.out.println("Sink: " + augmentedEvent.toJSONPrettyPrint());
+                                System.out.println("augmenterEvent => " + augmentedEvent.toJSONString());
                             }
                         });
 

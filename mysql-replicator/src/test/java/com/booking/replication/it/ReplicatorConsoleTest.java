@@ -4,8 +4,6 @@ import com.booking.replication.Replicator;
 import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.Partitioner;
 import com.booking.replication.applier.Seeker;
-import com.booking.replication.applier.kafka.KafkaApplier;
-import com.booking.replication.applier.kafka.KafkaSeeker;
 import com.booking.replication.augmenter.ActiveSchemaManager;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.AugmenterContext;
@@ -21,25 +19,7 @@ import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 
 import com.mysql.jdbc.Driver;
 
-import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
-import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
-import io.confluent.kafka.serializers.KafkaAvroDeserializer;
-import io.confluent.kafka.serializers.KafkaAvroSerializer;
-
-import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericDatumReader;
-import org.apache.avro.generic.GenericDatumWriter;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.io.*;
 import org.apache.commons.dbcp2.BasicDataSource;
-
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.serialization.ByteArrayDeserializer;
-import org.apache.kafka.common.serialization.ByteArraySerializer;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -55,7 +35,6 @@ import java.sql.Connection;
 
 import java.sql.Statement;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 
 public class ReplicatorConsoleTest {
 
@@ -74,21 +53,12 @@ public class ReplicatorConsoleTest {
     private static final String MYSQL_INIT_SCRIPT = "mysql.init.sql";
     private static final String MYSQL_TEST_SCRIPT = "mysql.binlog.test.sql";
     private static final String MYSQL_CONF_FILE = "my.cnf";
-    private static final int TRANSACTION_LIMIT = 5;
+    private static final int TRANSACTION_LIMIT = 1000;
     private static final String CONNECTION_URL_FORMAT = "jdbc:mysql://%s:%d/%s";
-
-    private static final String KAFKA_REPLICATOR_TOPIC_NAME = "replicator";
-    private static final String KAFKA_REPLICATOR_GROUP_ID = "replicator";
-    private static final String KAFKA_REPLICATOR_IT_GROUP_ID = "replicatorIT";
-    private static final int KAFKA_TOPIC_PARTITIONS = 3;
-    private static final int KAFKA_TOPIC_REPLICAS = 1;
 
     private static ServicesControl zookeeper;
     private static ServicesControl mysqlBinaryLog;
     private static ServicesControl mysqlActiveSchema;
-    private static ServicesControl kafka;
-    private static ServicesControl schemaRegistry;
-    private static ServicesControl kafkaZk;
 
     @BeforeClass
     public static void before() {
@@ -119,6 +89,13 @@ public class ReplicatorConsoleTest {
         ReplicatorConsoleTest.mysqlBinaryLog = servicesProvider.startMySQL(mySQLConfiguration);
         ReplicatorConsoleTest.mysqlActiveSchema = servicesProvider.startMySQL(mySQLActiveSchemaConfiguration);
 
+        try {
+            // give some time for containers to start
+            // TODO: make this nicer with a proper wait
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     @Test
@@ -214,6 +191,9 @@ public class ReplicatorConsoleTest {
         configuration.put(BinaryLogSupplier.Configuration.MYSQL_PASSWORD, ReplicatorConsoleTest.MYSQL_PASSWORD);
 
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, ReplicatorConsoleTest.mysqlActiveSchema.getHost());
+
+        System.out.println("PORT => " + ReplicatorConsoleTest.mysqlActiveSchema.getPort());
+
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(ReplicatorConsoleTest.mysqlActiveSchema.getPort()));
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_SCHEMA, ReplicatorConsoleTest.MYSQL_ACTIVE_SCHEMA);
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, ReplicatorConsoleTest.MYSQL_ROOT_USERNAME);
@@ -237,8 +217,6 @@ public class ReplicatorConsoleTest {
         configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name());
         configuration.put(Replicator.Configuration.CHECKPOINT_PATH, ReplicatorConsoleTest.ZOOKEEPER_CHECKPOINT_PATH);
         configuration.put(Replicator.Configuration.CHECKPOINT_DEFAULT, ReplicatorConsoleTest.CHECKPOINT_DEFAULT);
-        configuration.put(Replicator.Configuration.REPLICATOR_THREADS, String.valueOf(ReplicatorConsoleTest.KAFKA_TOPIC_PARTITIONS));
-        configuration.put(Replicator.Configuration.REPLICATOR_TASKS, String.valueOf(ReplicatorConsoleTest.KAFKA_TOPIC_PARTITIONS));
 
         return configuration;
     }
@@ -247,21 +225,6 @@ public class ReplicatorConsoleTest {
     public static void after() {
         ReplicatorConsoleTest.mysqlBinaryLog.close();
         ReplicatorConsoleTest.mysqlActiveSchema.close();
-        ReplicatorConsoleTest.schemaRegistry.close();
         ReplicatorConsoleTest.zookeeper.close();
-    }
-
-    public static String avroToJson(byte[] avro, Schema schema) throws IOException {
-        boolean pretty = false;
-        GenericDatumReader<Object> reader = new GenericDatumReader<>(schema);
-        DatumWriter<Object> writer = new GenericDatumWriter<>(schema);
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-        JsonEncoder encoder = EncoderFactory.get().jsonEncoder(schema, output, pretty);
-        Decoder decoder = DecoderFactory.get().binaryDecoder(avro, null);
-        Object datum = reader.read(null, decoder);
-        writer.write(datum, encoder);
-        encoder.flush();
-        output.flush();
-        return new String(output.toByteArray(), "UTF-8");
     }
 }

@@ -10,6 +10,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.sql.Date;
@@ -204,13 +205,17 @@ public class MysqlTypeStringifier {
                 }
             }
             case FLOAT:
-            case DOUBLE:
-            case DECIMAL: {
+            case DOUBLE: {
                 //FLOT      converted as java.lang.Float
                 //Double    converted as java.lang.Double
-                //Decimal   converted as java.math.BigDecimal
 
                 return cellValue.toString();
+            }
+
+            case DECIMAL: {
+                BigDecimal decimal = (BigDecimal) cellValue;
+
+                return decimal.toPlainString();
             }
 
             case UNKNOWN:

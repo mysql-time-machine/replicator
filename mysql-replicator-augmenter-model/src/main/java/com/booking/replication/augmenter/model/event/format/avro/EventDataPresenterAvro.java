@@ -20,17 +20,17 @@ import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.io.BinaryEncoder;
-import org.apache.avro.io.DatumWriter;
-import org.apache.avro.io.EncoderFactory;
-import org.apache.avro.specific.SpecificDatumWriter;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 public class EventDataPresenterAvro {
     private static final Logger LOG = LogManager.getLogger(EventDataPresenterAvro.class);
@@ -100,10 +100,6 @@ public class EventDataPresenterAvro {
 
     }
 
-    public AvroMessageKey convertAugumentedEventHeaderToAvro() {
-        return new AvroMessageKey(eventTable.getName(), eventTable.getDatabase(), this.eventType, this.header.getTimestamp());
-    }
-
     public List<GenericRecord> convertAugumentedEventDataToAvro() throws IOException {
         if (this.skipRow) {
             return new ArrayList<>();
@@ -141,18 +137,6 @@ public class EventDataPresenterAvro {
             throw e;
         }
     }
-
-    private byte[] serializeAvroMessage(GenericRecord rec, Schema schema) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        out.write(schema.toString().getBytes());
-        BinaryEncoder encoder = EncoderFactory.get().binaryEncoder(out, null);
-        DatumWriter<GenericRecord> writer = new SpecificDatumWriter<>(schema);
-        writer.write(rec, encoder);
-        encoder.flush();
-        out.close();
-        return out.toByteArray();
-    }
-
 
     public static Schema createAvroSchema(boolean addMetaFields, boolean convertBinToHex, FullTableName eventTable, Collection<ColumnSchema> columns) {
         String tableName = eventTable.getName();

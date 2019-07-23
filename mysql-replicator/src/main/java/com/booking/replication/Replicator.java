@@ -70,7 +70,7 @@ public class Replicator {
     private final String checkpointDefault;
 //    private final Coordinator coordinator;
 //    private final Supplier supplier;
-    private final AugmenterFilter augmenterFilter;
+//    private final AugmenterFilter augmenterFilter;
 //    private final Seeker seeker;
     private final Partitioner partitioner;
     private final Applier applier;
@@ -117,10 +117,6 @@ public class Replicator {
                 String.valueOf(configuration.getOrDefault(Metrics.Configuration.BASE_PATH, "replicator")),
                 "error"
         );
-
-
-
-        this.augmenterFilter = AugmenterFilter.build(configuration);
 
         this.partitioner = Partitioner.build(configuration);
 

@@ -2,6 +2,7 @@ package com.booking.replication;
 
 import com.booking.replication.applier.Seeker;
 import com.booking.replication.augmenter.Augmenter;
+import com.booking.replication.augmenter.AugmenterFilter;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.commons.checkpoint.Binlog;
 import com.booking.replication.commons.checkpoint.Checkpoint;
@@ -72,6 +73,9 @@ public class BinlogSource implements SourceFunction<AugmentedEvent>, Checkpointe
         // augmenter
         Augmenter augmenter = Augmenter.build(configuration);
 
+        // augmenterFilter
+        AugmenterFilter augmenterFilter = AugmenterFilter.build(configuration);
+
         // supplier
         Supplier supplier = Supplier.build(configuration);
 
@@ -81,10 +85,12 @@ public class BinlogSource implements SourceFunction<AugmentedEvent>, Checkpointe
 
                 Collection<AugmentedEvent> augmentedEvents = augmenter.apply(event);
 
+                Collection<AugmentedEvent> filteredEvents = augmenterFilter.apply(augmentedEvents);
+
 
                 if (augmentedEvents != null) {
-                    for (AugmentedEvent augmentedEvent : augmentedEvents) {
-                        incomingAugmentedEvents.put(augmentedEvent);
+                    for (AugmentedEvent filteredEvent : filteredEvents) {
+                        incomingAugmentedEvents.put(filteredEvent);
                     }
                 }
 

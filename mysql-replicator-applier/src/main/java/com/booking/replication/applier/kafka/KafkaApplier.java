@@ -1,7 +1,7 @@
 package com.booking.replication.applier.kafka;
 
 import com.booking.replication.applier.Applier;
-import com.booking.replication.applier.Partitioner;
+import com.booking.replication.applier.ReplicatorPartitioner;
 import com.booking.replication.applier.schema.registry.BCachedSchemaRegistryClient;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.event.QueryAugmentedEventData;
@@ -62,7 +62,7 @@ public class KafkaApplier implements Applier {
     private final Map<String, Object> configuration;
     private final String topic;
     private final int totalPartitions;
-    private final Partitioner partitioner;
+    private final ReplicatorPartitioner replicatorPartitioner;
     private final Metrics<?> metrics;
     private final String delayName;
 
@@ -75,7 +75,7 @@ public class KafkaApplier implements Applier {
         this.configuration = new MapFilter(configuration).filter(Configuration.PRODUCER_PREFIX);
         this.topic = topic.toString();
         this.totalPartitions = this.getTotalPartitions();
-        this.partitioner = Partitioner.build(configuration);
+        this.replicatorPartitioner = ReplicatorPartitioner.build(configuration);
         this.metrics = Metrics.getInstance(configuration);
         this.dataFormat = configuration.get(Configuration.FORMAT) == null ? MessageFormat.AVRO : String.valueOf(configuration.get(Configuration.FORMAT));
 
@@ -120,7 +120,7 @@ public class KafkaApplier implements Applier {
             try {
                 for (AugmentedEvent event : events) {
                     handleIncompatibleSchemaChange(event);
-                    int partition = this.partitioner.apply(event, this.totalPartitions);
+                    int partition = this.replicatorPartitioner.apply(event, this.totalPartitions);
                     List<GenericRecord> records = event.dataToAvro();
                     int numRows = records.size();
                     for (GenericRecord row : records) {
@@ -168,7 +168,7 @@ public class KafkaApplier implements Applier {
         } else {
             try {
                 for (AugmentedEvent event : events) {
-                    int partition = this.partitioner.apply(event, this.totalPartitions);
+                    int partition = this.replicatorPartitioner.apply(event, this.totalPartitions);
 
                     this.producers.computeIfAbsent(
                             partition, key -> this.getProducer()
@@ -224,7 +224,7 @@ public class KafkaApplier implements Applier {
 
     @Override
     public void close() throws IOException {
-        this.partitioner.close();
+        this.replicatorPartitioner.close();
         this.producers.values().forEach(Producer::close);
         this.producers.clear();
     }

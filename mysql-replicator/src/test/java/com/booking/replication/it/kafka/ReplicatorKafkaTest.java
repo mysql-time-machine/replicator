@@ -2,7 +2,7 @@ package com.booking.replication.it.kafka;
 
 import com.booking.replication.Replicator;
 import com.booking.replication.applier.Applier;
-import com.booking.replication.applier.Partitioner;
+import com.booking.replication.applier.ReplicatorPartitioner;
 import com.booking.replication.applier.Seeker;
 import com.booking.replication.applier.kafka.KafkaApplier;
 import com.booking.replication.applier.kafka.KafkaSeeker;
@@ -273,7 +273,7 @@ public class ReplicatorKafkaTest {
         configuration.put(Augmenter.Configuration.SCHEMA_TYPE, Augmenter.SchemaType.ACTIVE.name());
         configuration.put(Seeker.Configuration.TYPE, Seeker.Type.KAFKA.name());
 
-        configuration.put(Partitioner.Configuration.TYPE, Partitioner.Type.TABLE_NAME.name());
+        configuration.put(ReplicatorPartitioner.Configuration.TYPE, ReplicatorPartitioner.Type.TABLE_NAME.name());
 
         configuration.put(Applier.Configuration.TYPE, Applier.Type.KAFKA.name());
         configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name());

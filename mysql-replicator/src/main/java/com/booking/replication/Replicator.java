@@ -1,25 +1,15 @@
 package com.booking.replication;
 
 import com.booking.replication.applier.Applier;
-import com.booking.replication.applier.Partitioner;
-import com.booking.replication.applier.Seeker;
-import com.booking.replication.augmenter.Augmenter;
-import com.booking.replication.augmenter.AugmenterFilter;
+import com.booking.replication.applier.ReplicatorPartitioner;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
+import com.booking.replication.augmenter.model.event.AugmentedEventTransaction;
 import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
-import com.booking.replication.checkpoint.CheckpointApplier;
-import com.booking.replication.commons.checkpoint.Binlog;
-import com.booking.replication.commons.checkpoint.Checkpoint;
-import com.booking.replication.commons.checkpoint.ForceRewindException;
 import com.booking.replication.commons.map.MapFlatter;
 import com.booking.replication.commons.metrics.Metrics;
 import com.booking.replication.controller.WebServer;
-import com.booking.replication.coordinator.Coordinator;
-import com.booking.replication.streams.Streams;
 import com.booking.replication.supplier.Supplier;
 
-import com.booking.replication.supplier.model.RawEvent;
-import com.booking.replication.supplier.model.RawEventHeaderV4;
 import com.booking.utils.BootstrapReplicator;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
@@ -29,9 +19,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
 import org.apache.commons.cli.*;
-import org.apache.flink.api.common.typeinfo.Types;
-import org.apache.flink.runtime.state.filesystem.FsStateBackend;
-import org.apache.flink.runtime.state.memory.MemoryStateBackend;
+import org.apache.flink.api.common.functions.Partitioner;
+import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
@@ -39,14 +28,14 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
+import scala.Int;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Consumer;
 
 public class Replicator {
 
@@ -72,7 +61,7 @@ public class Replicator {
 //    private final Supplier supplier;
 //    private final AugmenterFilter augmenterFilter;
 //    private final Seeker seeker;
-    private final Partitioner partitioner;
+//    private final ReplicatorPartitioner replicatorPartitioner;
     private final Applier applier;
     private final Metrics<?> metrics;
     private final String errorCounter;
@@ -118,7 +107,7 @@ public class Replicator {
                 "error"
         );
 
-        this.partitioner = Partitioner.build(configuration);
+        //this.replicatorPartitioner = ReplicatorPartitioner.build(configuration);
 
         this.applier = Applier.build(configuration);
 
@@ -133,12 +122,12 @@ public class Replicator {
         //        this.destinationStream = Streams.<Collection<AugmentedEvent>>builder()
         //                .threads(threads)
         //                .tasks(tasks)
-        //                .partitioner((events, totalPartitions) -> {
+        //                .replicatorPartitioner((events, totalPartitions) -> {
         //                    this.metrics.getRegistry()
-        //                            .counter("hbase.streams.destination.partitioner.event.apply.attempt").inc(1L);
-        //                    Integer partitionNumber = this.partitioner.apply(events.iterator().next(), totalPartitions);
+        //                            .counter("hbase.streams.destination.replicatorPartitioner.event.apply.attempt").inc(1L);
+        //                    Integer partitionNumber = this.replicatorPartitioner.apply(events.iterator().next(), totalPartitions);
         //                    this.metrics.getRegistry()
-        //                            .counter("hbase.streams.destination.partitioner.event.apply.success").inc(1L);
+        //                            .counter("hbase.streams.destination.replicatorPartitioner.event.apply.success").inc(1L);
         //                    return partitionNumber;
         //                })
         //                .useDefaultQueueType()
@@ -161,12 +150,12 @@ public class Replicator {
         //                    Map<Integer, Collection<AugmentedEvent>> splitEventsMap = new HashMap<>();
         //                    for (AugmentedEvent event : events) {
         //                        this.metrics.getRegistry()
-        //                                .counter("streams.partitioner.event.apply.attempt").inc(1L);
+        //                                .counter("streams.replicatorPartitioner.event.apply.attempt").inc(1L);
         //                        splitEventsMap.computeIfAbsent(
-        //                                this.partitioner.apply(event, tasks), partition -> new ArrayList<>()
+        //                                this.replicatorPartitioner.apply(event, tasks), partition -> new ArrayList<>()
         //                        ).add(event);
         //                        metrics.getRegistry()
-        //                                .counter("streams.partitioner.event.apply.success").inc(1L);
+        //                                .counter("streams.replicatorPartitioner.event.apply.success").inc(1L);
         //                    }
         //                    for (Collection<AugmentedEvent> splitEvents : splitEventsMap.values()) {
         //                        //this.destinationStream.push(splitEvents);
@@ -199,11 +188,46 @@ public class Replicator {
                                 source
                         ).forceNonParallel();
 
-                DataStream<AugmentedEvent> dataStream =
-                        ((SingleOutputStreamOperator<AugmentedEvent>) streamSource)
-                                .forceNonParallel();
 
-                dataStream
+                DataStream<AugmentedEvent> partitionedDataStream =
+
+                        ((SingleOutputStreamOperator<AugmentedEvent>) streamSource)
+                                .setParallelism(tasks)
+                                .partitionCustom(
+
+                                        // Partitioner
+                                        (Partitioner<UUID>) (transactionUUID, totalPartitions) -> {
+
+                                            if (transactionUUID != null) {
+
+                                                Long tmp = transactionUUID.getMostSignificantBits() & Integer.MAX_VALUE;
+                                                System.out.println("partition => " +  Math.toIntExact(Long.remainderUnsigned(tmp, totalPartitions)));
+
+                                                return Math.toIntExact(Long.remainderUnsigned(tmp, totalPartitions));
+
+                                            } else {
+                                                return ThreadLocalRandom.current().nextInt(tasks);
+                                            }
+                                        }
+                                        ,
+                                        // KeySelector
+                                        (KeySelector<AugmentedEvent, UUID>) event -> {
+
+                                            if (event.getHeader().getEventTransaction() != null) {
+
+                                                AugmentedEventTransaction transaction = event.getHeader().getEventTransaction();
+
+                                                UUID transactionUUID = UUID.fromString(transaction.getIdentifier());
+
+                                                return transactionUUID;
+
+                                            } else {
+                                                return null;
+                                            }
+                                        }
+                                        );
+
+                partitionedDataStream
                         .map(augmentedEvent-> {
                             // Placeholder for testing
                             if (augmentedEvent.getOptionalPayload() != null) {
@@ -268,8 +292,8 @@ public class Replicator {
 
             // =================================
 
-            Replicator.LOG.info("closing partitioner");
-            this.partitioner.close();
+            Replicator.LOG.info("closing replicatorPartitioner");
+//            this.replicatorPartitioner.close();
 
             Replicator.LOG.info("closing applier");
             this.applier.close();

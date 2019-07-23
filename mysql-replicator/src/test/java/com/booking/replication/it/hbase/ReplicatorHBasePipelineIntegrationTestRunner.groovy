@@ -2,7 +2,7 @@ package com.booking.replication.it.hbase
 
 import com.booking.replication.Replicator
 import com.booking.replication.applier.Applier
-import com.booking.replication.applier.Partitioner
+import com.booking.replication.applier.ReplicatorPartitioner
 import com.booking.replication.applier.Seeker
 import com.booking.replication.applier.hbase.HBaseApplier
 import com.booking.replication.applier.hbase.StorageConfig
@@ -16,16 +16,10 @@ import com.booking.replication.commons.services.ServicesControl
 import com.booking.replication.commons.services.ServicesProvider
 import com.booking.replication.coordinator.Coordinator
 import com.booking.replication.coordinator.ZookeeperCoordinator
-import com.booking.replication.it.hbase.impl.MicrosecondValidationTestImpl
-import com.booking.replication.it.hbase.impl.LongTransactionTestImpl
-import com.booking.replication.it.hbase.impl.PayloadTableTestImpl
-import com.booking.replication.it.hbase.impl.SplitTransactionTestImpl
-import com.booking.replication.it.hbase.impl.TableNameMergeFilterTestImpl
 import com.booking.replication.it.hbase.impl.TableWhiteListTest
 import com.booking.replication.it.util.HBase
 import com.booking.replication.supplier.Supplier
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier
-import com.booking.replication.it.hbase.impl.TransmitInsertsTestImpl
 import com.mysql.jdbc.Driver
 import org.apache.commons.dbcp2.BasicDataSource
 import org.apache.hadoop.conf.Configuration
@@ -461,7 +455,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
         // Applier Configuration
         configuration.put(Seeker.Configuration.TYPE, Seeker.Type.NONE.name())
-        configuration.put(Partitioner.Configuration.TYPE, Partitioner.Type.TRID.name())
+        configuration.put(ReplicatorPartitioner.Configuration.TYPE, ReplicatorPartitioner.Type.TRID.name())
         configuration.put(Applier.Configuration.TYPE, Applier.Type.HBASE.name())
 
         // HBase Specifics

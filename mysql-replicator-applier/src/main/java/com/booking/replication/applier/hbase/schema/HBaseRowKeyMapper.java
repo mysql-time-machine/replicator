@@ -38,7 +38,7 @@ public class HBaseRowKeyMapper {
                     break;
 
                 case "DELETE":
-                    pkColumnValues.add(pkCell.get("value_before"));
+                    pkColumnValues.add(pkCell.get("value"));
                     break;
 
                 case "UPDATE":

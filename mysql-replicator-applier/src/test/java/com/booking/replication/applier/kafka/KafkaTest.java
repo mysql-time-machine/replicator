@@ -15,6 +15,8 @@ import com.booking.replication.commons.services.ServicesControl;
 import com.booking.replication.commons.services.ServicesProvider;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -31,6 +33,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 public class KafkaTest {
+    private static final Logger LOG = LogManager.getLogger(KafkaTest.class);
     private static final String TOPIC_NAME = "replicator";
     private static final String GROUP_ID = "replicator";
     private static final int TOPIC_PARTITIONS = 1;
@@ -88,8 +91,9 @@ public class KafkaTest {
     @Test
     public void testApplier() throws IOException {
         Map<String, Object> configuration = new HashMap<>();
-
+        KafkaTest.LOG.info("KafkaTest.testApplier() called");
         configuration.put(Applier.Configuration.TYPE, Applier.Type.KAFKA.name());
+        configuration.put(KafkaApplier.Configuration.FORMAT, KafkaApplier.MessageFormat.JSON);
         configuration.put(KafkaApplier.Configuration.TOPIC, KafkaTest.TOPIC_NAME);
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.BOOTSTRAP_SERVERS_CONFIG), KafkaTest.servicesControl.getURL());
 

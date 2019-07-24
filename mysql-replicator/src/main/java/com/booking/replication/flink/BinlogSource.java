@@ -1,37 +1,28 @@
-package com.booking.replication;
+package com.booking.replication.flink;
 
+import com.booking.replication.Replicator;
 import com.booking.replication.applier.Seeker;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.AugmenterFilter;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.commons.checkpoint.Binlog;
 import com.booking.replication.commons.checkpoint.Checkpoint;
-import com.booking.replication.commons.checkpoint.ForceRewindException;
 import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.supplier.Supplier;
-import com.booking.replication.supplier.model.RawEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.flink.api.common.state.KeyedStateStore;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
-import org.apache.flink.api.common.state.OperatorStateStore;
 import org.apache.flink.runtime.state.FunctionInitializationContext;
 import org.apache.flink.runtime.state.FunctionSnapshotContext;
 import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import spock.lang.See;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.function.Consumer;
 
 public class BinlogSource implements SourceFunction<AugmentedEvent>, CheckpointedFunction {
 

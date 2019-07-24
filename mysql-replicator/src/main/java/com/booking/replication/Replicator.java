@@ -1,13 +1,14 @@
 package com.booking.replication;
 
 import com.booking.replication.applier.Applier;
-import com.booking.replication.applier.ReplicatorPartitioner;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.event.AugmentedEventTransaction;
 import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
 import com.booking.replication.commons.map.MapFlatter;
 import com.booking.replication.commons.metrics.Metrics;
 import com.booking.replication.controller.WebServer;
+import com.booking.replication.flink.BinlogPartitioner;
+import com.booking.replication.flink.BinlogSource;
 import com.booking.replication.supplier.Supplier;
 
 import com.booking.utils.BootstrapReplicator;
@@ -28,7 +29,6 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import scala.Int;
 
 import java.io.File;
 import java.io.IOException;
@@ -194,38 +194,9 @@ public class Replicator {
                         ((SingleOutputStreamOperator<AugmentedEvent>) streamSource)
                                 .setParallelism(tasks)
                                 .partitionCustom(
-
-                                        // Partitioner
-                                        (Partitioner<UUID>) (transactionUUID, totalPartitions) -> {
-
-                                            if (transactionUUID != null) {
-
-                                                Long tmp = transactionUUID.getMostSignificantBits() & Integer.MAX_VALUE;
-                                                System.out.println("partition => " +  Math.toIntExact(Long.remainderUnsigned(tmp, totalPartitions)));
-
-                                                return Math.toIntExact(Long.remainderUnsigned(tmp, totalPartitions));
-
-                                            } else {
-                                                return ThreadLocalRandom.current().nextInt(tasks);
-                                            }
-                                        }
-                                        ,
-                                        // KeySelector
-                                        (KeySelector<AugmentedEvent, UUID>) event -> {
-
-                                            if (event.getHeader().getEventTransaction() != null) {
-
-                                                AugmentedEventTransaction transaction = event.getHeader().getEventTransaction();
-
-                                                UUID transactionUUID = UUID.fromString(transaction.getIdentifier());
-
-                                                return transactionUUID;
-
-                                            } else {
-                                                return null;
-                                            }
-                                        }
-                                        );
+                                        BinlogPartitioner.getPartitioner(tasks),
+                                        BinlogPartitioner.getKeySelector()
+                                );
 
                 partitionedDataStream
                         .map(augmentedEvent-> {

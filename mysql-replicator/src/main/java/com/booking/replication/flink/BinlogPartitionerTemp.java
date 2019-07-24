@@ -8,7 +8,7 @@ import org.apache.flink.api.java.functions.KeySelector;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
-public class BinlogPartitioner {
+public class BinlogPartitionerTemp {
 
     public static Partitioner<UUID> getPartitioner(int tasks) {
 

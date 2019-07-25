@@ -2,13 +2,12 @@ package com.booking.replication;
 
 import com.booking.replication.applier.Applier;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
-import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
 import com.booking.replication.commons.map.MapFlatter;
 import com.booking.replication.commons.metrics.Metrics;
 import com.booking.replication.controller.WebServer;
 import com.booking.replication.flink.BinlogEventFlinkPartitioner;
-import com.booking.replication.flink.BinlogPartitionerTemp;
 import com.booking.replication.flink.BinlogSource;
+import com.booking.replication.flink.ReplicatorFlinkSink;
 import com.booking.replication.supplier.Supplier;
 
 import com.booking.utils.BootstrapReplicator;
@@ -21,7 +20,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
 import org.apache.commons.cli.*;
 import org.apache.flink.api.common.functions.Partitioner;
-import org.apache.flink.api.java.functions.KeySelector;
+import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
@@ -36,7 +35,6 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Function;
 
 public class Replicator {
 
@@ -63,15 +61,17 @@ public class Replicator {
 //    private final AugmenterFilter augmenterFilter;
 //    private final Seeker seeker;
 //    private final ReplicatorPartitioner replicatorPartitioner;
-    private final Applier applier;
     private final Metrics<?> metrics;
     private final String errorCounter;
 //    private final CheckpointApplier checkpointApplier;
     private final WebServer webServer;
     private final AtomicLong checkPointDelay;
 
+    //private final Applier applier;
+
     private final StreamExecutionEnvironment env;
     private BinlogSource source;
+    private SinkFunction<Object> sink;
 
 //    private final Streams<Collection<AugmentedEvent>, Collection<AugmentedEvent>> destinationStream;
 //    private final Streams<RawEvent, Collection<AugmentedEvent>> sourceStream;
@@ -108,14 +108,11 @@ public class Replicator {
                 "error"
         );
 
-        //this.replicatorPartitioner = ReplicatorPartitioner.build(configuration);
-
-        this.applier = Applier.build(configuration);
-
         this.checkPointDelay = new AtomicLong(0L);
 
         this.metrics.register(METRIC_COORDINATOR_DELAY, (Gauge<Long>) () -> this.checkPointDelay.get());
 
+        //this.applier = Applier.build(configuration);
 
         //////////////////////////////////////////////////////////////////////////
         // Custom Streams Implementation
@@ -133,7 +130,7 @@ public class Replicator {
         //                })
         //                .useDefaultQueueType()
         //                .usePushMode()
-        //                .setSink(this.applier)
+        //                .setSink(this.sink)
         //                .post((events, task) -> {
         //                    for (AugmentedEvent event : events) {
         //                        this.checkpointApplier.accept(event, task);
@@ -171,7 +168,13 @@ public class Replicator {
         // Experimenting with Flink - Work In progress
         env = StreamExecutionEnvironment.createLocalEnvironment();
 
-        env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime);
+        env.enableCheckpointing(100).setStateBackend(
+                new FsStateBackend("file:///home/test_checkpoint",
+                false)
+        );q
+
+
+        env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
         try {
 
@@ -184,56 +187,53 @@ public class Replicator {
                     overrideCheckpointGtidSet
             );
 
-                DataStream<AugmentedEvent> streamSource = env
-                        .addSource(
-                                source
-                        ).forceNonParallel();
+            this.sink = ReplicatorFlinkSink.build(configuration);
+
+            DataStream<AugmentedEvent> streamSource = env
+                    .addSource(
+                            source
+                    ).forceNonParallel();
 
 
             Partitioner<AugmentedEvent> binlogEventFlinkPartitioner =
-                    BinlogEventFlinkPartitioner
-                            .build(configuration);
+                BinlogEventFlinkPartitioner
+                        .build(configuration);
 
-                DataStream<AugmentedEvent> partitionedDataStream =
-                        ((SingleOutputStreamOperator<AugmentedEvent>) streamSource)
-                                .setParallelism(tasks)
-                        .partitionCustom(
-                                binlogEventFlinkPartitioner,
-                                // binlogEventPartitioner knows how to convert event to partition,
-                                // so there is no need for a separate KeySelector
-                                event -> event
-                        );
+            DataStream<AugmentedEvent> partitionedDataStream =
+                ((SingleOutputStreamOperator<AugmentedEvent>) streamSource)
+                    .setParallelism(tasks)
+                    .partitionCustom(
+                            binlogEventFlinkPartitioner,
+                            // binlogEventPartitioner knows how to convert event to partition,
+                            // so there is no need for a separate KeySelector
+                            event -> event
+                    );
 
-//                                .partitionCustom(
-//                                        BinlogPartitionerTemp.getPartitioner(tasks),
-//                                        BinlogPartitionerTemp.getKeySelector()
-//                                );
+            DataStream<Object> stringifiedDataStream = partitionedDataStream
+                .map(
+                    augmentedEvent-> augmentedEvent.toJSONString()
+                );
 
-                partitionedDataStream
-                        .map(augmentedEvent-> {
-                            // Placeholder for testing
-                            if (augmentedEvent.getOptionalPayload() != null) {
-                                if (augmentedEvent.getOptionalPayload() instanceof SchemaSnapshot) {
-                                    System.out.println("SchemaSnapshot Before: " + ((SchemaSnapshot) augmentedEvent.getOptionalPayload()).getSchemaBefore());
-                                    System.out.println("SchemaSnapshot DDL: " + ((SchemaSnapshot) augmentedEvent.getOptionalPayload()).getSchemaTransitionSequence());
-                                    System.out.println("SchemaSnapshot After: " + ((SchemaSnapshot) augmentedEvent.getOptionalPayload()).getSchemaAfter());
-                                }
-                            }
-                            return augmentedEvent;
-                        })
-                        .addSink(new SinkFunction<AugmentedEvent>() {
-                            @Override
-                            public void invoke(AugmentedEvent augmentedEvent) throws Exception {
-                                System.out.println("augmentedEvent => " + augmentedEvent.toJSONString());
-                                //
-                            }
-                        });
 
-            } catch (IOException exception) {
+            stringifiedDataStream.addSink(
+                    sink
+            );
+
+
+//            FlinkKafkaProducer<String> kafkaProducer = new FlinkKafkaProducer<String>(
+//                    "localhost:9092",   // broker list
+//                    "my-topic",            // target topic
+//                    new SimpleStringSchema()      // serialization schema
+//            );
+//            kafkaProducer.setWriteTimestampToKafka(true);
+//            stringifiedDataStream.addSink(kafkaProducer);
+
+
+        } catch (IOException exception) {
 //                exceptionHandle.accept(exception);
-            } catch (Exception e) {
+        } catch (Exception e) {
                 e.printStackTrace();
-            }
+        }
 
 //        this.supplier.onException(exceptionHandle);
 
@@ -241,7 +241,8 @@ public class Replicator {
 
 
     public Applier getApplier() {
-        return this.applier;
+        return null; // TODO: fix this
+//        return this.applier;
     }
 
 
@@ -275,19 +276,16 @@ public class Replicator {
 
             // =================================
 
-            Replicator.LOG.info("closing replicatorPartitioner");
-//            this.replicatorPartitioner.close();
-
-            Replicator.LOG.info("closing applier");
-            this.applier.close();
+//            Replicator.LOG.info("closing sink");
+//            this.sink.close();
 
             Replicator.LOG.info("stopping web server");
             this.webServer.stop();
 
-            Replicator.LOG.info("closing metrics applier");
+            Replicator.LOG.info("closing metrics sink");
             this.metrics.close();
 
-//            Replicator.LOG.info("closing checkpoint applier");
+//            Replicator.LOG.info("closing checkpoint sink");
 //            this.checkpointApplier.close();
 
         } catch (IOException exception) {
@@ -331,7 +329,7 @@ public class Replicator {
         options.addOption(Option.builder().longOpt("config").argName("key-value").desc("the configuration setSink be used with the format <key>=<value>").hasArgs().build());
         options.addOption(Option.builder().longOpt("config-file").argName("filename").desc("the configuration file setSink be used (YAML)").hasArg().build());
         options.addOption(Option.builder().longOpt("supplier").argName("supplier").desc("the supplier setSink be used").hasArg().build());
-        options.addOption(Option.builder().longOpt("applier").argName("applier").desc("the applier setSink be used").hasArg().build());
+        options.addOption(Option.builder().longOpt("sink").argName("sink").desc("the sink setSink be used").hasArg().build());
         options.addOption(Option.builder().longOpt("secret-file").argName("filename").desc("the secret file which has Mysql user/password config (JSON)").hasArg().build());
 
 
@@ -377,8 +375,8 @@ public class Replicator {
                     configuration.put(Supplier.Configuration.TYPE, line.getOptionValue("supplier").toUpperCase());
                 }
 
-                if (line.hasOption("applier")) {
-                    configuration.put(Applier.Configuration.TYPE, line.getOptionValue("applier").toUpperCase());
+                if (line.hasOption("sink")) {
+                    configuration.put(Applier.Configuration.TYPE, line.getOptionValue("sink").toUpperCase());
                 }
 
 

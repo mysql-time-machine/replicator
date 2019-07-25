@@ -152,7 +152,10 @@ public class BinlogSource implements SourceFunction<AugmentedEvent>, Checkpointe
 
                 AugmentedEvent augmentedEvent = incomingAugmentedEvents.take();
 
-                sourceContext.collect(augmentedEvent);
+                sourceContext.collectWithTimestamp(
+                        augmentedEvent,
+                        augmentedEvent.getHeader().getTimestamp()
+                );
 
                 count++;
 

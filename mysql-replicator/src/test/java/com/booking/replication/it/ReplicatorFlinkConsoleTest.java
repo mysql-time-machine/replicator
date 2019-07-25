@@ -14,6 +14,7 @@ import com.booking.replication.commons.services.ServicesProvider;
 import com.booking.replication.controller.WebServer;
 import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.coordinator.ZookeeperCoordinator;
+import com.booking.replication.it.kafka.ReplicatorKafkaTest;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 
@@ -28,6 +29,7 @@ import org.apache.logging.log4j.Logger;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.testcontainers.containers.Network;
 
 import java.io.*;
 import java.sql.Connection;
@@ -35,9 +37,9 @@ import java.sql.Connection;
 import java.sql.Statement;
 import java.util.*;
 
-public class ReplicatorConsoleTest {
+public class ReplicatorFlinkConsoleTest {
 
-    private static final Logger LOG = LogManager.getLogger(ReplicatorConsoleTest.class);
+    private static final Logger LOG = LogManager.getLogger(ReplicatorFlinkConsoleTest.class);
 
     private static final String ZOOKEEPER_LEADERSHIP_PATH = "/replicator/leadership";
     private static final String ZOOKEEPER_CHECKPOINT_PATH = "/replicator/checkpoint";
@@ -63,30 +65,30 @@ public class ReplicatorConsoleTest {
     public static void before() {
         ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS);
 
-        ReplicatorConsoleTest.zookeeper = servicesProvider.startZookeeper();
+        ReplicatorFlinkConsoleTest.zookeeper = servicesProvider.startZookeeper();
 
         MySQLConfiguration mySQLConfiguration = new MySQLConfiguration(
-                ReplicatorConsoleTest.MYSQL_SCHEMA,
-                ReplicatorConsoleTest.MYSQL_USERNAME,
-                ReplicatorConsoleTest.MYSQL_PASSWORD,
-                ReplicatorConsoleTest.MYSQL_CONF_FILE,
-                Collections.singletonList(ReplicatorConsoleTest.MYSQL_INIT_SCRIPT),
+                ReplicatorFlinkConsoleTest.MYSQL_SCHEMA,
+                ReplicatorFlinkConsoleTest.MYSQL_USERNAME,
+                ReplicatorFlinkConsoleTest.MYSQL_PASSWORD,
+                ReplicatorFlinkConsoleTest.MYSQL_CONF_FILE,
+                Collections.singletonList(ReplicatorFlinkConsoleTest.MYSQL_INIT_SCRIPT),
                 null,
                 null
         );
 
         MySQLConfiguration mySQLActiveSchemaConfiguration = new MySQLConfiguration(
-                ReplicatorConsoleTest.MYSQL_ACTIVE_SCHEMA,
-                ReplicatorConsoleTest.MYSQL_USERNAME,
-                ReplicatorConsoleTest.MYSQL_PASSWORD,
-                ReplicatorConsoleTest.MYSQL_CONF_FILE,
+                ReplicatorFlinkConsoleTest.MYSQL_ACTIVE_SCHEMA,
+                ReplicatorFlinkConsoleTest.MYSQL_USERNAME,
+                ReplicatorFlinkConsoleTest.MYSQL_PASSWORD,
+                ReplicatorFlinkConsoleTest.MYSQL_CONF_FILE,
                 Collections.emptyList(),
                 null,
                 null
         );
 
-        ReplicatorConsoleTest.mysqlBinaryLog = servicesProvider.startMySQL(mySQLConfiguration);
-        ReplicatorConsoleTest.mysqlActiveSchema = servicesProvider.startMySQL(mySQLActiveSchemaConfiguration);
+        ReplicatorFlinkConsoleTest.mysqlBinaryLog = servicesProvider.startMySQL(mySQLConfiguration);
+        ReplicatorFlinkConsoleTest.mysqlActiveSchema = servicesProvider.startMySQL(mySQLActiveSchemaConfiguration);
 
         try {
             // give some time for containers to start
@@ -95,6 +97,7 @@ public class ReplicatorConsoleTest {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+
     }
 
     @Test
@@ -104,7 +107,7 @@ public class ReplicatorConsoleTest {
 
         replicator.start();
 
-        File file = new File("src/test/resources/" + ReplicatorConsoleTest.MYSQL_TEST_SCRIPT);
+        File file = new File("src/test/resources/" + ReplicatorFlinkConsoleTest.MYSQL_TEST_SCRIPT);
 
         runMysqlScripts(this.getConfiguration(), file.getAbsolutePath());
 
@@ -122,7 +125,7 @@ public class ReplicatorConsoleTest {
             reader = new BufferedReader(new FileReader(scriptFilePath));
             String line;
             // read script line by line
-            ReplicatorConsoleTest.LOG.info("Executing query from " + scriptFilePath);
+            ReplicatorFlinkConsoleTest.LOG.info("Executing query from " + scriptFilePath);
             String s;
             StringBuilder sb = new StringBuilder();
 
@@ -137,12 +140,12 @@ public class ReplicatorConsoleTest {
             for (String query : inst) {
                 if (!query.trim().equals("")) {
                     statement.execute(query);
-                    ReplicatorConsoleTest.LOG.info(query);
+                    ReplicatorFlinkConsoleTest.LOG.info(query);
                 }
             }
             return true;
         } catch (Exception exception) {
-            ReplicatorConsoleTest.LOG.warn(String.format("error executing query \"%s\": %s", scriptFilePath, exception.getMessage()));
+            ReplicatorFlinkConsoleTest.LOG.warn(String.format("error executing query \"%s\": %s", scriptFilePath, exception.getMessage()));
             return false;
         }
 
@@ -178,27 +181,27 @@ public class ReplicatorConsoleTest {
 
         Map<String, Object> configuration = new HashMap<>();
 
-        configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, ReplicatorConsoleTest.zookeeper.getURL());
-        configuration.put(ZookeeperCoordinator.Configuration.LEADERSHIP_PATH, ReplicatorConsoleTest.ZOOKEEPER_LEADERSHIP_PATH);
+        configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, ReplicatorFlinkConsoleTest.zookeeper.getURL());
+        configuration.put(ZookeeperCoordinator.Configuration.LEADERSHIP_PATH, ReplicatorFlinkConsoleTest.ZOOKEEPER_LEADERSHIP_PATH);
 
         configuration.put(WebServer.Configuration.TYPE, WebServer.ServerType.JETTY.name());
 
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_HOSTNAME, Collections.singletonList(ReplicatorConsoleTest.mysqlBinaryLog.getHost()));
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_PORT, String.valueOf(ReplicatorConsoleTest.mysqlBinaryLog.getPort()));
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_SCHEMA, ReplicatorConsoleTest.MYSQL_SCHEMA);
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_USERNAME, ReplicatorConsoleTest.MYSQL_ROOT_USERNAME);
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_PASSWORD, ReplicatorConsoleTest.MYSQL_PASSWORD);
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_HOSTNAME, Collections.singletonList(ReplicatorFlinkConsoleTest.mysqlBinaryLog.getHost()));
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_PORT, String.valueOf(ReplicatorFlinkConsoleTest.mysqlBinaryLog.getPort()));
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_SCHEMA, ReplicatorFlinkConsoleTest.MYSQL_SCHEMA);
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_USERNAME, ReplicatorFlinkConsoleTest.MYSQL_ROOT_USERNAME);
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_PASSWORD, ReplicatorFlinkConsoleTest.MYSQL_PASSWORD);
 
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, ReplicatorConsoleTest.mysqlActiveSchema.getHost());
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, ReplicatorFlinkConsoleTest.mysqlActiveSchema.getHost());
 
-        System.out.println("PORT => " + ReplicatorConsoleTest.mysqlActiveSchema.getPort());
+        System.out.println("PORT => " + ReplicatorFlinkConsoleTest.mysqlActiveSchema.getPort());
 
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(ReplicatorConsoleTest.mysqlActiveSchema.getPort()));
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_SCHEMA, ReplicatorConsoleTest.MYSQL_ACTIVE_SCHEMA);
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, ReplicatorConsoleTest.MYSQL_ROOT_USERNAME);
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PASSWORD, ReplicatorConsoleTest.MYSQL_PASSWORD);
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(ReplicatorFlinkConsoleTest.mysqlActiveSchema.getPort()));
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_SCHEMA, ReplicatorFlinkConsoleTest.MYSQL_ACTIVE_SCHEMA);
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, ReplicatorFlinkConsoleTest.MYSQL_ROOT_USERNAME);
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PASSWORD, ReplicatorFlinkConsoleTest.MYSQL_PASSWORD);
 
-        configuration.put(AugmenterContext.Configuration.TRANSACTION_BUFFER_LIMIT, String.valueOf(ReplicatorConsoleTest.TRANSACTION_LIMIT));
+        configuration.put(AugmenterContext.Configuration.TRANSACTION_BUFFER_LIMIT, String.valueOf(ReplicatorFlinkConsoleTest.TRANSACTION_LIMIT));
         configuration.put(AugmenterContext.Configuration.TRANSACTIONS_ENABLED, true);
 
         configuration.put(Coordinator.Configuration.TYPE, Coordinator.Type.ZOOKEEPER.name());
@@ -214,16 +217,16 @@ public class ReplicatorConsoleTest {
 
         configuration.put(Applier.Configuration.TYPE, Applier.Type.CONSOLE);
         configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name());
-        configuration.put(Replicator.Configuration.CHECKPOINT_PATH, ReplicatorConsoleTest.ZOOKEEPER_CHECKPOINT_PATH);
-        configuration.put(Replicator.Configuration.CHECKPOINT_DEFAULT, ReplicatorConsoleTest.CHECKPOINT_DEFAULT);
+        configuration.put(Replicator.Configuration.CHECKPOINT_PATH, ReplicatorFlinkConsoleTest.ZOOKEEPER_CHECKPOINT_PATH);
+        configuration.put(Replicator.Configuration.CHECKPOINT_DEFAULT, ReplicatorFlinkConsoleTest.CHECKPOINT_DEFAULT);
 
         return configuration;
     }
 
     @AfterClass
     public static void after() {
-        ReplicatorConsoleTest.mysqlBinaryLog.close();
-        ReplicatorConsoleTest.mysqlActiveSchema.close();
-        ReplicatorConsoleTest.zookeeper.close();
+        ReplicatorFlinkConsoleTest.mysqlBinaryLog.close();
+        ReplicatorFlinkConsoleTest.mysqlActiveSchema.close();
+        ReplicatorFlinkConsoleTest.zookeeper.close();
     }
 }

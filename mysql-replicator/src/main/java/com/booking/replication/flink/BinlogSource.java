@@ -12,9 +12,11 @@ import com.booking.replication.supplier.Supplier;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.state.FunctionInitializationContext;
 import org.apache.flink.runtime.state.FunctionSnapshotContext;
 import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
+import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -24,7 +26,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class BinlogSource implements SourceFunction<AugmentedEvent>, CheckpointedFunction {
+public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements CheckpointedFunction {
 
     private static final Logger LOG = LogManager.getLogger(BinlogSource.class);
 
@@ -37,17 +39,18 @@ public class BinlogSource implements SourceFunction<AugmentedEvent>, Checkpointe
     private transient ListState<Long> checkpointedCount;
     private  transient Checkpoint binlogCheckpoint;
 
+    private transient Supplier supplier;
+    private transient Coordinator coordinator;
 
-    public BinlogSource(
-            Map<String, Object> configuration,//Supplier supplier, Checkpoint binlogCheckpoint
-            boolean overrideCheckpointStartPosition, String overrideCheckpointBinLogFileName, long overrideCheckpointBinlogPosition, String overrideCheckpointGtidSet) throws IOException {
-        //this.supplier = supplier;
-        //this.binlogCheckpoint = binlogCheckpoint;
+
+    public BinlogSource(Map<String, Object> configuration) throws IOException {
         this.configuration = configuration;
         this.checkpointPath = configuration.get(Replicator.Configuration.CHECKPOINT_PATH).toString();
+    }
 
-        // the above are transient, so will not be available to run
-        // TODO: put them in source Context
+    @Override
+    public void open(Configuration parameters) {
+
     }
 
     @Override
@@ -77,7 +80,6 @@ public class BinlogSource implements SourceFunction<AugmentedEvent>, Checkpointe
                 Collection<AugmentedEvent> augmentedEvents = augmenter.apply(event);
 
                 Collection<AugmentedEvent> filteredEvents = augmenterFilter.apply(augmentedEvents);
-
 
                 if (augmentedEvents != null) {
                     for (AugmentedEvent filteredEvent : filteredEvents) {

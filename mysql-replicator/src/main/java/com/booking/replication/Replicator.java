@@ -171,7 +171,7 @@ public class Replicator {
         env.enableCheckpointing(100).setStateBackend(
                 new FsStateBackend("file:///home/test_checkpoint",
                 false)
-        );q
+        );
 
 
         env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
@@ -180,11 +180,7 @@ public class Replicator {
 
             // TODO: make this nicer - all params should come from configuration
             this.source = new BinlogSource(
-                    configuration,
-                    overrideCheckpointStartPosition,
-                    overrideCheckpointBinLogFileName,
-                    overrideCheckpointBinlogPosition,
-                    overrideCheckpointGtidSet
+                    configuration
             );
 
             this.sink = ReplicatorFlinkSink.build(configuration);

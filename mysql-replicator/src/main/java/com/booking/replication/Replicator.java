@@ -71,7 +71,7 @@ public class Replicator {
 
     private final StreamExecutionEnvironment env;
     private BinlogSource source;
-    private SinkFunction<Object> sink;
+    private SinkFunction<String> sink;
 
 //    private final Streams<Collection<AugmentedEvent>, Collection<AugmentedEvent>> destinationStream;
 //    private final Streams<RawEvent, Collection<AugmentedEvent>> sourceStream;
@@ -183,8 +183,6 @@ public class Replicator {
                     configuration
             );
 
-            this.sink = ReplicatorFlinkSink.build(configuration);
-
             DataStream<AugmentedEvent> streamSource = env
                     .addSource(
                             source
@@ -205,25 +203,16 @@ public class Replicator {
                             event -> event
                     );
 
-            DataStream<Object> stringifiedDataStream = partitionedDataStream
+            DataStream<String> stringifiedDataStream = partitionedDataStream
                 .map(
                     augmentedEvent-> augmentedEvent.toJSONString()
                 );
 
+            this.sink = ReplicatorFlinkSink.build(configuration);
 
             stringifiedDataStream.addSink(
-                    sink
+                    this.sink
             );
-
-
-//            FlinkKafkaProducer<String> kafkaProducer = new FlinkKafkaProducer<String>(
-//                    "localhost:9092",   // broker list
-//                    "my-topic",            // target topic
-//                    new SimpleStringSchema()      // serialization schema
-//            );
-//            kafkaProducer.setWriteTimestampToKafka(true);
-//            stringifiedDataStream.addSink(kafkaProducer);
-
 
         } catch (IOException exception) {
 //                exceptionHandle.accept(exception);

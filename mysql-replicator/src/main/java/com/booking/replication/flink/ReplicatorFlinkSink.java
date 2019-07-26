@@ -1,6 +1,8 @@
 package com.booking.replication.flink;
 
+import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -16,43 +18,53 @@ public interface ReplicatorFlinkSink extends SinkFunction<Object> {
 
         CONSOLE {
             @Override
-            protected SinkFunction<Object> newInstance(Map<String, Object> configuration) {
-                return new SinkFunction<Object>() {
+            protected SinkFunction<String> newInstance(Map<String, Object> configuration) {
+                return new SinkFunction<String>() {
                     @Override
-                    public void invoke(Object augmentedEventString) throws Exception {
+                    public void invoke(String augmentedEventString) throws Exception {
                         System.out.println("augmentedEvent => " + augmentedEventString.toString());
                     }
                 };
             }
         },
 
+        KAFKA {
+            @Override
+            protected SinkFunction<String> newInstance(Map<String, Object> configuration) {
+
+                FlinkKafkaProducer<String> kafkaProducer = new FlinkKafkaProducer<String>(
+                    "localhost:9092",   // broker list
+                    "replicator",         // target topic
+                    new SimpleStringSchema()     // serialization schema
+                );
+                kafkaProducer.setWriteTimestampToKafka(true);
+
+                return kafkaProducer;
+            }
+        },
+
         HBASE {
             @Override
-            protected SinkFunction<Object> newInstance(Map<String, Object> configuration)  {
+            protected SinkFunction<String> newInstance(Map<String, Object> configuration)  {
                 return null;// new HBaseApplier(configuration);
             }
         },
-        KAFKA {
-            @Override
-            protected SinkFunction<Object> newInstance(Map<String, Object> configuration) {
-                return null;//new KafkaApplier(configuration);
-            }
-        },
+
         COUNT {
             @Override
-            protected SinkFunction<Object> newInstance(Map<String, Object> configuration) {
+            protected SinkFunction<String> newInstance(Map<String, Object> configuration) {
                 return null;//new CountApplier(configuration);
             }
         };
 
-        protected abstract SinkFunction<Object> newInstance(Map<String, Object> configuration);
+        protected abstract SinkFunction<String> newInstance(Map<String, Object> configuration);
     }
 
     interface Configuration {
         String TYPE = "applier.type";
     }
 
-    static SinkFunction<Object> build(Map<String, Object> configuration) {
+    static SinkFunction<String> build(Map<String, Object> configuration) {
         try {
             return ReplicatorFlinkSink.Type.valueOf(
                     configuration.getOrDefault(

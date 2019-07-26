@@ -37,11 +37,6 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
     private final String checkpointPath;
 
     private transient ListState<Long> checkpointedCount;
-    private  transient Checkpoint binlogCheckpoint;
-
-    private transient Supplier supplier;
-    private transient Coordinator coordinator;
-
 
     public BinlogSource(Map<String, Object> configuration) throws IOException {
         this.configuration = configuration;
@@ -153,6 +148,8 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
                 System.out.println("Source: main loop count #" + count); // this is ordered;
 
                 AugmentedEvent augmentedEvent = incomingAugmentedEvents.take();
+
+                System.out.println("augmentedEvent -> " + augmentedEvent.toJSONString());
 
                 sourceContext.collectWithTimestamp(
                         augmentedEvent,

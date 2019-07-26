@@ -123,7 +123,6 @@ public class ReplicatorFlinkKafkaTest {
         );
         ReplicatorFlinkKafkaTest.schemaRegistry = servicesProvider.startSchemaRegistry(network);
 
-
     }
 
     @Test

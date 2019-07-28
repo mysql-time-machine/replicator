@@ -241,9 +241,15 @@ public class ReplicatorFlinkKafkaTest {
         configuration.put(ReplicatorPartitioner.Configuration.TYPE, ReplicatorPartitioner.Type.TABLE_NAME.name());
 
         configuration.put(Applier.Configuration.TYPE, Applier.Type.KAFKA);
+
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorFlinkKafkaTest.kafka.getURL());
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG), ByteArraySerializer.class);
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG), KafkaAvroSerializer.class);
+
+        configuration.put(
+                KafkaApplier.Configuration.TOPIC,
+                ReplicatorFlinkKafkaTest.KAFKA_REPLICATOR_TOPIC_NAME
+        );
 
         configuration.put(
                 KafkaApplier.Configuration.SCHEMA_REGISTRY_URL,

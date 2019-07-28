@@ -76,10 +76,11 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
             if (augmentedEvents != null) {
                 for (AugmentedEvent filteredEvent : filteredEvents) {
-                    sourceContext.collectWithTimestamp(
-                            filteredEvent,
-                            filteredEvent.getHeader().getTimestamp()
-                    );
+                    sourceContext.collect(filteredEvent);
+//                    sourceContext.collectWithTimestamp(
+//                            filteredEvent,
+//                            filteredEvent.getHeader().getTimestamp()
+//                    );
                 }
             }
 

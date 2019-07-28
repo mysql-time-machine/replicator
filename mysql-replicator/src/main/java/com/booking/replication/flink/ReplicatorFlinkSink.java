@@ -19,6 +19,7 @@ public class ReplicatorFlinkSink extends RichSinkFunction<Object> {
             protected RichSinkFunction<Collection<AugmentedEvent>> newInstance(Map<String, Object> configuration) {
 
                 return new RichSinkFunction<Collection<AugmentedEvent>>() {
+
                     @Override
                     public void invoke(Collection<AugmentedEvent> value, Context context) throws Exception {
                         for (AugmentedEvent e: value) {

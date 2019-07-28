@@ -17,6 +17,7 @@ public class KafkaSink extends RichSinkFunction<Collection<AugmentedEvent>> {
 
         public KafkaSink(Map<String, Object> configuration) {
             this.configuration = configuration;
+            this.kafkaApplier = new KafkaApplier(configuration);
         }
 
         @Override
@@ -26,7 +27,7 @@ public class KafkaSink extends RichSinkFunction<Collection<AugmentedEvent>> {
 
         @Override
         public void open(Configuration parameters) throws Exception {
-            this.kafkaApplier = new KafkaApplier(configuration);
+            System.out.println("open");
         }
 
 }

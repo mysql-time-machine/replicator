@@ -5,9 +5,7 @@ import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.commons.map.MapFlatter;
 import com.booking.replication.commons.metrics.Metrics;
 import com.booking.replication.controller.WebServer;
-import com.booking.replication.flink.BinlogEventFlinkPartitioner;
-import com.booking.replication.flink.BinlogSource;
-import com.booking.replication.flink.ReplicatorFlinkSink;
+import com.booking.replication.flink.*;
 import com.booking.replication.supplier.Supplier;
 
 import com.booking.utils.BootstrapReplicator;
@@ -177,7 +175,7 @@ public class Replicator {
         );
 
 
-        env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
+        env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime);
 
         try {
 
@@ -218,13 +216,26 @@ public class Replicator {
                             }
                         }
 
-                );
+                ).forceNonParallel();
 
-            this.sink = ReplicatorFlinkSink.build(configuration);
+            RichSinkFunction<Collection<AugmentedEvent>> richSinkFunction =
+                    new ReplicatorGenericFlinkSink(configuration);
 
-            batchedDataStream.addSink(
-                    this.sink
-            );
+            batchedDataStream
+                    .addSink(new SinkFunction<Collection<AugmentedEvent>>() {
+
+                        private transient Applier a =  Applier.build(configuration);;
+                        @Override
+                        public void invoke(Collection<AugmentedEvent> value) throws Exception {
+                            System.out.println("----apply---");
+                            if (a == null) {
+                                System.out.println("Lost applier");
+                                a = Applier.build(configuration);
+                            }
+                            a.apply(value);
+
+                        }
+                    });
 
         } catch (IOException exception) {
 //                exceptionHandle.accept(exception);

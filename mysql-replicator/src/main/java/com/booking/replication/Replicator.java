@@ -19,13 +19,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
 import org.apache.commons.cli.*;
+import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.functions.Partitioner;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
+import org.apache.flink.streaming.api.functions.timestamps.AscendingTimestampExtractor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -71,7 +74,7 @@ public class Replicator {
 
     private final StreamExecutionEnvironment env;
     private BinlogSource source;
-    private SinkFunction<String> sink;
+    private RichSinkFunction<Collection<AugmentedEvent>> sink;
 
 //    private final Streams<Collection<AugmentedEvent>, Collection<AugmentedEvent>> destinationStream;
 //    private final Streams<RawEvent, Collection<AugmentedEvent>> sourceStream;
@@ -188,7 +191,6 @@ public class Replicator {
                             source
                     ).forceNonParallel();
 
-
             Partitioner<AugmentedEvent> binlogEventFlinkPartitioner =
                 BinlogEventFlinkPartitioner
                         .build(configuration);
@@ -203,14 +205,24 @@ public class Replicator {
                             event -> event
                     );
 
-            DataStream<String> stringifiedDataStream = partitionedDataStream
+            DataStream<Collection<AugmentedEvent>> batchedDataStream = partitionedDataStream
                 .map(
-                    augmentedEvent-> augmentedEvent.toJSONString()
+                    // ugly poc temp hack - todo: collect events into lists grouped by transaction
+                    // todo 2: batch api?
+                        new MapFunction<AugmentedEvent, Collection<AugmentedEvent>>() {
+                            @Override
+                            public Collection<AugmentedEvent> map(AugmentedEvent augmentedEvent) throws Exception {
+                                ArrayList<AugmentedEvent> l = new ArrayList<AugmentedEvent>();
+                                l.add((AugmentedEvent) augmentedEvent);
+                                return l;
+                            }
+                        }
+
                 );
 
             this.sink = ReplicatorFlinkSink.build(configuration);
 
-            stringifiedDataStream.addSink(
+            batchedDataStream.addSink(
                     this.sink
             );
 

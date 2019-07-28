@@ -70,21 +70,19 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
         supplier.onEvent((event) -> {
 
-            try {
+            Collection<AugmentedEvent> augmentedEvents = augmenter.apply(event);
 
-                Collection<AugmentedEvent> augmentedEvents = augmenter.apply(event);
+            Collection<AugmentedEvent> filteredEvents = augmenterFilter.apply(augmentedEvents);
 
-                Collection<AugmentedEvent> filteredEvents = augmenterFilter.apply(augmentedEvents);
-
-                if (augmentedEvents != null) {
-                    for (AugmentedEvent filteredEvent : filteredEvents) {
-                        incomingAugmentedEvents.put(filteredEvent);
-                    }
+            if (augmentedEvents != null) {
+                for (AugmentedEvent filteredEvent : filteredEvents) {
+                    sourceContext.collectWithTimestamp(
+                            filteredEvent,
+                            filteredEvent.getHeader().getTimestamp()
+                    );
                 }
-
-            } catch (InterruptedException e) {
-                e.printStackTrace();
             }
+
         });
 
         // coordinator
@@ -117,6 +115,7 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
         });
 
         coordinator.onLeadershipLose(() -> {
+
             try {
 
                 LOG.info("Stopping supplier");
@@ -129,7 +128,8 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
                 LOG.info("Supplier stopped");
 
-            } catch (IOException exception) {
+            } catch (IOException e) {
+                e.printStackTrace();
 //                exceptionHandle.accept(exception);
             }
         });
@@ -147,14 +147,7 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
                 System.out.println("Source: main loop count #" + count); // this is ordered;
 
-                AugmentedEvent augmentedEvent = incomingAugmentedEvents.take();
-
-                System.out.println("augmentedEvent -> " + augmentedEvent.toJSONString());
-
-                sourceContext.collectWithTimestamp(
-                        augmentedEvent,
-                        augmentedEvent.getHeader().getTimestamp()
-                );
+                Thread.sleep(100);
 
                 count++;
 

@@ -135,10 +135,10 @@ public class ReplicatorFlinkKafkaTest {
         File file = new File("src/test/resources/" + ReplicatorFlinkKafkaTest.MYSQL_TEST_SCRIPT);
 
         runMysqlScripts(this.getConfiguration(), file.getAbsolutePath());
-
+//
         Thread.sleep(1000000);
-
-        replicator.stop();
+//
+//        replicator.stop();
     }
 
     private boolean runMysqlScripts(Map<String, Object> configuration, String scriptFilePath) {

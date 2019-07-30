@@ -21,6 +21,10 @@ public class AugmentedEvent implements Serializable {
     public AugmentedEvent() {
     }
 
+    public String getTransactionUUID() {
+        return this.header.getEventTransaction().getIdentifier();
+    }
+
     public AugmentedEvent(AugmentedEventHeader header, AugmentedEventData data) {
         this.header = header;
         this.data = data;

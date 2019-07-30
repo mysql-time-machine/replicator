@@ -19,14 +19,14 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.apache.commons.cli.*;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.functions.Partitioner;
+import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
+import org.apache.flink.streaming.api.datastream.KeyedStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
-import org.apache.flink.streaming.api.functions.timestamps.AscendingTimestampExtractor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -170,7 +170,7 @@ public class Replicator {
         env = StreamExecutionEnvironment.createLocalEnvironment();
 
         env.enableCheckpointing(100).setStateBackend(
-                new FsStateBackend("file:///home/test_checkpoint",
+                new FsStateBackend("file:///Users/test_checkpoint",
                 false)
         );
 
@@ -179,32 +179,23 @@ public class Replicator {
 
         try {
 
-            // TODO: make this nicer - all params should come from configuration
-            this.source = new BinlogSource(
-                    configuration
-            );
+            this.source = new BinlogSource(configuration);
 
-            DataStream<AugmentedEvent> streamSource = env.addSource(
-                            source
-                    ).forceNonParallel();
+            DataStream<AugmentedEvent> augmentedEventDataStream = env.addSource(source).forceNonParallel();
 
-            Partitioner<AugmentedEvent> binlogEventFlinkPartitioner =
-                BinlogEventFlinkPartitioner
-                        .build(configuration);
+            Partitioner<AugmentedEvent> binlogEventFlinkPartitioner = BinlogEventFlinkPartitioner.build(configuration);
 
-            DataStream<AugmentedEvent> partitionedDataStream =
-                ((SingleOutputStreamOperator<AugmentedEvent>) streamSource)
+            DataStream<AugmentedEvent> partitionedDataStream = augmentedEventDataStream
                     .partitionCustom(
                             binlogEventFlinkPartitioner,
                             // binlogEventPartitioner knows how to convert event to partition,
                             // so there is no need for a separate KeySelector
-                            event -> event
+                            event -> event // <- identity key selector
                     );
 
-            DataStream<Collection<AugmentedEvent>> batchedDataStream = partitionedDataStream
+            DataStream<Collection<AugmentedEvent>> chunkedStream = partitionedDataStream
                 .map(
-                    // ugly poc temp hack - todo: collect events into lists grouped by transaction
-                    // todo 2: batch api?
+                        // ugly poc hack - todo 1: collect events into lists grouped by transaction
                         new MapFunction<AugmentedEvent, Collection<AugmentedEvent>>() {
                             @Override
                             public Collection<AugmentedEvent> map(AugmentedEvent augmentedEvent) throws Exception {
@@ -214,12 +205,12 @@ public class Replicator {
                             }
                         }
 
-                ).forceNonParallel();
+                );
 
             RichSinkFunction<Collection<AugmentedEvent>> richSinkFunction =
                     new ReplicatorGenericFlinkSink(configuration);
 
-            batchedDataStream
+            chunkedStream
                     .addSink(new SinkFunction<Collection<AugmentedEvent>>() {
                         private transient Applier a =  Applier.build(configuration);;
                         @Override
@@ -234,21 +225,16 @@ public class Replicator {
                     });
 
         } catch (IOException exception) {
-//                exceptionHandle.accept(exception);
+                exception.printStackTrace();
         } catch (Exception e) {
                 e.printStackTrace();
         }
-
-//        this.supplier.onException(exceptionHandle);
-
     }
-
 
     public Applier getApplier() {
         return null; // TODO: fix this
 //        return this.applier;
     }
-
 
     public void start() throws Exception {
 
@@ -270,18 +256,14 @@ public class Replicator {
 //        this.coordinator.wait(timeout, unit);
     }
 
-
-
     public void stop() {
         try {
 
             Replicator.LOG.info("Stopping Binlog Flink Source");
             this.source.cancel();
 
-            // =================================
-
-//            Replicator.LOG.info("closing sink");
-//            this.sink.close();
+            Replicator.LOG.info("closing sink");
+            this.sink.close();
 
             Replicator.LOG.info("stopping web server");
             this.webServer.stop();
@@ -294,6 +276,8 @@ public class Replicator {
 
         } catch (IOException exception) {
             Replicator.LOG.error("error stopping coordinator", exception);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 

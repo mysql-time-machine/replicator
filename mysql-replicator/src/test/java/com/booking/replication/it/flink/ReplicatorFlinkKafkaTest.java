@@ -1,4 +1,4 @@
-package com.booking.replication.it;
+package com.booking.replication.it.flink;
 
 import com.booking.replication.Replicator;
 import com.booking.replication.applier.Applier;
@@ -16,17 +16,12 @@ import com.booking.replication.commons.services.ServicesProvider;
 import com.booking.replication.controller.WebServer;
 import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.coordinator.ZookeeperCoordinator;
-import com.booking.replication.it.kafka.ReplicatorKafkaTest;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 
 import com.mysql.jdbc.Driver;
 
-import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
-import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
-import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.dbcp2.BasicDataSource;
 
 import org.apache.kafka.clients.consumer.Consumer;

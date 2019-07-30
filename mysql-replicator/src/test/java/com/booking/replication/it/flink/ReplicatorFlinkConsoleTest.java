@@ -1,4 +1,4 @@
-package com.booking.replication.it;
+package com.booking.replication.it.flink;
 
 import com.booking.replication.Replicator;
 import com.booking.replication.applier.Applier;
@@ -14,7 +14,6 @@ import com.booking.replication.commons.services.ServicesProvider;
 import com.booking.replication.controller.WebServer;
 import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.coordinator.ZookeeperCoordinator;
-import com.booking.replication.it.kafka.ReplicatorKafkaTest;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 
@@ -29,7 +28,6 @@ import org.apache.logging.log4j.Logger;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.testcontainers.containers.Network;
 
 import java.io.*;
 import java.sql.Connection;

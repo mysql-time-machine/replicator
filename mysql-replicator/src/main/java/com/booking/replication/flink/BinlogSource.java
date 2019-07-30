@@ -146,7 +146,7 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
             // internal state updates and emission of elements are an atomic operation
             synchronized (sourceContext.getCheckpointLock()) {
 
-                System.out.println("Source: main loop count #" + count); // this is ordered;
+                // System.out.println("Source: main loop count #" + count); // this is ordered;
 
                 Thread.sleep(100);
 

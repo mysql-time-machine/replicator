@@ -175,7 +175,7 @@ public class Replicator {
         );
 
 
-        env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime);
+        env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
         try {
 
@@ -184,8 +184,7 @@ public class Replicator {
                     configuration
             );
 
-            DataStream<AugmentedEvent> streamSource = env
-                    .addSource(
+            DataStream<AugmentedEvent> streamSource = env.addSource(
                             source
                     ).forceNonParallel();
 
@@ -195,7 +194,6 @@ public class Replicator {
 
             DataStream<AugmentedEvent> partitionedDataStream =
                 ((SingleOutputStreamOperator<AugmentedEvent>) streamSource)
-                    .setParallelism(tasks)
                     .partitionCustom(
                             binlogEventFlinkPartitioner,
                             // binlogEventPartitioner knows how to convert event to partition,
@@ -223,7 +221,6 @@ public class Replicator {
 
             batchedDataStream
                     .addSink(new SinkFunction<Collection<AugmentedEvent>>() {
-
                         private transient Applier a =  Applier.build(configuration);;
                         @Override
                         public void invoke(Collection<AugmentedEvent> value) throws Exception {
@@ -233,7 +230,6 @@ public class Replicator {
                                 a = Applier.build(configuration);
                             }
                             a.apply(value);
-
                         }
                     });
 

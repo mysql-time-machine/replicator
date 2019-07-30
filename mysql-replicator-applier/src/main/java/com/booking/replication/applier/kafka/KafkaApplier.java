@@ -115,6 +115,16 @@ public class KafkaApplier implements Applier {
 
     @Override
     public Boolean apply(Collection<AugmentedEvent> events) {
+
+        System.out.println("Kafka Applier got => ");
+        events.stream().forEach(e -> {
+            try {
+                System.out.println(e.toJSONString());
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            }
+        });
+
         if (Objects.equals(this.dataFormat, MessageFormat.AVRO)) {
 
             try {
@@ -166,8 +176,11 @@ public class KafkaApplier implements Applier {
                 throw new UncheckedIOException(e);
             }
         } else {
+            System.out.println("KafkaApplier format: JSON");
             try {
                 for (AugmentedEvent event : events) {
+
+
                     int partition = this.replicatorPartitioner.apply(event, this.totalPartitions);
 
                     this.producers.computeIfAbsent(
@@ -181,9 +194,12 @@ public class KafkaApplier implements Applier {
                     ));
 
                     writeMetrics(event, 1);
+
+
                 }
 
                 return true;
+
             } catch (JsonProcessingException exception) {
                 throw new UncheckedIOException(exception);
             }

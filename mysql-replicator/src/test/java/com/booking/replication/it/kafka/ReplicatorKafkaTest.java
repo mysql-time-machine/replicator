@@ -73,7 +73,7 @@ public class ReplicatorKafkaTest {
     private static final String MYSQL_INIT_SCRIPT = "mysql.init.sql";
     private static final String MYSQL_TEST_SCRIPT = "mysql.binlog.test.sql";
     private static final String MYSQL_CONF_FILE = "my.cnf";
-    private static final int TRANSACTION_LIMIT = 5;
+    private static final int TRANSACTION_LIMIT = 500;
     private static final String CONNECTION_URL_FORMAT = "jdbc:mysql://%s:%d/%s";
 
     private static final String KAFKA_REPLICATOR_TOPIC_NAME = "replicator";

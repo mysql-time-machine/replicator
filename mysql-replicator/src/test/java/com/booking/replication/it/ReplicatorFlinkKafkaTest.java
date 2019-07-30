@@ -8,6 +8,7 @@ import com.booking.replication.applier.kafka.KafkaApplier;
 import com.booking.replication.augmenter.ActiveSchemaManager;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.AugmenterContext;
+import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.checkpoint.CheckpointApplier;
 import com.booking.replication.commons.conf.MySQLConfiguration;
 import com.booking.replication.commons.services.ServicesControl;
@@ -21,10 +22,19 @@ import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 
 import com.mysql.jdbc.Driver;
 
+import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
+import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
+import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.dbcp2.BasicDataSource;
 
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -135,7 +145,42 @@ public class ReplicatorFlinkKafkaTest {
         File file = new File("src/test/resources/" + ReplicatorFlinkKafkaTest.MYSQL_TEST_SCRIPT);
 
         runMysqlScripts(this.getConfiguration(), file.getAbsolutePath());
-//
+
+
+        Thread.sleep(5000);
+
+        Map<String, Object> kafkaConfiguration = new HashMap<>();
+
+        kafkaConfiguration.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, ReplicatorFlinkKafkaTest.kafka.getURL());
+        kafkaConfiguration.put(ConsumerConfig.GROUP_ID_CONFIG, ReplicatorFlinkKafkaTest.KAFKA_REPLICATOR_IT_GROUP_ID);
+        kafkaConfiguration.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+//        String schemaRegistryUrl = (String) this.getConfiguration().get(KafkaApplier.Configuration.SCHEMA_REGISTRY_URL);
+//        kafkaConfiguration.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl);
+//        CachedSchemaRegistryClient client = new CachedSchemaRegistryClient(schemaRegistryUrl, 1000);
+//        KafkaAvroDeserializer kafkaAvroDeserializer = new KafkaAvroDeserializer(client);
+
+        try (Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(kafkaConfiguration, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
+            consumer.subscribe(Collections.singleton(ReplicatorFlinkKafkaTest.KAFKA_REPLICATOR_TOPIC_NAME));
+
+            boolean consumed = false;
+
+            while (!consumed) {
+
+                for (ConsumerRecord<byte[], byte[]> record : consumer.poll(1000L)) {
+//                    GenericRecord deserialize = (GenericRecord) kafkaAvroDeserializer.deserialize("", record.value());
+//                    System.out.println(deserialize.toString());
+                    AugmentedEvent augmentedEvent = AugmentedEvent.fromJSON(record.key(), record.value());
+
+                    ReplicatorFlinkKafkaTest.LOG.info(new String(augmentedEvent.toJSON()));
+
+                    System.out.println(new String(record.key()));
+
+                    consumed = true;
+                }
+            }
+        }
+
         Thread.sleep(1000000);
 //
 //        replicator.stop();
@@ -255,7 +300,7 @@ public class ReplicatorFlinkKafkaTest {
                 KafkaApplier.Configuration.SCHEMA_REGISTRY_URL,
                 String.format("http://%s:%d", ReplicatorFlinkKafkaTest.schemaRegistry.getHost(),
                         ReplicatorFlinkKafkaTest.schemaRegistry.getPort()));
-        configuration.put(KafkaApplier.Configuration.FORMAT, "avro");
+        configuration.put(KafkaApplier.Configuration.FORMAT, "json");
 
 
         configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name());

@@ -1,6 +1,7 @@
 package com.booking.replication.it.hbase.impl
 
 import com.booking.replication.applier.hbase.StorageConfig
+import com.booking.replication.augmenter.AugmenterFilter
 import com.booking.replication.augmenter.model.AugmenterModel
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
 import com.booking.replication.commons.services.ServicesControl
@@ -33,6 +34,17 @@ class TableNameMergeFilterTestImpl implements ReplicatorHBasePipelineIntegration
         private final tableName1 = "table_merge_test_201811"
         private final tableName2 = "table_merge_test_201812"
         private final tableNameMerged = "table_merge_test"
+
+        private static final String AUGMENTER_FILTER_TYPE = "TABLE_MERGE_PATTERN";
+        private static final String AUGMENTER_FILTER_CONFIGURATION = "([_][12]\\d{3}(0[1-9]|1[0-2]))";
+
+        @Override
+        Map<String, Object> perTestConfiguration(Map<String,Object> genericConfig) {
+            println "...TableNameMergeFilterTestImpl.getConfiguration() called, setting FILTER_TYPE and FILTER_CONFIGURATION"
+            genericConfig.put(AugmenterFilter.Configuration.FILTER_TYPE, AUGMENTER_FILTER_TYPE);
+            genericConfig.put(AugmenterFilter.Configuration.FILTER_CONFIGURATION, AUGMENTER_FILTER_CONFIGURATION);
+            return genericConfig;
+        }
 
         @Override
         String testName() {

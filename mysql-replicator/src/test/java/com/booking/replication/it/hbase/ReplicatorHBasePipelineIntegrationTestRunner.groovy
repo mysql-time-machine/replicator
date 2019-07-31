@@ -23,10 +23,12 @@ import com.booking.replication.it.hbase.impl.SplitTransactionTestImpl
 import com.booking.replication.it.hbase.impl.TableNameMergeFilterTestImpl
 import com.booking.replication.it.hbase.impl.TableWhiteListTest
 import com.booking.replication.it.util.HBase
+import com.booking.replication.it.util.MySQL
 import com.booking.replication.supplier.Supplier
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier
 import com.booking.replication.it.hbase.impl.TransmitInsertsTestImpl
 import com.mysql.jdbc.Driver
+import groovy.sql.Sql
 import org.apache.commons.dbcp2.BasicDataSource
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hbase.*
@@ -74,9 +76,6 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
     @Shared private static final String ACTIVE_SCHEMA_INIT_SCRIPT = "active_schema.init.sql"
 
-    @Shared public static final String AUGMENTER_FILTER_TYPE = "TABLE_MERGE_PATTERN"
-    @Shared public static final String AUGMENTER_FILTER_CONFIGURATION = "([_][12]\\d{3}(0[1-9]|1[0-2]))"
-
     @Shared private static final String HBASE_COLUMN_FAMILY_NAME = "d"
     @Shared public static final String HBASE_TEST_PAYLOAD_TABLE_NAME = "tbl_payload_context"
 
@@ -113,6 +112,9 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
                     null
             )
     )
+
+    @Shared Sql replicantHandle
+
     @Shared  ServicesControl mysqlActiveSchema = servicesProvider.startMySQL(
             new MySQLConfiguration(
                     MYSQL_ACTIVE_SCHEMA,
@@ -167,16 +169,11 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         LOG.info("env: BIGTABLE_PROJECT => " + BIGTABLE_PROJECT)
         LOG.info("env: BIGTABLE_INSTANCE => " + BIGTABLE_INSTANCE)
 
-        // start
-        replicator = startReplicator()
     }
 
     def cleanupSpec() {
 
         LOG.info("tests done, shutting down replicator pipeline")
-
-        // stop
-        stopReplicator(replicator)
 
         hbase.close()
         mysqlBinaryLog.close()
@@ -189,27 +186,41 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
     @Unroll
     def "#testName: { EXPECTED =>  #expected, RECEIVED => #received }"() {
-
         expect:
         received == expected
 
         where:
         testName << TESTS.collect({ test ->
+            if ( null == replicantHandle ) {
+                replicantHandle = MySQL.getSqlHandle(true,'INFORMATION_SCHEMA',mysqlBinaryLog)
+            }
+            // Needs to RESET MASTER between;
+            replicantHandle.execute('RESET MASTER');
+
+            println "Executing test: " + test.testName();
+            Map<String,Object> config = getConfiguration();
+            if ( test.metaClass.getMetaMethod("perTestConfiguration") != null ) {
+                config = test.perTestConfiguration(config);
+            }
+
+            replicator = startReplicator(config)
+
             test.doAction(mysqlBinaryLog)
-            sleep(60000)
+            sleep(15000)
             ( (HBaseApplier) replicator.getApplier() ).forceFlushAll()
+            sleep(15000)
             test.testName()
+            stopReplicator(replicator)
         })
         expected << TESTS.collect({ test -> test.getExpectedState()})
         received << TESTS.collect({ test -> test.getActualState()})
-
-    }
+    };
 
     private stopReplicator(Replicator replicator) {
         replicator.stop()
     }
 
-    private Replicator startReplicator() {
+    private Replicator startReplicator(Map<String,Object> configuration) {
 
         LOG.info("waiting for containers setSink start...")
 
@@ -236,7 +247,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         }
 
         LOG.info("Starting the Replicator...")
-        Replicator replicator = new Replicator(this.getConfiguration())
+        Replicator replicator = new Replicator(configuration)
 
         replicator.start()
 
@@ -421,7 +432,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         return generatedString
     }
 
-    private Map<String, Object> getConfiguration() {
+    protected Map<String, Object> getConfiguration() {
 
         Map<String, Object> configuration = new HashMap<>()
 
@@ -456,11 +467,6 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         // Augmenter
         configuration.put(AugmenterContext.Configuration.TRANSACTION_BUFFER_LIMIT, String.valueOf(AUGMENTER_TRANSACTION_BUFFER_SIZE_LIMIT))
         configuration.put(AugmenterContext.Configuration.TRANSACTIONS_ENABLED, true)
-
-        configuration.put(AugmenterContext.Configuration.INCLUDE_TABLE, ['sometable_included'])
-
-        configuration.put(AugmenterFilter.Configuration.FILTER_TYPE, AUGMENTER_FILTER_TYPE)
-        configuration.put(AugmenterFilter.Configuration.FILTER_CONFIGURATION, AUGMENTER_FILTER_CONFIGURATION)
 
         // Applier Configuration
         configuration.put(Seeker.Configuration.TYPE, Seeker.Type.NONE.name())

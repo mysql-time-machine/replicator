@@ -1,7 +1,7 @@
 package com.booking.replication.it.hbase.impl
 
 import com.booking.replication.applier.hbase.StorageConfig
-import com.booking.replication.augmenter.model.AugmenterModel
+import com.booking.replication.augmenter.AugmenterContext
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
 import com.booking.replication.commons.services.ServicesControl
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTestRunner
@@ -28,6 +28,14 @@ class TableWhiteListTest implements ReplicatorHBasePipelineIntegrationTest {
 
     private String TABLE_NAME_INCLUDED = "sometable_included"
     private String TABLE_NAME_EXCLUDED = "sometable_excluded"
+
+    @Override
+    Map<String, Object> perTestConfiguration(Map<String,Object> genericConfig) {
+        println "...TableWhiteListTest.getConfiguration() called, setting INCLUDE_TABLE"
+        genericConfig.put(AugmenterContext.Configuration.INCLUDE_TABLE, [ TABLE_NAME_INCLUDED ]);
+        println genericConfig.entrySet().toArray().join(":")
+        return genericConfig;
+    }
 
     private static final ObjectMapper MAPPER = new ObjectMapper()
 

@@ -22,7 +22,11 @@ public class AugmentedEvent implements Serializable {
     }
 
     public String getTransactionUUID() {
-        return this.header.getEventTransaction().getIdentifier();
+        if (this.getHeader().getEventTransaction() != null) {
+            return this.header.getEventTransaction().getIdentifier();
+        } else {
+            return "";
+        }
     }
 
     public AugmentedEvent(AugmentedEventHeader header, AugmentedEventData data) {

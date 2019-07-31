@@ -30,11 +30,14 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
     // serializable state
     private volatile boolean isRunning = true;
+    private volatile boolean isLeader = false;
+
     private Map<String, Object> configuration;
     private final String checkpointPath;
 
     // non-serializable
     private transient long count = 0L;                    // TODO: dummy checkpoint value; replace with GTIDSet
+    private transient String GTIDSet = "";
     private transient ListState<Long> checkpointedCount;  // TODO: use this for GTIDSet checkpoint
 
     public BinlogSource(Map<String, Object> configuration) throws IOException {
@@ -88,6 +91,7 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
         coordinator.onLeadershipTake(() -> {
 
             try {
+
                 LOG.info("Acquired leadership. Loading checkpoint.");
 
                 Checkpoint binlogCheckpoint = null;
@@ -106,6 +110,14 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
                 LOG.info("Supplier started.");
 
+                synchronized (sourceContext.getCheckpointLock()) {
+                    if (!isLeader) {
+                        isLeader = true;
+                    } else {
+                        LOG.info("Re-acquired leadership");
+                    }
+                }
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -115,11 +127,16 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
             try {
 
+
                 LOG.info("Stopping supplier");
 
                 supplier.stop();
 
                 LOG.info("Supplier stopped");
+
+                synchronized (sourceContext.getCheckpointLock()) {
+                    isLeader = false;
+                }
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -137,13 +154,13 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
             // internal state updates and emission of elements are an atomic operation
             synchronized (sourceContext.getCheckpointLock()) {
 
-                System.out.println("Source: main loop count #" + count); // this is ordered;
-
-                Thread.sleep(100);
-
-                count++;
-
+                if (isLeader) {
+                    System.out.println("Source: main loop count #" + count); // this is ordered;
+                    count++;
+                }
             }
+
+            Thread.sleep(100);
         }
 
         LOG.info("closing augmenter");
@@ -182,6 +199,7 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
         System.out.println("BinlogSource: snapshotting state, val #" + count);
         this.checkpointedCount.clear();
         this.checkpointedCount.add(count);
+
     }
 
     private Checkpoint getCheckpoint(

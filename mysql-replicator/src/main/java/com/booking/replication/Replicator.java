@@ -19,17 +19,14 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.apache.commons.cli.*;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.functions.Partitioner;
-import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.datastream.KeyedStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
 
 import java.io.File;
 import java.io.IOException;
@@ -170,7 +167,7 @@ public class Replicator {
         env = StreamExecutionEnvironment.createLocalEnvironment();
 
         env.enableCheckpointing(100).setStateBackend(
-                new FsStateBackend("file:///Users/test_checkpoint",
+                new FsStateBackend("file:///Users/bdevetak/test_checkpoint",
                 false)
         );
 

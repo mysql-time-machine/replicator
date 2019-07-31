@@ -16,6 +16,10 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Date;
 import java.sql.Time;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -125,14 +129,24 @@ public class MysqlTypeStringifier {
             }
 
             case DATE: {
-                Date dt = new Date((Long) cellValue);
-                return DATE_FORMAT.format(dt);
+                return cellValue.toString();
             }
 
-            case DATETIME:
-            case TIMESTAMP: {
+            case DATETIME: {
                 Date dt = new Date((Long) cellValue);
                 return TIMESTAMP_FORMAT.format(dt);
+            }
+
+            case TIMESTAMP: {
+                // a workaround for UTC-enforcement by mysql-binlog-connector
+                String tzId = ZonedDateTime.now().getZone().toString();         // current timezone name
+                ZoneId zoneId = ZoneId.of(tzId);                                // ZoneID of the above timezone name
+                Long timestamp =  ((java.sql.Timestamp) cellValue).getTime();   // This will be EPOCH for current TZ, the same as cellValue.getTime
+                LocalDateTime aLDT = Instant.ofEpochMilli(timestamp).atZone(zoneId).toLocalDateTime(); // In the end I think this is identical to Instant.ofEpochMilli(cellValue.getTime())
+                Integer offset  = ZonedDateTime.from(aLDT.atZone(ZoneId.of(tzId))).getOffset().getTotalSeconds();
+                timestamp = timestamp - offset * 1000;
+
+                return String.valueOf(timestamp);
             }
 
             case TIME: {

@@ -7,6 +7,9 @@ import org.junit.Test;
 
 import java.math.BigDecimal;
 import java.util.BitSet;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.TimeZone;
 
 import static org.junit.Assert.assertEquals;
 
@@ -735,15 +738,22 @@ public class MysqlTypeStringifierTest {
     @Test
     public void testTimestampType() {
         ColumnSchema schema = new ColumnSchema("ts", DataType.TIMESTAMP, "timestamp(3)", true, "", "");
+        Long epochUTC = 1548982800000L;
 
-        Long testTimestamp;
+        TimeZone tz = TimeZone.getDefault();
+        int offset = tz.getOffset(new Date(epochUTC).getTime() );
+
+        java.sql.Timestamp testTimestamp;
         String expected, actual;
 
         {
-            testTimestamp   = 1548982800123L;
-            expected        = "2019-02-01 01:00:00.123";
+            // EPOCH in UTC, but java.sql.Timestamp will take it as current time zone
+            // so we need to get the offset value and adjust the epoch itself to get the expected value
+            testTimestamp   =  new java.sql.Timestamp(epochUTC); // Friday, February 1, 2019 2:00:00 AM GMT+01:00
+            expected        = String.valueOf( epochUTC - offset ); // Should shift the epoch to the current tz
 
             actual = MysqlTypeStringifier.convertToString(testTimestamp, schema, null);
+
             assertEquals(expected, actual);
         }
     }

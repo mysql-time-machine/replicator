@@ -129,7 +129,7 @@ public class MysqlTypeStringifier {
             }
 
             case DATE: {
-                return cellValue.toString();
+                return DATE_FORMAT.format(cellValue);
             }
 
             case DATETIME: {

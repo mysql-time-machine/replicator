@@ -30,7 +30,7 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
     // serializable state
     private volatile boolean isRunning = true;
-    private volatile boolean isLeader = false;
+    private boolean isLeader = false;
 
     private Map<String, Object> configuration;
     private final String checkpointPath;
@@ -106,17 +106,19 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
                 LOG.info("Loaded checkpoint. Starting supplier.");
 
-                supplier.start(binlogCheckpoint);
-
-                LOG.info("Supplier started.");
-
-                synchronized (sourceContext.getCheckpointLock()) {
+                synchronized (this) {
                     if (!isLeader) {
                         isLeader = true;
+                        LOG.info("isLeader = true");
                     } else {
                         LOG.info("Re-acquired leadership");
                     }
                 }
+
+                supplier.start(binlogCheckpoint);
+
+                LOG.info("Supplier started.");
+
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -127,14 +129,13 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
             try {
 
-
                 LOG.info("Stopping supplier");
 
                 supplier.stop();
 
                 LOG.info("Supplier stopped");
 
-                synchronized (sourceContext.getCheckpointLock()) {
+                synchronized (this) {
                     isLeader = false;
                 }
 
@@ -156,7 +157,11 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
                 if (isLeader) {
                     System.out.println("Source: main loop count #" + count); // this is ordered;
+
+                    System.out.println("Source: main loop count #" + supplier.getGTIDSet()); // this is ordered;
                     count++;
+                } else {
+                    System.out.println("not leader");
                 }
             }
 

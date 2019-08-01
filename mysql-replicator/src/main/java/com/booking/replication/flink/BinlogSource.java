@@ -9,6 +9,7 @@ import com.booking.replication.commons.checkpoint.Binlog;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.supplier.Supplier;
+import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
@@ -36,9 +37,24 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
     private final String checkpointPath;
 
     // non-serializable
-    private transient long count = 0L;                    // TODO: dummy checkpoint value; replace with GTIDSet
-    private transient String GTIDSet = "";
-    private transient ListState<Long> checkpointedCount;  // TODO: use this for GTIDSet checkpoint
+    private transient long            count = 0L;                    // TODO: dummy checkpoint value; replace with GTIDSet
+    private transient ListState<Long> checkpointedCount;
+
+    private transient Checkpoint            binlogCheckpoint = new Checkpoint();
+    private transient ListState<Checkpoint> binlogCheckpoints;  // TODO: use this for GTIDSet checkpoint
+
+    // augmenter
+    private transient Augmenter augmenter;
+
+    // augmenterFilter
+    private transient  AugmenterFilter augmenterFilter;
+
+    // supplier
+    private transient  Supplier supplier;
+
+    // coordinator
+    private transient Coordinator coordinator;
+
 
     public BinlogSource(Map<String, Object> configuration) throws IOException {
         this.configuration = configuration;
@@ -53,21 +69,6 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
     @Override
     public void run(SourceContext<AugmentedEvent> sourceContext) throws Exception {
 
-        // vars
-        boolean overrideCheckpointStartPosition = Boolean.parseBoolean(configuration.getOrDefault(Replicator.Configuration.OVERRIDE_CHECKPOINT_START_POSITION, false).toString());
-        String overrideCheckpointBinLogFileName = configuration.getOrDefault(Replicator.Configuration.OVERRIDE_CHECKPOINT_BINLOG_FILENAME, "").toString();
-        long overrideCheckpointBinlogPosition   = Long.parseLong(configuration.getOrDefault(Replicator.Configuration.OVERRIDE_CHECKPOINT_BINLOG_POSITION, "0").toString());
-        String overrideCheckpointGtidSet        = configuration.getOrDefault(Replicator.Configuration.OVERRIDE_CHECKPOINT_GTID_SET, "").toString();
-
-        // augmenter
-        Augmenter augmenter = Augmenter.build(configuration);
-
-        // augmenterFilter
-        AugmenterFilter augmenterFilter = AugmenterFilter.build(configuration);
-
-        // supplier
-        Supplier supplier = Supplier.build(configuration);
-
         supplier.onEvent((event) -> {
 
             Collection<AugmentedEvent> augmentedEvents = augmenter.apply(event);
@@ -76,25 +77,29 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
             if (augmentedEvents != null) {
                 for (AugmentedEvent filteredEvent : filteredEvents) {
+
                     sourceContext.collectWithTimestamp(
                             filteredEvent,
                             filteredEvent.getHeader().getTimestamp()
                     );
+                    binlogCheckpoint = filteredEvent.getHeader().getCheckpoint();
+
                 }
             }
 
         });
 
-        // coordinator
-        Coordinator coordinator = Coordinator.build(configuration);
-
         coordinator.onLeadershipTake(() -> {
+
+            // vars
+            boolean overrideCheckpointStartPosition = Boolean.parseBoolean(configuration.getOrDefault(Replicator.Configuration.OVERRIDE_CHECKPOINT_START_POSITION, false).toString());
+            String overrideCheckpointBinLogFileName = configuration.getOrDefault(Replicator.Configuration.OVERRIDE_CHECKPOINT_BINLOG_FILENAME, "").toString();
+            long overrideCheckpointBinlogPosition   = Long.parseLong(configuration.getOrDefault(Replicator.Configuration.OVERRIDE_CHECKPOINT_BINLOG_POSITION, "0").toString());
+            String overrideCheckpointGtidSet        = configuration.getOrDefault(Replicator.Configuration.OVERRIDE_CHECKPOINT_GTID_SET, "").toString();
 
             try {
 
                 LOG.info("Acquired leadership. Loading checkpoint.");
-
-                Checkpoint binlogCheckpoint = null;
 
                 binlogCheckpoint = getCheckpoint(
                         overrideCheckpointStartPosition,
@@ -115,6 +120,8 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
                     }
                 }
 
+                // TODO: make more explicit visible the case when gtidPurgedFallback mode
+                //       is used, since in that case any checkpoint we pass to start() is bypassed
                 supplier.start(binlogCheckpoint);
 
                 LOG.info("Supplier started.");
@@ -144,10 +151,12 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
             }
         });
 
+
         LOG.info("starting coordinator");
 
         coordinator.start();
 
+        ////////////////////////
         // main loop
         while (isRunning) {
 
@@ -158,8 +167,10 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
                 if (isLeader) {
                     System.out.println("Source: main loop count #" + count); // this is ordered;
 
-                    System.out.println("Source: main loop count #" + supplier.getGTIDSet()); // this is ordered;
+                    System.out.println("Source: main loop, binlogCheckpoint #" + binlogCheckpoint.getGtidSet());
+
                     count++;
+
                 } else {
                     System.out.println("not leader");
                 }
@@ -185,9 +196,23 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
     public void initializeState(FunctionInitializationContext context) throws Exception {
 
-        System.out.println("Initializing state");
+        // augmenter
+        this.augmenter = Augmenter.build(configuration);
 
-        // TODO: load GTIDSet here { implement in getCheckpoint() }
+        // augmenterFilter
+        this.augmenterFilter = AugmenterFilter.build(configuration);
+
+        // supplier
+        this.supplier = Supplier.build(configuration);
+
+        // coordinator
+        this.coordinator = Coordinator.build(configuration);
+
+
+        /////////////////////////////////////////////////////////
+
+        System.out.println("Initializing flink source state");
+
         this.checkpointedCount = context
                 .getOperatorStateStore()
                 .getListState(new ListStateDescriptor<>("count", Long.class));
@@ -201,9 +226,14 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
     }
 
     public void snapshotState(FunctionSnapshotContext context) throws Exception {
+
         System.out.println("BinlogSource: snapshotting state, val #" + count);
+
         this.checkpointedCount.clear();
         this.checkpointedCount.add(count);
+
+        this.binlogCheckpoints.clear();
+        this.binlogCheckpoints.add(binlogCheckpoint);
 
     }
 
@@ -245,7 +275,7 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
         } else {
             LOG.info("Checkpoint startup mode: loading safe checkpoint from zookeeper");
             from = seeker.seek(
-                    // TODO: load from Flink state
+                    // TODO: instead of ZK, load from Flink checkpoint store
                     this.loadSafeCheckpoint(coordinator)
             );
         }

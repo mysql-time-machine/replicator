@@ -69,6 +69,7 @@ public class BinaryLogSupplier implements Supplier {
         Object password         = configuration.get(Configuration.MYSQL_PASSWORD);
         Object positionType     = configuration.getOrDefault(Configuration.POSITION_TYPE, PositionType.GTID);
         Object positionOverride = configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_START_POSITION, false);
+
         Object gtidSetFallback  = configuration.getOrDefault(Configuration.GTID_FALLBACK_TO_PURGED, false);
 
         Objects.requireNonNull(hostname, String.format("Configuration required: %s", Configuration.MYSQL_HOSTNAME));

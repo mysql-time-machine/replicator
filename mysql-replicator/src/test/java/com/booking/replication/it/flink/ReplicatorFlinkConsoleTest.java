@@ -105,6 +105,8 @@ public class ReplicatorFlinkConsoleTest {
 
         replicator.start();
 
+        Thread.sleep(10000);
+
         File file = new File("src/test/resources/" + ReplicatorFlinkConsoleTest.MYSQL_TEST_SCRIPT);
 
         runMysqlScripts(this.getConfiguration(), file.getAbsolutePath());
@@ -217,6 +219,8 @@ public class ReplicatorFlinkConsoleTest {
         configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name());
         configuration.put(Replicator.Configuration.CHECKPOINT_PATH, ReplicatorFlinkConsoleTest.ZOOKEEPER_CHECKPOINT_PATH);
         configuration.put(Replicator.Configuration.CHECKPOINT_DEFAULT, ReplicatorFlinkConsoleTest.CHECKPOINT_DEFAULT);
+
+        configuration.put(BinaryLogSupplier.Configuration.GTID_FALLBACK_TO_PURGED, true);
 
         return configuration;
     }

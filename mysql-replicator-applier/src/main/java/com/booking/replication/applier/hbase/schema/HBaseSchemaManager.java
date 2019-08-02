@@ -185,15 +185,21 @@ public class HBaseSchemaManager {
 
             if (!admin.tableExists(tableName)) {
 
-                LOG.info("table " + hbaseTableName + " does not exist in HBase. Creating...");
+                synchronized (HBaseSchemaManager.class) {
+                    if (!admin.tableExists(tableName)) {
+                        LOG.info("table " + hbaseTableName + " does not exist in HBase. Creating...");
 
-                HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);
-                HColumnDescriptor cd = new HColumnDescriptor("d");
-                cd.setMaxVersions(SCHEMA_HISTORY_TABLE_NR_VERSIONS);
-                tableDescriptor.addFamily(cd);
-                tableDescriptor.setCompactionEnabled(true);
+                        HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);
+                        HColumnDescriptor cd = new HColumnDescriptor("d");
+                        cd.setMaxVersions(SCHEMA_HISTORY_TABLE_NR_VERSIONS);
+                        tableDescriptor.addFamily(cd);
+                        tableDescriptor.setCompactionEnabled(true);
 
-                admin.createTable(tableDescriptor);
+                        admin.createTable(tableDescriptor);
+                    } else {
+                        LOG.info("Table " + hbaseTableName + " already exists in HBase. Probably a case of other thread created it.");
+                    }
+                }
 
             } else {
                 LOG.info("Table " + hbaseTableName + " already exists in HBase. Probably a case of replaying the binlog.");

@@ -500,8 +500,10 @@ public class AugmenterContext implements Closeable {
             transactionCounter.set(0L);
             LOG.warn("TransactionCounter counter is overflowed, resetting to 0.");
         }
-
-        if (timestamp.get() == previousTimestamp.get()) {
+        if (timestamp.get() > previousTimestamp.get()) {
+            transactionCounter.set(0);
+            previousTimestamp.set(timestamp.get());
+        } else if (timestamp.get() == previousTimestamp.get()) {
             transactionCounter.incrementAndGet();
         }
     }

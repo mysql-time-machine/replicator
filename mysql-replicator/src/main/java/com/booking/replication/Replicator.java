@@ -171,7 +171,6 @@ public class Replicator {
                 false)
         );
 
-
         env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
         try {
@@ -204,15 +203,13 @@ public class Replicator {
 
                 );
 
-            RichSinkFunction<Collection<AugmentedEvent>> richSinkFunction =
-                    new ReplicatorGenericFlinkSink(configuration);
-
+            // RichSinkFunction<Collection<AugmentedEvent>> richSinkFunction =
+            //        new ReplicatorGenericFlinkSink(configuration);
             chunkedStream
                     .addSink(new SinkFunction<Collection<AugmentedEvent>>() {
                         private transient Applier a =  Applier.build(configuration);;
                         @Override
                         public void invoke(Collection<AugmentedEvent> value) throws Exception {
-                            System.out.println("----apply---");
                             if (a == null) {
                                 System.out.println("Lost applier");
                                 a = Applier.build(configuration);

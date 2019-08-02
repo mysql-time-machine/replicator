@@ -166,8 +166,8 @@ public class Replicator {
         // Experimenting with Flink - Work In progress
         env = StreamExecutionEnvironment.createLocalEnvironment();
 
-        env.enableCheckpointing(100).setStateBackend(
-                new FsStateBackend("file:///Users/bdevetak/test_checkpoint",
+        env.enableCheckpointing(1000).setStateBackend(
+                new FsStateBackend("file:///tmp",
                 false)
         );
 

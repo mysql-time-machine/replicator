@@ -220,7 +220,7 @@ public class BinaryLogSupplier implements Supplier {
                                 this.binlogClientGTIDSet.set(this.client.getGtidSet());
                                 this.client.connect();;
                                 this.connected.set(true);
-                                LOG.info("Started binlog Client gtidSetFallbackToPurged mode => " + this.client.getGtidSet());
+                                LOG.info("Started binlog Client gtidSetFallbackToPurged mode");
 
                             } else {
 

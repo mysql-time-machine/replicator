@@ -9,7 +9,6 @@ import com.booking.replication.commons.checkpoint.Binlog;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.supplier.Supplier;
-import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
@@ -24,6 +23,8 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.LinkedBlockingDeque;
 
 public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements CheckpointedFunction {
 
@@ -37,7 +38,9 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
     private final String checkpointPath;
 
     // non-serializable
-    private transient long            count = 0L;                    // TODO: dummy checkpoint value; replace with GTIDSet
+    private transient BlockingDeque<AugmentedEvent> incomingEvents;
+
+    private transient long            count = 0L;               // TODO: dummy checkpoint value; replace with GTIDSet
     private transient ListState<Long> checkpointedCount;
 
     private transient Checkpoint            binlogCheckpoint = new Checkpoint();
@@ -45,16 +48,12 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
     // augmenter
     private transient Augmenter augmenter;
-
     // augmenterFilter
     private transient  AugmenterFilter augmenterFilter;
-
     // supplier
     private transient  Supplier supplier;
-
     // coordinator
     private transient Coordinator coordinator;
-
 
     public BinlogSource(Map<String, Object> configuration) throws IOException {
         this.configuration = configuration;
@@ -69,24 +68,98 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
     @Override
     public void run(SourceContext<AugmentedEvent> sourceContext) throws Exception {
 
-        supplier.onEvent((event) -> {
+//        Thread.sleep(5000);
 
-            Collection<AugmentedEvent> augmentedEvents = augmenter.apply(event);
+        while (isRunning) {
 
-            Collection<AugmentedEvent> filteredEvents = augmenterFilter.apply(augmentedEvents);
+            // this synchronized block ensures that state checkpointing,
+            // internal state updates and emission of elements are an atomic operation
+            synchronized (sourceContext.getCheckpointLock()) {
 
-            if (augmentedEvents != null) {
-                for (AugmentedEvent filteredEvent : filteredEvents) {
+                if (isLeader) {
+
+                    System.out.println("Source: main loop count #" + count); // this is ordered;
+
+                    AugmentedEvent event = incomingEvents.take();
 
                     sourceContext.collectWithTimestamp(
-                            filteredEvent,
-                            filteredEvent.getHeader().getTimestamp()
+                            event,
+                            event.getHeader().getTimestamp()
                     );
-                    binlogCheckpoint = filteredEvent.getHeader().getCheckpoint();
 
+                    binlogCheckpoint = event.getHeader().getCheckpoint();
+
+                    System.out.println("Source: main loop, binlogCheckpoint #" + binlogCheckpoint.getGtidSet());
+
+                    count++;
+
+                } else {
+                    System.out.println("not leader, thread " + Thread.currentThread().getId());
+                }
+
+            }
+
+            Thread.sleep(1000);
+        }
+    }
+
+
+    public void cancel() {
+
+        LOG.info("cancel called, stopping BinlogSource");
+
+        try {
+            supplier.stop();
+            augmenter.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        coordinator.stop();
+
+        isRunning = false;
+    }
+
+    public void initializeState(FunctionInitializationContext context) throws Exception {
+
+        // augmenter
+        this.augmenter = Augmenter.build(configuration);
+
+        // augmenterFilter
+        this.augmenterFilter = AugmenterFilter.build(configuration);
+
+        // supplier
+        this.supplier = Supplier.build(configuration);
+
+        // coordinator
+        this.coordinator = Coordinator.build(configuration);
+
+        this.incomingEvents = new LinkedBlockingDeque<>();
+
+        supplier.onEvent((event) -> {
+
+            synchronized (this) {
+                Collection<AugmentedEvent> augmentedEvents = augmenter.apply(event);
+
+                Collection<AugmentedEvent> filteredEvents = augmenterFilter.apply(augmentedEvents);
+
+                if (augmentedEvents != null) {
+                    for (AugmentedEvent filteredEvent : filteredEvents) {
+
+                        try {
+                            incomingEvents.put(filteredEvent);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+
+                    }
                 }
             }
 
+        });
+
+        supplier.onException(e -> {
+            e.printStackTrace();
         });
 
         coordinator.onLeadershipTake(() -> {
@@ -109,7 +182,7 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
                         coordinator
                 );
 
-                LOG.info("Loaded checkpoint. Starting supplier.");
+                System.out.println("Loaded checkpoint. Starting supplier.");
 
                 synchronized (this) {
                     if (!isLeader) {
@@ -136,80 +209,28 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
             try {
 
+                synchronized (this) {
+                    isLeader = false;
+                }
+
                 LOG.info("Stopping supplier");
 
                 supplier.stop();
 
                 LOG.info("Supplier stopped");
 
-                synchronized (this) {
-                    isLeader = false;
-                }
+                LOG.info("closing augmenter");
+
+                augmenter.close();
 
             } catch (IOException e) {
                 e.printStackTrace();
             }
         });
 
-
         LOG.info("starting coordinator");
 
         coordinator.start();
-
-        ////////////////////////
-        // main loop
-        while (isRunning) {
-
-            // this synchronized block ensures that state checkpointing,
-            // internal state updates and emission of elements are an atomic operation
-            synchronized (sourceContext.getCheckpointLock()) {
-
-                if (isLeader) {
-                    System.out.println("Source: main loop count #" + count); // this is ordered;
-
-                    System.out.println("Source: main loop, binlogCheckpoint #" + binlogCheckpoint.getGtidSet());
-
-                    count++;
-
-                } else {
-                    System.out.println("not leader");
-                }
-            }
-
-            Thread.sleep(100);
-        }
-
-        LOG.info("closing augmenter");
-        augmenter.close();
-
-        LOG.info("stopping supplier");
-        supplier.stop();
-
-        LOG.info("stopping coordinator");
-        coordinator.stop();
-
-    }
-
-    public void cancel() {
-        isRunning = false;
-    }
-
-    public void initializeState(FunctionInitializationContext context) throws Exception {
-
-        // augmenter
-        this.augmenter = Augmenter.build(configuration);
-
-        // augmenterFilter
-        this.augmenterFilter = AugmenterFilter.build(configuration);
-
-        // supplier
-        this.supplier = Supplier.build(configuration);
-
-        // coordinator
-        this.coordinator = Coordinator.build(configuration);
-
-
-        /////////////////////////////////////////////////////////
 
         System.out.println("Initializing flink source state");
 
@@ -227,13 +248,21 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
     public void snapshotState(FunctionSnapshotContext context) throws Exception {
 
-        System.out.println("BinlogSource: snapshotting state, val #" + count);
+        if (isLeader) {
 
-        this.checkpointedCount.clear();
-        this.checkpointedCount.add(count);
+            System.out.println("BinlogSource: snapshotting state, val #" + count);
 
-        this.binlogCheckpoints.clear();
-        this.binlogCheckpoints.add(binlogCheckpoint);
+            this.checkpointedCount.clear();
+            this.checkpointedCount.add(count);
+
+            if (binlogCheckpoint != null) {
+                if ( binlogCheckpoint.getGtidSet() != null) {
+                    System.out.println("BinlogSource: snapshotting state, gtidSet #" + binlogCheckpoint.getGtidSet());
+//                    this.binlogCheckpoints.clear();
+//                    this.binlogCheckpoints.add(binlogCheckpoint);
+                }
+            }
+        }
 
     }
 
@@ -303,5 +332,4 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
     public synchronized boolean isRunning() {
         return isRunning;
     }
-
 }

@@ -103,13 +103,11 @@ public class ReplicatorFlinkConsoleTest {
 
         Replicator replicator = new Replicator(this.getConfiguration());
 
-        replicator.start();
-
-        Thread.sleep(10000);
-
         File file = new File("src/test/resources/" + ReplicatorFlinkConsoleTest.MYSQL_TEST_SCRIPT);
 
         runMysqlScripts(this.getConfiguration(), file.getAbsolutePath());
+
+        replicator.start();
 
         Thread.sleep(1000000);
 

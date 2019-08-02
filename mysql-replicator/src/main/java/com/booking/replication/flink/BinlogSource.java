@@ -68,8 +68,6 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
     @Override
     public void run(SourceContext<AugmentedEvent> sourceContext) throws Exception {
 
-//        Thread.sleep(5000);
-
         while (isRunning) {
 
             // this synchronized block ensures that state checkpointing,
@@ -244,6 +242,20 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
                 this.count = count;
             }
         }
+
+        this.binlogCheckpoints = context
+                .getOperatorStateStore()
+                .getListState(new ListStateDescriptor<>("binlogCheckpoint", Checkpoint.class));
+
+        if (context.isRestored()) {
+            for (Checkpoint checkpoint : this.binlogCheckpoints.get()) {
+                if (checkpoint != null && checkpoint.getGtidSet() != null) {
+                    this.binlogCheckpoint = checkpoint;
+                    System.out.println("restored context, checkpoint => #" + checkpoint.getGtidSet());
+                }
+            }
+        }
+
     }
 
     public void snapshotState(FunctionSnapshotContext context) throws Exception {
@@ -258,8 +270,8 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
             if (binlogCheckpoint != null) {
                 if ( binlogCheckpoint.getGtidSet() != null) {
                     System.out.println("BinlogSource: snapshotting state, gtidSet #" + binlogCheckpoint.getGtidSet());
-//                    this.binlogCheckpoints.clear();
-//                    this.binlogCheckpoints.add(binlogCheckpoint);
+                    this.binlogCheckpoints.clear();
+                    this.binlogCheckpoints.add(binlogCheckpoint);
                 }
             }
         }

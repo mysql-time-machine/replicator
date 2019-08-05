@@ -13,8 +13,6 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
-import java.sql.Date;
-import java.sql.Time;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -35,7 +33,6 @@ public class MysqlTypeStringifier {
 
     private static final SimpleDateFormat DATE_FORMAT       = new SimpleDateFormat("yyyy-MM-dd");
     private static final SimpleDateFormat TIME_FORMAT       = new SimpleDateFormat("HH:mm:ss.SSS");
-    private static final SimpleDateFormat TIMESTAMP_FORMAT  = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
     private static final String NULL_STRING = "NULL";
 
@@ -48,7 +45,6 @@ public class MysqlTypeStringifier {
     static {
         DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
         TIME_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
-        TIMESTAMP_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
 
     public static String convertToString(Serializable cellValue, ColumnSchema columnSchema, String[] groupValues) {
@@ -132,26 +128,21 @@ public class MysqlTypeStringifier {
                 return DATE_FORMAT.format(cellValue);
             }
 
-            case DATETIME: {
-                Date dt = new Date((Long) cellValue);
-                return TIMESTAMP_FORMAT.format(dt);
+            case TIME: {
+                return TIME_FORMAT.format(cellValue);
             }
 
+            case DATETIME:
             case TIMESTAMP: {
-                // a workaround for UTC-enforcement by mysql-binlog-connector
-                String tzId = ZonedDateTime.now().getZone().toString();         // current timezone name
-                ZoneId zoneId = ZoneId.of(tzId);                                // ZoneID of the above timezone name
-                Long timestamp =  ((java.sql.Timestamp) cellValue).getTime();   // This will be EPOCH for current TZ, the same as cellValue.getTime
-                LocalDateTime aLDT = Instant.ofEpochMilli(timestamp).atZone(zoneId).toLocalDateTime(); // In the end I think this is identical to Instant.ofEpochMilli(cellValue.getTime())
-                Integer offset  = ZonedDateTime.from(aLDT.atZone(ZoneId.of(tzId))).getOffset().getTotalSeconds();
+                Long timestamp = (Long) cellValue;
+
+                ZoneId zoneId = ZonedDateTime.now().getZone();
+                LocalDateTime aLDT = Instant.ofEpochMilli(timestamp).atZone(zoneId).toLocalDateTime();
+
+                Integer offset  = ZonedDateTime.from(aLDT.atZone(zoneId)).getOffset().getTotalSeconds();
                 timestamp = timestamp - offset * 1000;
 
                 return String.valueOf(timestamp);
-            }
-
-            case TIME: {
-                Time time = new Time((Long) cellValue);
-                return TIME_FORMAT.format(time);
             }
 
             case ENUM: {

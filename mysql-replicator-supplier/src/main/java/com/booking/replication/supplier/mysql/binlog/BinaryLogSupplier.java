@@ -108,9 +108,8 @@ public class BinaryLogSupplier implements Supplier {
 
         EventDeserializer eventDeserializer = new EventDeserializer();
         eventDeserializer.setCompatibilityMode(
-                EventDeserializer.CompatibilityMode.CHAR_AND_BINARY_AS_BYTE_ARRAY
-        );
-//                ,EventDeserializer.CompatibilityMode.DATE_AND_TIME_AS_LONG);
+                EventDeserializer.CompatibilityMode.CHAR_AND_BINARY_AS_BYTE_ARRAY,
+                EventDeserializer.CompatibilityMode.DATE_AND_TIME_AS_LONG);
         client.setEventDeserializer(eventDeserializer);
 
         return client;

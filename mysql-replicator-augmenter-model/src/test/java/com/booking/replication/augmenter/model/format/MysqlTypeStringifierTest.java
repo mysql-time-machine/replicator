@@ -7,7 +7,6 @@ import org.junit.Test;
 
 import java.math.BigDecimal;
 import java.util.BitSet;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
 
@@ -711,22 +710,6 @@ public class MysqlTypeStringifierTest {
     }
 
     @Test
-    public void testDateTimeType() {
-        ColumnSchema schema = new ColumnSchema("ts", DataType.DATETIME, "datetime", true, "", "");
-
-        Long testDateTime;
-        String expected, actual;
-
-        {
-            testDateTime    = 1548982800123L;
-            expected        = "2019-02-01 01:00:00.123";
-
-            actual = MysqlTypeStringifier.convertToString(testDateTime, schema, null);
-            assertEquals(expected, actual);
-        }
-    }
-
-    @Test
     public void testTimeType() {
         ColumnSchema schema = new ColumnSchema("ts", DataType.TIME, "time(3)", true, "", "");
 
@@ -742,6 +725,25 @@ public class MysqlTypeStringifierTest {
         }
     }
 */
+
+    @Test
+    public void testDateTimeType() {
+        ColumnSchema schema = new ColumnSchema("ts", DataType.DATETIME, "datetime", true, "", "");
+        Long epochUTC = 1548982800000L;
+
+        TimeZone tz = TimeZone.getDefault();
+        int offset = tz.getOffset(new Date(epochUTC).getTime() );
+
+        String expected, actual;
+
+        {
+            expected        = String.valueOf( epochUTC - offset );
+            actual = MysqlTypeStringifier.convertToString(epochUTC, schema, null);
+
+            assertEquals(expected, actual);
+        }
+    }
+
     @Test
     public void testTimestampType() {
         ColumnSchema schema = new ColumnSchema("ts", DataType.TIMESTAMP, "timestamp(3)", true, "", "");
@@ -750,16 +752,11 @@ public class MysqlTypeStringifierTest {
         TimeZone tz = TimeZone.getDefault();
         int offset = tz.getOffset(new Date(epochUTC).getTime() );
 
-        java.sql.Timestamp testTimestamp;
         String expected, actual;
 
         {
-            // EPOCH in UTC, but java.sql.Timestamp will take it as current time zone
-            // so we need to get the offset value and adjust the epoch itself to get the expected value
-            testTimestamp   =  new java.sql.Timestamp(epochUTC); // Friday, February 1, 2019 2:00:00 AM GMT+01:00
-            expected        = String.valueOf( epochUTC - offset ); // Should shift the epoch to the current tz
-
-            actual = MysqlTypeStringifier.convertToString(testTimestamp, schema, null);
+            expected        = String.valueOf( epochUTC - offset );
+            actual = MysqlTypeStringifier.convertToString(epochUTC, schema, null);
 
             assertEquals(expected, actual);
         }

@@ -40,6 +40,9 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
     // non-serializable
     private transient BlockingDeque<AugmentedEvent> incomingEvents;
 
+    private transient boolean chaosMonkeySwitch = false;
+    private transient ListState<Boolean> chaosMonkeySwitches;
+
     private transient long            count = 0L;               // TODO: dummy checkpoint value; replace with GTIDSet
     private transient ListState<Long> checkpointedCount;
 
@@ -91,6 +94,11 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
                     count++;
 
+                    if (chaosMonkeySwitch) {
+                        System.out.println("Chaos Monkey is awake!!!");
+                        throw  new RuntimeException();
+                    }
+
                 } else {
                     System.out.println("not leader, thread " + Thread.currentThread().getId());
                 }
@@ -120,152 +128,183 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
     public void initializeState(FunctionInitializationContext context) throws Exception {
 
-        // augmenter
-        this.augmenter = Augmenter.build(configuration);
+        try {
+            // augmenter
+            this.augmenter = Augmenter.build(configuration);
 
-        // augmenterFilter
-        this.augmenterFilter = AugmenterFilter.build(configuration);
+            // augmenterFilter
+            this.augmenterFilter = AugmenterFilter.build(configuration);
 
-        // supplier
-        this.supplier = Supplier.build(configuration);
+            // supplier
+            this.supplier = Supplier.build(configuration);
 
-        // coordinator
-        this.coordinator = Coordinator.build(configuration);
+            // coordinator
+            this.coordinator = Coordinator.build(configuration);
 
-        this.incomingEvents = new LinkedBlockingDeque<>();
+            this.incomingEvents = new LinkedBlockingDeque<>();
 
-        supplier.onEvent((event) -> {
+            supplier.onEvent((event) -> {
 
-            synchronized (this) {
-                Collection<AugmentedEvent> augmentedEvents = augmenter.apply(event);
+                synchronized (this) {
+                    Collection<AugmentedEvent> augmentedEvents = augmenter.apply(event);
 
-                Collection<AugmentedEvent> filteredEvents = augmenterFilter.apply(augmentedEvents);
+                    Collection<AugmentedEvent> filteredEvents = augmenterFilter.apply(augmentedEvents);
 
-                if (augmentedEvents != null) {
-                    for (AugmentedEvent filteredEvent : filteredEvents) {
+                    if (augmentedEvents != null) {
+                        for (AugmentedEvent filteredEvent : filteredEvents) {
 
-                        try {
-                            incomingEvents.put(filteredEvent);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
+                            try {
+                                incomingEvents.put(filteredEvent);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+
                         }
+                    }
+                }
 
+            });
+
+            supplier.onException(e -> {
+                e.printStackTrace();
+            });
+
+            coordinator.onLeadershipTake(() -> {
+
+                // vars
+                boolean overrideCheckpointStartPosition = Boolean.parseBoolean(configuration.getOrDefault(Replicator.Configuration.OVERRIDE_CHECKPOINT_START_POSITION, false).toString());
+                String overrideCheckpointBinLogFileName = configuration.getOrDefault(Replicator.Configuration.OVERRIDE_CHECKPOINT_BINLOG_FILENAME, "").toString();
+                long overrideCheckpointBinlogPosition = Long.parseLong(configuration.getOrDefault(Replicator.Configuration.OVERRIDE_CHECKPOINT_BINLOG_POSITION, "0").toString());
+                String overrideCheckpointGtidSet = configuration.getOrDefault(Replicator.Configuration.OVERRIDE_CHECKPOINT_GTID_SET, "").toString();
+
+                try {
+
+                    LOG.info("Acquired leadership. Loading checkpoint.");
+
+                    binlogCheckpoint = getCheckpoint(
+                            overrideCheckpointStartPosition,
+                            overrideCheckpointBinLogFileName,
+                            overrideCheckpointBinlogPosition,
+                            overrideCheckpointGtidSet,
+                            coordinator
+                    );
+
+                    System.out.println("Loaded checkpoint. Starting supplier.");
+
+                    synchronized (this) {
+                        if (!isLeader) {
+                            isLeader = true;
+                            LOG.info("isLeader = true");
+                        } else {
+                            LOG.info("Re-acquired leadership");
+                        }
+                    }
+
+                    // TODO: make more explicit visible the case when gtidPurgedFallback mode
+                    //       is used, since in that case any checkpoint we pass to start() is bypassed
+                    supplier.start(binlogCheckpoint);
+
+                    LOG.info("Supplier started.");
+
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+
+            coordinator.onLeadershipLose(() -> {
+
+                try {
+
+                    synchronized (this) {
+                        isLeader = false;
+                    }
+
+                    LOG.info("Stopping supplier");
+
+                    supplier.stop();
+
+                    LOG.info("Supplier stopped");
+
+                    LOG.info("closing augmenter");
+
+                    augmenter.close();
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+
+            LOG.info("starting coordinator");
+
+
+            coordinator.start();
+
+            System.out.println("Initializing Flink source state");
+
+            this.chaosMonkeySwitches = context
+                    .getOperatorStateStore()
+                    .getListState(new ListStateDescriptor<Boolean>("chaosMonkeySwitchState", Boolean.class));
+
+            if (context.isRestored()) {
+                for (Boolean chaosMonkeySwitchRestored : this.chaosMonkeySwitches.get()) {
+                    if (chaosMonkeySwitchRestored != null) {
+                        this.chaosMonkeySwitch = chaosMonkeySwitchRestored;
+                        System.out.println("restored context, chaosMonkeySwitch => #" + chaosMonkeySwitchRestored);
                     }
                 }
             }
 
-        });
+            this.checkpointedCount = context
+                    .getOperatorStateStore()
+                    .getListState(new ListStateDescriptor<>("count", Long.class));
 
-        supplier.onException(e -> {
+            if (context.isRestored()) {
+                for (Long countRestored : this.checkpointedCount.get()) {
+                    System.out.println("Recovered from failure, restored context, count => #" + countRestored);
+                    this.count = countRestored;
+                }
+            }
+
+            this.binlogCheckpoints = context
+                    .getOperatorStateStore()
+                    .getListState(new ListStateDescriptor<>("binlogCheckpoint", Checkpoint.class));
+
+            if (context.isRestored()) {
+                for (Checkpoint checkpoint : this.binlogCheckpoints.get()) {
+                    if (checkpoint != null && checkpoint.getGtidSet() != null) {
+                        this.binlogCheckpoint = checkpoint;
+                        System.out.println("restored context, checkpoint => #" + checkpoint.getGtidSet());
+                    }
+                }
+            }
+
+
+        } catch (Exception e) {
             e.printStackTrace();
-        });
-
-        coordinator.onLeadershipTake(() -> {
-
-            // vars
-            boolean overrideCheckpointStartPosition = Boolean.parseBoolean(configuration.getOrDefault(Replicator.Configuration.OVERRIDE_CHECKPOINT_START_POSITION, false).toString());
-            String overrideCheckpointBinLogFileName = configuration.getOrDefault(Replicator.Configuration.OVERRIDE_CHECKPOINT_BINLOG_FILENAME, "").toString();
-            long overrideCheckpointBinlogPosition   = Long.parseLong(configuration.getOrDefault(Replicator.Configuration.OVERRIDE_CHECKPOINT_BINLOG_POSITION, "0").toString());
-            String overrideCheckpointGtidSet        = configuration.getOrDefault(Replicator.Configuration.OVERRIDE_CHECKPOINT_GTID_SET, "").toString();
-
-            try {
-
-                LOG.info("Acquired leadership. Loading checkpoint.");
-
-                binlogCheckpoint = getCheckpoint(
-                        overrideCheckpointStartPosition,
-                        overrideCheckpointBinLogFileName,
-                        overrideCheckpointBinlogPosition,
-                        overrideCheckpointGtidSet,
-                        coordinator
-                );
-
-                System.out.println("Loaded checkpoint. Starting supplier.");
-
-                synchronized (this) {
-                    if (!isLeader) {
-                        isLeader = true;
-                        LOG.info("isLeader = true");
-                    } else {
-                        LOG.info("Re-acquired leadership");
-                    }
-                }
-
-                // TODO: make more explicit visible the case when gtidPurgedFallback mode
-                //       is used, since in that case any checkpoint we pass to start() is bypassed
-                supplier.start(binlogCheckpoint);
-
-                LOG.info("Supplier started.");
-
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        });
-
-        coordinator.onLeadershipLose(() -> {
-
-            try {
-
-                synchronized (this) {
-                    isLeader = false;
-                }
-
-                LOG.info("Stopping supplier");
-
-                supplier.stop();
-
-                LOG.info("Supplier stopped");
-
-                LOG.info("closing augmenter");
-
-                augmenter.close();
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        });
-
-        LOG.info("starting coordinator");
-
-        coordinator.start();
-
-        System.out.println("Initializing flink source state");
-
-        this.checkpointedCount = context
-                .getOperatorStateStore()
-                .getListState(new ListStateDescriptor<>("count", Long.class));
-
-        if (context.isRestored()) {
-            for (Long count : this.checkpointedCount.get()) {
-                System.out.println("restored context, count => #" + count);
-                this.count = count;
-            }
         }
-
-        this.binlogCheckpoints = context
-                .getOperatorStateStore()
-                .getListState(new ListStateDescriptor<>("binlogCheckpoint", Checkpoint.class));
-
-        if (context.isRestored()) {
-            for (Checkpoint checkpoint : this.binlogCheckpoints.get()) {
-                if (checkpoint != null && checkpoint.getGtidSet() != null) {
-                    this.binlogCheckpoint = checkpoint;
-                    System.out.println("restored context, checkpoint => #" + checkpoint.getGtidSet());
-                }
-            }
-        }
-
     }
 
     public void snapshotState(FunctionSnapshotContext context) throws Exception {
 
         if (isLeader) {
 
-            System.out.println("BinlogSource: snapshotting state, val #" + count);
-
+            System.out.println("BinlogSource: snapshotting state, count => #" + count);
             this.checkpointedCount.clear();
             this.checkpointedCount.add(count);
+
+            // TODO: ugly hack to make this die only once.
+            //       Make chaos conditions configurable, with random % as default policy
+            if (count == 2 && !chaosMonkeySwitch) {
+                System.out.println("chaos condition true -> activate chaos monkey");
+                chaosMonkeySwitch = true;
+            } else {
+                chaosMonkeySwitch = false;
+            }
+
+            System.out.println("BinlogSource: snapshotting state, chaosMonkeySwitch => #" + chaosMonkeySwitch);
+            this.chaosMonkeySwitches.clear();
+            this.chaosMonkeySwitches.add(chaosMonkeySwitch);
 
             if (binlogCheckpoint != null) {
                 if ( binlogCheckpoint.getGtidSet() != null) {

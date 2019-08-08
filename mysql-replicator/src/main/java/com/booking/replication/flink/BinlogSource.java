@@ -30,6 +30,8 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
     private static final Logger LOG = LogManager.getLogger(BinlogSource.class);
 
+    private static final boolean USE_FLINK_CHECKPOINT_STORE = false;
+
     // serializable state
     private volatile boolean isRunning = true;
     private boolean isLeader = false;
@@ -128,7 +130,10 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
     public void initializeState(FunctionInitializationContext context) throws Exception {
 
+        System.out.println("Initializing Flink source state");
+
         try {
+
             // augmenter
             this.augmenter = Augmenter.build(configuration);
 
@@ -143,6 +148,7 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
             this.incomingEvents = new LinkedBlockingDeque<>();
 
+            // callbacks
             supplier.onEvent((event) -> {
 
                 synchronized (this) {
@@ -162,7 +168,6 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
                         }
                     }
                 }
-
             });
 
             supplier.onException(e -> {
@@ -181,14 +186,17 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
                     LOG.info("Acquired leadership. Loading checkpoint.");
 
-                    binlogCheckpoint = getCheckpoint(
-                            overrideCheckpointStartPosition,
-                            overrideCheckpointBinLogFileName,
-                            overrideCheckpointBinlogPosition,
-                            overrideCheckpointGtidSet,
-                            coordinator
-                    );
+                    restoreState(context); // will set binlogCheckpoint
 
+                    if (!USE_FLINK_CHECKPOINT_STORE) {
+                        binlogCheckpoint = getCheckpoint(
+                                overrideCheckpointStartPosition,
+                                overrideCheckpointBinLogFileName,
+                                overrideCheckpointBinlogPosition,
+                                overrideCheckpointGtidSet,
+                                coordinator
+                        );
+                    }
                     System.out.println("Loaded checkpoint. Starting supplier.");
 
                     synchronized (this) {
@@ -208,6 +216,8 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
 
                 } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             });
@@ -237,51 +247,60 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
             LOG.info("starting coordinator");
 
-
             coordinator.start();
-
-            System.out.println("Initializing Flink source state");
-
-            this.chaosMonkeySwitches = context
-                    .getOperatorStateStore()
-                    .getListState(new ListStateDescriptor<Boolean>("chaosMonkeySwitchState", Boolean.class));
-
-            if (context.isRestored()) {
-                for (Boolean chaosMonkeySwitchRestored : this.chaosMonkeySwitches.get()) {
-                    if (chaosMonkeySwitchRestored != null) {
-                        this.chaosMonkeySwitch = chaosMonkeySwitchRestored;
-                        System.out.println("restored context, chaosMonkeySwitch => #" + chaosMonkeySwitchRestored);
-                    }
-                }
-            }
-
-            this.checkpointedCount = context
-                    .getOperatorStateStore()
-                    .getListState(new ListStateDescriptor<>("count", Long.class));
-
-            if (context.isRestored()) {
-                for (Long countRestored : this.checkpointedCount.get()) {
-                    System.out.println("Recovered from failure, restored context, count => #" + countRestored);
-                    this.count = countRestored;
-                }
-            }
-
-            this.binlogCheckpoints = context
-                    .getOperatorStateStore()
-                    .getListState(new ListStateDescriptor<>("binlogCheckpoint", Checkpoint.class));
-
-            if (context.isRestored()) {
-                for (Checkpoint checkpoint : this.binlogCheckpoints.get()) {
-                    if (checkpoint != null && checkpoint.getGtidSet() != null) {
-                        this.binlogCheckpoint = checkpoint;
-                        System.out.println("restored context, checkpoint => #" + checkpoint.getGtidSet());
-                    }
-                }
-            }
-
 
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    private void restoreState(FunctionInitializationContext context) throws Exception {
+        // restore state
+        this.chaosMonkeySwitches = context
+                .getOperatorStateStore()
+                .getListState(new ListStateDescriptor<Boolean>("chaosMonkeySwitchState", Boolean.class));
+
+        if (context.isRestored()) {
+            for (Boolean chaosMonkeySwitchRestored : this.chaosMonkeySwitches.get()) {
+                if (chaosMonkeySwitchRestored != null) {
+                    this.chaosMonkeySwitch = chaosMonkeySwitchRestored;
+                    System.out.println("restored context, chaosMonkeySwitch => #" + chaosMonkeySwitchRestored);
+                }
+            }
+        }
+
+        this.checkpointedCount = context
+                .getOperatorStateStore()
+                .getListState(new ListStateDescriptor<>("count", Long.class));
+
+        if (context.isRestored()) {
+            for (Long countRestored : this.checkpointedCount.get()) {
+                System.out.println("Recovered from failure, restored context, count => #" + countRestored);
+                this.count = countRestored;
+            }
+        }
+
+        this.binlogCheckpoints = context
+                .getOperatorStateStore()
+                .getListState(new ListStateDescriptor<>("binlogCheckpoint", Checkpoint.class));
+
+        if (context.isRestored()) {
+            for (Checkpoint checkpoint : this.binlogCheckpoints.get()) {
+                if (checkpoint != null && checkpoint.getGtidSet() != null) {
+                    this.binlogCheckpoint = checkpoint;
+                    System.out.println("restored context, checkpoint => #" + checkpoint.getGtidSet());
+                }
+            }
+        }
+
+        if (this.binlogCheckpoint == null) {
+            Object checkpointDefault = configuration.get(Replicator.Configuration.CHECKPOINT_DEFAULT);
+
+            String checkpointDefaultString = (checkpointDefault != null) ? (checkpointDefault.toString()) : (null);
+
+            if (checkpointDefaultString != null) {
+                this.binlogCheckpoint = new ObjectMapper().readValue(checkpointDefaultString, Checkpoint.class);
+            }
         }
     }
 
@@ -353,9 +372,8 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
             }
 
         } else {
-            LOG.info("Checkpoint startup mode: loading safe checkpoint from zookeeper");
+            LOG.info("Checkpoint startup mode: loading safe checkpoint from checkpoint store");
             from = seeker.seek(
-                    // TODO: instead of ZK, load from Flink checkpoint store
                     this.loadSafeCheckpoint(coordinator)
             );
         }

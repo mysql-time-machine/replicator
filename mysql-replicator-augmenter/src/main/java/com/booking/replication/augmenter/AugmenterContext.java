@@ -779,19 +779,13 @@ public class AugmenterContext implements Closeable {
     }
 
     public Collection<AugmentedRow> computeAugmentedEventRows(
-
             String eventType,
-
+            Long commitTimestamp,
             UUID transactionUUID,
-
             Long xxid,
-
             long tableId,
-
             BitSet includedColumns,
-
-            List<RowBeforeAfter> rows
-    ) {
+            List<RowBeforeAfter> rows ) {
 
         FullTableName eventTable = this.getEventTable(tableId);
 
@@ -806,6 +800,7 @@ public class AugmenterContext implements Closeable {
                 augmentedRows.add(
                         this.getAugmentedRow(
                                 eventType,
+                                commitTimestamp,
                                 transactionUUID,
                                 xxid,
                                 columns,
@@ -824,6 +819,7 @@ public class AugmenterContext implements Closeable {
 
     private AugmentedRow getAugmentedRow(
             String eventType,
+            Long commitTimestamp,
             UUID transactionUUID,
             Long transactionXid,
             List<ColumnSchema> columnSchemas,
@@ -851,7 +847,7 @@ public class AugmenterContext implements Closeable {
         AugmentedRow augmentedRow = new AugmentedRow(
                 eventType,
                 schemaName, tableName,
-                transactionUUID, transactionXid,
+                commitTimestamp, transactionUUID, transactionXid,
                 primaryKeyColumns, stringifiedCellValues, deserializedCellValues
         );
 

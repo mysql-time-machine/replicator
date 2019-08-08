@@ -26,6 +26,7 @@ public class AugmentedRow {
     private String       tableSchema;
 
     private Long         rowMicrosecondTimestamp = 0L;
+
     // stringifiedRowColumns format:
     // {
     //      $columnName => {
@@ -36,25 +37,23 @@ public class AugmentedRow {
     // }
     private Map<String, Map<String,String>> stringifiedRowColumns = new CaseInsensitiveMap<>();
 
-    public AugmentedRow() {
-    }
+    public AugmentedRow() { }
 
     public AugmentedRow(
-            String eventType,
-            String schemaName,
-            String tableName,
-            UUID transactionUUID,
-            Long transactionXid,
-            List<String> primaryKeyColumns,
-            Map<String,Map<String, String>> stringifiedRowColumnValues,
-            Map<String, Object> rowColumnValues
-    ) {
+                        String eventType,
+                        String schemaName,
+                        String tableName,
+                        Long commitTimestamp,
+                        UUID transactionUUID,
+                        Long transactionXid,
+                        List<String> primaryKeyColumns,
+                        Map<String,Map<String, String>> stringifiedRowColumnValues,
+                        Map<String, Object> rowColumnValues) {
 
-        this.primaryKeyColumns = primaryKeyColumns;
-
-        this.transactionUUID = transactionUUID;
-
-        this.transactionXid = transactionXid;
+        this.primaryKeyColumns  = primaryKeyColumns;
+        this.commitTimestamp    = commitTimestamp;
+        this.transactionUUID    = transactionUUID;
+        this.transactionXid     = transactionXid;
 
         // time-bucketed binlogEventCounter is used to add a fake microsecond suffix for the timestamps
         // of all rows in the event. This way we keep the information about ordering of events
@@ -70,8 +69,8 @@ public class AugmentedRow {
 
         this.rawRowColumns = rowColumnValues;
 
-        this.tableSchema = schemaName;
-        this.tableName = tableName;
+        this.tableSchema    = schemaName;
+        this.tableName      = tableName;
 
         initColumnDataSlots();
     }

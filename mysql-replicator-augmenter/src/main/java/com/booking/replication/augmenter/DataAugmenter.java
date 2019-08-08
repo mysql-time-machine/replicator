@@ -28,7 +28,6 @@ public class DataAugmenter {
     }
 
     public synchronized AugmentedEventData apply(RawEventHeaderV4 eventHeader, RawEventData eventData) {
-
         switch (eventHeader.getEventType()) {
 
             case WRITE_ROWS:
@@ -60,6 +59,7 @@ public class DataAugmenter {
 
                         this.context.computeAugmentedEventRows(
                                 "INSERT",
+                                eventHeader.getTimestamp(),
                                 this.context.getTransaction().getIdentifier().get(),
                                 this.context.getTransaction().getXxid(),
                                 writeRowsRawEventData.getTableId(),
@@ -96,6 +96,7 @@ public class DataAugmenter {
 
                         this.context.computeAugmentedEventRows(
                                 "UPDATE",
+                                eventHeader.getTimestamp(),
                                 this.context.getTransaction().getIdentifier().get(),
                                 this.context.getTransaction().getXxid(),
                                 updateRowsRawEventData.getTableId(),
@@ -131,6 +132,7 @@ public class DataAugmenter {
                         columns2,
                         this.context.computeAugmentedEventRows(
                                 "DELETE",
+                                eventHeader.getTimestamp(),
                                 this.context.getTransaction().getIdentifier().get(),
                                 this.context.getTransaction().getXxid(),
                                 deleteRowsRawEventData.getTableId(),

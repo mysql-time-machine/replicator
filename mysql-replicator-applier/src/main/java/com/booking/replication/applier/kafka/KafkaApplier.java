@@ -116,10 +116,9 @@ public class KafkaApplier implements Applier {
     @Override
     public Boolean apply(Collection<AugmentedEvent> events) {
 
-        System.out.println("Kafka Applier got => ");
         events.stream().forEach(e -> {
             try {
-                System.out.println(e.toJSONString());
+                System.out.println("Kafka Applier got => " + e.toJSONString());
             } catch (IOException e1) {
                 e1.printStackTrace();
             }
@@ -179,7 +178,6 @@ public class KafkaApplier implements Applier {
             System.out.println("KafkaApplier format: JSON");
             try {
                 for (AugmentedEvent event : events) {
-
 
                     int partition = this.replicatorPartitioner.apply(event, this.totalPartitions);
 

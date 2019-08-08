@@ -164,9 +164,8 @@ public class BinaryLogSupplier implements Supplier {
                             this.client.registerLifecycleListener(new BinaryLogClient.LifecycleListener() {
                                 @Override
                                 public void onConnect(BinaryLogClient client) {
-                                    System.out.println( "-----" + client.getGtidSet());
                                     BinaryLogSupplier.LOG.info(
-                                            String.format("Binlog client connected to:%s : %s, %s",
+                                            String.format("Binlog client connected to:%s : %s, %s, %s",
                                                     hostname,
                                                     client.getBinlogFilename(),
                                                     client.getBinlogPosition(),

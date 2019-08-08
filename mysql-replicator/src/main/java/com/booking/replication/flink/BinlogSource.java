@@ -30,7 +30,7 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
     private static final Logger LOG = LogManager.getLogger(BinlogSource.class);
 
-    private static final boolean USE_FLINK_CHECKPOINT_STORE = false;
+    private static final boolean USE_FLINK_CHECKPOINT_STORE = true;
 
     // serializable state
     private volatile boolean isRunning = true;

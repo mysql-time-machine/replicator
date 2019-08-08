@@ -141,7 +141,6 @@ public class ReplicatorFlinkKafkaTest {
 
         runMysqlScripts(this.getConfiguration(), file.getAbsolutePath());
 
-
         Thread.sleep(5000);
 
         Map<String, Object> kafkaConfiguration = new HashMap<>();
@@ -149,11 +148,6 @@ public class ReplicatorFlinkKafkaTest {
         kafkaConfiguration.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, ReplicatorFlinkKafkaTest.kafka.getURL());
         kafkaConfiguration.put(ConsumerConfig.GROUP_ID_CONFIG, ReplicatorFlinkKafkaTest.KAFKA_REPLICATOR_IT_GROUP_ID);
         kafkaConfiguration.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-
-//        String schemaRegistryUrl = (String) this.getConfiguration().get(KafkaApplier.Configuration.SCHEMA_REGISTRY_URL);
-//        kafkaConfiguration.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl);
-//        CachedSchemaRegistryClient client = new CachedSchemaRegistryClient(schemaRegistryUrl, 1000);
-//        KafkaAvroDeserializer kafkaAvroDeserializer = new KafkaAvroDeserializer(client);
 
         try (Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(kafkaConfiguration, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
             consumer.subscribe(Collections.singleton(ReplicatorFlinkKafkaTest.KAFKA_REPLICATOR_TOPIC_NAME));
@@ -169,7 +163,7 @@ public class ReplicatorFlinkKafkaTest {
 
                     ReplicatorFlinkKafkaTest.LOG.info(new String(augmentedEvent.toJSON()));
 
-                    System.out.println(new String(record.key()));
+                    System.out.println("=====" + new String(record.key()));
 
                     consumed = true;
                 }
@@ -302,13 +296,20 @@ public class ReplicatorFlinkKafkaTest {
         configuration.put(Replicator.Configuration.CHECKPOINT_PATH, ReplicatorFlinkKafkaTest.ZOOKEEPER_CHECKPOINT_PATH);
         configuration.put(Replicator.Configuration.CHECKPOINT_DEFAULT, ReplicatorFlinkKafkaTest.CHECKPOINT_DEFAULT);
 
+        configuration.put(BinaryLogSupplier.Configuration.GTID_FALLBACK_TO_PURGED, true);
+
         return configuration;
     }
 
     @AfterClass
     public static void after() {
+
         ReplicatorFlinkKafkaTest.mysqlBinaryLog.close();
         ReplicatorFlinkKafkaTest.mysqlActiveSchema.close();
         ReplicatorFlinkKafkaTest.zookeeper.close();
+        ReplicatorFlinkKafkaTest.kafka.close();
+        ReplicatorFlinkKafkaTest.kafkaZk.close();
+        ReplicatorFlinkKafkaTest.schemaRegistry.close();
+
     }
 }

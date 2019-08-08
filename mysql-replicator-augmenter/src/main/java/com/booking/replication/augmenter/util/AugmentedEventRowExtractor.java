@@ -86,9 +86,9 @@ public class AugmentedEventRowExtractor {
     private static void overrideRowsCommitTimeAndSetMicroseconds(
             Long commitTimestamp,
             Long transactionSequenceNumber,
-            Collection<AugmentedRow> extractedAugmentedRowsFromInsert) {
+            Collection<AugmentedRow> extractedAugmentedRows) {
 
-        for (AugmentedRow ar : extractedAugmentedRowsFromInsert) {
+        for (AugmentedRow ar : extractedAugmentedRows) {
 
             ar.setCommitTimestamp(commitTimestamp);
             ar.setTransactionSequenceNumber(transactionSequenceNumber);

@@ -2,6 +2,7 @@ package com.booking.replication;
 
 import com.booking.replication.applier.Applier;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
+import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.map.MapFlatter;
 import com.booking.replication.commons.metrics.Metrics;
 import com.booking.replication.controller.WebServer;
@@ -19,6 +20,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.apache.commons.cli.*;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.functions.Partitioner;
+import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -85,15 +87,15 @@ public class Replicator {
 
         Objects.requireNonNull(checkpointPath, String.format("Configuration required: %s", Configuration.CHECKPOINT_PATH));
 
-        int threads = Integer.parseInt(configuration.getOrDefault(Configuration.REPLICATOR_THREADS, "1").toString());
-        int tasks = Integer.parseInt(configuration.getOrDefault(Configuration.REPLICATOR_TASKS, "1").toString());
-        int queueSize = Integer.parseInt(configuration.getOrDefault(Configuration.REPLICATOR_QUEUE_SIZE, "10000").toString());
-        long queueTimeout = Long.parseLong(configuration.getOrDefault(Configuration.REPLICATOR_QUEUE_TIMEOUT, "300").toString());
+//        int threads = Integer.parseInt(configuration.getOrDefault(Configuration.REPLICATOR_THREADS, "1").toString());
+//        int tasks = Integer.parseInt(configuration.getOrDefault(Configuration.REPLICATOR_TASKS, "1").toString());
+//        int queueSize = Integer.parseInt(configuration.getOrDefault(Configuration.REPLICATOR_QUEUE_SIZE, "10000").toString());
+//        long queueTimeout = Long.parseLong(configuration.getOrDefault(Configuration.REPLICATOR_QUEUE_TIMEOUT, "300").toString());
 
-        boolean overrideCheckpointStartPosition = Boolean.parseBoolean(configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_START_POSITION, false).toString());
-        String overrideCheckpointBinLogFileName = configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_BINLOG_FILENAME, "").toString();
-        long overrideCheckpointBinlogPosition = Long.parseLong(configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_BINLOG_POSITION, "0").toString());
-        String overrideCheckpointGtidSet = configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_GTID_SET, "").toString();
+//        boolean overrideCheckpointStartPosition = Boolean.parseBoolean(configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_START_POSITION, false).toString());
+//        String overrideCheckpointBinLogFileName = configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_BINLOG_FILENAME, "").toString();
+//        long overrideCheckpointBinlogPosition = Long.parseLong(configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_BINLOG_POSITION, "0").toString());
+//        String overrideCheckpointGtidSet = configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_GTID_SET, "").toString();
 
         this.checkpointDefault = (checkpointDefault != null) ? (checkpointDefault.toString()) : (null);
 
@@ -110,58 +112,6 @@ public class Replicator {
 
         this.metrics.register(METRIC_COORDINATOR_DELAY, (Gauge<Long>) () -> this.checkPointDelay.get());
 
-        //this.applier = Applier.build(configuration);
-
-        //////////////////////////////////////////////////////////////////////////
-        // Custom Streams Implementation
-        //
-        //        this.destinationStream = Streams.<Collection<AugmentedEvent>>builder()
-        //                .threads(threads)
-        //                .tasks(tasks)
-        //                .replicatorPartitioner((events, totalPartitions) -> {
-        //                    this.metrics.getRegistry()
-        //                            .counter("hbase.streams.destination.replicatorPartitioner.event.apply.attempt").inc(1L);
-        //                    Integer partitionNumber = this.replicatorPartitioner.apply(events.iterator().next(), totalPartitions);
-        //                    this.metrics.getRegistry()
-        //                            .counter("hbase.streams.destination.replicatorPartitioner.event.apply.success").inc(1L);
-        //                    return partitionNumber;
-        //                })
-        //                .useDefaultQueueType()
-        //                .usePushMode()
-        //                .setSink(this.sink)
-        //                .post((events, task) -> {
-        //                    for (AugmentedEvent event : events) {
-        //                        this.checkpointApplier.accept(event, task);
-        //                    }
-        //                }).build();
-
-        //        this.metrics.register(METRIC_STREAM_DESTINATION_QUEUE_SIZE,(Gauge<Integer>) () -> this.destinationStream.size());
-
-        //        this.sourceStream = Streams.<RawEvent>builder()
-        //                .usePushMode()
-        //                .process(this.augmenter)
-        //                .process(this.seeker)
-        //                .process(this.augmenterFilter)
-        //                .setSink((events) -> {
-        //                    Map<Integer, Collection<AugmentedEvent>> splitEventsMap = new HashMap<>();
-        //                    for (AugmentedEvent event : events) {
-        //                        this.metrics.getRegistry()
-        //                                .counter("streams.replicatorPartitioner.event.apply.attempt").inc(1L);
-        //                        splitEventsMap.computeIfAbsent(
-        //                                this.replicatorPartitioner.apply(event, tasks), partition -> new ArrayList<>()
-        //                        ).add(event);
-        //                        metrics.getRegistry()
-        //                                .counter("streams.replicatorPartitioner.event.apply.success").inc(1L);
-        //                    }
-        //                    for (Collection<AugmentedEvent> splitEvents : splitEventsMap.values()) {
-        //                        //this.destinationStream.push(splitEvents);
-        //                        System.out.println("splitEvents -> " + splitEvents.size());
-        //                    }
-        //                    return true;
-        //                }).build();
-
-        //        this.metrics.register(METRIC_STREAM_SOURCE_QUEUE_SIZE, (Gauge<Integer>) () -> this.sourceStream.size());
-
         ////////////////////////////////////////////////////////////////////////
         // Experimenting with Flink - Work In progress
         env = StreamExecutionEnvironment.createLocalEnvironment();
@@ -177,44 +127,64 @@ public class Replicator {
 
             this.source = new BinlogSource(configuration);
 
-            DataStream<AugmentedEvent> augmentedEventDataStream = env.addSource(source).forceNonParallel();
+            DataStream<AugmentedEvent> augmentedEventDataStream =
+                    env.addSource(source).forceNonParallel();
 
-            Partitioner<AugmentedEvent> binlogEventFlinkPartitioner = BinlogEventFlinkPartitioner.build(configuration);
+            Partitioner<AugmentedEvent> binlogEventFlinkPartitioner =
+                    BinlogEventFlinkPartitioner.build(configuration);
 
-            DataStream<AugmentedEvent> partitionedDataStream = augmentedEventDataStream
-                    .partitionCustom(
-                            binlogEventFlinkPartitioner,
-                            // binlogEventPartitioner knows how to convert event to partition,
-                            // so there is no need for a separate KeySelector
-                            event -> event // <- identity key selector
-                    );
+            DataStream<AugmentedEvent> partitionedDataStream =
+                    augmentedEventDataStream
+                        .partitionCustom(
+                                binlogEventFlinkPartitioner,
+                                // binlogEventPartitioner knows how to convert event to partition,
+                                // so there is no need for a separate KeySelector
+                                event -> event // <- identity key selector
+                        );
 
-            DataStream<Collection<AugmentedEvent>> chunkedStream = partitionedDataStream
-                .map(
-                        // ugly poc hack - todo 1: collect events into lists grouped by transaction
-                        new MapFunction<AugmentedEvent, Collection<AugmentedEvent>>() {
-                            @Override
-                            public Collection<AugmentedEvent> map(AugmentedEvent augmentedEvent) throws Exception {
-                                ArrayList<AugmentedEvent> l = new ArrayList<AugmentedEvent>();
-                                l.add((AugmentedEvent) augmentedEvent);
-                                return l;
+            DataStream<Collection<AugmentedEvent>> chunkedStream =
+                    partitionedDataStream
+                        .map(
+                            // ugly poc hack - todo 1: collect events into lists grouped by transaction
+                            new MapFunction<AugmentedEvent, Collection<AugmentedEvent>>() {
+                                @Override
+                                public Collection<AugmentedEvent> map(AugmentedEvent augmentedEvent) throws Exception {
+                                    ArrayList<AugmentedEvent> l = new ArrayList<AugmentedEvent>();
+                                    l.add((AugmentedEvent) augmentedEvent);
+                                    return l;
+                                }
                             }
-                        }
 
-                );
+                        );
 
-            // RichSinkFunction<Collection<AugmentedEvent>> richSinkFunction =
-            //        new ReplicatorGenericFlinkSink(configuration);
-            chunkedStream
-                    .addSink(new SinkFunction<Collection<AugmentedEvent>>() {
-                        private transient Applier a =  Applier.build(configuration);;
+            chunkedStream.addSink(
+                    new RichSinkFunction<Collection<AugmentedEvent>>() {
+
+                        private transient Applier a =  Applier.build(configuration);
+
+                        // TODO: sink checkpoints
+                        private transient Checkpoint binlogCheckpoint = new Checkpoint();
+                        private transient ListState<Checkpoint> binlogCheckpoints;
+
                         @Override
-                        public void invoke(Collection<AugmentedEvent> value) throws Exception {
+                        public void invoke(Collection<AugmentedEvent> augmentedEvents) throws Exception {
                             if (a == null) {
                                 System.out.println("Lost applier");
                                 a = Applier.build(configuration);
                             }
-                            a.apply(value);
+                            a.apply(augmentedEvents);
+
+                            Checkpoint committedCheckpoint =
+                                    augmentedEvents.stream().findFirst().get().getHeader().getCheckpoint();
+
+                            this.binlogCheckpoint = committedCheckpoint;
+
+                            // TODO: move to snapshotState
+//                            if ( committedCheckpoint.getGtidSet() != null) {
+//                                System.out.println("BinlogSink: snapshotting state, gtidSet #" + committedCheckpoint.getGtidSet());
+//                                this.binlogCheckpoints.clear();
+//                                this.binlogCheckpoints.add(committedCheckpoint);
+//                            }
                         }
                     });
 

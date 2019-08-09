@@ -197,7 +197,7 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
                                 coordinator
                         );
                     }
-                    System.out.println("Loaded checkpoint. Starting supplier.");
+                    System.out.println("Loaded checkpoint: "+ binlogCheckpoint.getGtidSet() + " Starting supplier.");
 
                     synchronized (this) {
                         if (!isLeader) {

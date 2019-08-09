@@ -9,6 +9,9 @@ import com.booking.replication.augmenter.ActiveSchemaManager;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.AugmenterContext;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
+import com.booking.replication.augmenter.model.event.AugmentedEventType;
+import com.booking.replication.augmenter.model.event.WriteRowsAugmentedEventData;
+import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.checkpoint.CheckpointApplier;
 import com.booking.replication.commons.conf.MySQLConfiguration;
 import com.booking.replication.commons.services.ServicesControl;
@@ -36,6 +39,7 @@ import org.apache.logging.log4j.Logger;
 
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.testcontainers.containers.Network;
@@ -61,7 +65,7 @@ public class ReplicatorFlinkKafkaTest {
     private static final String MYSQL_PASSWORD = "replicator";
     private static final String MYSQL_ACTIVE_SCHEMA = "active_schema";
     private static final String MYSQL_INIT_SCRIPT = "mysql.init.sql";
-    private static final String MYSQL_TEST_SCRIPT = "mysql.binlog.test.sql";
+    private static final String MYSQL_TEST_SCRIPT = "mysql.binlog.flink.kafka.test.sql";
     private static final String MYSQL_CONF_FILE = "my.cnf";
     private static final int TRANSACTION_LIMIT = 1000;
     private static final String CONNECTION_URL_FORMAT = "jdbc:mysql://%s:%d/%s";
@@ -135,19 +139,33 @@ public class ReplicatorFlinkKafkaTest {
 
         Replicator replicator = new Replicator(this.getConfiguration());
 
-        replicator.start();
+        System.out.println("Starting the replicator");
+
+        new Thread(() ->  {
+            try {
+                replicator.start();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
 
         File file = new File("src/test/resources/" + ReplicatorFlinkKafkaTest.MYSQL_TEST_SCRIPT);
 
+        System.out.println("Try running mysql scripts");
+
         runMysqlScripts(this.getConfiguration(), file.getAbsolutePath());
 
-        Thread.sleep(5000);
+        System.out.println("Finished running mysql scripts");
+
+        Thread.sleep(15000);
 
         Map<String, Object> kafkaConfiguration = new HashMap<>();
 
         kafkaConfiguration.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, ReplicatorFlinkKafkaTest.kafka.getURL());
         kafkaConfiguration.put(ConsumerConfig.GROUP_ID_CONFIG, ReplicatorFlinkKafkaTest.KAFKA_REPLICATOR_IT_GROUP_ID);
         kafkaConfiguration.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        List<String> results = new ArrayList<>();
 
         try (Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(kafkaConfiguration, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
             consumer.subscribe(Collections.singleton(ReplicatorFlinkKafkaTest.KAFKA_REPLICATOR_TOPIC_NAME));
@@ -157,22 +175,28 @@ public class ReplicatorFlinkKafkaTest {
             while (!consumed) {
 
                 for (ConsumerRecord<byte[], byte[]> record : consumer.poll(1000L)) {
-//                    GenericRecord deserialize = (GenericRecord) kafkaAvroDeserializer.deserialize("", record.value());
-//                    System.out.println(deserialize.toString());
+
                     AugmentedEvent augmentedEvent = AugmentedEvent.fromJSON(record.key(), record.value());
 
-                    ReplicatorFlinkKafkaTest.LOG.info(new String(augmentedEvent.toJSON()));
+                    ReplicatorFlinkKafkaTest.LOG.info("Got new augmented event from Kafka: " + new String(augmentedEvent.toJSON()));
 
-                    System.out.println("=====" + new String(record.key()));
-
+                    if ((augmentedEvent.getHeader().getEventType() == AugmentedEventType.WRITE_ROWS)) {
+                        for (AugmentedRow augmentedRow : ((WriteRowsAugmentedEventData) augmentedEvent.getData()).getAugmentedRows()) {
+                            String value = augmentedRow.getStringifiedRowColumns().get("name").get("value");
+                            System.out.println("aaa===" + value);
+                            results.add(value);
+                        }
+                    }
                     consumed = true;
                 }
             }
         }
 
-        Thread.sleep(1000000);
-//
-//        replicator.stop();
+        Assert.assertEquals(5, results.size());
+
+        Thread.sleep(10000000);
+
+        replicator.stop();
     }
 
     private boolean runMysqlScripts(Map<String, Object> configuration, String scriptFilePath) {

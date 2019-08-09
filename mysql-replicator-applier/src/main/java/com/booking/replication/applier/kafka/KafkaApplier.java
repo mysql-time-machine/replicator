@@ -103,6 +103,7 @@ public class KafkaApplier implements Applier {
     }
 
     private Producer<byte[], byte[]> getProducer() {
+        LOG.info("Kafka producer configuration : " + configuration.toString());
         return new KafkaProducer<>(this.configuration, new ByteArraySerializer(), new ByteArraySerializer());
     }
 

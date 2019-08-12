@@ -24,6 +24,7 @@ import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
@@ -123,6 +124,9 @@ public class Replicator {
 
         env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
+        env.getCheckpointConfig()
+                .enableExternalizedCheckpoints(CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
+
         try {
 
             this.source = new BinlogSource(configuration);
@@ -157,36 +161,7 @@ public class Replicator {
 
                         );
 
-            chunkedStream.addSink(
-                    new RichSinkFunction<Collection<AugmentedEvent>>() {
-
-                        private transient Applier a =  Applier.build(configuration);
-
-                        // TODO: sink checkpoints
-                        private transient Checkpoint binlogCheckpoint = new Checkpoint();
-                        private transient ListState<Checkpoint> binlogCheckpoints;
-
-                        @Override
-                        public void invoke(Collection<AugmentedEvent> augmentedEvents) throws Exception {
-                            if (a == null) {
-                                System.out.println("Lost applier");
-                                a = Applier.build(configuration);
-                            }
-                            a.apply(augmentedEvents);
-
-                            Checkpoint committedCheckpoint =
-                                    augmentedEvents.stream().findFirst().get().getHeader().getCheckpoint();
-
-                            this.binlogCheckpoint = committedCheckpoint;
-
-                            // TODO: move to snapshotState
-//                            if ( committedCheckpoint.getGtidSet() != null) {
-//                                System.out.println("BinlogSink: snapshotting state, gtidSet #" + committedCheckpoint.getGtidSet());
-//                                this.binlogCheckpoints.clear();
-//                                this.binlogCheckpoints.add(committedCheckpoint);
-//                            }
-                        }
-                    });
+            chunkedStream.addSink(new ReplicatorFlinkSink(configuration));
 
         } catch (IOException exception) {
                 exception.printStackTrace();

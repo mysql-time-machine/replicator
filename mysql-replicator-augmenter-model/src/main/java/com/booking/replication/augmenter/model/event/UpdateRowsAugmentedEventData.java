@@ -4,19 +4,21 @@ import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.FullTableName;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.Collection;
 
 @SuppressWarnings("unused")
 public class UpdateRowsAugmentedEventData implements TableAugmentedEventData {
-    private FullTableName eventTable;
-    private Collection<Boolean> includedColumnsBeforeUpdate;
-    private Collection<Boolean> includedColumns;
+
+    @JsonIgnore private FullTableName eventTable;
+    @JsonIgnore private Collection<Boolean> includedColumnsBeforeUpdate;
+    @JsonIgnore private Collection<Boolean> includedColumns;
+
     private Collection<ColumnSchema> columns;
     private Collection<AugmentedRow> augmentedRows;
 
-    public UpdateRowsAugmentedEventData() {
-
-    }
+    public UpdateRowsAugmentedEventData() { }
 
     public UpdateRowsAugmentedEventData(
             FullTableName eventTable,

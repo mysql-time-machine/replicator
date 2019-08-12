@@ -20,9 +20,9 @@ public class ReplicatorFlinkSink
 
     private transient Applier applier;
     private Map<String,Object> configuration;
-
-    private transient Checkpoint binlogCheckpoint = new Checkpoint();
-    private transient ListState<Checkpoint> binlogCheckpoints;
+//
+//    private transient Checkpoint binlogCheckpoint = new Checkpoint();
+//    private transient ListState<Checkpoint> binlogCheckpoints;
 
     public ReplicatorFlinkSink(Map<String,Object> configuration) {
         this.configuration = configuration;
@@ -39,32 +39,23 @@ public class ReplicatorFlinkSink
         }
         applier.apply(augmentedEvents);
 
-        this.binlogCheckpoint =
-                augmentedEvents
-                        .stream()
-                        .findFirst()
-                        .get()
-                        .getHeader()
-                        .getCheckpoint();
-
-        if (this.binlogCheckpoint != null && this.binlogCheckpoint.getGtidSet() != null) {
-            System.out.println("applier -> " + this.binlogCheckpoint.getGtidSet());
-        }
+//        this.binlogCheckpoint =
+//                augmentedEvents
+//                        .stream()
+//                        .findFirst()
+//                        .get()
+//                        .getHeader()
+//                        .getCheckpoint();
+//
+//        if (this.binlogCheckpoint != null && this.binlogCheckpoint.getGtidSet() != null) {
+//            System.out.println("applier -> " + this.binlogCheckpoint.getGtidSet());
+//        }
     }
 
     @Override
     public void snapshotState(FunctionSnapshotContext functionSnapshotContext) throws Exception {
-
-        System.out.println("sink snapshotState, checkpointID => " + functionSnapshotContext.getCheckpointId());
-
-        if (binlogCheckpoint != null) {
-            if ( binlogCheckpoint.getGtidSet() != null) {
-                System.out.println("BinlogSink: snapshotting state, gtidSet #" + binlogCheckpoint.getGtidSet());
-                this.binlogCheckpoints.clear();
-                this.binlogCheckpoints.add(binlogCheckpoint);
-            }
-        }
-
+        System.out.println("sink snapshotState, checkpointID => " +
+                functionSnapshotContext.getCheckpointId());
     }
 
     @Override

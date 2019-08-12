@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.runtime.state.CheckpointListener;
 import org.apache.flink.runtime.state.FunctionInitializationContext;
 import org.apache.flink.runtime.state.FunctionSnapshotContext;
 import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
@@ -21,12 +22,14 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingDeque;
 
-public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements CheckpointedFunction {
+public class BinlogSource
+        extends RichSourceFunction<AugmentedEvent>
+        implements CheckpointedFunction, CheckpointListener {
 
     private static final Logger LOG = LogManager.getLogger(BinlogSource.class);
 
@@ -41,6 +44,8 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
     // non-serializable
     private transient BlockingDeque<AugmentedEvent> incomingEvents;
+    private transient TreeMap<Long, List<Checkpoint>> gtidsByConfirmedCheckpointID;
+    private transient List<Checkpoint> gtidsSeen;
 
     private transient boolean chaosMonkeySwitch = false;
     private transient ListState<Boolean> chaosMonkeySwitches;
@@ -49,7 +54,7 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
     private transient ListState<Long> checkpointedCount;
 
     private transient Checkpoint            binlogCheckpoint = new Checkpoint();
-    private transient ListState<Checkpoint> binlogCheckpoints;  // TODO: use this for GTIDSet checkpoint
+    private transient ListState<Checkpoint> binlogCheckpoints;
 
     // augmenter
     private transient Augmenter augmenter;
@@ -63,6 +68,8 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
     public BinlogSource(Map<String, Object> configuration) throws IOException {
         this.configuration = configuration;
         this.checkpointPath = configuration.get(Replicator.Configuration.CHECKPOINT_PATH).toString();
+        this.gtidsByConfirmedCheckpointID = new TreeMap<>();
+        this.gtidsSeen = new ArrayList<>();
     }
 
     @Override
@@ -91,6 +98,8 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
                     );
 
                     binlogCheckpoint = event.getHeader().getCheckpoint();
+
+                    gtidsSeen.add(binlogCheckpoint);
 
                     System.out.println("Source: main loop, binlogCheckpoint #" + binlogCheckpoint.getGtidSet());
 
@@ -148,6 +157,10 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
             this.incomingEvents = new LinkedBlockingDeque<>();
 
+            this.gtidsSeen = new ArrayList<>();
+
+            this.gtidsByConfirmedCheckpointID = new TreeMap<>();
+
             // callbacks
             supplier.onEvent((event) -> {
 
@@ -164,7 +177,6 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }
-
                         }
                     }
                 }
@@ -255,6 +267,7 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
     }
 
     private void restoreState(FunctionInitializationContext context) throws Exception {
+
         // restore state
         this.chaosMonkeySwitches = context
                 .getOperatorStateStore()
@@ -282,13 +295,17 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
         this.binlogCheckpoints = context
                 .getOperatorStateStore()
-                .getListState(new ListStateDescriptor<>("binlogCheckpoint", Checkpoint.class));
+                .getListState(new ListStateDescriptor<>("binlogCheckpoints", Checkpoint.class));
+
+        context.getOperatorStateStore().getRegisteredStateNames().stream().forEach( name -> {
+            System.out.println("restoreState: found registered state name => " + name);
+        });
 
         if (context.isRestored()) {
             for (Checkpoint checkpoint : this.binlogCheckpoints.get()) {
                 if (checkpoint != null && checkpoint.getGtidSet() != null) {
                     this.binlogCheckpoint = checkpoint;
-                    System.out.println("restored context, checkpoint => #" + checkpoint.getGtidSet());
+                    System.out.println("restored context in binlogSource, checkpoint => #" + checkpoint.getGtidSet());
                 }
             }
         }
@@ -308,7 +325,11 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
         if (isLeader) {
 
+            System.out.println("source  snapshotState, checkpointID => " +
+                    context.getCheckpointId());
+
             System.out.println("BinlogSource: snapshotting state, count => #" + count);
+
             this.checkpointedCount.clear();
             this.checkpointedCount.add(count);
 
@@ -325,15 +346,22 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
             this.chaosMonkeySwitches.clear();
             this.chaosMonkeySwitches.add(chaosMonkeySwitch);
 
-            if (binlogCheckpoint != null) {
-                if ( binlogCheckpoint.getGtidSet() != null) {
-                    System.out.println("BinlogSource: snapshotting state, gtidSet #" + binlogCheckpoint.getGtidSet());
-                    this.binlogCheckpoints.clear();
-                    this.binlogCheckpoints.add(binlogCheckpoint);
+            if (!gtidsByConfirmedCheckpointID.isEmpty()) {
+                Long maxConfirmedCheckpoint = gtidsByConfirmedCheckpointID.lastKey();
+                if (maxConfirmedCheckpoint != null) {
+                    List<Checkpoint> lastList = gtidsByConfirmedCheckpointID.get(maxConfirmedCheckpoint);
+                    if (lastList != null) {
+                        Checkpoint lastCheckpoint = lastList.get(lastList.size() - 1);
+                        System.out.println("BinlogSource: snapshotting state, adding gtid #" + lastCheckpoint.getGtidSet());
+                        this.binlogCheckpoints.clear();
+                        this.binlogCheckpoints.add(new Checkpoint());
+                        gtidsByConfirmedCheckpointID.clear();
+                        gtidsSeen.clear();
+                    }
                 }
             }
-        }
 
+        }
     }
 
     private Checkpoint getCheckpoint(
@@ -343,12 +371,14 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
             String overrideCheckpointGtidSet,
             Coordinator coordinator) throws IOException {
 
+        System.out.println("---get checkpoint---");
         Checkpoint from;
 
         Seeker seeker = Seeker.build(configuration);
 
         if(overrideCheckpointStartPosition){
 
+            System.out.println("---get checkpoint - override ---");
             if (overrideCheckpointBinLogFileName != null && !overrideCheckpointBinLogFileName.equals("")) {
 
                 LOG.info("Checkpoint startup mode: override Binlog filename and position:" +
@@ -362,6 +392,8 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
             } else if (overrideCheckpointGtidSet != null && !overrideCheckpointGtidSet.equals("")) {
 
+
+                System.out.println("---get checkpoint---override gtidSet");
                 LOG.info("Checkpoint startup mode: override gtidSet: " + overrideCheckpointGtidSet);
                 from = seeker.seek(
                         new Checkpoint(overrideCheckpointGtidSet)
@@ -387,6 +419,11 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
         Checkpoint checkpoint = coordinator.loadCheckpoint(this.checkpointPath);
 
+        if (checkpoint == null) {
+            System.out.println("---- chjeckpoint is null");
+        } else {
+            System.out.println("---- chjeckpoint not null" + checkpoint.getGtidSet());
+        }
         Object checkpointDefault = configuration.get(Replicator.Configuration.CHECKPOINT_DEFAULT);
 
         String checkpointDefaultString = (checkpointDefault != null) ? (checkpointDefault.toString()) : (null);
@@ -400,5 +437,22 @@ public class BinlogSource extends RichSourceFunction<AugmentedEvent> implements 
 
     public synchronized boolean isRunning() {
         return isRunning;
+    }
+
+    @Override
+    public void notifyCheckpointComplete(long l) throws Exception {
+
+        System.out.println("BinlogSource: checkpoint confirmed => " + l);
+
+        if (!gtidsByConfirmedCheckpointID.containsKey(l)) {
+            gtidsByConfirmedCheckpointID.put(l, new ArrayList<>());
+        }
+
+        gtidsByConfirmedCheckpointID.get(l).addAll(gtidsSeen);
+        gtidsSeen.clear();
+
+        for (Checkpoint gtid: gtidsByConfirmedCheckpointID.get(l)) {
+            System.out.println("added: " + gtid.getGtidSet() + ", for checkpoint #" + l);
+        }
     }
 }

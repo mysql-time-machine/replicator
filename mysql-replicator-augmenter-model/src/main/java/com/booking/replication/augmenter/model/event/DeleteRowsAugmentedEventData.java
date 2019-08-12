@@ -4,18 +4,10 @@ import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.FullTableName;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import java.util.Collection;
 
 @SuppressWarnings("unused")
-public class DeleteRowsAugmentedEventData implements TableAugmentedEventData {
-
-    @JsonIgnore private FullTableName eventTable;
-    @JsonIgnore private Collection<Boolean> includedColumns;
-
-    private Collection<ColumnSchema> columns;
-    private Collection<AugmentedRow> augmentedRows;
+public class DeleteRowsAugmentedEventData extends RowsAugmentedEventData {
 
     public DeleteRowsAugmentedEventData() { }
 
@@ -24,26 +16,7 @@ public class DeleteRowsAugmentedEventData implements TableAugmentedEventData {
             Collection<Boolean> includedColumns,
             Collection<ColumnSchema> columns,
             Collection<AugmentedRow> augmentedRows) {
-        this.eventTable = eventTable;
-        this.includedColumns = includedColumns;
-        this.columns = columns;
-        this.augmentedRows = augmentedRows;
-    }
 
-    @Override
-    public FullTableName getEventTable() {
-        return this.eventTable;
-    }
-
-    public Collection<Boolean> getIncludedColumns() {
-        return this.includedColumns;
-    }
-
-    public Collection<ColumnSchema> getColumns() {
-        return this.columns;
-    }
-
-    public Collection<AugmentedRow> getAugmentedRows() {
-        return this.augmentedRows;
+        super(eventTable, includedColumns, columns, augmentedRows);
     }
 }

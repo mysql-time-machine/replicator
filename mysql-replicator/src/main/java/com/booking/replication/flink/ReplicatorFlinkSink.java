@@ -20,9 +20,6 @@ public class ReplicatorFlinkSink
 
     private transient Applier applier;
     private Map<String,Object> configuration;
-//
-//    private transient Checkpoint binlogCheckpoint = new Checkpoint();
-//    private transient ListState<Checkpoint> binlogCheckpoints;
 
     public ReplicatorFlinkSink(Map<String,Object> configuration) {
         this.configuration = configuration;
@@ -39,17 +36,6 @@ public class ReplicatorFlinkSink
         }
         applier.apply(augmentedEvents);
 
-//        this.binlogCheckpoint =
-//                augmentedEvents
-//                        .stream()
-//                        .findFirst()
-//                        .get()
-//                        .getHeader()
-//                        .getCheckpoint();
-//
-//        if (this.binlogCheckpoint != null && this.binlogCheckpoint.getGtidSet() != null) {
-//            System.out.println("applier -> " + this.binlogCheckpoint.getGtidSet());
-//        }
     }
 
     @Override
@@ -65,6 +51,6 @@ public class ReplicatorFlinkSink
 
     @Override
     public void notifyCheckpointComplete(long l) throws Exception {
-        System.out.println("sink checkpointComplete -> " + l);
+        System.out.println("BinlogSink checkpointComplete -> " + l);
     }
 }

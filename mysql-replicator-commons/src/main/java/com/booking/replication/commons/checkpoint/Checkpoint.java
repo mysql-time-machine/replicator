@@ -4,6 +4,7 @@ import java.io.Serializable;
 
 @SuppressWarnings("unused")
 public class Checkpoint implements Serializable, Comparable<Checkpoint> {
+
     private long timestamp;
     private long serverId;
     private GTID gtid;
@@ -14,6 +15,12 @@ public class Checkpoint implements Serializable, Comparable<Checkpoint> {
     }
 
     public Checkpoint(String gtidSet) {
+        this.gtidSet = gtidSet;
+    }
+
+    public Checkpoint(long timestamp, long serverId, String gtidSet) {
+        this.timestamp = timestamp;
+        this.serverId = serverId;
         this.gtidSet = gtidSet;
     }
 
@@ -32,6 +39,7 @@ public class Checkpoint implements Serializable, Comparable<Checkpoint> {
         this.gtid = gtid;
         this.binlog = binlog;
     }
+
 
     public Checkpoint(long timestamp, long serverId, GTID gtid, Binlog binlog, String gtidSet) {
         this.timestamp = timestamp;

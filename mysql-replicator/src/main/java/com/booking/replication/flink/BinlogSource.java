@@ -12,6 +12,7 @@ import com.booking.replication.supplier.Supplier;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.state.CheckpointListener;
 import org.apache.flink.runtime.state.FunctionInitializationContext;
@@ -25,6 +26,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.stream.Collectors;
 
 public class BinlogSource
         extends RichSourceFunction<AugmentedEvent>
@@ -43,7 +45,7 @@ public class BinlogSource
 
     // non-serializable
     private transient BlockingDeque<AugmentedEvent> incomingEvents;
-    private transient TreeMap<Long, List<Checkpoint>> gtidsSeenByFlinkCheckpointID;
+    private transient TreeMap<Long, Tuple2<Boolean, List<Checkpoint>>> gtidsSeenByFlinkCheckpointID;
     private transient List<Checkpoint> gtidsSeen;
     private transient List<Checkpoint> gtidsConfirmed;
 
@@ -108,10 +110,14 @@ public class BinlogSource
                     gtidsSeen.add(currentBinlogCheckpoint);
 
                     if (!gtidsSeenByFlinkCheckpointID.containsKey(lastConfirmedFlinkCheckpoint)) {
-                        gtidsSeenByFlinkCheckpointID.put(lastConfirmedFlinkCheckpoint, new ArrayList<>());
+                        gtidsSeenByFlinkCheckpointID.put(
+                                lastConfirmedFlinkCheckpoint,
+                                Tuple2.of(false , new ArrayList<>())
+                        );
                     }
 
-                    gtidsSeenByFlinkCheckpointID.get(lastConfirmedFlinkCheckpoint).add(
+                    gtidsSeenByFlinkCheckpointID.get(lastConfirmedFlinkCheckpoint).f0 = false;
+                    gtidsSeenByFlinkCheckpointID.get(lastConfirmedFlinkCheckpoint).f1.add(
                             new Checkpoint(
                                 currentBinlogCheckpoint.getTimestamp(),
                                 currentBinlogCheckpoint.getServerId(),
@@ -368,7 +374,7 @@ public class BinlogSource
             System.out.println("Snapshotting current state: Confirmed Binlog Checkpoints");
             gtidsConfirmed.stream().forEach(x -> System.out.println("\t " + x.getGtidSet()));
 
-            // TODO: cleanup helper structures
+            // TODO: mark snapshotted for cleanup
         }
     }
 
@@ -383,11 +389,15 @@ public class BinlogSource
         gtidsConfirmed.clear();
 
         System.out.println("Current state: Seen by previously confirmed checkpointIDs");
-        gtidsSeenByFlinkCheckpointID.keySet().stream().filter(k -> k < l).forEach(
-                key -> {
-                       gtidsSeenByFlinkCheckpointID.get(key).forEach(
+        gtidsSeenByFlinkCheckpointID.keySet()
+                .stream()
+                .filter(k -> k < l)
+                .filter(k -> gtidsSeenByFlinkCheckpointID.get(k).f0 == false) // not snapshotted yet
+                .forEach(
+                    key -> {
+                       gtidsSeenByFlinkCheckpointID.get(key).f1.forEach(
                                 x -> {
-                                    System.out.println("flinkCheckpointID => " + key + ", gtidSet => " + x.getGtidSet() + " }");
+                                    System.out.println("\tflinkCheckpointID => " + key + ", gtidSet => " + x.getGtidSet() + " }");
                                     gtidsConfirmed.add(new Checkpoint(
                                             x.getTimestamp(),
                                             x.getServerId(),
@@ -399,6 +409,18 @@ public class BinlogSource
         );
 
         this.lastConfirmedFlinkCheckpoint = l;
+
+
+        // cleanup of keys in gtidsSeenByFlinkCheckpointID that have already been snapshotted
+        List<Long> cleanupKeys = gtidsSeenByFlinkCheckpointID.keySet()
+                .stream()
+                .filter(k -> k < l)
+                .filter(k -> gtidsSeenByFlinkCheckpointID.get(k).f0 == true)
+                .collect(Collectors.toList());
+
+        cleanupKeys.forEach(
+                key -> gtidsSeenByFlinkCheckpointID.remove(key)
+        );
 
     }
 

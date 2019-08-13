@@ -59,21 +59,21 @@ public class EventDataPresenterAvro {
             WriteRowsAugmentedEventData data = WriteRowsAugmentedEventData.class.cast(eventData);
             this.header = header;
             this.eventTable = data.getEventTable();
-            this.rows = data.getAugmentedRows();
+            this.rows = data.getRows();
             this.columns = data.getColumns();
             this.eventType = "insert";
         } else if (eventData instanceof DeleteRowsAugmentedEventData) {
             DeleteRowsAugmentedEventData data = DeleteRowsAugmentedEventData.class.cast(eventData);
             this.header = header;
             this.eventTable = data.getEventTable();
-            this.rows = data.getAugmentedRows();
+            this.rows = data.getRows();
             this.columns = data.getColumns();
             this.eventType = "delete";
         } else if (eventData instanceof UpdateRowsAugmentedEventData) {
             UpdateRowsAugmentedEventData data = UpdateRowsAugmentedEventData.class.cast(eventData);
             this.header = header;
             this.eventTable = data.getEventTable();
-            this.rows = data.getAugmentedRows();
+            this.rows = data.getRows();
             this.columns = data.getColumns();
             this.eventType = "update";
         } else if (eventData instanceof QueryAugmentedEventData) {

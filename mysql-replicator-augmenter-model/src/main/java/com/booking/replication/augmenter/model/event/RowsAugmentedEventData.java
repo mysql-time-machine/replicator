@@ -9,14 +9,10 @@ import java.util.Collection;
 
 public abstract class RowsAugmentedEventData implements TableAugmentedEventData {
 
-    @JsonIgnore
-    protected FullTableName eventTable;
+    protected TableMetadata tableMetadata;
 
-    @JsonIgnore
     protected Collection<Boolean> includedColumns;
-
-    protected Collection<ColumnSchema> columns;
-    protected Collection<AugmentedRow> augmentedRows;
+    protected Collection<AugmentedRow> rows;
 
     public RowsAugmentedEventData() { }
 
@@ -24,27 +20,33 @@ public abstract class RowsAugmentedEventData implements TableAugmentedEventData 
             FullTableName eventTable,
             Collection<Boolean> includedColumns,
             Collection<ColumnSchema> columns,
-            Collection<AugmentedRow> augmentedRows) {
-        this.eventTable = eventTable;
+            Collection<AugmentedRow> rows) {
+
+        this.tableMetadata = new TableMetadata(eventTable, columns);
         this.includedColumns = includedColumns;
-        this.columns = columns;
-        this.augmentedRows = augmentedRows;
+        this.rows = rows;
     }
 
-    @Override
+    @JsonIgnore
     public FullTableName getEventTable() {
-        return this.eventTable;
+        return this.tableMetadata.getEventTable();
     }
 
+    @JsonIgnore
     public Collection<Boolean> getIncludedColumns() {
         return this.includedColumns;
     }
 
+    @JsonIgnore
     public Collection<ColumnSchema> getColumns() {
-        return this.columns;
+        return this.tableMetadata.getColumns();
     }
 
-    public Collection<AugmentedRow> getAugmentedRows() {
-        return this.augmentedRows;
+    public Collection<AugmentedRow> getRows() {
+        return this.rows;
+    }
+
+    public TableMetadata getTableMetadata() {
+        return this.tableMetadata;
     }
 }

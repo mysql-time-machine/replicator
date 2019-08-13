@@ -26,7 +26,7 @@ public class AugmentedEventRowExtractor {
                         ((WriteRowsAugmentedEventData) augmentedEvent.getData());
 
                 Collection<AugmentedRow> extractedAugmentedRowsFromInsert =
-                        writeRowsAugmentedEventData.getAugmentedRows();
+                        writeRowsAugmentedEventData.getRows();
 
                 // This part overrides the:
                 //      - commitTimestamp of all rows in transaction to the
@@ -48,7 +48,7 @@ public class AugmentedEventRowExtractor {
                         ((UpdateRowsAugmentedEventData) augmentedEvent.getData());
 
                 Collection<AugmentedRow> extractedAugmentedRowsFromUpdate =
-                        updateRowsAugmentedEventData.getAugmentedRows();
+                        updateRowsAugmentedEventData.getRows();
 
                 overrideRowsCommitTimeAndSetMicroseconds(
                         commitTimestamp,
@@ -65,7 +65,7 @@ public class AugmentedEventRowExtractor {
                         ((DeleteRowsAugmentedEventData) augmentedEvent.getData());
 
                 Collection<AugmentedRow> extractedAugmentedRowsFromDelete =
-                        deleteRowsAugmentedEventData.getAugmentedRows();
+                        deleteRowsAugmentedEventData.getRows();
 
                 overrideRowsCommitTimeAndSetMicroseconds(
                         commitTimestamp,

@@ -49,7 +49,7 @@ public class TableNameMergePatternFilter implements AugmenterFilter {
                         String rewrittenName = getRewrittenName(originalName);
                         // override
                         writeEv.getEventTable().setName(rewrittenName);
-                        writeEv.getAugmentedRows().stream().forEach(au -> au.setTableName(rewrittenName));
+                        writeEv.getRows().stream().forEach(au -> au.setTableName(rewrittenName));
                     }
                     if (ev.getHeader().getEventType() == AugmentedEventType.UPDATE_ROWS) {
                         UpdateRowsAugmentedEventData updateEv = ((UpdateRowsAugmentedEventData) ev.getData());
@@ -58,7 +58,7 @@ public class TableNameMergePatternFilter implements AugmenterFilter {
                         // override
                         updateEv.getEventTable().setName(rewrittenName);
                         updateEv.getEventTable().setName(rewrittenName);
-                        updateEv.getAugmentedRows().stream().forEach(au -> au.setTableName(rewrittenName));
+                        updateEv.getRows().stream().forEach(au -> au.setTableName(rewrittenName));
                     }
                     if (ev.getHeader().getEventType() == AugmentedEventType.DELETE_ROWS) {
                         DeleteRowsAugmentedEventData deleteEv = ((DeleteRowsAugmentedEventData) ev.getData());
@@ -67,7 +67,7 @@ public class TableNameMergePatternFilter implements AugmenterFilter {
                         // override
                         deleteEv.getEventTable().setName(rewrittenName);
                         deleteEv.getEventTable().setName(rewrittenName);
-                        deleteEv.getAugmentedRows().stream().forEach(au -> au.setTableName(rewrittenName));
+                        deleteEv.getRows().stream().forEach(au -> au.setTableName(rewrittenName));
                     }
                     return ev;
                 })

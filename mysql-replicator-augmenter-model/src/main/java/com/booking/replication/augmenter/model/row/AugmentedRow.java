@@ -1,10 +1,8 @@
 package com.booking.replication.augmenter.model.row;
 
-import com.booking.replication.augmenter.model.AugmenterModel;
 import com.booking.replication.commons.util.CaseInsensitiveMap;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -119,36 +117,12 @@ public class AugmentedRow {
         return eventType;
     }
 
-    public void setTransactionUUID(UUID transactionUUID) {
-        this.transactionUUID = transactionUUID;
-    }
-
-    public void setTransactionXid(Long transactionXid) {
-        this.transactionXid = transactionXid;
-    }
-
     public void setRowMicrosecondTimestamp(Long rowMicrosecondTimestamp) {
         this.rowMicrosecondTimestamp = rowMicrosecondTimestamp;
     }
 
-    public void setPrimaryKeyColumns(List<String> primaryKeyColumns) {
-        this.primaryKeyColumns = primaryKeyColumns;
-    }
-
-    public void setEventType(String eventType) {
-        this.eventType = eventType;
-    }
-
     public void setTableName(String tableName) {
         this.tableName = tableName;
-    }
-
-    public void setTableSchema(String tableSchema) {
-        this.tableSchema = tableSchema;
-    }
-
-    public void setStringifiedRowColumns(Map<String, Map<String, String>> stringifiedRowColumns) {
-        this.stringifiedRowColumns = stringifiedRowColumns;
     }
 
     public Long getRowMicrosecondTimestamp() {
@@ -157,9 +131,5 @@ public class AugmentedRow {
 
     public Map<String, Object> getRawRowColumns() {
         return rawRowColumns;
-    }
-
-    public void setRawRowColumns(Map<String, Object> rawRowColumns) {
-        this.rawRowColumns = rawRowColumns;
     }
 }

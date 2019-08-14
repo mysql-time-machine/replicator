@@ -25,15 +25,6 @@ public class TableSchema implements Serializable {
         return this.columnSchemas;
     }
 
-    public List<String> getPrimaryKeyColumns() {
-        return this
-                .columnSchemas
-                .stream()
-                .filter(column -> column.isPrimary())
-                .map(column -> column.getName())
-                .collect(Collectors.toList());
-    }
-
     public static List<String> getPrimaryKeyColumns(Collection<ColumnSchema> colSchemas) {
         return colSchemas.stream()
                 .filter(column -> column.isPrimary())

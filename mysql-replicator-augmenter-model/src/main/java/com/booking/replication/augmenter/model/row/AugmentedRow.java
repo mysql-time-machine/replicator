@@ -94,6 +94,7 @@ public class AugmentedRow {
         return this.tableName;
     }
 
+    @JsonIgnore
     public List<String> getPrimaryKeyColumns() {
         return primaryKeyColumns;
     }

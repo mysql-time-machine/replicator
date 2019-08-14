@@ -9,7 +9,7 @@ import java.util.Collection;
 
 public abstract class RowsAugmentedEventData implements TableAugmentedEventData {
 
-    protected TableMetadata tableMetadata;
+    protected TableMetadata metadata;
 
     protected Collection<Boolean> includedColumns;
     protected Collection<AugmentedRow> rows;
@@ -22,14 +22,14 @@ public abstract class RowsAugmentedEventData implements TableAugmentedEventData 
             Collection<ColumnSchema> columns,
             Collection<AugmentedRow> rows) {
 
-        this.tableMetadata = new TableMetadata(eventTable, columns);
+        this.metadata = new TableMetadata(eventTable, columns);
         this.includedColumns = includedColumns;
         this.rows = rows;
     }
 
     @JsonIgnore
     public FullTableName getEventTable() {
-        return this.tableMetadata.getEventTable();
+        return this.metadata.getEventTable();
     }
 
     @JsonIgnore
@@ -39,14 +39,14 @@ public abstract class RowsAugmentedEventData implements TableAugmentedEventData 
 
     @JsonIgnore
     public Collection<ColumnSchema> getColumns() {
-        return this.tableMetadata.getColumns();
+        return this.metadata.getColumns();
     }
 
     public Collection<AugmentedRow> getRows() {
         return this.rows;
     }
 
-    public TableMetadata getTableMetadata() {
-        return this.tableMetadata;
+    public TableMetadata getMetadata() {
+        return this.metadata;
     }
 }

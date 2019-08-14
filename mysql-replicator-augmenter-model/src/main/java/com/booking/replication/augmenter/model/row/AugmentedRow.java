@@ -71,8 +71,6 @@ public class AugmentedRow {
 
         this.tableSchema    = schemaName;
         this.tableName      = tableName;
-
-        initColumnDataSlots();
     }
 
     public void setTransactionSequenceNumber(Long transactionSequenceNumber) {
@@ -81,11 +79,6 @@ public class AugmentedRow {
 
     public void setCommitTimestamp(Long commitTimestamp) {
         this.commitTimestamp = commitTimestamp;
-    }
-
-    public void initColumnDataSlots() {
-        stringifiedRowColumns.put(AugmenterModel.Configuration.UUID_FIELD_NAME, new HashMap<String, String>());
-        stringifiedRowColumns.put(AugmenterModel.Configuration.XID_FIELD_NAME, new HashMap<String, String>());
     }
 
     public Map<String, Map<String, String>> getStringifiedRowColumns() {

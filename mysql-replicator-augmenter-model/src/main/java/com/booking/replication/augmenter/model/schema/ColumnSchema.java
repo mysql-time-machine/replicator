@@ -1,5 +1,6 @@
 package com.booking.replication.augmenter.model.schema;
 
+import com.fasterxml.jackson.annotation.JsonFilter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import org.apache.logging.log4j.LogManager;
@@ -8,6 +9,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.Serializable;
 
 @SuppressWarnings("unused")
+@JsonFilter("column")
 public class ColumnSchema implements Cloneable, Serializable {
     private static final Logger LOG = LogManager.getLogger(ColumnSchema.class);
 

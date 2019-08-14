@@ -13,6 +13,8 @@ import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter;
+import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
@@ -48,11 +50,14 @@ public class KafkaApplier implements Applier {
 
     private final String metricBase;
 
+    private Set<String> includeInColumns = new HashSet<>();
+
     public interface Configuration {
         String TOPIC                = "kafka.topic";
         String SCHEMA_REGISTRY_URL  = "kafka.schema.registry.url";
         String PRODUCER_PREFIX      = "kafka.producer.";
         String FORMAT               = "kafka.message.format";
+        String INCLUDE_IN_COLUMNS   = "kafka.output.columns.include";
     }
 
     public interface MessageFormat {
@@ -100,6 +105,21 @@ public class KafkaApplier implements Applier {
         );
 
         this.metricBase = MetricRegistry.name(this.metrics.basePath(), "kafka");
+
+        this.setupColumnsFilter(configuration);
+    }
+
+    private void setupColumnsFilter(Map<String, Object> configuration) {
+        this.includeInColumns.add("name");
+        this.includeInColumns.add("columnType");
+
+        this.includeInColumns.addAll(this.getAsSet(configuration.get(Configuration.INCLUDE_IN_COLUMNS)));
+
+        LOG.info("Adding " + this.includeInColumns.toString() + " fields in metadata.columns.");
+
+        SimpleFilterProvider filterProvider = new SimpleFilterProvider();
+        filterProvider.addFilter("column", SimpleBeanPropertyFilter.filterOutAllExcept(this.includeInColumns));
+        MAPPER.setFilterProvider(filterProvider);
     }
 
     private Producer<byte[], byte[]> getProducer() {
@@ -238,5 +258,17 @@ public class KafkaApplier implements Applier {
         this.partitioner.close();
         this.producers.values().forEach(Producer::close);
         this.producers.clear();
+    }
+
+    private Set<String> getAsSet(Object object) {
+        if (object != null) {
+            if (List.class.isInstance(object)) {
+                return new HashSet<>((List<String>) object);
+            } else {
+                return Collections.singleton(object.toString());
+            }
+        } else {
+            return Collections.emptySet();
+        }
     }
 }

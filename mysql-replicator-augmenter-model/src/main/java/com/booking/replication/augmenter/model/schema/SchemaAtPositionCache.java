@@ -65,7 +65,7 @@ public class SchemaAtPositionCache {
             String create = new String(tableSchema.getCreate());
 
             FullTableName fullTableNameCloned = new FullTableName(
-                    new String(tableSchema.getFullTableName().getDatabase()),
+                    new String(tableSchema.getFullTableName().getDb()),
                     new String(tableSchema.getFullTableName().getName())
             );
 
@@ -83,7 +83,7 @@ public class SchemaAtPositionCache {
 
             Long tableIdCopy = new Long(tableId);
             FullTableName fullTableNameCopy = new FullTableName(
-                new String(this.tableIdToTableNameMap.get(tableId).getDatabase()),
+                new String(this.tableIdToTableNameMap.get(tableId).getDb()),
                 new String(this.tableIdToTableNameMap.get(tableId).getName())
             );
 

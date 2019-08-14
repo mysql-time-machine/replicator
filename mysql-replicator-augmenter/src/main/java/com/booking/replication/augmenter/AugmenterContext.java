@@ -468,7 +468,7 @@ public class AugmenterContext implements Closeable {
                 String dbName = null;
                 String tblName = null;
                 if (eventTable != null) {
-                    dbName = eventTable.getDatabase();
+                    dbName = eventTable.getDb();
                     tblName = eventTable.getName();
                 }
                 this.updateCommons(
@@ -726,7 +726,7 @@ public class AugmenterContext implements Closeable {
     public TableSchema getSchemaBefore() {
         if (this.columnsBefore.get() != null && this.createTableBefore != null) {
             String tableName = this.eventTable.get().getName();
-            String schemaName = this.eventTable.get().getDatabase();
+            String schemaName = this.eventTable.get().getDb();
             return new TableSchema(
                     new FullTableName(schemaName, tableName),
                     this.columnsBefore.get(),
@@ -740,7 +740,7 @@ public class AugmenterContext implements Closeable {
     public TableSchema getSchemaAfter() {
         if (this.columnsAfter.get() != null && this.createTableAfter != null) {
             String tableName = this.eventTable.get().getName();
-            String schemaName = this.eventTable.get().getDatabase();
+            String schemaName = this.eventTable.get().getDb();
             return new TableSchema(
                     new FullTableName(schemaName, tableName),
                     this.columnsAfter.get(),
@@ -837,7 +837,7 @@ public class AugmenterContext implements Closeable {
             throw e;
         }
 
-        String schemaName = eventTable.getDatabase();
+        String schemaName = eventTable.getDb();
         String tableName = eventTable.getName();
 
         List<String> primaryKeyColumns = TableSchema.getPrimaryKeyColumns(columnSchemas);

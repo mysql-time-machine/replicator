@@ -23,7 +23,7 @@ public class HeaderAugmenter {
         String dbName = null;
         String tableName = null;
         if (eventTable != null) {
-            dbName = eventTable.getDatabase();
+            dbName = eventTable.getDb();
             tableName = eventTable.getName();
         }
         return new AugmentedEventHeader(eventHeader.getTimestamp(), this.context.newCheckpoint(), type, dbName, tableName);

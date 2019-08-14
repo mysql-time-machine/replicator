@@ -141,7 +141,7 @@ public class EventDataPresenterAvro {
     public static Schema createAvroSchema(boolean addMetaFields, boolean convertBinToHex, FullTableName eventTable, Collection<ColumnSchema> columns) {
         String tableName = eventTable.getName();
 
-        final SchemaBuilder.FieldAssembler<Schema> builder = SchemaBuilder.record(tableName).namespace(eventTable.getDatabase()).fields();
+        final SchemaBuilder.FieldAssembler<Schema> builder = SchemaBuilder.record(tableName).namespace(eventTable.getDb()).fields();
         /**
          * Some missing Avro types - Decimal, Date types. May need some additional work.
          */

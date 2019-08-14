@@ -84,10 +84,12 @@ public class AugmentedRow {
         return stringifiedRowColumns;
     }
 
+    @JsonIgnore
     public String getTableSchema() {
         return this.tableSchema;
     }
 
+    @JsonIgnore
     public String getTableName() {
         return this.tableName;
     }

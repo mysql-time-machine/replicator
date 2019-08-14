@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 public class BinlogSource
@@ -47,7 +48,7 @@ public class BinlogSource
     private transient BlockingDeque<AugmentedEvent> incomingEvents;
     private transient TreeMap<Long, Tuple2<Boolean, List<Checkpoint>>> gtidsSeenByFlinkCheckpointID;
     private transient List<Checkpoint> gtidsSeen;
-    private transient List<Checkpoint> gtidsConfirmed;
+    private transient List<Tuple2<Long,Checkpoint>> gtidsConfirmed;
 
     private transient boolean chaosMonkeySwitch = false;
     private transient ListState<Boolean> chaosMonkeySwitches;
@@ -124,8 +125,6 @@ public class BinlogSource
                                 currentBinlogCheckpoint.getGtidSet()
                             )
                     );
-
-                    System.out.println("Source: main loop, binlogCheckpoint #" + currentBinlogCheckpoint.getGtidSet());
 
                     count++;
 
@@ -358,58 +357,84 @@ public class BinlogSource
             // TODO: ugly hack to make this die only once.
             //       Make chaos conditions configurable, with random % as default policy
             if (count == 3 && !chaosMonkeySwitch) {
-                System.out.println("chaos condition true -> activate chaos monkey");
+                System.out.println("BinlogSourceOnSnapshot: chaos condition true -> activate chaos monkey");
                 chaosMonkeySwitch = true;
             } else {
                 chaosMonkeySwitch = false;
             }
 
-            System.out.println("BinlogSource: snapshotting state, chaosMonkeySwitch => #" + chaosMonkeySwitch);
+            System.out.println("BinlogSourceOnSnapshot: chaosMonkeySwitch => #" + chaosMonkeySwitch);
             this.chaosMonkeySwitches.clear();
             this.chaosMonkeySwitches.add(chaosMonkeySwitch);
 
             this.binlogCheckpointsConfirmed.clear();
-            this.binlogCheckpointsConfirmed.addAll(gtidsConfirmed);
+            this.binlogCheckpointsConfirmed.addAll(gtidsConfirmed.stream().map(t -> t.f1).collect(Collectors.toList()));
 
-            System.out.println("Snapshotting current state: Confirmed Binlog Checkpoints");
-            gtidsConfirmed.stream().forEach(x -> System.out.println("\t " + x.getGtidSet()));
+            gtidsConfirmed.stream().forEach(x -> System.out.println("BinlogSourceOnSnapshot: { checkpointId => " +
+                    x.f0 +
+                    ", gtidSet => " +
+                    x.f1.getGtidSet() +
+                    " }"
+            ));
 
-            // TODO: mark snapshotted for cleanup
+            // mark snapshotted for cleanup - will need another helper to track the checkpointIDs
+            List<Long> checkpointIDsSnapshotted = gtidsConfirmed.stream().map(t -> t.f0).collect(Collectors.toList());
+            checkpointIDsSnapshotted.stream().forEach(
+                    checkpointId -> {
+                        System.out.println("BinlogSourceOnSnapshot: marking for cleanup: { checkpointId => " +
+                                checkpointId +
+                                ", gtidSet => " +
+                                gtidsSeenByFlinkCheckpointID
+                                        .get(checkpointId)
+                                        .f1
+                                        .stream()
+                                        .map(c -> c.getGtidSet().toString())
+                                        .collect(Collectors.toList()).stream().collect(Collectors.joining(",")) +
+                                " }"
+                        );
+                        gtidsSeenByFlinkCheckpointID.get(checkpointId).f0 = true;
+                    }
+            );
+
         }
     }
 
     @Override
     public void notifyCheckpointComplete(long l) throws Exception {
 
-        System.out.println("BinlogSource: checkpoint confirmed => " + l);
+        System.out.println("BinlogSourceOnConfirmed: checkpoint complete => " + l);
 
-        System.out.println("Current state: Seen");
+        System.out.println("BinlogSourceOnConfirmed: Seen ");
         gtidsSeen.stream().forEach(x -> System.out.println("\t " + x.getGtidSet()));
 
         gtidsConfirmed.clear();
 
-        System.out.println("Current state: Seen by previously confirmed checkpointIDs");
+        System.out.println("BinlogSourceOnConfirmed: Seen by previously confirmed checkpointIDs");
         gtidsSeenByFlinkCheckpointID.keySet()
                 .stream()
                 .filter(k -> k < l)
                 .filter(k -> gtidsSeenByFlinkCheckpointID.get(k).f0 == false) // not snapshotted yet
                 .forEach(
-                    key -> {
-                       gtidsSeenByFlinkCheckpointID.get(key).f1.forEach(
-                                x -> {
-                                    System.out.println("\tflinkCheckpointID => " + key + ", gtidSet => " + x.getGtidSet() + " }");
-                                    gtidsConfirmed.add(new Checkpoint(
-                                            x.getTimestamp(),
-                                            x.getServerId(),
-                                            x.getGtidSet()
-                                    ));
+                        flinkCheckpointId -> {
+                            gtidsSeenByFlinkCheckpointID.get(flinkCheckpointId).f1.forEach(
+                                binlogCheckpoint -> {
+                                    System.out.println("\tflinkCheckpointID => " + flinkCheckpointId + ", gtidSet => " + binlogCheckpoint.getGtidSet() + " }");
+                                    gtidsConfirmed.add(
+                                            Tuple2.of(
+                                                    flinkCheckpointId,
+                                                    new Checkpoint(
+                                                        binlogCheckpoint.getTimestamp(),
+                                                        binlogCheckpoint.getServerId(),
+                                                        binlogCheckpoint.getGtidSet()
+                                                    )
+                                            )
+                                    );
                                 }
                        );
                 }
         );
 
         this.lastConfirmedFlinkCheckpoint = l;
-
 
         // cleanup of keys in gtidsSeenByFlinkCheckpointID that have already been snapshotted
         List<Long> cleanupKeys = gtidsSeenByFlinkCheckpointID.keySet()
@@ -419,7 +444,10 @@ public class BinlogSource
                 .collect(Collectors.toList());
 
         cleanupKeys.forEach(
-                key -> gtidsSeenByFlinkCheckpointID.remove(key)
+                key -> {
+                    gtidsSeenByFlinkCheckpointID.get(key).f1.forEach(gtid -> System.out.println("BinlogSourceOnConfirmed: mark for cleanup =>" + key + ", "+ gtid.getGtidSet()));
+                    gtidsSeenByFlinkCheckpointID.remove(key);
+                }
         );
 
     }

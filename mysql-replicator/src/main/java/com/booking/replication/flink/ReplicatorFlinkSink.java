@@ -28,8 +28,6 @@ public class ReplicatorFlinkSink
     @Override
     public void invoke(Collection<AugmentedEvent> augmentedEvents, Context context) throws Exception {
 
-        System.out.println("applier collection size => " + augmentedEvents.size());
-
         if (applier == null) {
             System.out.println("Lost applier");
             applier = Applier.build(configuration);
@@ -40,8 +38,7 @@ public class ReplicatorFlinkSink
 
     @Override
     public void snapshotState(FunctionSnapshotContext functionSnapshotContext) throws Exception {
-        System.out.println("sink snapshotState, checkpointID => " +
-                functionSnapshotContext.getCheckpointId());
+        // System.out.println("sink snapshotState, checkpointID => " + functionSnapshotContext.getCheckpointId());
     }
 
     @Override
@@ -51,6 +48,6 @@ public class ReplicatorFlinkSink
 
     @Override
     public void notifyCheckpointComplete(long l) throws Exception {
-        System.out.println("BinlogSink checkpointComplete -> " + l);
+        // System.out.println("BinlogSink checkpointComplete -> " + l);
     }
 }

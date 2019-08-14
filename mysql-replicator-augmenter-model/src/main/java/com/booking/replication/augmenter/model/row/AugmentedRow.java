@@ -2,6 +2,7 @@ package com.booking.replication.augmenter.model.row;
 
 import com.booking.replication.augmenter.model.AugmenterModel;
 import com.booking.replication.commons.util.CaseInsensitiveMap;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.HashMap;
 import java.util.List;
@@ -109,6 +110,7 @@ public class AugmentedRow {
         return commitTimestamp;
     }
 
+    @JsonIgnore
     public Long getMicrosecondTransactionOffset() {
         return transactionSequenceNumber * 100;
     }

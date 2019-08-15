@@ -27,14 +27,12 @@ import java.util.stream.IntStream;
 
 import javax.xml.bind.DatatypeConverter;
 
-public class MysqlTypeStringifier {
+public class MysqlTypeDeserializer {
 
-    private static final Logger LOG = LogManager.getLogger(MysqlTypeStringifier.class);
+    private static final Logger LOG = LogManager.getLogger(MysqlTypeDeserializer.class);
 
     private static final SimpleDateFormat DATE_FORMAT       = new SimpleDateFormat("yyyy-MM-dd");
     private static final SimpleDateFormat TIME_FORMAT       = new SimpleDateFormat("HH:mm:ss.SSS");
-
-    private static final String NULL_STRING = "NULL";
 
     private static final Long UNSIGNED_TINYINT_MASK     = 0x00000000000000FFL;
     private static final Long UNSIGNED_SMALLINT_MASK    = 0x000000000000FFFFL;
@@ -47,18 +45,16 @@ public class MysqlTypeStringifier {
         TIME_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
 
-    public static String convertToString(Serializable cellValue, ColumnSchema columnSchema, String[] groupValues) {
+    public static Object convertToObject(Serializable cellValue, ColumnSchema columnSchema, String[] groupValues) {
+
+        if (cellValue == null) {
+            return null;
+        }
 
         String collation    = columnSchema.getCollation();
         String columnType   = columnSchema.getColumnType();
-
         DataType dataType   = columnSchema.getDataType();
-
-        if (cellValue == null) {
-            return NULL_STRING;
-        }
-
-        boolean isUnsigned = columnType.contains("unsigned");
+        boolean isUnsigned  = columnType.contains("unsigned");
 
         switch (dataType) {
             case BINARY:
@@ -108,7 +104,7 @@ public class MysqlTypeStringifier {
                     LOG.error(
                             String.format("Could not parse JSON string Column Name : %s, byte[]%s",
                                     columnSchema.getName(), Arrays.toString(bytes)), ex);
-                    return  NULL_STRING;
+                    return  null;
                 }
             }
 
@@ -151,7 +147,7 @@ public class MysqlTypeStringifier {
                 if (index > 0) {
                     return String.valueOf(groupValues[index - 1]);
                 } else {
-                    return NULL_STRING;
+                    return null;
                 }
             }
 
@@ -169,28 +165,28 @@ public class MysqlTypeStringifier {
 
                     return String.join(",", items.toArray(new String[0]));
                 } else {
-                    return NULL_STRING;
+                    return null;
                 }
             }
 
             case TINYINT: {
                 Long mask = isUnsigned ? UNSIGNED_TINYINT_MASK : DEFAULT_MASK;
-                return String.valueOf(maskAndGet(cellValue, mask));
+                return maskAndGet(cellValue, mask);
             }
 
             case SMALLINT: {
                 Long mask = isUnsigned ? UNSIGNED_SMALLINT_MASK : DEFAULT_MASK;
-                return String.valueOf(maskAndGet(cellValue, mask));
+                return maskAndGet(cellValue, mask);
             }
 
             case MEDIUMINT: {
                 Long mask = isUnsigned ? UNSIGNED_MEDIUMINT_MASK : DEFAULT_MASK;
-                return String.valueOf(maskAndGet(cellValue, mask));
+                return maskAndGet(cellValue, mask);
             }
 
             case INT: {
                 Long mask = isUnsigned ? UNSIGNED_INT_MASK : DEFAULT_MASK;
-                return String.valueOf(maskAndGet(cellValue, mask));
+                return maskAndGet(cellValue, mask);
             }
 
             case BIGINT: {
@@ -204,22 +200,20 @@ public class MysqlTypeStringifier {
                             .shiftLeft(32)
                             .add(BigInteger.valueOf(Integer.toUnsignedLong(lower)));
 
-                    return String.valueOf(bigInteger);
+                    return bigInteger;
                 } else {
-                    return String.valueOf(maskAndGet(cellValue, DEFAULT_MASK));
+                    return maskAndGet(cellValue, DEFAULT_MASK);
                 }
             }
             case FLOAT:
             case DOUBLE: {
                 //FLOT      converted as java.lang.Float
                 //Double    converted as java.lang.Double
-
-                return cellValue.toString();
+                return cellValue;
             }
 
             case DECIMAL: {
                 BigDecimal decimal = (BigDecimal) cellValue;
-
                 return decimal.toPlainString();
             }
 
@@ -231,8 +225,8 @@ public class MysqlTypeStringifier {
                     return DatatypeConverter.printHexBinary(bytes);
                 }
 
-                LOG.error(String.format("The datatype is %s hence returning %s ", dataType.getCode(), NULL_STRING));
-                return NULL_STRING;
+                LOG.error(String.format("The datatype is %s hence returning null", dataType.getCode()));
+                return null;
             }
         }
     }

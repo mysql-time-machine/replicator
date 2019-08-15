@@ -28,18 +28,15 @@ public class HBaseRowKeyMapper {
         List<String> pkColumnValues = new ArrayList<>();
 
         for (String pkColumnName : pkColumnNames) {
-
-            Map<String, String> pkCell = row.getStringifiedRowColumns().get(pkColumnName);
-
             switch (row.getEventType()) {
 
                 case INSERT:
                 case DELETE: {
-                    pkColumnValues.add(pkCell.get("value"));
+                    pkColumnValues.add(row.getValueAsString(pkColumnName, "value"));
                     break;
                 }
                 case UPDATE: {
-                    pkColumnValues.add(pkCell.get("value_after"));
+                    pkColumnValues.add(row.getValueAsString(pkColumnName, "value_after"));
                     break;
                 }
                 default:

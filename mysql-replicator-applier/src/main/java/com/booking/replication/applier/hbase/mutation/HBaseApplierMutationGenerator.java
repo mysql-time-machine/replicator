@@ -170,10 +170,11 @@ public class HBaseApplierMutationGenerator {
                 // Only write values that have changed
                 String columnValue;
 
-                for (String columnName : augmentedRow.getStringifiedRowColumns().keySet()) {
+                for (String columnName : augmentedRow.getDeserializeCellValues().keySet()) {
 
-                    String valueBefore = augmentedRow.getStringifiedRowColumns().get(columnName).get("value_before");
-                    String valueAfter = augmentedRow.getStringifiedRowColumns().get(columnName).get("value_after");
+                    String valueBefore = augmentedRow.getValueAsString(columnName, "value_before");
+                    String valueAfter = augmentedRow.getValueAsString(columnName, "value_after");
+
 
                     if ((valueAfter == null) && (valueBefore == null)) {
                         // no change, skip;
@@ -244,9 +245,8 @@ public class HBaseApplierMutationGenerator {
 
                 String columnValue;
 
-                for (String columnName : augmentedRow.getStringifiedRowColumns().keySet()) {
-
-                    columnValue = augmentedRow.getStringifiedRowColumns().get(columnName).get("value");
+                for (String columnName : augmentedRow.getDeserializeCellValues().keySet()) {
+                    columnValue = augmentedRow.getValueAsString(columnName, "value");
                     if (columnValue == null) {
                         columnValue = "NULL";
                     }
@@ -313,7 +313,7 @@ public class HBaseApplierMutationGenerator {
         );
     }
 
-    private String getRowUri(AugmentedRow row){
+    private String getRowUri(AugmentedRow row) {
 
         // TODO: add validator config options
         //        validation:
@@ -332,11 +332,8 @@ public class HBaseApplierMutationGenerator {
         String keys  = row.getPrimaryKeyColumns().stream()
                 .map( column -> {
                     try {
-
-                        String value = row.getStringifiedRowColumns().get(column).get( AugmentedEventType.UPDATE == eventType ? "value_after" : "value" );
-
+                        String value = row.getValueAsString(column, AugmentedEventType.UPDATE == eventType ? "value_after" : "value");
                         return URLEncoder.encode(column,"UTF-8") + "=" + URLEncoder.encode(value,"UTF-8");
-
                     } catch (UnsupportedEncodingException e) {
 
                         LOGGER.error("Unexpected encoding exception", e);

@@ -1,10 +1,9 @@
 package com.booking.replication.augmenter;
 
-import com.booking.replication.augmenter.model.deserializer.RowValueDeserializer;
 import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.augmenter.model.event.QueryAugmentedEventDataOperationType;
 import com.booking.replication.augmenter.model.event.QueryAugmentedEventDataType;
-import com.booking.replication.augmenter.model.format.Stringifier;
+import com.booking.replication.augmenter.model.format.EventDeserializer;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.augmenter.model.row.RowBeforeAfter;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
@@ -829,11 +828,11 @@ public class AugmenterContext implements Closeable {
             Map<String, String[]> cache,
             FullTableName eventTable
     ) {
-        Map<String, Map<String, String>> stringifiedCellValues ;
+        Map<String, Map<String, Object>> deserializeCellValues ;
         try {
-            stringifiedCellValues = Stringifier.stringifyRowCellsValues(eventType, columnSchemas, includedColumns, row, cache);
+            deserializeCellValues = EventDeserializer.getDeserializeCellValues(eventType, columnSchemas, includedColumns, row, cache);
         } catch (Exception e) {
-            LOG.error("Error while deserializing row: Eventtype: " + eventType + " table: " + this.getEventTable() + ", row: " + row.getAfter().toString(), e);
+            LOG.error("Error while deserialize row: EventType: " + eventType + " table: " + this.getEventTable() + ", row: " + row.getAfter().toString(), e);
             throw e;
         }
 
@@ -842,12 +841,10 @@ public class AugmenterContext implements Closeable {
 
         List<String> primaryKeyColumns = TableSchema.getPrimaryKeyColumns(columnSchemas);
 
-        Map<String, Object> deserializedCellValues = RowValueDeserializer.deserializeRowCellValues(eventType, columnSchemas, includedColumns, row, cache);
-
         AugmentedRow augmentedRow = new AugmentedRow(
                 eventType, schemaName, tableName,
                 commitTimestamp, transactionUUID, transactionXid,
-                primaryKeyColumns, stringifiedCellValues, deserializedCellValues
+                primaryKeyColumns, deserializeCellValues
         );
 
         return augmentedRow;

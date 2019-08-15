@@ -4,6 +4,7 @@ import com.booking.replication.augmenter.model.definitions.DDL;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.event.AugmentedEventData;
 import com.booking.replication.augmenter.model.event.AugmentedEventHeader;
+import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.augmenter.model.event.DeleteRowsAugmentedEventData;
 import com.booking.replication.augmenter.model.event.EventMetadata;
 import com.booking.replication.augmenter.model.event.QueryAugmentedEventData;
@@ -124,9 +125,13 @@ public class EventDataPresenterAvro {
             ArrayList<GenericRecord> records = new ArrayList<>();
             for (AugmentedRow row : rows) {
                 final GenericRecord rec = new GenericData.Record(avroSchema);
-                for (Map.Entry<String, Object> each : row.getRawRowColumns().entrySet()) {
-                    rec.put(each.getKey(), each.getValue());
+
+                String key = (row.getEventType() == AugmentedEventType.UPDATE) ? "value_after" : "value";
+
+                for (String column : row.getDeserializeCellValues().keySet()) {
+                    rec.put(column, row.getValueAsString(column, key));
                 }
+
                 if (ADD_META_FILEDS) {
                     rec.put("__timestamp", header.getTimestamp());
                     int delete = Objects.equals(this.eventType, "delete") ? 1 : 0;

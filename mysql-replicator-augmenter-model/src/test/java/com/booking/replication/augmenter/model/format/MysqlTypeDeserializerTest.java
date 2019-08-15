@@ -6,13 +6,14 @@ import com.booking.replication.augmenter.model.schema.DataType;
 import org.junit.Test;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.BitSet;
 import java.util.Date;
 import java.util.TimeZone;
 
 import static org.junit.Assert.assertEquals;
 
-public class MysqlTypeStringifierTest {
+public class MysqlTypeDeserializerTest {
 
     @Test
     public void testBinaryType() {
@@ -20,13 +21,14 @@ public class MysqlTypeStringifierTest {
         schema.setCharMaxLength(10);
 
         byte[] testByteArr;
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "6F72616E676500000000";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -34,7 +36,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
             expected    = "4F72616E676500000000";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
     }
@@ -45,13 +47,14 @@ public class MysqlTypeStringifierTest {
         schema.setCharMaxLength(10);
 
         byte[] testByteArr;
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "6F72616E676500000000";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -59,7 +62,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
             expected    = "4F72616E676500000000";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
     }
@@ -69,13 +72,14 @@ public class MysqlTypeStringifierTest {
         ColumnSchema schema = new ColumnSchema("code", DataType.TINYBLOB, "tinyblob", true, "", "");
 
         byte[] testByteArr;
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "6F72616E6765";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
     }
@@ -85,13 +89,14 @@ public class MysqlTypeStringifierTest {
         ColumnSchema schema = new ColumnSchema("code", DataType.MEDIUMBLOB, "mediumblob", true, "", "");
 
         byte[] testByteArr;
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "6F72616E6765";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
     }
@@ -101,13 +106,14 @@ public class MysqlTypeStringifierTest {
         ColumnSchema schema = new ColumnSchema("code", DataType.BLOB, "blob", true, "", "");
 
         byte[] testByteArr;
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "6F72616E6765";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
     }
@@ -117,13 +123,14 @@ public class MysqlTypeStringifierTest {
         ColumnSchema schema = new ColumnSchema("code", DataType.LONGBLOB, "longblob", true, "", "");
 
         byte[] testByteArr;
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "6F72616E6765";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
     }
@@ -134,13 +141,14 @@ public class MysqlTypeStringifierTest {
         schema.setCollation("latin1_swedish_ci");
 
         byte[] testByteArr;
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -148,7 +156,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
             expected    = "Orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -156,7 +164,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
             expected    = "ORANGE";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -164,7 +172,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -19, 97, 115};
             expected    = "Buenos días";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -172,7 +180,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -23, 101};
             expected    = "bonne journée";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
     }
@@ -183,13 +191,14 @@ public class MysqlTypeStringifierTest {
         schema.setCollation("utf8_general_ci");
 
         byte[] testByteArr;
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -197,7 +206,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
             expected    = "Orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -205,7 +214,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
             expected    = "ORANGE";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -213,7 +222,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -61, -83, 97, 115};
             expected    = "Buenos días";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -221,7 +230,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -61, -87, 101};
             expected    = "bonne journée";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -229,7 +238,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {-26, -105, -87, -28, -72, -118, -27, -91, -67};
             expected    = "早上好";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
     }
@@ -240,13 +249,14 @@ public class MysqlTypeStringifierTest {
         schema.setCollation("latin1_swedish_ci");
 
         byte[] testByteArr;
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -254,7 +264,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
             expected    = "Orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -262,7 +272,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
             expected    = "ORANGE";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -270,7 +280,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -19, 97, 115};
             expected    = "Buenos días";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -278,7 +288,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -23, 101};
             expected    = "bonne journée";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
     }
@@ -289,13 +299,14 @@ public class MysqlTypeStringifierTest {
         schema.setCollation("utf8_general_ci");
 
         byte[] testByteArr;
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -303,7 +314,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
             expected    = "Orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -311,7 +322,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
             expected    = "ORANGE";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -319,7 +330,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -61, -83, 97, 115};
             expected    = "Buenos días";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -327,7 +338,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -61, -87, 101};
             expected    = "bonne journée";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -335,7 +346,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {-26, -105, -87, -28, -72, -118, -27, -91, -67};
             expected    = "早上好";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
     }
@@ -346,13 +357,14 @@ public class MysqlTypeStringifierTest {
         schema.setCollation("latin1_swedish_ci");
 
         byte[] testByteArr;
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -360,7 +372,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
             expected    = "Orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema , null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema , null);
             assertEquals(expected, actual);
         }
 
@@ -368,7 +380,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
             expected    = "ORANGE";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -376,7 +388,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -19, 97, 115};
             expected    = "Buenos días";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -384,7 +396,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -23, 101};
             expected    = "bonne journée";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
     }
@@ -395,13 +407,14 @@ public class MysqlTypeStringifierTest {
         schema.setCollation("utf8_general_ci");
 
         byte[] testByteArr;
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -409,7 +422,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
             expected    = "Orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -417,7 +430,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
             expected    = "ORANGE";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -425,7 +438,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -61, -83, 97, 115};
             expected    = "Buenos días";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -433,7 +446,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -61, -87, 101};
             expected    = "bonne journée";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -441,7 +454,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {-26, -105, -87, -28, -72, -118, -27, -91, -67};
             expected    = "早上好";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
     }
@@ -452,13 +465,14 @@ public class MysqlTypeStringifierTest {
         schema.setCollation("latin1_swedish_ci");
 
         byte[] testByteArr;
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -466,7 +480,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
             expected    = "Orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -474,7 +488,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
             expected    = "ORANGE";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -482,7 +496,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -19, 97, 115};
             expected    = "Buenos días";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -490,7 +504,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -23, 101};
             expected    = "bonne journée";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
     }
@@ -501,13 +515,14 @@ public class MysqlTypeStringifierTest {
         schema.setCollation("utf8_general_ci");
 
         byte[] testByteArr;
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -515,7 +530,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
             expected    = "Orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -523,7 +538,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
             expected    = "ORANGE";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -531,7 +546,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -61, -83, 97, 115};
             expected    = "Buenos días";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -539,7 +554,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -61, -87, 101};
             expected    = "bonne journée";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -547,7 +562,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {-26, -105, -87, -28, -72, -118, -27, -91, -67};
             expected    = "早上好";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
     }
@@ -558,13 +573,14 @@ public class MysqlTypeStringifierTest {
         schema.setCollation("latin1_swedish_ci");
 
         byte[] testByteArr;
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -572,7 +588,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
             expected    = "Orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -580,7 +596,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
             expected    = "ORANGE";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -588,7 +604,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -19, 97, 115};
             expected    = "Buenos días";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -596,7 +612,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -23, 101};
             expected    = "bonne journée";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
     }
@@ -607,13 +623,14 @@ public class MysqlTypeStringifierTest {
         schema.setCollation("utf8_general_ci");
 
         byte[] testByteArr;
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -621,7 +638,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
             expected    = "Orange";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -629,7 +646,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {79, 82, 65, 78, 71, 69};
             expected    = "ORANGE";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -637,7 +654,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {66, 117, 101, 110, 111, 115, 32, 100, -61, -83, 97, 115};
             expected    = "Buenos días";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -645,7 +662,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {98, 111, 110, 110,101, 32, 106, 111, 117, 114, 110, -61, -87, 101};
             expected    = "bonne journée";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -653,7 +670,7 @@ public class MysqlTypeStringifierTest {
             testByteArr = new byte[] {-26, -105, -87, -28, -72, -118, -27, -91, -67};
             expected    = "早上好";
 
-            actual = MysqlTypeStringifier.convertToString(testByteArr, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema, null);
             assertEquals(expected, actual);
         }
     }
@@ -663,7 +680,8 @@ public class MysqlTypeStringifierTest {
         ColumnSchema schema = new ColumnSchema("id", DataType.BIT, "bit(5)", true, "", "");
 
         BitSet testBit;
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             testBit     = new BitSet();
@@ -673,7 +691,7 @@ public class MysqlTypeStringifierTest {
 
             expected    = "11001";
 
-            actual = MysqlTypeStringifier.convertToString(testBit, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testBit, schema, null);
             assertEquals(expected, actual);
         }
 
@@ -681,7 +699,7 @@ public class MysqlTypeStringifierTest {
             testBit     = new BitSet();
             expected    = "0";
 
-            actual = MysqlTypeStringifier.convertToString(testBit, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testBit, schema, null);
             assertEquals(expected, actual);
         }
     }
@@ -694,17 +712,18 @@ public class MysqlTypeStringifierTest {
         String columnType = "date";
         ColumnSchema schema = new ColumnSchema("date",dataType,columnType, true, "","");
         Date testDate;
-        String expected, actual;
+        String expected;
+        Object actual;
         {
             testDate   = new Date(2019 - 1900, Calendar.FEBRUARY, 1);
             expected    = "2019-02-01";
-            actual = MysqlTypeStringifier.convertToString(testDate, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testDate, schema, null);
             assertEquals(expected, actual);
         }
         {
             testDate   = new Date(2019 - 1900, Calendar.DECEMBER, 31);
             expected    = "2019-12-31";
-            actual = MysqlTypeStringifier.convertToString(testDate, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testDate, schema, null);
             assertEquals(expected, actual);
         }
     }
@@ -714,13 +733,14 @@ public class MysqlTypeStringifierTest {
         ColumnSchema schema = new ColumnSchema("ts", DataType.TIME, "time(3)", true, "", "");
 
         Long testTime;
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             testTime    = 42972123L;
             expected    = "11:56:12.123";
 
-            actual = MysqlTypeStringifier.convertToString(testTime, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testTime, schema, null);
             assertEquals(expected, actual);
         }
     }
@@ -734,11 +754,12 @@ public class MysqlTypeStringifierTest {
         TimeZone tz = TimeZone.getDefault();
         int offset = tz.getOffset(new Date(epochUTC).getTime() );
 
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             expected        = String.valueOf( epochUTC - offset );
-            actual = MysqlTypeStringifier.convertToString(epochUTC, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(epochUTC, schema, null);
 
             assertEquals(expected, actual);
         }
@@ -752,11 +773,12 @@ public class MysqlTypeStringifierTest {
         TimeZone tz = TimeZone.getDefault();
         int offset = tz.getOffset(new Date(epochUTC).getTime() );
 
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             expected        = String.valueOf( epochUTC - offset );
-            actual = MysqlTypeStringifier.convertToString(epochUTC, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(epochUTC, schema, null);
 
             assertEquals(expected, actual);
         }
@@ -769,13 +791,14 @@ public class MysqlTypeStringifierTest {
         String[] groupValues = new String[] {"apple", "banana", "orange"};
 
         Integer testValue;
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             testValue   = 1;
             expected    = "apple";
 
-            actual = MysqlTypeStringifier.convertToString(testValue, schema, groupValues);
+            actual = MysqlTypeDeserializer.convertToObject(testValue, schema, groupValues);
             assertEquals(expected, actual);
         }
 
@@ -783,7 +806,7 @@ public class MysqlTypeStringifierTest {
             testValue   = 2;
             expected    = "banana";
 
-            actual = MysqlTypeStringifier.convertToString(testValue, schema, groupValues);
+            actual = MysqlTypeDeserializer.convertToObject(testValue, schema, groupValues);
             assertEquals(expected, actual);
         }
 
@@ -791,7 +814,7 @@ public class MysqlTypeStringifierTest {
             testValue   = 3;
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testValue, schema, groupValues);
+            actual = MysqlTypeDeserializer.convertToObject(testValue, schema, groupValues);
             assertEquals(expected, actual);
         }
     }
@@ -803,13 +826,14 @@ public class MysqlTypeStringifierTest {
         String[] groupValues = new String[] {"apple", "banana", "orange"};
 
         Long testValue;
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             testValue   = 1L;
             expected    = "apple";
 
-            actual = MysqlTypeStringifier.convertToString(testValue, schema, groupValues);
+            actual = MysqlTypeDeserializer.convertToObject(testValue, schema, groupValues);
             assertEquals(expected, actual);
         }
 
@@ -817,7 +841,7 @@ public class MysqlTypeStringifierTest {
             testValue   = 2L;
             expected    = "banana";
 
-            actual = MysqlTypeStringifier.convertToString(testValue, schema, groupValues);
+            actual = MysqlTypeDeserializer.convertToObject(testValue, schema, groupValues);
             assertEquals(expected, actual);
         }
 
@@ -825,7 +849,7 @@ public class MysqlTypeStringifierTest {
             testValue   = 3L;
             expected    = "apple,banana";
 
-            actual = MysqlTypeStringifier.convertToString(testValue, schema, groupValues);
+            actual = MysqlTypeDeserializer.convertToObject(testValue, schema, groupValues);
             assertEquals(expected, actual);
         }
 
@@ -833,7 +857,7 @@ public class MysqlTypeStringifierTest {
             testValue   = 4L;
             expected    = "orange";
 
-            actual = MysqlTypeStringifier.convertToString(testValue, schema, groupValues);
+            actual = MysqlTypeDeserializer.convertToObject(testValue, schema, groupValues);
             assertEquals(expected, actual);
         }
 
@@ -841,7 +865,7 @@ public class MysqlTypeStringifierTest {
             testValue   = 5L;
             expected    = "apple,orange";
 
-            actual = MysqlTypeStringifier.convertToString(testValue, schema, groupValues);
+            actual = MysqlTypeDeserializer.convertToObject(testValue, schema, groupValues);
             assertEquals(expected, actual);
         }
 
@@ -849,7 +873,7 @@ public class MysqlTypeStringifierTest {
             testValue   = 6L;
             expected    = "banana,orange";
 
-            actual = MysqlTypeStringifier.convertToString(testValue, schema, groupValues);
+            actual = MysqlTypeDeserializer.convertToObject(testValue, schema, groupValues);
             assertEquals(expected, actual);
         }
 
@@ -857,7 +881,7 @@ public class MysqlTypeStringifierTest {
             testValue   = 7L;
             expected    = "apple,banana,orange";
 
-            actual = MysqlTypeStringifier.convertToString(testValue, schema, groupValues);
+            actual = MysqlTypeDeserializer.convertToObject(testValue, schema, groupValues);
             assertEquals(expected, actual);
         }
     }
@@ -867,29 +891,30 @@ public class MysqlTypeStringifierTest {
         ColumnSchema schema = new ColumnSchema("id", DataType.TINYINT, "tinyint(4)", true, "", "");
 
         Integer testTinyInteger;
-        String expected, actual;
+        Long expected;
+        Object actual;
 
         {
             testTinyInteger = 0;
-            expected        = "0";
+            expected        = 0L;
 
-            actual = MysqlTypeStringifier.convertToString(testTinyInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testTinyInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testTinyInteger = 127;
-            expected        = "127";
+            expected        = 127L;
 
-            actual = MysqlTypeStringifier.convertToString(testTinyInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testTinyInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testTinyInteger = -128;
-            expected        = "-128";
+            expected        = -128L;
 
-            actual = MysqlTypeStringifier.convertToString(testTinyInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testTinyInteger, schema, null);
             assertEquals(expected, actual);
         }
     }
@@ -899,37 +924,38 @@ public class MysqlTypeStringifierTest {
         ColumnSchema schema = new ColumnSchema("id", DataType.TINYINT, "tinyint(4) unsigned", true, "", "");
 
         Integer testTinyInteger;
-        String expected, actual;
+        Long expected;
+        Object actual;
 
         {
             testTinyInteger = 0;
-            expected        = "0";
+            expected        = 0L;
 
-            actual = MysqlTypeStringifier.convertToString(testTinyInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testTinyInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testTinyInteger = 127;
-            expected        = "127";
+            expected        = 127L;
 
-            actual = MysqlTypeStringifier.convertToString(testTinyInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testTinyInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testTinyInteger = -128;
-            expected        = "128";
+            expected        = 128L;
 
-            actual = MysqlTypeStringifier.convertToString(testTinyInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testTinyInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testTinyInteger = -1;
-            expected        = "255";
+            expected        = 255L;
 
-            actual = MysqlTypeStringifier.convertToString(testTinyInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testTinyInteger, schema, null);
             assertEquals(expected, actual);
         }
     }
@@ -939,29 +965,30 @@ public class MysqlTypeStringifierTest {
         ColumnSchema schema = new ColumnSchema("id", DataType.SMALLINT, "smallint(6)", true, "", "");
 
         Integer testSmallInteger;
-        String expected, actual;
+        Long expected;
+        Object actual;
 
         {
             testSmallInteger    = 0;
-            expected            = "0";
+            expected            = 0L;
 
-            actual = MysqlTypeStringifier.convertToString(testSmallInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testSmallInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testSmallInteger    = 32767;
-            expected            = "32767";
+            expected            = 32767L;
 
-            actual = MysqlTypeStringifier.convertToString(testSmallInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testSmallInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testSmallInteger    = -32768;
-            expected            = "-32768";
+            expected            = -32768L;
 
-            actual = MysqlTypeStringifier.convertToString(testSmallInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testSmallInteger, schema, null);
             assertEquals(expected, actual);
         }
     }
@@ -971,37 +998,38 @@ public class MysqlTypeStringifierTest {
         ColumnSchema schema = new ColumnSchema("id", DataType.SMALLINT, "smallint(6) unsigned", true, "", "");
 
         Integer testSmallInteger;
-        String expected, actual;
+        Long expected;
+        Object actual;
 
         {
             testSmallInteger    = 0;
-            expected            = "0";
+            expected            = 0L;
 
-            actual = MysqlTypeStringifier.convertToString(testSmallInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testSmallInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testSmallInteger    = 32767;
-            expected            = "32767";
+            expected            = 32767L;
 
-            actual = MysqlTypeStringifier.convertToString(testSmallInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testSmallInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testSmallInteger    = -32768;
-            expected            = "32768";
+            expected            = 32768L;
 
-            actual = MysqlTypeStringifier.convertToString(testSmallInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testSmallInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testSmallInteger    = -1;
-            expected            = "65535";
+            expected            = 65535L;
 
-            actual = MysqlTypeStringifier.convertToString(testSmallInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testSmallInteger, schema, null);
             assertEquals(expected, actual);
         }
     }
@@ -1011,29 +1039,30 @@ public class MysqlTypeStringifierTest {
         ColumnSchema schema = new ColumnSchema("id", DataType.MEDIUMINT, "mediumint(9)", true, "", "");
 
         Integer testMediumInteger;
-        String expected, actual;
+        Long expected;
+        Object actual;
 
         {
             testMediumInteger   = 0;
-            expected            = "0";
+            expected            = 0L;
 
-            actual = MysqlTypeStringifier.convertToString(testMediumInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testMediumInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testMediumInteger   = 8388607;
-            expected            = "8388607";
+            expected            = 8388607L;
 
-            actual = MysqlTypeStringifier.convertToString(testMediumInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testMediumInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testMediumInteger   = -8388608;
-            expected            = "-8388608";
+            expected            = -8388608L;
 
-            actual = MysqlTypeStringifier.convertToString(testMediumInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testMediumInteger, schema, null);
             assertEquals(expected, actual);
         }
     }
@@ -1043,37 +1072,38 @@ public class MysqlTypeStringifierTest {
         ColumnSchema schema = new ColumnSchema("id", DataType.MEDIUMINT, "mediumint(9) unsigned", true, "", "");
 
         Integer testMediumInteger;
-        String expected, actual;
+        Long expected;
+        Object actual;
 
         {
             testMediumInteger   = 0;
-            expected            = "0";
+            expected            = 0L;
 
-            actual = MysqlTypeStringifier.convertToString(testMediumInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testMediumInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testMediumInteger   = 8388607;
-            expected            = "8388607";
+            expected            = 8388607L;
 
-            actual = MysqlTypeStringifier.convertToString(testMediumInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testMediumInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testMediumInteger   = -8388608;
-            expected            = "8388608";
+            expected            = 8388608L;
 
-            actual = MysqlTypeStringifier.convertToString(testMediumInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testMediumInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testMediumInteger   = -1;
-            expected            = "16777215";
+            expected            = 16777215L;
 
-            actual = MysqlTypeStringifier.convertToString(testMediumInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testMediumInteger, schema, null);
             assertEquals(expected, actual);
         }
     }
@@ -1083,29 +1113,30 @@ public class MysqlTypeStringifierTest {
         ColumnSchema schema = new ColumnSchema("id", DataType.INT, "int(11)", true, "", "");
 
         Integer testInteger;
-        String expected, actual;
+        Long expected;
+        Object actual;
 
         {
             testInteger = 0;
-            expected    = "0";
+            expected    = 0L;
 
-            actual = MysqlTypeStringifier.convertToString(testInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testInteger = 2147483647;
-            expected    = "2147483647";
+            expected    = 2147483647L;
 
-            actual = MysqlTypeStringifier.convertToString(testInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testInteger = -2147483648;
-            expected    = "-2147483648";
+            expected    = -2147483648L;
 
-            actual = MysqlTypeStringifier.convertToString(testInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testInteger, schema, null);
             assertEquals(expected, actual);
         }
     }
@@ -1115,37 +1146,38 @@ public class MysqlTypeStringifierTest {
         ColumnSchema schema = new ColumnSchema("id", DataType.INT, "int(10) unsigned", true, "", "");
 
         Integer testInteger;
-        String expected, actual;
+        Long expected;
+        Object actual;
 
         {
             testInteger = 0;
-            expected    = "0";
+            expected    = 0L;
 
-            actual = MysqlTypeStringifier.convertToString(testInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testInteger = 2147483647;
-            expected    = "2147483647";
+            expected    = 2147483647L;
 
-            actual = MysqlTypeStringifier.convertToString(testInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testInteger = -2147483648;
-            expected    = "2147483648";
+            expected    = 2147483648L;
 
-            actual = MysqlTypeStringifier.convertToString(testInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testInteger = -1;
-            expected    = "4294967295";
+            expected    = 4294967295L;
 
-            actual = MysqlTypeStringifier.convertToString(testInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testInteger, schema, null);
             assertEquals(expected, actual);
         }
     }
@@ -1155,29 +1187,30 @@ public class MysqlTypeStringifierTest {
         ColumnSchema schema = new ColumnSchema("id", DataType.BIGINT, "bigint(20)", true, "", "");
 
         Long testBigInteger;
-        String expected, actual;
+        Long expected;
+        Object actual;
 
         {
             testBigInteger  = 0L;
-            expected        = "0";
+            expected        = 0L;
 
-            actual = MysqlTypeStringifier.convertToString(testBigInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testBigInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testBigInteger  = 9223372036854775807L;
-            expected        = "9223372036854775807";
+            expected        = 9223372036854775807L;
 
-            actual = MysqlTypeStringifier.convertToString(testBigInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testBigInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testBigInteger  = -9223372036854775808L;
-            expected        = "-9223372036854775808";
+            expected        = -9223372036854775808L;
 
-            actual = MysqlTypeStringifier.convertToString(testBigInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testBigInteger, schema, null);
             assertEquals(expected, actual);
         }
     }
@@ -1187,37 +1220,38 @@ public class MysqlTypeStringifierTest {
         ColumnSchema schema = new ColumnSchema("id", DataType.BIGINT, "bigint(20) unsigned", true, "", "");
 
         Long testBigInteger;
-        String expected, actual;
+        BigInteger expected;
+        Object actual;
 
         {
             testBigInteger  = 0L;
-            expected        = "0";
+            expected        = new BigInteger("0");
 
-            actual = MysqlTypeStringifier.convertToString(testBigInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testBigInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testBigInteger  = 9223372036854775807L;
-            expected        = "9223372036854775807";
+            expected        = new BigInteger("9223372036854775807");
 
-            actual = MysqlTypeStringifier.convertToString(testBigInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testBigInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testBigInteger  = -9223372036854775808L;
-            expected        = "9223372036854775808";
+            expected        = new BigInteger("9223372036854775808");
 
-            actual = MysqlTypeStringifier.convertToString(testBigInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testBigInteger, schema, null);
             assertEquals(expected, actual);
         }
 
         {
             testBigInteger  = -1L;
-            expected        = "18446744073709551615";
+            expected        = new BigInteger("18446744073709551615");
 
-            actual = MysqlTypeStringifier.convertToString(testBigInteger, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testBigInteger, schema, null);
             assertEquals(expected, actual);
         }
     }
@@ -1227,13 +1261,14 @@ public class MysqlTypeStringifierTest {
         ColumnSchema schema = new ColumnSchema("currency", DataType.DECIMAL, "decimal(5,3)", true, "", "");
 
         BigDecimal testBigDecimal;
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             testBigDecimal  = new BigDecimal("99.122");
             expected        = "99.122";
 
-            actual = MysqlTypeStringifier.convertToString(testBigDecimal, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testBigDecimal, schema, null);
             assertEquals(expected, actual);
         }
     }
@@ -1243,13 +1278,14 @@ public class MysqlTypeStringifierTest {
         ColumnSchema schema = new ColumnSchema("currency", DataType.FLOAT, "float(5,3)", true, "", "");
 
         Float testFloat;
-        String expected, actual;
+        Float expected;
+        Object actual;
 
         {
             testFloat   = new Float("99.122");
-            expected    = "99.122";
+            expected    = new Float(99.122);
 
-            actual = MysqlTypeStringifier.convertToString(testFloat, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testFloat, schema, null);
             assertEquals(expected, actual);
         }
     }
@@ -1259,13 +1295,14 @@ public class MysqlTypeStringifierTest {
         ColumnSchema schema = new ColumnSchema("currency", DataType.DOUBLE, "double(5,3)", true, "", "");
 
         Double testDouble;
-        String expected, actual;
+        Double expected;
+        Object actual;
 
         {
             testDouble  = new Double("99.122");
-            expected    = "99.122";
+            expected    = 99.122;
 
-            actual = MysqlTypeStringifier.convertToString(testDouble, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testDouble, schema, null);
             assertEquals(expected, actual);
         }
     }
@@ -1275,7 +1312,8 @@ public class MysqlTypeStringifierTest {
         ColumnSchema schema = new ColumnSchema("jsn", DataType.JSON, "json", true, "", "");
 
         byte[] testJson;
-        String expected, actual;
+        String expected;
+        Object actual;
 
         {
             testJson  = new byte[]{0, 3, 0, 77, 0, 25, 0, 2, 0, 27, 0, 4, 0, 31, 0, 10, 0, 12, 41, 0, 12, 49, 0, 0, 57,
@@ -1285,7 +1323,7 @@ public class MysqlTypeStringifierTest {
 
             expected    = "{\"os\":\"Windows\",\"name\":\"Firefox\",\"resolution\":{\"x\":2560,\"y\":1600}}";
 
-            actual = MysqlTypeStringifier.convertToString(testJson, schema, null);
+            actual = MysqlTypeDeserializer.convertToObject(testJson, schema, null);
             assertEquals(expected, actual);
         }
 

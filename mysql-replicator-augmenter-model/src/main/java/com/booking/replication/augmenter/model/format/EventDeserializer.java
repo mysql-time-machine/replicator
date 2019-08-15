@@ -10,16 +10,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class Stringifier {
+public class EventDeserializer {
 
-    public static Map<String, Map<String, String>> stringifyRowCellsValues(
+    public static Map<String, Map<String, Object>> getDeserializeCellValues(
             AugmentedEventType eventType,
             List<ColumnSchema> columns,
             BitSet includedColumns,
             RowBeforeAfter row,
             Map<String, String[]> cache) {
 
-        Map<String, Map<String, String>> stringifiedCellValues = new HashMap<>();
+        Map<String, Map<String, Object>> deserializeCellValues = new HashMap<>();
 
         if (columns != null) {
 
@@ -28,7 +28,7 @@ public class Stringifier {
 
                     Serializable[] rowByteSlicesForInsert = row.getAfter().get();
 
-                    addToStringifiedCellValues(stringifiedCellValues, columns, includedColumns, cache,
+                    addToDeserializeCellValues(deserializeCellValues, columns, includedColumns, cache,
                             new Serializable[][]{rowByteSlicesForInsert}, new String[]{"value"});
 
                     break;
@@ -38,7 +38,7 @@ public class Stringifier {
                     Serializable[] rowByteSlicesForUpdateBefore = row.getBefore().get();
                     Serializable[] rowByteSlicesForUpdateAfter  = row.getAfter().get();
 
-                    addToStringifiedCellValues(stringifiedCellValues, columns, includedColumns, cache,
+                    addToDeserializeCellValues(deserializeCellValues, columns, includedColumns, cache,
                             new Serializable[][]{rowByteSlicesForUpdateBefore, rowByteSlicesForUpdateAfter},
                             new String[]{"value_before", "value_after"});
 
@@ -49,28 +49,28 @@ public class Stringifier {
 
                     Serializable[] rowByteSlicesForDelete = row.getBefore().get();
 
-                    addToStringifiedCellValues(stringifiedCellValues, columns, includedColumns, cache,
+                    addToDeserializeCellValues(deserializeCellValues, columns, includedColumns, cache,
                             new Serializable[][]{rowByteSlicesForDelete}, new String[]{"value"});
 
                     break;
 
                 }
                 default: {
-                    throw new RuntimeException("Invalid event type in stringifier: " + eventType);
+                    throw new RuntimeException("Invalid event type in deserializer: " + eventType);
                 }
             }
         } else {
             throw new RuntimeException("Invalid data. Columns list cannot be null!");
         }
-        return stringifiedCellValues;
+        return deserializeCellValues;
     }
 
-    private static void addToStringifiedCellValues(Map<String, Map<String, String>> stringifiedCellValues,
-                                                  List<ColumnSchema> columns,
-                                                  BitSet includedColumns,
-                                                  Map<String, String[]> cache,
-                                                  Serializable[][] rowByteSlices,
-                                                  String[] values) {
+    private static void addToDeserializeCellValues(Map<String, Map<String, Object>> deserializeCellValues,
+                                                   List<ColumnSchema> columns,
+                                                   BitSet includedColumns,
+                                                   Map<String, String[]> cache,
+                                                   Serializable[][] rowByteSlices,
+                                                   String[] values) {
 
         Serializable[] firstRowByteSlices = rowByteSlices[0];
 
@@ -83,14 +83,14 @@ public class Stringifier {
                 String columnName = column.getName();
                 String columnType = column.getColumnType().toLowerCase();
 
-                stringifiedCellValues.put(columnName, new HashMap<>());
+                deserializeCellValues.put(columnName, new HashMap<>());
 
                 for (int i = 0; i < rowByteSlices.length; ++i) {
                     Serializable cellValue = rowByteSlices[i][rowIndex];
 
-                    String stringifiedCellValue = MysqlTypeStringifier.convertToString(cellValue, column, cache.get(columnType));
+                    Object deserializeValue = MysqlTypeDeserializer.convertToObject(cellValue, column, cache.get(columnType));
 
-                    stringifiedCellValues.get(columnName).put(values[i], stringifiedCellValue);
+                    deserializeCellValues.get(columnName).put(values[i], deserializeValue);
                 }
 
                 rowIndex++;

@@ -10,13 +10,14 @@ import java.util.UUID;
 
 public class AugmentedRow {
 
-    private Map<String, Object> rawRowColumns;
+    private static final String NULL_STRING = "NULL";
+
     private UUID         transactionUUID;
     private Long         transactionXid;
 
-    private Long         commitTimestamp;
-
+    private Long commitTimestamp;
     private Long transactionSequenceNumber = 0L;
+    private Long rowMicrosecondTimestamp = 0L;
 
     private List<String> primaryKeyColumns;
 
@@ -25,9 +26,7 @@ public class AugmentedRow {
     private String       tableName;
     private String       tableSchema;
 
-    private Long         rowMicrosecondTimestamp = 0L;
-
-    // stringifiedRowColumns format:
+    // deserializeCellValues format:
     // {
     //      $columnName => {
     //          value        => $value // <- null for UPDATE op
@@ -35,7 +34,7 @@ public class AugmentedRow {
     //          value_after  => $value // <- null for DELETE op
     //      }
     // }
-    private Map<String, Map<String,String>> stringifiedRowColumns = new CaseInsensitiveMap<>();
+    private Map<String, Map<String,Object>> deserializeCellValues = new CaseInsensitiveMap<>();
 
     public AugmentedRow() { }
 
@@ -47,8 +46,7 @@ public class AugmentedRow {
                         UUID transactionUUID,
                         Long transactionXid,
                         List<String> primaryKeyColumns,
-                        Map<String,Map<String, String>> stringifiedRowColumnValues,
-                        Map<String, Object> rowColumnValues) {
+                        Map<String,Map<String, Object>> deserializeCellValues) {
 
         this.primaryKeyColumns  = primaryKeyColumns;
         this.commitTimestamp    = commitTimestamp;
@@ -63,14 +61,10 @@ public class AugmentedRow {
         // is altered multiple times in the same event.
         // this.microsecondTransactionOffset = null; // transactionCounter * 100; // one inc <=> 0.1ms
 
-        this.eventType = eventType;
-
-        this.stringifiedRowColumns = stringifiedRowColumnValues;
-
-        this.rawRowColumns = rowColumnValues;
-
-        this.tableSchema    = schemaName;
-        this.tableName      = tableName;
+        this.eventType              = eventType;
+        this.deserializeCellValues  = deserializeCellValues;
+        this.tableSchema            = schemaName;
+        this.tableName              = tableName;
     }
 
     public void setTransactionSequenceNumber(Long transactionSequenceNumber) {
@@ -81,8 +75,8 @@ public class AugmentedRow {
         this.commitTimestamp = commitTimestamp;
     }
 
-    public Map<String, Map<String, String>> getStringifiedRowColumns() {
-        return stringifiedRowColumns;
+    public Map<String, Map<String, Object>> getDeserializeCellValues() {
+        return deserializeCellValues;
     }
 
     @JsonIgnore
@@ -134,7 +128,14 @@ public class AugmentedRow {
         return this.rowMicrosecondTimestamp;
     }
 
-    public Map<String, Object> getRawRowColumns() {
-        return rawRowColumns;
+    public String getValueAsString(String column, String key) {
+
+        if (deserializeCellValues.containsKey(column) && deserializeCellValues.get(column).containsKey(key)) {
+            Object value = deserializeCellValues.get(column).get(key);
+
+            return (value == null) ? NULL_STRING : value.toString();
+        }
+
+        return NULL_STRING;
     }
 }

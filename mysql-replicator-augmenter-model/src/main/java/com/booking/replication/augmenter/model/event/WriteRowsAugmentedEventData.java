@@ -12,11 +12,12 @@ public class WriteRowsAugmentedEventData extends RowsAugmentedEventData {
     public WriteRowsAugmentedEventData() { }
 
     public WriteRowsAugmentedEventData(
+            AugmentedEventType eventType,
             FullTableName eventTable,
             Collection<Boolean> includedColumns,
             Collection<ColumnSchema> columns,
             Collection<AugmentedRow> augmentedRows
     ) {
-        super(eventTable, includedColumns, columns, augmentedRows);
+        super(eventType, eventTable, includedColumns, columns, augmentedRows);
     }
 }

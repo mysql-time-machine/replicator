@@ -260,9 +260,9 @@ public class HBaseApplier implements Applier {
 
     private List<AugmentedEvent> extractDataEventsOnly(Collection<AugmentedEvent> events) {
         // data only (events are already grouped by transaction when passed to apply, so no need to process begin/commit)
-        return events.stream().filter( ev ->   (ev.getHeader().getEventType() == AugmentedEventType.WRITE_ROWS)
-                         || (ev.getHeader().getEventType() == AugmentedEventType.UPDATE_ROWS)
-                         || (ev.getHeader().getEventType() == AugmentedEventType.DELETE_ROWS)
+        return events.stream().filter( ev ->   (ev.getHeader().getEventType() == AugmentedEventType.INSERT)
+                         || (ev.getHeader().getEventType() == AugmentedEventType.UPDATE)
+                         || (ev.getHeader().getEventType() == AugmentedEventType.DELETE)
         ).collect(toList());
     }
 

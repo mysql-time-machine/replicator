@@ -21,7 +21,7 @@ public class AugmentedEventRowExtractor {
 
         switch (augmentedEvent.getHeader().getEventType()) {
 
-            case WRITE_ROWS:
+            case INSERT:
                 WriteRowsAugmentedEventData writeRowsAugmentedEventData =
                         ((WriteRowsAugmentedEventData) augmentedEvent.getData());
 
@@ -43,7 +43,7 @@ public class AugmentedEventRowExtractor {
 
                 break;
 
-            case UPDATE_ROWS:
+            case UPDATE:
                 UpdateRowsAugmentedEventData updateRowsAugmentedEventData =
                         ((UpdateRowsAugmentedEventData) augmentedEvent.getData());
 
@@ -60,7 +60,7 @@ public class AugmentedEventRowExtractor {
 
                 break;
 
-            case DELETE_ROWS:
+            case DELETE:
                 DeleteRowsAugmentedEventData deleteRowsAugmentedEventData =
                         ((DeleteRowsAugmentedEventData) augmentedEvent.getData());
 

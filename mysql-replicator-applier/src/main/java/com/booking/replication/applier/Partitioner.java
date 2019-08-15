@@ -19,7 +19,7 @@ public interface Partitioner extends BiFunction<AugmentedEvent, Integer, Integer
             protected Partitioner newInstance(Map<String, Object> configuration) {
                 return (event, totalPartitions) -> {
                     if (TableAugmentedEventData.class.isInstance(event.getData())) {
-                        FullTableName eventTable = TableAugmentedEventData.class.cast(event.getData()).getEventTable();
+                        FullTableName eventTable = TableAugmentedEventData.class.cast(event.getData()).getMetadata().getEventTable();
 
                         if (eventTable != null) {
                             return Math.abs(eventTable.toString().hashCode()) % totalPartitions;

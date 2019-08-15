@@ -4,6 +4,7 @@ import com.booking.replication.applier.hbase.HBaseApplier;
 
 import com.booking.replication.applier.hbase.schema.HBaseRowKeyMapper;
 import com.booking.replication.augmenter.model.AugmenterModel;
+import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.commons.metrics.Metrics;
 import org.apache.hadoop.hbase.client.Put;
@@ -120,7 +121,7 @@ public class HBaseApplierMutationGenerator {
 
         switch (augmentedRow.getEventType()) {
 
-            case "DELETE": {
+            case DELETE: {
 
                 // No need to process columns on DELETE. Only write delete marker.
                 String columnName = "row_status";
@@ -164,7 +165,7 @@ public class HBaseApplierMutationGenerator {
                 }
                 break;
             }
-            case "UPDATE": {
+            case UPDATE: {
 
                 // Only write values that have changed
                 String columnValue;
@@ -239,7 +240,7 @@ public class HBaseApplierMutationGenerator {
                 }
                 break;
             }
-            case "INSERT": {
+            case INSERT: {
 
                 String columnValue;
 
@@ -324,7 +325,7 @@ public class HBaseApplierMutationGenerator {
         // if (configuration.validationConfig == null) return null;
         String sourceDomain = row.getTableSchema().toString().toLowerCase();
 
-        String eventType = row.getEventType();
+        AugmentedEventType eventType = row.getEventType();
 
         String table = row.getTableName();
 
@@ -332,7 +333,7 @@ public class HBaseApplierMutationGenerator {
                 .map( column -> {
                     try {
 
-                        String value = row.getStringifiedRowColumns().get(column).get( "UPDATE".equals(eventType) ? "value_after" : "value" );
+                        String value = row.getStringifiedRowColumns().get(column).get( AugmentedEventType.UPDATE == eventType ? "value_after" : "value" );
 
                         return URLEncoder.encode(column,"UTF-8") + "=" + URLEncoder.encode(value,"UTF-8");
 

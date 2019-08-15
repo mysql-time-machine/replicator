@@ -72,7 +72,7 @@ public class KafkaTest {
                         "dbName",
                         "tableName"
                 ),
-                new ByteArrayAugmentedEventData(data)
+                new ByteArrayAugmentedEventData(AugmentedEventType.BYTE_ARRAY, data)
         );
     }
 

@@ -4,6 +4,8 @@ import com.booking.replication.augmenter.AugmenterFilter;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.augmenter.model.event.DeleteRowsAugmentedEventData;
+import com.booking.replication.augmenter.model.event.EventMetadata;
+import com.booking.replication.augmenter.model.event.RowEventMetadata;
 import com.booking.replication.augmenter.model.event.UpdateRowsAugmentedEventData;
 import com.booking.replication.augmenter.model.event.WriteRowsAugmentedEventData;
 import com.booking.replication.commons.metrics.Metrics;
@@ -43,30 +45,32 @@ public class TableNameMergePatternFilter implements AugmenterFilter {
 
         Collection<AugmentedEvent> filtered = augmentedEvents.stream()
                 .map(ev -> {
-                    if (ev.getHeader().getEventType() == AugmentedEventType.WRITE_ROWS) {
+                    if (ev.getHeader().getEventType() == AugmentedEventType.INSERT) {
                         WriteRowsAugmentedEventData writeEv = ((WriteRowsAugmentedEventData) ev.getData());
-                        String originalName = writeEv.getEventTable().getName();
+                        EventMetadata metadata = writeEv.getMetadata();
+                        String originalName = metadata.getEventTable().getName();
                         String rewrittenName = getRewrittenName(originalName);
                         // override
-                        writeEv.getEventTable().setName(rewrittenName);
+                        metadata.getEventTable().setName(rewrittenName);
                         writeEv.getRows().stream().forEach(au -> au.setTableName(rewrittenName));
                     }
-                    if (ev.getHeader().getEventType() == AugmentedEventType.UPDATE_ROWS) {
+                    if (ev.getHeader().getEventType() == AugmentedEventType.UPDATE) {
                         UpdateRowsAugmentedEventData updateEv = ((UpdateRowsAugmentedEventData) ev.getData());
-                        String originalName = updateEv.getEventTable().getName();
+                        EventMetadata metadata = updateEv.getMetadata();
+                        String originalName = metadata.getEventTable().getName();
                         String rewrittenName = getRewrittenName(originalName);
                         // override
-                        updateEv.getEventTable().setName(rewrittenName);
-                        updateEv.getEventTable().setName(rewrittenName);
+                        metadata.getEventTable().setName(rewrittenName);
                         updateEv.getRows().stream().forEach(au -> au.setTableName(rewrittenName));
                     }
-                    if (ev.getHeader().getEventType() == AugmentedEventType.DELETE_ROWS) {
+                    if (ev.getHeader().getEventType() == AugmentedEventType.DELETE) {
                         DeleteRowsAugmentedEventData deleteEv = ((DeleteRowsAugmentedEventData) ev.getData());
-                        String originalName = deleteEv.getEventTable().getName();
+                        EventMetadata metadata = deleteEv.getMetadata();
+
+                        String originalName = metadata.getEventTable().getName();
                         String rewrittenName = getRewrittenName(originalName);
                         // override
-                        deleteEv.getEventTable().setName(rewrittenName);
-                        deleteEv.getEventTable().setName(rewrittenName);
+                        metadata.getEventTable().setName(rewrittenName);
                         deleteEv.getRows().stream().forEach(au -> au.setTableName(rewrittenName));
                     }
                     return ev;

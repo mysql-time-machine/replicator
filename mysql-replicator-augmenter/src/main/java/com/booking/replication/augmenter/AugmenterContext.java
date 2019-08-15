@@ -1,6 +1,7 @@
 package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.model.deserializer.RowValueDeserializer;
+import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.augmenter.model.event.QueryAugmentedEventDataOperationType;
 import com.booking.replication.augmenter.model.event.QueryAugmentedEventDataType;
 import com.booking.replication.augmenter.model.format.Stringifier;
@@ -779,7 +780,7 @@ public class AugmenterContext implements Closeable {
     }
 
     public Collection<AugmentedRow> computeAugmentedEventRows(
-            String eventType,
+            AugmentedEventType eventType,
             Long commitTimestamp,
             UUID transactionUUID,
             Long xxid,
@@ -818,7 +819,7 @@ public class AugmenterContext implements Closeable {
     }
 
     private AugmentedRow getAugmentedRow(
-            String eventType,
+            AugmentedEventType eventType,
             Long commitTimestamp,
             UUID transactionUUID,
             Long transactionXid,
@@ -828,8 +829,7 @@ public class AugmenterContext implements Closeable {
             Map<String, String[]> cache,
             FullTableName eventTable
     ) {
-        Map<String, Map<String, String>> stringifiedCellValues =
-                null;
+        Map<String, Map<String, String>> stringifiedCellValues ;
         try {
             stringifiedCellValues = Stringifier.stringifyRowCellsValues(eventType, columnSchemas, includedColumns, row, cache);
         } catch (Exception e) {
@@ -845,8 +845,7 @@ public class AugmenterContext implements Closeable {
         Map<String, Object> deserializedCellValues = RowValueDeserializer.deserializeRowCellValues(eventType, columnSchemas, includedColumns, row, cache);
 
         AugmentedRow augmentedRow = new AugmentedRow(
-                eventType,
-                schemaName, tableName,
+                eventType, schemaName, tableName,
                 commitTimestamp, transactionUUID, transactionXid,
                 primaryKeyColumns, stringifiedCellValues, deserializedCellValues
         );

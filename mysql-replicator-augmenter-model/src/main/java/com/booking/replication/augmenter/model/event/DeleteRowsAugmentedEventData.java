@@ -12,11 +12,12 @@ public class DeleteRowsAugmentedEventData extends RowsAugmentedEventData {
     public DeleteRowsAugmentedEventData() { }
 
     public DeleteRowsAugmentedEventData(
+            AugmentedEventType eventType,
             FullTableName eventTable,
             Collection<Boolean> includedColumns,
             Collection<ColumnSchema> columns,
             Collection<AugmentedRow> augmentedRows) {
 
-        super(eventTable, includedColumns, columns, augmentedRows);
+        super(eventType, eventTable, includedColumns, columns, augmentedRows);
     }
 }

@@ -33,18 +33,15 @@ public class HBaseRowKeyMapper {
 
             switch (row.getEventType()) {
 
-                case "INSERT":
+                case INSERT:
+                case DELETE: {
                     pkColumnValues.add(pkCell.get("value"));
                     break;
-
-                case "DELETE":
-                    pkColumnValues.add(pkCell.get("value"));
-                    break;
-
-                case "UPDATE":
+                }
+                case UPDATE: {
                     pkColumnValues.add(pkCell.get("value_after"));
                     break;
-
+                }
                 default:
                     throw new RuntimeException("Wrong event type. Expected RowType event.");
             }

@@ -1,8 +1,8 @@
 package com.booking.replication.augmenter.model.format;
 
+import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.augmenter.model.row.RowBeforeAfter;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
-import com.booking.replication.augmenter.model.schema.DataType;
 
 import java.io.Serializable;
 import java.util.BitSet;
@@ -13,7 +13,7 @@ import java.util.Map;
 public class Stringifier {
 
     public static Map<String, Map<String, String>> stringifyRowCellsValues(
-            String eventType,
+            AugmentedEventType eventType,
             List<ColumnSchema> columns,
             BitSet includedColumns,
             RowBeforeAfter row,
@@ -24,7 +24,7 @@ public class Stringifier {
         if (columns != null) {
 
             switch (eventType) {
-                case "INSERT": {
+                case INSERT: {
 
                     Serializable[] rowByteSlicesForInsert = row.getAfter().get();
 
@@ -33,7 +33,7 @@ public class Stringifier {
 
                     break;
                 }
-                case "UPDATE": {
+                case UPDATE: {
 
                     Serializable[] rowByteSlicesForUpdateBefore = row.getBefore().get();
                     Serializable[] rowByteSlicesForUpdateAfter  = row.getAfter().get();
@@ -45,7 +45,7 @@ public class Stringifier {
                     break;
 
                 }
-                case "DELETE": {
+                case DELETE: {
 
                     Serializable[] rowByteSlicesForDelete = row.getBefore().get();
 

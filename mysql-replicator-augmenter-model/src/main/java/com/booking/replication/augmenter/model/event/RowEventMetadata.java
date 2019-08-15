@@ -7,21 +7,16 @@ import com.booking.replication.augmenter.model.schema.TableSchema;
 import java.util.Collection;
 import java.util.List;
 
-public class TableMetadata {
-    private FullTableName eventTable;
+public class RowEventMetadata extends EventMetadata {
+
     private Collection<ColumnSchema> columns;
+    private List<String> primaryKeyColumns;
 
-    List<String> primaryKeyColumns;
-
-    public TableMetadata(FullTableName eventTable, Collection<ColumnSchema> columns) {
-        this.eventTable = eventTable;
+    public RowEventMetadata(FullTableName eventTable, AugmentedEventType eventType, Collection<ColumnSchema> columns) {
+        super(eventTable, eventType);
         this.columns    = columns;
 
         primaryKeyColumns = TableSchema.getPrimaryKeyColumns(columns);
-    }
-
-    public FullTableName getEventTable() {
-        return eventTable;
     }
 
     public Collection<ColumnSchema> getColumns() {
@@ -31,4 +26,5 @@ public class TableMetadata {
     public List<String> getPrimaryKeyColumns() {
         return this.primaryKeyColumns;
     }
+
 }

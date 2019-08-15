@@ -6,6 +6,9 @@ import com.booking.replication.augmenter.model.schema.TableSchema;
 
 @SuppressWarnings("unused")
 public class QueryAugmentedEventData implements TableAugmentedEventData {
+
+    private EventMetadata metadata;
+
     private QueryAugmentedEventDataType queryType;
     private QueryAugmentedEventDataOperationType operationType;
     private FullTableName eventTable;
@@ -19,21 +22,24 @@ public class QueryAugmentedEventData implements TableAugmentedEventData {
     private boolean isDDL = false;
     private SchemaSnapshot schemaSnapshotOnDDL = null;
 
-    public QueryAugmentedEventData() {
-    }
+    private AugmentedEventType eventType;
 
-    public QueryAugmentedEventData(QueryAugmentedEventDataType queryType, QueryAugmentedEventDataOperationType operationType,
+    public QueryAugmentedEventData() { }
+
+    public QueryAugmentedEventData(AugmentedEventType eventType, QueryAugmentedEventDataType queryType, QueryAugmentedEventDataOperationType operationType,
                                    FullTableName eventTable, long threadId, long executionTime, int errorCode, String sql,
                                    TableSchema before, TableSchema after) {
-        this.queryType = queryType;
-        this.operationType = operationType;
-        this.eventTable = eventTable;
-        this.threadId = threadId;
-        this.executionTime = executionTime;
-        this.errorCode = errorCode;
-        this.sql = sql;
-        this.before = before;
-        this.after = after;
+        this.metadata       = new EventMetadata(eventTable, eventType);
+        this.eventType      = eventType;
+        this.queryType      = queryType;
+        this.operationType  = operationType;
+        this.eventTable     = eventTable;
+        this.threadId       = threadId;
+        this.executionTime  = executionTime;
+        this.errorCode      = errorCode;
+        this.sql            = sql;
+        this.before         = before;
+        this.after          = after;
     }
 
     public QueryAugmentedEventDataType getQueryType() {
@@ -42,11 +48,6 @@ public class QueryAugmentedEventData implements TableAugmentedEventData {
 
     public QueryAugmentedEventDataOperationType getOperationType() {
         return this.operationType;
-    }
-
-    @Override
-    public FullTableName getEventTable() {
-        return this.eventTable;
     }
 
     public long getThreadId() {
@@ -95,5 +96,9 @@ public class QueryAugmentedEventData implements TableAugmentedEventData {
 
     public void setSchemaSnapshotOnDDL(SchemaSnapshot schemaSnapshotOnDDL) {
         this.schemaSnapshotOnDDL = schemaSnapshotOnDDL;
+    }
+    
+    public EventMetadata getMetadata() {
+        return this.metadata;
     }
 }

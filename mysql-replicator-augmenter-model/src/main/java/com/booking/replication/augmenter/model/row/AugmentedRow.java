@@ -1,5 +1,6 @@
 package com.booking.replication.augmenter.model.row;
 
+import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.commons.util.CaseInsensitiveMap;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -19,7 +20,7 @@ public class AugmentedRow {
 
     private List<String> primaryKeyColumns;
 
-    private String       eventType;
+    private AugmentedEventType eventType;
 
     private String       tableName;
     private String       tableSchema;
@@ -39,7 +40,7 @@ public class AugmentedRow {
     public AugmentedRow() { }
 
     public AugmentedRow(
-                        String eventType,
+                        AugmentedEventType eventType,
                         String schemaName,
                         String tableName,
                         Long commitTimestamp,
@@ -116,7 +117,8 @@ public class AugmentedRow {
         return transactionSequenceNumber * 100;
     }
 
-    public String getEventType() {
+    @JsonIgnore
+    public AugmentedEventType getEventType() {
         return eventType;
     }
 

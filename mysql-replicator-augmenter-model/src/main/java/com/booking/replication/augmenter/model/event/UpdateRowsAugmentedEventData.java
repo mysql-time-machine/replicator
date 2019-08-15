@@ -17,13 +17,14 @@ public class UpdateRowsAugmentedEventData extends RowsAugmentedEventData {
     public UpdateRowsAugmentedEventData() { }
 
     public UpdateRowsAugmentedEventData(
+            AugmentedEventType eventType,
             FullTableName eventTable,
             Collection<Boolean> includedColumnsBeforeUpdate,
             Collection<Boolean> includedColumns,
             Collection<ColumnSchema> columns,
             Collection<AugmentedRow> augmentedRows
     ) {
-        super(eventTable, includedColumns, columns, augmentedRows);
+        super(eventType, eventTable, includedColumns, columns, augmentedRows);
 
         this.includedColumnsBeforeUpdate = includedColumnsBeforeUpdate;
     }

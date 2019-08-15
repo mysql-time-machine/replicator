@@ -202,12 +202,12 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
 
     private String getTableName(AugmentedEvent event) {
         switch (event.getHeader().getEventType()) {
-            case WRITE_ROWS:
-                return ((WriteRowsAugmentedEventData)event.getData()).getEventTable().getName();
-            case UPDATE_ROWS:
-                return ((UpdateRowsAugmentedEventData)event.getData()).getEventTable().getName();
-            case DELETE_ROWS:
-                return ((DeleteRowsAugmentedEventData)event.getData()).getEventTable().getName();
+            case INSERT:
+                return ((WriteRowsAugmentedEventData)event.getData()).getMetadata().getEventTable().getName();
+            case UPDATE:
+                return ((UpdateRowsAugmentedEventData)event.getData()).getMetadata().getEventTable().getName();
+            case DELETE:
+                return ((DeleteRowsAugmentedEventData)event.getData()).getMetadata().getEventTable().getName();
             default:
                 return null;
         }

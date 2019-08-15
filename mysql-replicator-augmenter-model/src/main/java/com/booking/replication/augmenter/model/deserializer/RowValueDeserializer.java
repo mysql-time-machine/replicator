@@ -1,5 +1,6 @@
 package com.booking.replication.augmenter.model.deserializer;
 
+import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.augmenter.model.row.RowBeforeAfter;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 
@@ -10,12 +11,12 @@ import java.util.List;
 import java.util.Map;
 
 public class RowValueDeserializer {
-    public static Map<String, Object> deserializeRowCellValues(String eventType, List<ColumnSchema> columns, BitSet includedColumns, RowBeforeAfter row, Map<String, String[]> cache) {
+    public static Map<String, Object> deserializeRowCellValues(AugmentedEventType eventType, List<ColumnSchema> columns, BitSet includedColumns, RowBeforeAfter row, Map<String, String[]> cache) {
         Map<String, Object> cellValues = new HashMap<>();
 
         if (columns != null) {
 
-            if (eventType.equals("INSERT")) {
+            if (AugmentedEventType.INSERT == eventType) {
 
                 Serializable[] rowByteSlicesForInsert = row.getAfter().get();
 
@@ -36,7 +37,7 @@ public class RowValueDeserializer {
 
                     }
                 }
-            } else if (eventType.equals("UPDATE")) {
+            } else if (AugmentedEventType.UPDATE == eventType) {
 
                 Serializable[] rowByteSlicesForUpdateAfter = row.getAfter().get();
 
@@ -59,7 +60,7 @@ public class RowValueDeserializer {
                         sliceIndex++;
                     }
                 }
-            } else if (eventType.equals("DELETE")) {
+            } else if ((AugmentedEventType.DELETE == eventType)) {
 
                 Serializable[] rowByteSlicesForDelete = row.getBefore().get();
 

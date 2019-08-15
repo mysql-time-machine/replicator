@@ -5,8 +5,10 @@ import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.event.AugmentedEventData;
 import com.booking.replication.augmenter.model.event.AugmentedEventHeader;
 import com.booking.replication.augmenter.model.event.DeleteRowsAugmentedEventData;
+import com.booking.replication.augmenter.model.event.EventMetadata;
 import com.booking.replication.augmenter.model.event.QueryAugmentedEventData;
 import com.booking.replication.augmenter.model.event.QueryAugmentedEventDataType;
+import com.booking.replication.augmenter.model.event.RowEventMetadata;
 import com.booking.replication.augmenter.model.event.UpdateRowsAugmentedEventData;
 import com.booking.replication.augmenter.model.event.WriteRowsAugmentedEventData;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
@@ -57,29 +59,33 @@ public class EventDataPresenterAvro {
     private void init(AugmentedEventHeader header, AugmentedEventData eventData) {
         if (eventData instanceof WriteRowsAugmentedEventData) {
             WriteRowsAugmentedEventData data = WriteRowsAugmentedEventData.class.cast(eventData);
+            RowEventMetadata metadata = (RowEventMetadata) data.getMetadata();
             this.header = header;
-            this.eventTable = data.getEventTable();
+            this.eventTable = metadata.getEventTable();
             this.rows = data.getRows();
-            this.columns = data.getColumns();
+            this.columns = metadata.getColumns();
             this.eventType = "insert";
         } else if (eventData instanceof DeleteRowsAugmentedEventData) {
             DeleteRowsAugmentedEventData data = DeleteRowsAugmentedEventData.class.cast(eventData);
+            RowEventMetadata metadata = (RowEventMetadata) data.getMetadata();
             this.header = header;
-            this.eventTable = data.getEventTable();
+            this.eventTable = metadata.getEventTable();
             this.rows = data.getRows();
-            this.columns = data.getColumns();
+            this.columns = metadata.getColumns();
             this.eventType = "delete";
         } else if (eventData instanceof UpdateRowsAugmentedEventData) {
             UpdateRowsAugmentedEventData data = UpdateRowsAugmentedEventData.class.cast(eventData);
+            RowEventMetadata metadata = (RowEventMetadata) data.getMetadata();
             this.header = header;
-            this.eventTable = data.getEventTable();
+            this.eventTable = metadata.getEventTable();
             this.rows = data.getRows();
-            this.columns = data.getColumns();
+            this.columns = metadata.getColumns();
             this.eventType = "update";
         } else if (eventData instanceof QueryAugmentedEventData) {
             QueryAugmentedEventData data = QueryAugmentedEventData.class.cast(eventData);
+            EventMetadata metadata = data.getMetadata();
             TableSchema tableSchema = data.getAfter();
-            FullTableName eventTable = data.getEventTable();
+            FullTableName eventTable = metadata.getEventTable();
             if (eventTable == null || tableSchema == null) {
                 this.skipRow = true;
                 return;

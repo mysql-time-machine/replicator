@@ -13,8 +13,7 @@ public class AugmentedEventHeader implements Serializable {
     private AugmentedEventType eventType;
     private AugmentedEventTransaction eventTransaction;
 
-    public AugmentedEventHeader() {
-    }
+    public AugmentedEventHeader() { }
 
     public AugmentedEventHeader(long timestamp, Checkpoint checkpoint, AugmentedEventType eventType, String databaseName, String tableName) {
         this.timestamp = timestamp;

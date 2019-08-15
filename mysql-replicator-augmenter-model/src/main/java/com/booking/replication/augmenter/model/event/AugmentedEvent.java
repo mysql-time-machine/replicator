@@ -51,14 +51,6 @@ public class AugmentedEvent implements Serializable {
         return AugmentedEvent.MAPPER.writerWithDefaultPrettyPrinter().writeValueAsBytes(this);
     }
 
-    @JsonIgnore
-    public static AugmentedEvent fromJSON(byte[] header, byte[] data) throws IOException {
-        AugmentedEventHeader augmentedEventHeader = AugmentedEvent.MAPPER.readValue(header, AugmentedEventHeader.class);
-        AugmentedEventData augmentedEventData = AugmentedEvent.MAPPER.readValue(data, augmentedEventHeader.getEventType().getDefinition());
-
-        return new AugmentedEvent(augmentedEventHeader, augmentedEventData);
-    }
-
     public Object getOptionalPayload() {
         return optionalPayload;
     }

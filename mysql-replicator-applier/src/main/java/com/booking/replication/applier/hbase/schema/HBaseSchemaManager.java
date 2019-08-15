@@ -8,6 +8,8 @@ import com.booking.replication.augmenter.model.schema.SchemaTransitionSequence;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter;
+import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
 import org.apache.hadoop.conf.Configuration;
 
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -28,7 +30,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -62,6 +67,15 @@ public class HBaseSchemaManager {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    {
+        Set<String> includeInColumns = new HashSet<>();
+
+        Collections.addAll(includeInColumns, "name", "columnType", "key", "valueDefault", "collation", "nullable");
+
+        SimpleFilterProvider filterProvider = new SimpleFilterProvider();
+        filterProvider.addFilter("column", SimpleBeanPropertyFilter.filterOutAllExcept(includeInColumns));
+        MAPPER.setFilterProvider(filterProvider);
+    }
 
     public HBaseSchemaManager(Map<String, Object> configuration) {
 

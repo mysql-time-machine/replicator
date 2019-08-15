@@ -17,6 +17,8 @@ import com.booking.replication.commons.metrics.Metrics;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter;
+import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -24,9 +26,12 @@ import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class HBaseApplier implements Applier {
@@ -37,6 +42,17 @@ public class HBaseApplier implements Applier {
     private static final int DEFAULT_BUFFER_FLUSH_TIME_LIMIT  = 30;
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    {
+        Set<String> includeInColumns = new HashSet<>();
+
+        Collections.addAll(includeInColumns, "name", "columnType", "key", "valueDefault", "collation", "nullable");
+
+        SimpleFilterProvider filterProvider = new SimpleFilterProvider();
+        filterProvider.addFilter("column", SimpleBeanPropertyFilter.filterOutAllExcept(includeInColumns));
+        MAPPER.setFilterProvider(filterProvider);
+    }
+
     private final Metrics<?> metrics;
 
     private final int FLUSH_BUFFER_SIZE;

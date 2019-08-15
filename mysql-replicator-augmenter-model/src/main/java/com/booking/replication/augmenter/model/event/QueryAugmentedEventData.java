@@ -97,7 +97,7 @@ public class QueryAugmentedEventData implements TableAugmentedEventData {
     public void setSchemaSnapshotOnDDL(SchemaSnapshot schemaSnapshotOnDDL) {
         this.schemaSnapshotOnDDL = schemaSnapshotOnDDL;
     }
-    
+
     public EventMetadata getMetadata() {
         return this.metadata;
     }

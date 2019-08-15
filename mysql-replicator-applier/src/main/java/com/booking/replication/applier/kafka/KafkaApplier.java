@@ -101,7 +101,14 @@ public class KafkaApplier implements Applier {
 
     private int getTotalPartitions() {
         try (Producer<byte[], byte[]> producer = this.getProducer()) {
-            return producer.partitionsFor(this.topic).stream().mapToInt(PartitionInfo::partition).max().orElseThrow(() -> new InvalidPartitionsException("partitions not found")) + 1;
+            return producer
+                    .partitionsFor(this.topic)
+                    .stream()
+                    .mapToInt(PartitionInfo::partition)
+                    .max()
+                    .orElseThrow(
+                            () -> new InvalidPartitionsException("partitions not found")
+                    ) + 1;
         }
     }
 

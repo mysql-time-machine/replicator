@@ -155,10 +155,14 @@ public class ReplicatorFlinkApplication {
         try {
 
             ReplicatorFlinkApplication.LOG.info("Stopping Binlog Flink Source");
-            this.source.cancel();
+            if (this.source != null) {
+                this.source.cancel();
+            }
 
             ReplicatorFlinkApplication.LOG.info("closing sink");
-            this.sink.close();
+            if (this.sink != null) {
+                this.sink.close();
+            }
 
             ReplicatorFlinkApplication.LOG.info("stopping web server");
             this.webServer.stop();

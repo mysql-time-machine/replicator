@@ -159,7 +159,9 @@ public class BinlogSource
             e.printStackTrace();
         }
 
-        coordinator.stop();
+        if (coordinator != null) {
+            coordinator.stop();
+        }
 
         isRunning = false;
     }

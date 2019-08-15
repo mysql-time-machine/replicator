@@ -1,6 +1,6 @@
 package com.booking.replication.applier.kafka;
 
-import com.booking.replication.applier.ReplicatorPartitioner;
+import com.booking.replication.applier.BinlogEventPartitioner;
 import com.booking.replication.applier.Seeker;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.event.AugmentedEventHeader;
@@ -42,7 +42,7 @@ public class KafkaSeeker implements Seeker {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final String topic;
-    private final ReplicatorPartitioner replicatorPartitioner;
+    private final BinlogEventPartitioner replicatorPartitioner;
     private final Map<String, Object> configuration;
     private final AtomicBoolean sought;
 
@@ -56,7 +56,7 @@ public class KafkaSeeker implements Seeker {
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
 
         this.topic = topic.toString();
-        this.replicatorPartitioner = ReplicatorPartitioner.build(configuration);
+        this.replicatorPartitioner = BinlogEventPartitioner.build(configuration);
         this.configuration = new MapFilter(configuration).filter(Configuration.CONSUMER_PREFIX);
         this.sought = new AtomicBoolean();
     }

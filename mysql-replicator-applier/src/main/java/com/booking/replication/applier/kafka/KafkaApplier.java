@@ -1,7 +1,7 @@
 package com.booking.replication.applier.kafka;
 
 import com.booking.replication.applier.Applier;
-import com.booking.replication.applier.ReplicatorPartitioner;
+import com.booking.replication.applier.BinlogEventPartitioner;
 import com.booking.replication.applier.schema.registry.BCachedSchemaRegistryClient;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.event.QueryAugmentedEventData;
@@ -62,7 +62,7 @@ public class KafkaApplier implements Applier {
     private final Map<String, Object> configuration;
     private final String topic;
     private final int totalPartitions;
-    private final ReplicatorPartitioner replicatorPartitioner;
+    private final BinlogEventPartitioner replicatorPartitioner;
     private final Metrics<?> metrics;
     private final String delayName;
 
@@ -75,7 +75,7 @@ public class KafkaApplier implements Applier {
         this.configuration = new MapFilter(configuration).filter(Configuration.PRODUCER_PREFIX);
         this.topic = topic.toString();
         this.totalPartitions = this.getTotalPartitions();
-        this.replicatorPartitioner = ReplicatorPartitioner.build(configuration);
+        this.replicatorPartitioner = BinlogEventPartitioner.build(configuration);
         this.metrics = Metrics.getInstance(configuration);
         this.dataFormat = configuration.get(Configuration.FORMAT) == null ? MessageFormat.AVRO : String.valueOf(configuration.get(Configuration.FORMAT));
 
@@ -174,7 +174,6 @@ public class KafkaApplier implements Applier {
                 throw new UncheckedIOException(e);
             }
         } else {
-            System.out.println("KafkaApplier format: JSON");
             try {
                 for (AugmentedEvent event : events) {
 

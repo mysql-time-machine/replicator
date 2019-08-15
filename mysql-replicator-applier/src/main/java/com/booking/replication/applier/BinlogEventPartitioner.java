@@ -12,11 +12,11 @@ import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiFunction;
 
-public interface ReplicatorPartitioner extends BiFunction<AugmentedEvent, Integer, Integer>, Closeable {
+public interface BinlogEventPartitioner extends BiFunction<AugmentedEvent, Integer, Integer>, Closeable {
     enum Type {
         TABLE_NAME {
             @Override
-            protected ReplicatorPartitioner newInstance(Map<String, Object> configuration) {
+            protected BinlogEventPartitioner newInstance(Map<String, Object> configuration) {
                 return (event, totalPartitions) -> {
                     if (TableAugmentedEventData.class.isInstance(event.getData())) {
                         FullTableName eventTable = TableAugmentedEventData.class.cast(event.getData()).getEventTable();
@@ -34,7 +34,7 @@ public interface ReplicatorPartitioner extends BiFunction<AugmentedEvent, Intege
         },
         XXID {
             @Override
-            protected ReplicatorPartitioner newInstance(Map<String, Object> configuration) {
+            protected BinlogEventPartitioner newInstance(Map<String, Object> configuration) {
                 return (event, totalPartitions) -> {
                     if (event.getHeader().getEventTransaction() != null) {
                         AugmentedEventTransaction transaction = event.getHeader().getEventTransaction();
@@ -47,7 +47,7 @@ public interface ReplicatorPartitioner extends BiFunction<AugmentedEvent, Intege
         },
         TRID {
             @Override
-            protected ReplicatorPartitioner newInstance(Map<String, Object> configuration) {
+            protected BinlogEventPartitioner newInstance(Map<String, Object> configuration) {
 
                 return (event, totalPartitions) -> {
 
@@ -64,18 +64,18 @@ public interface ReplicatorPartitioner extends BiFunction<AugmentedEvent, Intege
         },
         RANDOM {
             @Override
-            protected ReplicatorPartitioner newInstance(Map<String, Object> configuration) {
+            protected BinlogEventPartitioner newInstance(Map<String, Object> configuration) {
                 return (event, totalPartitions) -> ThreadLocalRandom.current().nextInt(totalPartitions);
             }
         },
         NONE {
             @Override
-            protected ReplicatorPartitioner newInstance(Map<String, Object> configuration) {
+            protected BinlogEventPartitioner newInstance(Map<String, Object> configuration) {
                 return (event, totalPartitions) -> 0;
             }
         };
 
-        protected abstract ReplicatorPartitioner newInstance(Map<String, Object> configuration);
+        protected abstract BinlogEventPartitioner newInstance(Map<String, Object> configuration);
     }
 
     interface Configuration {
@@ -86,8 +86,8 @@ public interface ReplicatorPartitioner extends BiFunction<AugmentedEvent, Intege
     default void close() throws IOException {
     }
 
-    static ReplicatorPartitioner build(Map<String, Object> configuration) {
-        return ReplicatorPartitioner.Type.valueOf(
+    static BinlogEventPartitioner build(Map<String, Object> configuration) {
+        return BinlogEventPartitioner.Type.valueOf(
                 configuration.getOrDefault(Configuration.TYPE, Type.TRID.name()).toString()
         ).newInstance(configuration);
     }

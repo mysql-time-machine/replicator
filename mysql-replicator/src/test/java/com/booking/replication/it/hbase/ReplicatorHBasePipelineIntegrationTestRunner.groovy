@@ -3,7 +3,7 @@ package com.booking.replication.it.hbase
 import com.booking.replication.Replicator
 import com.booking.replication.ReplicatorStandaloneApplication
 import com.booking.replication.applier.Applier
-import com.booking.replication.applier.ReplicatorPartitioner
+import com.booking.replication.applier.BinlogEventPartitioner
 import com.booking.replication.applier.Seeker
 import com.booking.replication.applier.hbase.HBaseApplier
 import com.booking.replication.applier.hbase.StorageConfig
@@ -456,7 +456,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
         // Applier Configuration
         configuration.put(Seeker.Configuration.TYPE, Seeker.Type.NONE.name())
-        configuration.put(ReplicatorPartitioner.Configuration.TYPE, ReplicatorPartitioner.Type.TRID.name())
+        configuration.put(BinlogEventPartitioner.Configuration.TYPE, BinlogEventPartitioner.Type.TRID.name())
         configuration.put(Applier.Configuration.TYPE, Applier.Type.HBASE.name())
 
         // HBase Specifics

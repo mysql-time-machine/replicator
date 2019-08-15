@@ -25,6 +25,14 @@ public class AugmentedEventHeader implements Serializable {
         this.tableName = tableName;
     }
 
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
+    }
+
+    public void setEventType(AugmentedEventType eventType) {
+        this.eventType = eventType;
+    }
+
     public long getTimestamp() {
         return this.timestamp;
     }

@@ -1,6 +1,6 @@
 package com.booking.replication;
 import com.booking.replication.applier.Applier;
-import com.booking.replication.applier.ReplicatorPartitioner;
+import com.booking.replication.applier.BinlogEventPartitioner;
 import com.booking.replication.applier.Seeker;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.AugmenterFilter;
@@ -9,7 +9,6 @@ import com.booking.replication.checkpoint.CheckpointApplier;
 import com.booking.replication.commons.checkpoint.Binlog;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.ForceRewindException;
-import com.booking.replication.commons.map.MapFlatter;
 import com.booking.replication.commons.metrics.Metrics;
 import com.booking.replication.controller.WebServer;
 import com.booking.replication.coordinator.Coordinator;
@@ -17,19 +16,14 @@ import com.booking.replication.streams.Streams;
 import com.booking.replication.supplier.Supplier;
 
 import com.booking.replication.supplier.model.RawEvent;
-import com.booking.utils.BootstrapReplicator;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
-import org.apache.commons.cli.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -61,7 +55,7 @@ public class ReplicatorStandaloneApplication {
         private final Augmenter augmenter;
         private final AugmenterFilter augmenterFilter;
         private final Seeker seeker;
-        private final ReplicatorPartitioner partitioner;
+        private final BinlogEventPartitioner partitioner;
         private final Applier applier;
         private final Metrics<?> metrics;
         private final String errorCounter;
@@ -117,7 +111,7 @@ public class ReplicatorStandaloneApplication {
 
             this.seeker = Seeker.build(configuration);
 
-            this.partitioner = ReplicatorPartitioner.build(configuration);
+            this.partitioner = BinlogEventPartitioner.build(configuration);
 
             this.applier = Applier.build(configuration);
 

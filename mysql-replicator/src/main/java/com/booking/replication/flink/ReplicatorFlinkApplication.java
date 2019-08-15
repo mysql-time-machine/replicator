@@ -1,5 +1,6 @@
 package com.booking.replication.flink;
 
+import com.booking.replication.applier.Applier;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.commons.metrics.Metrics;
 import com.booking.replication.controller.WebServer;
@@ -12,7 +13,7 @@ import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
+import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -47,7 +48,7 @@ public class ReplicatorFlinkApplication {
 
     private final StreamExecutionEnvironment env;
     private BinlogSource source;
-    private RichSinkFunction<Collection<AugmentedEvent>> sink;
+    private ReplicatorFlinkSink sink;
 
     private final String METRIC_COORDINATOR_DELAY               = MetricRegistry.name("coordinator", "delay");
     private final String METRIC_STREAM_DESTINATION_QUEUE_SIZE   = MetricRegistry.name("streams", "destination", "queue", "size");
@@ -74,8 +75,6 @@ public class ReplicatorFlinkApplication {
         this.checkPointDelay = new AtomicLong(0L);
 
         this.metrics.register(METRIC_COORDINATOR_DELAY, (Gauge<Long>) () -> this.checkPointDelay.get());
-
-
 
         env = StreamExecutionEnvironment.createLocalEnvironment();
 
@@ -108,22 +107,10 @@ public class ReplicatorFlinkApplication {
                                     event -> event // <- identity key selector
                             );
 
-            DataStream<Collection<AugmentedEvent>> chunkedStream =
-                    partitionedDataStream
-                            .map(
-                                    // ugly poc hack - todo 1: collect events into lists grouped by transaction
-                                    new MapFunction<AugmentedEvent, Collection<AugmentedEvent>>() {
-                                        @Override
-                                        public Collection<AugmentedEvent> map(AugmentedEvent augmentedEvent) throws Exception {
-                                            ArrayList<AugmentedEvent> l = new ArrayList<AugmentedEvent>();
-                                            l.add((AugmentedEvent) augmentedEvent);
-                                            return l;
-                                        }
-                                    }
+            this.sink = new ReplicatorFlinkSink(configuration);
 
-                            );
+            partitionedDataStream.addSink(sink);
 
-            chunkedStream.addSink(new ReplicatorFlinkSink(configuration));
 
         } catch (IOException exception) {
             exception.printStackTrace();
@@ -134,6 +121,8 @@ public class ReplicatorFlinkApplication {
 
     public void start() throws Exception {
 
+        System.out.println("hohoho");
+
         ReplicatorFlinkApplication.LOG.info("starting webserver");
 
         try {
@@ -142,13 +131,11 @@ public class ReplicatorFlinkApplication {
             ReplicatorFlinkApplication.LOG.error("error starting webserver", e);
         }
 
-        env.execute("Flink Streaming Java API Skeleton");
+        System.out.println("Execution plan => " + env.getExecutionPlan());
+
+        env.execute("Replicator");
 
         ReplicatorFlinkApplication.LOG.info("Flink env started");
-    }
-
-    public void wait(long timeout, TimeUnit unit) {
-//        this.coordinator.wait(timeout, unit);
     }
 
     public void stop() {

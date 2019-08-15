@@ -1,8 +1,7 @@
 package com.booking.replication.it.flink;
 
-import com.booking.replication.Replicator;
 import com.booking.replication.applier.Applier;
-import com.booking.replication.applier.ReplicatorPartitioner;
+import com.booking.replication.applier.BinlogEventPartitioner;
 import com.booking.replication.applier.Seeker;
 import com.booking.replication.augmenter.ActiveSchemaManager;
 import com.booking.replication.augmenter.Augmenter;
@@ -212,7 +211,7 @@ public class ReplicatorFlinkConsoleTest {
         configuration.put(Augmenter.Configuration.SCHEMA_TYPE, Augmenter.SchemaType.ACTIVE.name());
         configuration.put(Seeker.Configuration.TYPE, Seeker.Type.NONE.name());
 
-        configuration.put(ReplicatorPartitioner.Configuration.TYPE, ReplicatorPartitioner.Type.TABLE_NAME.name());
+        configuration.put(BinlogEventPartitioner.Configuration.TYPE, BinlogEventPartitioner.Type.TABLE_NAME.name());
 
         configuration.put(Applier.Configuration.TYPE, Applier.Type.CONSOLE);
         configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name());

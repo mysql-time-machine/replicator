@@ -68,7 +68,7 @@ public class Replicator {
     private final String errorCounter;
     private final CheckpointApplier checkpointApplier;
     private final WebServer webServer;
-    private final AtomicLong checkPointDelay;
+    private final AtomicLong lastSafeCheckpoint;
 
     private final Streams<Collection<AugmentedEvent>, Collection<AugmentedEvent>> destinationStream;
     private final Streams<RawEvent, Collection<AugmentedEvent>> sourceStream;
@@ -122,15 +122,15 @@ public class Replicator {
 
         this.applier = Applier.build(configuration);
 
-        this.checkPointDelay = new AtomicLong(0L);
+        this.lastSafeCheckpoint = new AtomicLong(0L);
 
         this.checkpointApplier = CheckpointApplier.build(configuration,
                 this.coordinator,
                 this.checkpointPath,
-                safeCheckpoint -> this.checkPointDelay.set((System.currentTimeMillis() - safeCheckpoint.getTimestamp()) / 1000)
+                safeCheckpoint -> this.lastSafeCheckpoint.set(safeCheckpoint.getTimestamp())
         );
 
-        this.metrics.register(METRIC_COORDINATOR_DELAY, (Gauge<Long>) () -> this.checkPointDelay.get());
+        this.metrics.register(METRIC_COORDINATOR_DELAY, (Gauge<Long>) () -> (System.currentTimeMillis() - this.lastSafeCheckpoint.get()) / 1000);
 
         // --------------------------------------------------------------------
         // Setup streams/pipelines:

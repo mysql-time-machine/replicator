@@ -9,6 +9,7 @@ import org.apache.flink.api.common.functions.Partitioner;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
@@ -51,7 +52,7 @@ public class ReplicatorFlinkApplication {
     private final String METRIC_STREAM_DESTINATION_QUEUE_SIZE   = MetricRegistry.name("streams", "destination", "queue", "size");
     private final String METRIC_STREAM_SOURCE_QUEUE_SIZE        = MetricRegistry.name("streams", "source", "queue", "size");
 
-    public ReplicatorFlinkApplication(final Map<String, Object> configuration) {
+    public ReplicatorFlinkApplication(final Map<String, Object> configuration) throws IOException {
 
         Object checkpointPath = configuration.get(com.booking.replication.flink.ReplicatorFlinkApplication.Configuration.CHECKPOINT_PATH);
         Object checkpointDefault = configuration.get(com.booking.replication.flink.ReplicatorFlinkApplication.Configuration.CHECKPOINT_DEFAULT);
@@ -73,47 +74,41 @@ public class ReplicatorFlinkApplication {
 
         this.metrics.register(METRIC_COORDINATOR_DELAY, (Gauge<Long>) () -> this.checkPointDelay.get());
 
-        env = StreamExecutionEnvironment.createLocalEnvironment();
-
-        env.enableCheckpointing(1000).setStateBackend(
-                new FsStateBackend("file:///tmp",
-                        false)
-        );
+        env = StreamExecutionEnvironment
+                .createLocalEnvironment();
 
         env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
-
+        env.enableCheckpointing(1000).setStateBackend(
+                new FsStateBackend(
+                        "file:///tmp",
+                        false
+                )
+        );
         env.getCheckpointConfig()
                 .enableExternalizedCheckpoints(CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
 
-        try {
 
-            this.source = new BinlogSource(configuration);
+        this.source = new BinlogSource(configuration);
 
-            DataStream<AugmentedEvent> augmentedEventDataStream =
-                    env.addSource(source).forceNonParallel();
+        DataStream<AugmentedEvent> augmentedEventDataStream =
+                env.addSource(source)
+                        .forceNonParallel();
 
-            Partitioner<AugmentedEvent> binlogEventFlinkPartitioner =
-                    BinlogEventFlinkPartitioner.build(configuration);
+//        Partitioner<AugmentedEvent> binlogEventFlinkPartitioner =
+//                BinlogEventFlinkPartitioner.build(configuration);
 
-            DataStream<AugmentedEvent> partitionedDataStream =
-                    augmentedEventDataStream
-                            .partitionCustom(
-                                    binlogEventFlinkPartitioner,
-                                    // binlogEventPartitioner knows how to convert event to partition,
-                                    // so there is no need for a separate KeySelector
-                                    event -> event // <- identity key selector
-                            );
+//        DataStream<AugmentedEvent> partitionedDataStream =
+//                ((SingleOutputStreamOperator<AugmentedEvent>) augmentedEventDataStream).forceNonParallel()
+//                        .partitionCustom(
+//                                binlogEventFlinkPartitioner,
+//                                // binlogEventPartitioner knows how to convert event to partition,
+//                                // so there is no need for a separate KeySelector
+//                                event -> event // <- identity key selector
+//                        );
 
-            RichSinkFunction<AugmentedEvent>  x = new ReplicatorGenericFlinkDummySink(configuration);
+        RichSinkFunction<AugmentedEvent>  x = new ReplicatorGenericFlinkDummySink(configuration);
 
-            partitionedDataStream.addSink(x);
-
-
-        } catch (IOException exception) {
-            exception.printStackTrace();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        augmentedEventDataStream.addSink(x);
     }
 
     public void start() throws Exception {
@@ -136,14 +131,14 @@ public class ReplicatorFlinkApplication {
         try {
 
             ReplicatorFlinkApplication.LOG.info("Stopping Binlog Flink Source");
-            if (this.source != null) {
+            //if (this.source != null) {
                 this.source.cancel();
-            }
+            //}
 
             ReplicatorFlinkApplication.LOG.info("closing sink");
-            if (this.sink != null) {
+            //if (this.sink != null) {
                 this.sink.close();
-            }
+            //}
 
             ReplicatorFlinkApplication.LOG.info("stopping web server");
             this.webServer.stop();

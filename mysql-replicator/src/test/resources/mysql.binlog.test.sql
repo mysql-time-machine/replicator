@@ -23,15 +23,6 @@ BEGIN;
 INSERT INTO _animal_new (name) VALUES ('tiger');
 COMMIT;
 
-
---BEGIN;
---RENAME TABLE animal TO _animal_old, _animal_new TO animal;
---COMMIT;
---
---BEGIN;
---DROP TABLE _animal_old;
---COMMIT;
-
 BEGIN;
 INSERT INTO animal (name, sc_name) VALUES ('tiger', 'Panthera tigris');
 COMMIT;

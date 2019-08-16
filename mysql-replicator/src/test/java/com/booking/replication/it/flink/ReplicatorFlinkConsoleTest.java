@@ -99,6 +99,13 @@ public class ReplicatorFlinkConsoleTest {
 
     }
 
+    @AfterClass
+    public static void after() {
+        ReplicatorFlinkConsoleTest.mysqlBinaryLog.close();
+        ReplicatorFlinkConsoleTest.mysqlActiveSchema.close();
+        ReplicatorFlinkConsoleTest.zookeeper.close();
+    }
+
     @Test
     public void testReplicator() throws Exception {
 
@@ -108,11 +115,17 @@ public class ReplicatorFlinkConsoleTest {
 
         runMysqlScripts(this.getConfiguration(), file.getAbsolutePath());
 
-        replicator.start();
+        new Thread(() -> {
+            try {
+                replicator.start();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
 
-        Thread.sleep(10000);
+        Thread.sleep(6000000);
 
-        Assert.assertTrue(true);// TODO
+        Assert.assertTrue(true); // TODO
 
         replicator.stop();
     }
@@ -195,7 +208,7 @@ public class ReplicatorFlinkConsoleTest {
 
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, ReplicatorFlinkConsoleTest.mysqlActiveSchema.getHost());
 
-        System.out.println("PORT => " + ReplicatorFlinkConsoleTest.mysqlActiveSchema.getPort());
+        System.out.println("MySQLActiveSchema port => " + ReplicatorFlinkConsoleTest.mysqlActiveSchema.getPort());
 
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(ReplicatorFlinkConsoleTest.mysqlActiveSchema.getPort()));
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_SCHEMA, ReplicatorFlinkConsoleTest.MYSQL_ACTIVE_SCHEMA);
@@ -224,12 +237,5 @@ public class ReplicatorFlinkConsoleTest {
         configuration.put(BinaryLogSupplier.Configuration.GTID_FALLBACK_TO_PURGED, true);
 
         return configuration;
-    }
-
-    @AfterClass
-    public static void after() {
-        ReplicatorFlinkConsoleTest.mysqlBinaryLog.close();
-        ReplicatorFlinkConsoleTest.mysqlActiveSchema.close();
-        ReplicatorFlinkConsoleTest.zookeeper.close();
     }
 }

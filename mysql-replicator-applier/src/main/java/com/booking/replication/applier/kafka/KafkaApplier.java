@@ -95,12 +95,12 @@ public class KafkaApplier implements Applier {
         this.metricBase = MetricRegistry.name(this.metrics.basePath(), "kafka");
     }
 
-    private Producer<byte[], byte[]> getProducer() {
+    private KafkaProducer<byte[], byte[]> getProducer() {
         return new KafkaProducer<>(this.configuration, new ByteArraySerializer(), new ByteArraySerializer());
     }
 
     private int getTotalPartitions() {
-        try (Producer<byte[], byte[]> producer = this.getProducer()) {
+        try (KafkaProducer<byte[], byte[]> producer = this.getProducer()) {
             return producer
                     .partitionsFor(this.topic)
                     .stream()
@@ -191,7 +191,6 @@ public class KafkaApplier implements Applier {
 
                     writeMetrics(event, 1);
 
-
                 }
 
                 return true;
@@ -236,6 +235,7 @@ public class KafkaApplier implements Applier {
 
     @Override
     public void close() throws IOException {
+        System.out.println("producer close -> ");
         this.replicatorPartitioner.close();
         this.producers.values().forEach(Producer::close);
         this.producers.clear();

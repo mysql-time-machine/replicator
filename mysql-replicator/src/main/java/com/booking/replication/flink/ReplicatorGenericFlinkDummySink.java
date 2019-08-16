@@ -38,6 +38,11 @@ public class ReplicatorGenericFlinkDummySink
     }
 
     @Override
+    public void close() {
+        System.out.println("SINK CLOSE _____!!!!");
+    }
+
+    @Override
     public void invoke(AugmentedEvent augmentedEvent) throws Exception {
 
         // ugly poc hack
@@ -57,6 +62,8 @@ public class ReplicatorGenericFlinkDummySink
         this.binlogCheckpoint = committedCheckpoint;
 
     }
+
+
 
     @Override
     public void initializeState(FunctionInitializationContext functionInitializationContext) throws Exception {

@@ -1,6 +1,5 @@
 package com.booking.replication.flink;
 
-import com.booking.replication.Replicator;
 import com.booking.replication.applier.Seeker;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.AugmenterFilter;
@@ -8,6 +7,7 @@ import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.commons.checkpoint.Binlog;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.coordinator.Coordinator;
+import com.booking.replication.runtime.flink.ReplicatorFlinkApplication;
 import com.booking.replication.supplier.Supplier;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.api.common.state.ListState;
@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 public class BinlogSource

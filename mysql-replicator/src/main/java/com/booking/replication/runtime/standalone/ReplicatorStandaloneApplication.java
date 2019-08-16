@@ -1,4 +1,5 @@
-package com.booking.replication;
+package com.booking.replication.runtime.standalone;
+import com.booking.replication.Replicator;
 import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.BinlogEventPartitioner;
 import com.booking.replication.applier.Seeker;

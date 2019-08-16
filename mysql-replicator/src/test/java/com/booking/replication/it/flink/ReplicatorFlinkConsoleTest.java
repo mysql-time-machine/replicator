@@ -13,7 +13,7 @@ import com.booking.replication.commons.services.ServicesProvider;
 import com.booking.replication.controller.WebServer;
 import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.coordinator.ZookeeperCoordinator;
-import com.booking.replication.flink.ReplicatorFlinkApplication;
+import com.booking.replication.runtime.flink.ReplicatorFlinkApplication;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 

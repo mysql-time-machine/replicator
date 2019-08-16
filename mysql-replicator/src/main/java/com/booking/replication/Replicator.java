@@ -2,7 +2,7 @@ package com.booking.replication;
 
 import com.booking.replication.applier.Applier;
 import com.booking.replication.commons.map.MapFlatter;
-import com.booking.replication.flink.*;
+import com.booking.replication.runtime.flink.ReplicatorFlinkApplication;
 import com.booking.replication.supplier.Supplier;
 
 import com.booking.utils.BootstrapReplicator;

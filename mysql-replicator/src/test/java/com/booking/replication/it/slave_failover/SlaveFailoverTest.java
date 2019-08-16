@@ -1,7 +1,7 @@
 package com.booking.replication.it.slave_failover;
 
 import avro.shaded.com.google.common.collect.Maps;
-import com.booking.replication.ReplicatorStandaloneApplication;
+import com.booking.replication.runtime.standalone.ReplicatorStandaloneApplication;
 import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.BinlogEventPartitioner;
 import com.booking.replication.applier.count.CountApplier;

@@ -1,18 +1,17 @@
-package com.booking.replication.flink;
+package com.booking.replication.runtime.flink;
 
-import com.booking.replication.applier.BinlogEventPartitioner;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
-import com.booking.replication.augmenter.model.event.TableAugmentedEventData;
-import com.booking.replication.augmenter.model.schema.FullTableName;
 import com.booking.replication.commons.metrics.Metrics;
 import com.booking.replication.controller.WebServer;
+import com.booking.replication.flink.BinlogEventFlinkPartitioner;
+import com.booking.replication.flink.BinlogSource;
+import com.booking.replication.flink.ReplicatorGenericFlinkDummySink;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 import org.apache.flink.api.common.functions.Partitioner;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
@@ -21,7 +20,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ReplicatorFlinkApplication {
@@ -59,10 +57,10 @@ public class ReplicatorFlinkApplication {
 
     public ReplicatorFlinkApplication(final Map<String, Object> configuration) throws IOException {
 
-        Object checkpointPath = configuration.get(com.booking.replication.flink.ReplicatorFlinkApplication.Configuration.CHECKPOINT_PATH);
-        Object checkpointDefault = configuration.get(com.booking.replication.flink.ReplicatorFlinkApplication.Configuration.CHECKPOINT_DEFAULT);
+        Object checkpointPath = configuration.get(ReplicatorFlinkApplication.Configuration.CHECKPOINT_PATH);
+        Object checkpointDefault = configuration.get(ReplicatorFlinkApplication.Configuration.CHECKPOINT_DEFAULT);
 
-        Objects.requireNonNull(checkpointPath, String.format("Configuration required: %s", com.booking.replication.flink.ReplicatorFlinkApplication.Configuration.CHECKPOINT_PATH));
+        Objects.requireNonNull(checkpointPath, String.format("Configuration required: %s", ReplicatorFlinkApplication.Configuration.CHECKPOINT_PATH));
 
         this.checkpointDefault = (checkpointDefault != null) ? (checkpointDefault.toString()) : (null);
 

@@ -105,24 +105,9 @@ public class ReplicatorFlinkApplication {
                 BinlogEventFlinkPartitioner.build(configuration);
 
         DataStream<AugmentedEvent> partitionedDataStream =
-                  ((SingleOutputStreamOperator<AugmentedEvent>) augmentedEventDataStream)
+                  augmentedEventDataStream
                            .partitionCustom(
-                                (Partitioner<AugmentedEvent>) (event, totalPartitions) -> {
-
-                                    if (TableAugmentedEventData.class.isInstance(event.getData())) {
-
-                                        FullTableName eventTable = TableAugmentedEventData.class.cast(event.getData()).getEventTable();
-
-                                        if (eventTable != null) {
-                                            return Math.abs(eventTable.toString().hashCode()) % totalPartitions;
-                                        } else {
-                                            return ThreadLocalRandom.current().nextInt(totalPartitions);
-                                        }
-
-                                    } else {
-                                        return ThreadLocalRandom.current().nextInt(totalPartitions);
-                                    }
-                                },
+                                binlogEventFlinkPartitioner,
                                 // binlogEventPartitioner knows how to convert event to partition,
                                 // so there is no need for a separate KeySelector
                                 event -> event // <- identity key selector

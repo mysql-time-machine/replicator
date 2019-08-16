@@ -312,7 +312,7 @@ public class ReplicatorFlinkKafkaTest {
         configuration.put(Augmenter.Configuration.SCHEMA_TYPE, Augmenter.SchemaType.ACTIVE.name());
         configuration.put(Seeker.Configuration.TYPE, Seeker.Type.NONE.name());
 
-        configuration.put(BinlogEventPartitioner.Configuration.TYPE, BinlogEventPartitioner.Type.TABLE_NAME.name());
+        configuration.put(BinlogEventPartitioner.Configuration.TYPE, BinlogEventPartitioner.Type.TRID.name());
 
         configuration.put(Applier.Configuration.TYPE, Applier.Type.KAFKA);
 

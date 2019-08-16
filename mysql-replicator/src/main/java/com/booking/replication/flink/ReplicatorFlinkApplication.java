@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class ReplicatorFlinkApplication {
 
+    // TODO: adapt/use these props for flink
     public interface Configuration {
         String CHECKPOINT_PATH = "checkpoint.path";
         String CHECKPOINT_DEFAULT = "checkpoint.default";

@@ -24,6 +24,9 @@ import scala.App;
 import java.util.Collection;
 import java.util.Map;
 
+/**
+ * Simple POC sink { Experimental }
+ * */
 public class ReplicatorGenericFlinkDummySink
         extends RichSinkFunction<AugmentedEvent>
         implements CheckpointedFunction {

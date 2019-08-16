@@ -1,13 +1,18 @@
 package com.booking.replication.flink;
 
+import com.booking.replication.applier.BinlogEventPartitioner;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
+import com.booking.replication.augmenter.model.event.TableAugmentedEventData;
+import com.booking.replication.augmenter.model.schema.FullTableName;
 import com.booking.replication.commons.metrics.Metrics;
 import com.booking.replication.controller.WebServer;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
+import org.apache.flink.api.common.functions.Partitioner;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
@@ -16,6 +21,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ReplicatorFlinkApplication {
@@ -95,17 +101,32 @@ public class ReplicatorFlinkApplication {
                 env.addSource(source)
                         .forceNonParallel();
 
-//        Partitioner<AugmentedEvent> binlogEventFlinkPartitioner =
-//                BinlogEventFlinkPartitioner.build(configuration);
+        Partitioner<AugmentedEvent> binlogEventFlinkPartitioner =
+                BinlogEventFlinkPartitioner.build(configuration);
 
-//        DataStream<AugmentedEvent> partitionedDataStream =
-//                ((SingleOutputStreamOperator<AugmentedEvent>) augmentedEventDataStream).forceNonParallel()
-//                        .partitionCustom(
-//                                binlogEventFlinkPartitioner,
-//                                // binlogEventPartitioner knows how to convert event to partition,
-//                                // so there is no need for a separate KeySelector
-//                                event -> event // <- identity key selector
-//                        );
+        DataStream<AugmentedEvent> partitionedDataStream =
+                  ((SingleOutputStreamOperator<AugmentedEvent>) augmentedEventDataStream)
+                           .partitionCustom(
+                                (Partitioner<AugmentedEvent>) (event, totalPartitions) -> {
+
+                                    if (TableAugmentedEventData.class.isInstance(event.getData())) {
+
+                                        FullTableName eventTable = TableAugmentedEventData.class.cast(event.getData()).getEventTable();
+
+                                        if (eventTable != null) {
+                                            return Math.abs(eventTable.toString().hashCode()) % totalPartitions;
+                                        } else {
+                                            return ThreadLocalRandom.current().nextInt(totalPartitions);
+                                        }
+
+                                    } else {
+                                        return ThreadLocalRandom.current().nextInt(totalPartitions);
+                                    }
+                                },
+                                // binlogEventPartitioner knows how to convert event to partition,
+                                // so there is no need for a separate KeySelector
+                                event -> event // <- identity key selector
+                        );
 
         // TODO: switch to FlinkKafkaProducer
         // ReplicatorKafkaSink s = new ReplicatorKafkaSink(configuration);

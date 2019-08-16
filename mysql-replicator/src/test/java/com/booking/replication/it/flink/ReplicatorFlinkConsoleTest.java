@@ -26,6 +26,7 @@ import org.apache.logging.log4j.Logger;
 
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -109,7 +110,9 @@ public class ReplicatorFlinkConsoleTest {
 
         replicator.start();
 
-        Thread.sleep(1000000);
+        Thread.sleep(10000);
+
+        Assert.assertTrue(true);// TODO
 
         replicator.stop();
     }

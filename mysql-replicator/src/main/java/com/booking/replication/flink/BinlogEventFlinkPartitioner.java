@@ -5,8 +5,6 @@ import com.booking.replication.augmenter.model.event.AugmentedEventTransaction;
 import com.booking.replication.augmenter.model.event.TableAugmentedEventData;
 import com.booking.replication.augmenter.model.schema.FullTableName;
 import org.apache.flink.api.common.functions.Partitioner;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer;
-import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkKafkaPartitioner;
 
 import java.util.Map;
 import java.util.UUID;

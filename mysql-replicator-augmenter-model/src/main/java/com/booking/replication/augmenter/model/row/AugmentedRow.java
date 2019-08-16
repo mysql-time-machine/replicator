@@ -26,7 +26,7 @@ public class AugmentedRow {
     private String       tableName;
     private String       tableSchema;
 
-    private Map<String, Object> deserializeCellValues = new CaseInsensitiveMap<>();
+    private Map<String, Object> values = new CaseInsensitiveMap<>();
 
     public AugmentedRow() { }
 
@@ -38,7 +38,7 @@ public class AugmentedRow {
                         UUID transactionUUID,
                         Long transactionXid,
                         List<String> primaryKeyColumns,
-                        Map<String, Object> deserializeCellValues) {
+                        Map<String, Object> values) {
 
         this.primaryKeyColumns  = primaryKeyColumns;
         this.commitTimestamp    = commitTimestamp;
@@ -53,10 +53,10 @@ public class AugmentedRow {
         // is altered multiple times in the same event.
         // this.microsecondTransactionOffset = null; // transactionCounter * 100; // one inc <=> 0.1ms
 
-        this.eventType              = eventType;
-        this.deserializeCellValues  = deserializeCellValues;
-        this.tableSchema            = schemaName;
-        this.tableName              = tableName;
+        this.eventType      = eventType;
+        this.values         = values;
+        this.tableSchema    = schemaName;
+        this.tableName      = tableName;
     }
 
     public void setTransactionSequenceNumber(Long transactionSequenceNumber) {
@@ -67,8 +67,8 @@ public class AugmentedRow {
         this.commitTimestamp = commitTimestamp;
     }
 
-    public Map<String, Object> getDeserializeCellValues() {
-        return deserializeCellValues;
+    public Map<String, Object> getValues() {
+        return values;
     }
 
     @JsonIgnore
@@ -127,8 +127,8 @@ public class AugmentedRow {
 
         Object value = null;
 
-        if (deserializeCellValues.containsKey(column)) {
-            value = deserializeCellValues.get(column);
+        if (values.containsKey(column)) {
+            value = values.get(column);
 
             if (eventType == AugmentedEventType.UPDATE && value instanceof Map) {
                 Map<String, Object> map = (Map<String, Object>) value;

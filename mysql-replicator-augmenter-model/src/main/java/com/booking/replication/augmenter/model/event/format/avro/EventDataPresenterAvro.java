@@ -33,7 +33,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 public class EventDataPresenterAvro {
@@ -129,7 +128,7 @@ public class EventDataPresenterAvro {
 
                 String key = (row.getEventType() == AugmentedEventType.UPDATE) ? EventDeserializer.Constants.VALUE_AFTER : null ;
 
-                for (String column : row.getDeserializeCellValues().keySet()) {
+                for (String column : row.getValues().keySet()) {
                     rec.put(column, row.getValueAsString(column, key));
                 }
 

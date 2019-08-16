@@ -171,7 +171,7 @@ public class HBaseApplierMutationGenerator {
                 // Only write values that have changed
                 String columnValue;
 
-                for (String columnName : augmentedRow.getDeserializeCellValues().keySet()) {
+                for (String columnName : augmentedRow.getValues().keySet()) {
 
                     String valueBefore = augmentedRow.getValueAsString(columnName, EventDeserializer.Constants.VALUE_BEFORE);
                     String valueAfter  = augmentedRow.getValueAsString(columnName, EventDeserializer.Constants.VALUE_AFTER);
@@ -245,7 +245,7 @@ public class HBaseApplierMutationGenerator {
 
                 String columnValue;
 
-                for (String columnName : augmentedRow.getDeserializeCellValues().keySet()) {
+                for (String columnName : augmentedRow.getValues().keySet()) {
                     columnValue = augmentedRow.getValueAsString(columnName);
                     if (columnValue == null) {
                         columnValue = "NULL";

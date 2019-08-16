@@ -1,5 +1,6 @@
 package com.booking.replication.applier.hbase.schema;
 
+import com.booking.replication.augmenter.model.format.EventDeserializer;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.google.common.base.Joiner;
 import org.apache.logging.log4j.LogManager;
@@ -32,11 +33,11 @@ public class HBaseRowKeyMapper {
 
                 case INSERT:
                 case DELETE: {
-                    pkColumnValues.add(row.getValueAsString(pkColumnName, "value"));
+                    pkColumnValues.add(row.getValueAsString(pkColumnName));
                     break;
                 }
                 case UPDATE: {
-                    pkColumnValues.add(row.getValueAsString(pkColumnName, "value_after"));
+                    pkColumnValues.add(row.getValueAsString(pkColumnName, EventDeserializer.Constants.VALUE_AFTER));
                     break;
                 }
                 default:

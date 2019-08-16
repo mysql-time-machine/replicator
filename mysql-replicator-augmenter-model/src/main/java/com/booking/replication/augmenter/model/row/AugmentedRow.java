@@ -26,15 +26,7 @@ public class AugmentedRow {
     private String       tableName;
     private String       tableSchema;
 
-    // deserializeCellValues format:
-    // {
-    //      $columnName => {
-    //          value        => $value // <- null for UPDATE op
-    //          value_before => $value // <- null for INSERT op
-    //          value_after  => $value // <- null for DELETE op
-    //      }
-    // }
-    private Map<String, Map<String,Object>> deserializeCellValues = new CaseInsensitiveMap<>();
+    private Map<String, Object> deserializeCellValues = new CaseInsensitiveMap<>();
 
     public AugmentedRow() { }
 
@@ -46,7 +38,7 @@ public class AugmentedRow {
                         UUID transactionUUID,
                         Long transactionXid,
                         List<String> primaryKeyColumns,
-                        Map<String,Map<String, Object>> deserializeCellValues) {
+                        Map<String, Object> deserializeCellValues) {
 
         this.primaryKeyColumns  = primaryKeyColumns;
         this.commitTimestamp    = commitTimestamp;
@@ -75,7 +67,7 @@ public class AugmentedRow {
         this.commitTimestamp = commitTimestamp;
     }
 
-    public Map<String, Map<String, Object>> getDeserializeCellValues() {
+    public Map<String, Object> getDeserializeCellValues() {
         return deserializeCellValues;
     }
 
@@ -128,14 +120,30 @@ public class AugmentedRow {
         return this.rowMicrosecondTimestamp;
     }
 
+    public String getValueAsString(String column) {
+        return getValueAsString(column, null);
+    }
     public String getValueAsString(String column, String key) {
 
-        if (deserializeCellValues.containsKey(column) && deserializeCellValues.get(column).containsKey(key)) {
-            Object value = deserializeCellValues.get(column).get(key);
+        Object value = null;
 
-            return (value == null) ? NULL_STRING : value.toString();
+        if (deserializeCellValues.containsKey(column)) {
+            value = deserializeCellValues.get(column);
+
+            if (eventType == AugmentedEventType.UPDATE && value instanceof Map) {
+                Map<String, Object> map = (Map<String, Object>) value;
+                if (map.containsKey(key)) {
+                    value = map.get(key);
+                } else {
+                    value = null;
+                }
+            }
         }
 
-        return NULL_STRING;
+        if (value == null) {
+            return NULL_STRING;
+        } else {
+            return value.toString();
+        }
     }
 }

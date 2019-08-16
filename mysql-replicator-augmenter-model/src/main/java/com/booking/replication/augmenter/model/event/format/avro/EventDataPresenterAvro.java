@@ -12,6 +12,7 @@ import com.booking.replication.augmenter.model.event.QueryAugmentedEventDataType
 import com.booking.replication.augmenter.model.event.RowEventMetadata;
 import com.booking.replication.augmenter.model.event.UpdateRowsAugmentedEventData;
 import com.booking.replication.augmenter.model.event.WriteRowsAugmentedEventData;
+import com.booking.replication.augmenter.model.format.EventDeserializer;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.FullTableName;
@@ -126,7 +127,7 @@ public class EventDataPresenterAvro {
             for (AugmentedRow row : rows) {
                 final GenericRecord rec = new GenericData.Record(avroSchema);
 
-                String key = (row.getEventType() == AugmentedEventType.UPDATE) ? "value_after" : "value";
+                String key = (row.getEventType() == AugmentedEventType.UPDATE) ? EventDeserializer.Constants.VALUE_AFTER : null ;
 
                 for (String column : row.getDeserializeCellValues().keySet()) {
                     rec.put(column, row.getValueAsString(column, key));

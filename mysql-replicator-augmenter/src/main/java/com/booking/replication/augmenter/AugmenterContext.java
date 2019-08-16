@@ -551,10 +551,6 @@ public class AugmenterContext implements Closeable {
         }
     }
 
-    /**
-     * update || create have value_after
-     * drop || update have value_before
-     */
     private void updateSchema(String query, long schemaChangeTimestamp) {
 
         if (query != null) {
@@ -828,7 +824,7 @@ public class AugmenterContext implements Closeable {
             Map<String, String[]> cache,
             FullTableName eventTable
     ) {
-        Map<String, Map<String, Object>> deserializeCellValues ;
+        Map<String, Object> deserializeCellValues ;
         try {
             deserializeCellValues = EventDeserializer.getDeserializeCellValues(eventType, columnSchemas, includedColumns, row, cache);
         } catch (Exception e) {

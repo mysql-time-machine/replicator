@@ -118,8 +118,6 @@ public class ReplicatorFlinkApplication {
 
     public void start() throws Exception {
 
-        System.out.println("hohoho");
-
         ReplicatorFlinkApplication.LOG.info("starting webserver");
 
         try {
@@ -128,11 +126,10 @@ public class ReplicatorFlinkApplication {
             ReplicatorFlinkApplication.LOG.error("error starting webserver", e);
         }
 
-        System.out.println("Execution plan => " + env.getExecutionPlan());
+        LOG.info("Execution plan => " + env.getExecutionPlan());
 
         env.execute("Replicator");
 
-        ReplicatorFlinkApplication.LOG.info("Flink env started");
     }
 
     public void stop() {

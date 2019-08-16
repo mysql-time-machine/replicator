@@ -4,6 +4,7 @@ import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.BinlogEventPartitioner;
 import com.booking.replication.applier.Seeker;
 import com.booking.replication.applier.kafka.KafkaApplier;
+import com.booking.replication.applier.kafka.KafkaSeeker;
 import com.booking.replication.augmenter.ActiveSchemaManager;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.AugmenterContext;
@@ -20,6 +21,7 @@ import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.coordinator.ZookeeperCoordinator;
 import com.booking.replication.flink.ReplicatorFlinkApplication;
 import com.booking.replication.flink.ReplicatorFlinkSink;
+import com.booking.replication.it.kafka.ReplicatorKafkaTest;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 
@@ -142,11 +144,13 @@ public class ReplicatorFlinkKafkaTest {
 
         System.out.println("Starting the replicator");
 
-        try {
-            replicator.start();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        new Thread(() -> {
+            try {
+                replicator.start();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
 
         File file = new File("src/test/resources/" + ReplicatorFlinkKafkaTest.MYSQL_TEST_SCRIPT);
 
@@ -320,11 +324,16 @@ public class ReplicatorFlinkKafkaTest {
         configuration.put(ReplicatorFlinkSink.Configuration.BOOTSTRAP_SERVERS_CONFIG, ReplicatorFlinkKafkaTest.kafka.getURL());
         configuration.put(ReplicatorFlinkSink.Configuration.TOPIC, ReplicatorFlinkKafkaTest.KAFKA_REPLICATOR_TOPIC_NAME);
 
-        configuration.put(
-                KafkaApplier.Configuration.SCHEMA_REGISTRY_URL,
-                String.format("http://%s:%d", ReplicatorFlinkKafkaTest.schemaRegistry.getHost(),
-                        ReplicatorFlinkKafkaTest.schemaRegistry.getPort()));
+        configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorFlinkKafkaTest.kafka.getURL());
+        configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG), ByteArraySerializer.class);
+        configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG), KafkaAvroSerializer.class);
+        configuration.put(KafkaApplier.Configuration.SCHEMA_REGISTRY_URL, String.format("http://%s:%d", ReplicatorFlinkKafkaTest.schemaRegistry.getHost(), ReplicatorFlinkKafkaTest.schemaRegistry.getPort()));
         configuration.put(KafkaApplier.Configuration.FORMAT, "json");
+
+        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorFlinkKafkaTest.kafka.getURL());
+        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.GROUP_ID_CONFIG), ReplicatorFlinkKafkaTest.KAFKA_REPLICATOR_GROUP_ID);
+        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.AUTO_OFFSET_RESET_CONFIG), "earliest");
+        configuration.put(KafkaApplier.Configuration.TOPIC, ReplicatorFlinkKafkaTest.KAFKA_REPLICATOR_TOPIC_NAME);
 
 
         configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name());

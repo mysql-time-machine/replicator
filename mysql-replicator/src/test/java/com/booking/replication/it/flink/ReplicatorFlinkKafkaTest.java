@@ -20,8 +20,7 @@ import com.booking.replication.controller.WebServer;
 import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.coordinator.ZookeeperCoordinator;
 import com.booking.replication.flink.ReplicatorFlinkApplication;
-import com.booking.replication.flink.ReplicatorFlinkSink;
-import com.booking.replication.it.kafka.ReplicatorKafkaTest;
+import com.booking.replication.flink.ReplicatorKafkaSink;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 
@@ -164,47 +163,43 @@ public class ReplicatorFlinkKafkaTest {
 
         List<String> results = new ArrayList<>();
 
-        new Thread(() -> {
-            Map<String, Object> kafkaConfiguration = new HashMap<>();
+        Map<String, Object> kafkaConfiguration = new HashMap<>();
 
-            kafkaConfiguration.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, ReplicatorFlinkKafkaTest.kafka.getURL());
-            kafkaConfiguration.put(ConsumerConfig.GROUP_ID_CONFIG, ReplicatorFlinkKafkaTest.KAFKA_REPLICATOR_IT_GROUP_ID);
-            kafkaConfiguration.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        kafkaConfiguration.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, ReplicatorFlinkKafkaTest.kafka.getURL());
+        kafkaConfiguration.put(ConsumerConfig.GROUP_ID_CONFIG, ReplicatorFlinkKafkaTest.KAFKA_REPLICATOR_IT_GROUP_ID);
+        kafkaConfiguration.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
-            System.out.println("Try to get data from Kafka");
+        System.out.println("Try to get data from Kafka");
 
-            try (Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(kafkaConfiguration, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
+        try (Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(kafkaConfiguration, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
 
-                consumer.subscribe(Collections.singleton(ReplicatorFlinkKafkaTest.KAFKA_REPLICATOR_TOPIC_NAME));
+            consumer.subscribe(Collections.singleton(ReplicatorFlinkKafkaTest.KAFKA_REPLICATOR_TOPIC_NAME));
 
-                boolean consumed = false;
+            boolean consumed = false;
 
-                while (!consumed) {
+            while (!consumed) {
 
-                    System.out.println("poll...");
+                System.out.println("poll...");
 
-                    for (ConsumerRecord<byte[], byte[]> record : consumer.poll(1000L)) {
+                for (ConsumerRecord<byte[], byte[]> record : consumer.poll(1000L)) {
 
-                        AugmentedEvent augmentedEvent = AugmentedEvent.fromJSON(record.key(), record.value());
+                    AugmentedEvent augmentedEvent = AugmentedEvent.fromJSON(record.key(), record.value());
 
-                        ReplicatorFlinkKafkaTest.LOG.info("Got new augmented event from Kafka: " + new String(augmentedEvent.toJSON()));
+                    ReplicatorFlinkKafkaTest.LOG.info("Got new augmented event from Kafka: " + new String(augmentedEvent.toJSON()));
 
-                        if ((augmentedEvent.getHeader().getEventType() == AugmentedEventType.WRITE_ROWS)) {
-                            for (AugmentedRow augmentedRow : ((WriteRowsAugmentedEventData) augmentedEvent.getData()).getAugmentedRows()) {
-                                String value = augmentedRow.getStringifiedRowColumns().get("name").get("value");
-                                results.add(value);
-                            }
+                    if ((augmentedEvent.getHeader().getEventType() == AugmentedEventType.WRITE_ROWS)) {
+                        for (AugmentedRow augmentedRow : ((WriteRowsAugmentedEventData) augmentedEvent.getData()).getAugmentedRows()) {
+                            String value = augmentedRow.getStringifiedRowColumns().get("name").get("value");
+                            results.add(value);
                         }
-
-                        consumed = true;
                     }
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }).start();
 
-        Thread.sleep(5000);
+                    consumed = true;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         TreeSet resultSet = new TreeSet(results);
 
@@ -321,8 +316,8 @@ public class ReplicatorFlinkKafkaTest {
 
         configuration.put(Applier.Configuration.TYPE, Applier.Type.KAFKA);
 
-        configuration.put(ReplicatorFlinkSink.Configuration.BOOTSTRAP_SERVERS_CONFIG, ReplicatorFlinkKafkaTest.kafka.getURL());
-        configuration.put(ReplicatorFlinkSink.Configuration.TOPIC, ReplicatorFlinkKafkaTest.KAFKA_REPLICATOR_TOPIC_NAME);
+        configuration.put(ReplicatorKafkaSink.Configuration.BOOTSTRAP_SERVERS_CONFIG, ReplicatorFlinkKafkaTest.kafka.getURL());
+        configuration.put(ReplicatorKafkaSink.Configuration.TOPIC, ReplicatorFlinkKafkaTest.KAFKA_REPLICATOR_TOPIC_NAME);
 
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorFlinkKafkaTest.kafka.getURL());
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG), ByteArraySerializer.class);

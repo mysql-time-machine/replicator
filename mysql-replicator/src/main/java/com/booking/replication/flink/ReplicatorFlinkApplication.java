@@ -5,11 +5,9 @@ import com.booking.replication.commons.metrics.Metrics;
 import com.booking.replication.controller.WebServer;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
-import org.apache.flink.api.common.functions.Partitioner;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
@@ -74,6 +72,9 @@ public class ReplicatorFlinkApplication {
 
         this.metrics.register(METRIC_COORDINATOR_DELAY, (Gauge<Long>) () -> this.checkPointDelay.get());
 
+
+        //////////
+        // FLINK:
         env = StreamExecutionEnvironment
                 .createLocalEnvironment();
 
@@ -106,39 +107,30 @@ public class ReplicatorFlinkApplication {
 //                                event -> event // <- identity key selector
 //                        );
 
-        RichSinkFunction<AugmentedEvent>  x = new ReplicatorGenericFlinkDummySink(configuration);
+        // TODO: switch to FlinkKafkaProducer
+        // ReplicatorKafkaSink s = new ReplicatorKafkaSink(configuration);
+        RichSinkFunction<AugmentedEvent> s = new ReplicatorGenericFlinkDummySink(configuration);
 
-        augmentedEventDataStream.addSink(x);
+        augmentedEventDataStream.addSink(s);
     }
 
     public void start() throws Exception {
-
-        ReplicatorFlinkApplication.LOG.info("starting webserver");
-
-        try {
-            this.webServer.start();
-        } catch (IOException e) {
-            ReplicatorFlinkApplication.LOG.error("error starting webserver", e);
-        }
-
         LOG.info("Execution plan => " + env.getExecutionPlan());
-
         env.execute("Replicator");
-
     }
 
     public void stop() {
         try {
 
             ReplicatorFlinkApplication.LOG.info("Stopping Binlog Flink Source");
-            //if (this.source != null) {
+            if (this.source != null) {
                 this.source.cancel();
-            //}
+            }
 
             ReplicatorFlinkApplication.LOG.info("closing sink");
-            //if (this.sink != null) {
+            if (this.sink != null) {
                 this.sink.close();
-            //}
+            }
 
             ReplicatorFlinkApplication.LOG.info("stopping web server");
             this.webServer.stop();

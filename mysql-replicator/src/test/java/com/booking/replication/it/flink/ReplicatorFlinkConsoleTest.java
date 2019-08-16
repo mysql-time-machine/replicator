@@ -123,9 +123,9 @@ public class ReplicatorFlinkConsoleTest {
             }
         }).start();
 
-        Thread.sleep(6000000);
+        Thread.sleep(60000);
 
-        Assert.assertTrue(true); // TODO
+        Assert.assertTrue(true); // TODO: move this file to examples project since its not a real test
 
         replicator.stop();
     }

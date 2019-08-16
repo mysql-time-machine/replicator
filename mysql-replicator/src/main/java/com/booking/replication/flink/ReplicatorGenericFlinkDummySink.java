@@ -39,7 +39,7 @@ public class ReplicatorGenericFlinkDummySink
 
     @Override
     public void close() {
-        System.out.println("SINK CLOSE _____!!!!");
+        System.out.println("Closing Sink");
     }
 
     @Override

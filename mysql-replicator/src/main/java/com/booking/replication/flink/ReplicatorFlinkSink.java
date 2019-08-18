@@ -23,20 +23,20 @@ import scala.App;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Simple POC sink { Experimental }
  * */
-public class ReplicatorGenericFlinkDummySink
-        extends RichSinkFunction<AugmentedEvent>
+public class ReplicatorFlinkSink
+        extends RichSinkFunction<List<AugmentedEvent>>
         implements CheckpointedFunction {
 
     private Map<String, Object> configuration;
 
     private transient Applier applier;
-    private transient Checkpoint binlogCheckpoint;
 
-    public ReplicatorGenericFlinkDummySink(Map<String, Object> configuration) {
+    public ReplicatorFlinkSink(Map<String, Object> configuration) {
         this.configuration = configuration;
     }
 
@@ -46,41 +46,26 @@ public class ReplicatorGenericFlinkDummySink
     }
 
     @Override
-    public void invoke(AugmentedEvent augmentedEvent) throws Exception {
-
-        // ugly poc hack
-        List<AugmentedEvent> e = new ArrayList<>();
-        e.add(augmentedEvent);
+    public void invoke(List<AugmentedEvent> augmentedEvents) throws Exception {
 
         if (applier == null) {
             System.out.println("Lost applier");
             applier = Applier.build(configuration);
         }
 
-        applier.apply(e);
-
-        Checkpoint committedCheckpoint =
-                augmentedEvent.getHeader().getCheckpoint();
-
-        this.binlogCheckpoint = committedCheckpoint;
-
+        // This will buffer the list of events. If internal applier buffer
+        // gets full it will flush the buffer. In addition, flush is called
+        // from snapshotState
+        applier.apply(augmentedEvents);
     }
-
-
 
     @Override
     public void initializeState(FunctionInitializationContext functionInitializationContext) throws Exception {
         this.applier = Applier.build(configuration);
-        this.binlogCheckpoint = new Checkpoint();
     }
 
     @Override
     public void snapshotState(FunctionSnapshotContext functionSnapshotContext) throws Exception {
-        if ( binlogCheckpoint != null) {
-            if (binlogCheckpoint.getGtidSet() != null) {
-                System.out.println("BinlogSink: snapshotting state, gtidSet #" + binlogCheckpoint.getGtidSet());
-            }
-        }
+        boolean result = applier.forceFlush();
     }
-
 }

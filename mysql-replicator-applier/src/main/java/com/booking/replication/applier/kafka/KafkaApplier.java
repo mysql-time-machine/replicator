@@ -230,7 +230,8 @@ public class KafkaApplier implements Applier {
 
     @Override
     public boolean forceFlush() {
-        return false;
+        this.producers.values().forEach(Producer::flush);
+        return true;
     }
 
     @Override

@@ -42,21 +42,10 @@ public class ReplicatorFlinkSink
 
     @Override
     public void close() {
-        System.out.println("Closing Sink");
     }
 
     @Override
     public void invoke(AugmentedEvent augmentedEvent) throws Exception {
-
-        System.out.println("Invoke Sink");
-        if (applier == null) {
-            System.out.println("Lost applier");
-            applier = Applier.build(configuration);
-        }
-
-        // This will buffer the list of events. If internal applier buffer
-        // gets full it will flush the buffer. In addition, flush is called
-        // from snapshotState
 
         // POC hack
         List<AugmentedEvent> events = new ArrayList<>();

@@ -18,8 +18,9 @@ public interface BinlogEventFlinkPartitioner extends Partitioner<AugmentedEvent>
 
             @Override
             protected Partitioner<AugmentedEvent> newInstance(Map<String, Object> configuration) {
-
-                    return (Partitioner<AugmentedEvent>) (event, totalPartitions) -> {
+                return new Partitioner<AugmentedEvent>() {
+                    @Override
+                    public int partition(AugmentedEvent event, int totalPartitions) {
 
                         if (TableAugmentedEventData.class.isInstance(event.getData())) {
 
@@ -34,31 +35,34 @@ public interface BinlogEventFlinkPartitioner extends Partitioner<AugmentedEvent>
                         } else {
                             return ThreadLocalRandom.current().nextInt(totalPartitions);
                         }
-                    };
+                    }
+                };
             }
         },
 
         XXID {
             @Override
             protected Partitioner<AugmentedEvent> newInstance(Map<String, Object> configuration) {
-
-                    return (Partitioner<AugmentedEvent>) (event, totalPartitions) -> {
+                return new Partitioner<AugmentedEvent>() {
+                    @Override
+                    public int partition(AugmentedEvent event, int totalPartitions) {
                         if (event.getHeader().getEventTransaction() != null) {
                             AugmentedEventTransaction transaction = event.getHeader().getEventTransaction();
                             return Integer.remainderUnsigned((int) transaction.getXXID(), totalPartitions);
                         } else {
                             return ThreadLocalRandom.current().nextInt(totalPartitions);
                         }
-                    };
-
+                    }
+                };
             }
         },
 
         TRID {
             @Override
             protected Partitioner<AugmentedEvent> newInstance(Map<String, Object> configuration) {
-
-                    return (Partitioner<AugmentedEvent>) (event, totalPartitions) -> {
+                return new Partitioner<AugmentedEvent>() {
+                    @Override
+                    public int partition(AugmentedEvent event, int totalPartitions) {
 
                         if (event.getHeader().getEventTransaction() != null) {
                             AugmentedEventTransaction transaction = event.getHeader().getEventTransaction();
@@ -68,21 +72,32 @@ public interface BinlogEventFlinkPartitioner extends Partitioner<AugmentedEvent>
                             return ThreadLocalRandom.current().nextInt(totalPartitions);
                         }
 
-                    };
+                    }
+                };
             }
         },
 
         RANDOM {
             @Override
             protected Partitioner<AugmentedEvent> newInstance(Map<String, Object> configuration) {
-                    return (Partitioner<AugmentedEvent>) (event, totalPartitions) -> ThreadLocalRandom.current().nextInt(totalPartitions);
+                return new Partitioner<AugmentedEvent>() {
+                    @Override
+                    public int partition(AugmentedEvent event, int totalPartitions) {
+                        return ThreadLocalRandom.current().nextInt(totalPartitions);
+                    }
+                };
             }
         },
 
         NONE {
             @Override
             protected Partitioner<AugmentedEvent> newInstance(Map<String, Object> configuration) {
-                    return (Partitioner<AugmentedEvent>) (event, totalPartitions) -> 0;
+                return new Partitioner<AugmentedEvent>() {
+                    @Override
+                    public int partition(AugmentedEvent event, int totalPartitions) {
+                        return 0;
+                    }
+                };
             }
         };
 

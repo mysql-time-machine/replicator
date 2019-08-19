@@ -1,10 +1,9 @@
 package com.booking.replication.runtime.flink;
 
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
-import com.booking.replication.augmenter.model.event.AugmentedEventTransaction;
-import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.commons.metrics.Metrics;
 import com.booking.replication.controller.WebServer;
+import com.booking.replication.flink.BinlogEventFlinkPartitioner;
 import com.booking.replication.flink.BinlogSource;
 import com.booking.replication.flink.ReplicatorFlinkSink;
 import com.codahale.metrics.Gauge;
@@ -13,6 +12,7 @@ import org.apache.flink.api.common.functions.Partitioner;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.logging.log4j.LogManager;
@@ -20,7 +20,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ReplicatorFlinkApplication {
@@ -40,7 +39,6 @@ public class ReplicatorFlinkApplication {
     }
 
     private static final Logger LOG = LogManager.getLogger(com.booking.replication.Replicator.class);
-    private static final String COMMAND_LINE_SYNTAX = "java -jar mysql-replicator-<version>.jar";
 
     private final Metrics<?> metrics;
     private final String errorCounter;
@@ -56,22 +54,13 @@ public class ReplicatorFlinkApplication {
 
     public ReplicatorFlinkApplication(final Map<String, Object> configuration) throws IOException {
 
-        Object checkpointPath = configuration.get(ReplicatorFlinkApplication.Configuration.CHECKPOINT_PATH);
-        Object checkpointDefault = configuration.get(ReplicatorFlinkApplication.Configuration.CHECKPOINT_DEFAULT);
-
-        Objects.requireNonNull(checkpointPath, String.format("Configuration required: %s", ReplicatorFlinkApplication.Configuration.CHECKPOINT_PATH));
-
         this.webServer = WebServer.build(configuration);
-
         this.metrics = Metrics.build(configuration, webServer.getServer());
-
         this.errorCounter = MetricRegistry.name(
                 String.valueOf(configuration.getOrDefault(Metrics.Configuration.BASE_PATH, "replicator")),
                 "error"
         );
-
         this.checkPointDelay = new AtomicLong(0L);
-
         this.metrics.register(METRIC_COORDINATOR_DELAY, (Gauge<Long>) () -> this.checkPointDelay.get());
 
 
@@ -92,31 +81,16 @@ public class ReplicatorFlinkApplication {
 
 
         this.binlogSource = new BinlogSource(configuration);
-        Partitioner<AugmentedEvent> binlogEventPartitioner = (Partitioner<AugmentedEvent>) (event, totalPartitions) -> {
-            if (event.getHeader().getEventTransaction() != null) {
-                AugmentedEventTransaction transaction = event.getHeader().getEventTransaction();
-                long tmp = UUID.fromString(transaction.getIdentifier()).getMostSignificantBits() & Integer.MAX_VALUE;
-                return Math.toIntExact(Long.remainderUnsigned(tmp, totalPartitions));
-            } else {
-                return ThreadLocalRandom.current().nextInt(totalPartitions);
-            }
-        };
+
+        Partitioner<AugmentedEvent> binlogEventFlinkPartitioner = BinlogEventFlinkPartitioner.build(configuration);
 
         DataStream<AugmentedEvent> augmentedEventStream = env.addSource(binlogSource).forceNonParallel();
 
-        augmentedEventStream
-                .partitionCustom(binlogEventPartitioner
-                                 ,
-                                 // the above Partitioner knows how to convert event to partition,
-                                 // so there is no need for a separate KeySelector
-                                 event -> event) // <- identity key selector
-                .filter(event ->
-                            event.getHeader().getEventType().equals(AugmentedEventType.WRITE_ROWS)
-                                    ||
-                                    event.getHeader().getEventType().equals(AugmentedEventType.UPDATE_ROWS)
-                                    ||
-                                    event.getHeader().getEventType().equals(AugmentedEventType.DELETE_ROWS))
-
+         augmentedEventStream
+                .partitionCustom(
+                        binlogEventFlinkPartitioner, // <- event to partition, so no need for separate KeySelector
+                        event -> event // <- identity key selector
+                )
                 .addSink(new ReplicatorFlinkSink(configuration))
         ;
 

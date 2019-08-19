@@ -20,7 +20,6 @@ import com.booking.replication.controller.WebServer;
 import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.coordinator.ZookeeperCoordinator;
 import com.booking.replication.runtime.flink.ReplicatorFlinkApplication;
-import com.booking.replication.flink.ReplicatorKafkaSink;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 
@@ -77,6 +76,9 @@ public class ReplicatorFlinkKafkaTest {
     private static final String KAFKA_REPLICATOR_IT_GROUP_ID = "replicatorIT";
     private static final int KAFKA_TOPIC_PARTITIONS = 3;
     private static final int KAFKA_TOPIC_REPLICAS = 1;
+
+    private static final String TOPIC = "kafka.topic";
+    private static final String BOOTSTRAP_SERVERS_CONFIG = "bootstrap.servers";
 
     private static ServicesControl zookeeper;
     private static ServicesControl mysqlBinaryLog;
@@ -316,8 +318,8 @@ public class ReplicatorFlinkKafkaTest {
 
         configuration.put(Applier.Configuration.TYPE, Applier.Type.KAFKA);
 
-        configuration.put(ReplicatorKafkaSink.Configuration.BOOTSTRAP_SERVERS_CONFIG, ReplicatorFlinkKafkaTest.kafka.getURL());
-        configuration.put(ReplicatorKafkaSink.Configuration.TOPIC, ReplicatorFlinkKafkaTest.KAFKA_REPLICATOR_TOPIC_NAME);
+        configuration.put(BOOTSTRAP_SERVERS_CONFIG, ReplicatorFlinkKafkaTest.kafka.getURL());
+        configuration.put(TOPIC, ReplicatorFlinkKafkaTest.KAFKA_REPLICATOR_TOPIC_NAME);
 
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorFlinkKafkaTest.kafka.getURL());
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG), ByteArraySerializer.class);

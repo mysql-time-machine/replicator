@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
  * Simple POC sink { Experimental }
  * */
 public class ReplicatorFlinkSink
-        extends RichSinkFunction<List<AugmentedEvent>>
+        extends RichSinkFunction<AugmentedEvent>
         implements CheckpointedFunction {
 
     private Map<String, Object> configuration;
@@ -46,8 +46,9 @@ public class ReplicatorFlinkSink
     }
 
     @Override
-    public void invoke(List<AugmentedEvent> augmentedEvents) throws Exception {
+    public void invoke(AugmentedEvent augmentedEvent) throws Exception {
 
+        System.out.println("Invoke Sink");
         if (applier == null) {
             System.out.println("Lost applier");
             applier = Applier.build(configuration);
@@ -56,7 +57,12 @@ public class ReplicatorFlinkSink
         // This will buffer the list of events. If internal applier buffer
         // gets full it will flush the buffer. In addition, flush is called
         // from snapshotState
-        applier.apply(augmentedEvents);
+
+        // POC hack
+        List<AugmentedEvent> events = new ArrayList<>();
+        events.add(augmentedEvent);
+        applier.apply(events);
+
     }
 
     @Override

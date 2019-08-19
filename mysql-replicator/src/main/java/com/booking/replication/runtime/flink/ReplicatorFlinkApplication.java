@@ -2,6 +2,7 @@ package com.booking.replication.runtime.flink;
 
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.event.AugmentedEventTransaction;
+import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.commons.metrics.Metrics;
 import com.booking.replication.controller.WebServer;
 import com.booking.replication.flink.BinlogSource;
@@ -10,6 +11,7 @@ import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 import org.apache.flink.api.common.functions.AggregateFunction;
 import org.apache.flink.api.common.functions.Partitioner;
+import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.TimeCharacteristic;
@@ -17,7 +19,9 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
+import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.logging.log4j.LogManager;
@@ -25,6 +29,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -102,12 +107,12 @@ public class ReplicatorFlinkApplication {
 
         this.source = new BinlogSource(configuration);
 
-        DataStream<AugmentedEvent> augmentedEventDataStream =
+        DataStream<AugmentedEvent> augmentedEventStream =
                 env.addSource(source)
                         .forceNonParallel();
 
-        DataStream<AugmentedEvent> partitionedDataStream =
-                  augmentedEventDataStream
+
+                augmentedEventStream
                            .partitionCustom(
                                    (Partitioner<AugmentedEvent>) (event, totalPartitions) -> {
                                        if (event.getHeader().getEventTransaction() != null) {
@@ -122,39 +127,17 @@ public class ReplicatorFlinkApplication {
                                 // the above Partitioner knows how to convert event to partition,
                                 // so there is no need for a separate KeySelector
                                 event -> event // <- identity key selector
-                        );
+                )
+                .filter(event ->
+                            event.getHeader().getEventType().equals(AugmentedEventType.WRITE_ROWS)
+                                    ||
+                                    event.getHeader().getEventType().equals(AugmentedEventType.UPDATE_ROWS)
+                                    ||
+                                    event.getHeader().getEventType().equals(AugmentedEventType.DELETE_ROWS)
+                )
+                .addSink(new ReplicatorFlinkSink(configuration))
 
-        SingleOutputStreamOperator<List<AugmentedEvent>> transactionStream =
-            partitionedDataStream
-                    .keyBy(
-                        (KeySelector<AugmentedEvent, String>) event -> event.getHeader().getEventTransaction().getIdentifier()
-                    )
-                    .window(TumblingEventTimeWindows.of(Time.seconds(3)))
-                    .aggregate(new AggregateFunction<AugmentedEvent, List<AugmentedEvent>,List<AugmentedEvent>>() {
-                            @Override
-                            public List<AugmentedEvent> createAccumulator() {
-                                return new ArrayList<>();
-                            }
-                            @Override
-                            public List<AugmentedEvent> add(AugmentedEvent event, List<AugmentedEvent> augmentedEvents) {
-                                augmentedEvents.add(event);
-                                return augmentedEvents;
-                            }
-                            @Override
-                            public List<AugmentedEvent> getResult(List<AugmentedEvent> augmentedEvents) {
-                                return augmentedEvents;
-                            }
-                            @Override
-                            public List<AugmentedEvent> merge(List<AugmentedEvent> augmentedEvents, List<AugmentedEvent> acc1) {
-                                acc1.addAll(augmentedEvents);
-                                return acc1;
-                            }
-                        }
-                    );
-
-        RichSinkFunction<List<AugmentedEvent>> s = new ReplicatorFlinkSink(configuration);
-
-        transactionStream.addSink(s);
+            ;
 
     }
 

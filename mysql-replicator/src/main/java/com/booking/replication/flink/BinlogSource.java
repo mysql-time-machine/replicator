@@ -29,7 +29,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.stream.Collectors;
 
 public class BinlogSource
-        extends RichSourceFunction<AugmentedEvent>
+        extends RichSourceFunction<List<AugmentedEvent>>
         implements CheckpointedFunction, CheckpointListener {
 
     private static final Logger LOG = LogManager.getLogger(BinlogSource.class);
@@ -44,7 +44,7 @@ public class BinlogSource
     private final String checkpointPath;
 
     // non-serializable
-    private transient BlockingDeque<AugmentedEvent> incomingEvents;
+    private transient BlockingDeque<List<AugmentedEvent>> incomingEvents;
     private transient TreeMap<Long, Tuple2<Boolean, List<Checkpoint>>> gtidsSeenByFlinkCheckpointID;
     private transient List<Checkpoint> gtidsSeen;
     private transient List<Tuple2<Long,Checkpoint>> gtidsConfirmed;
@@ -88,7 +88,7 @@ public class BinlogSource
     }
 
     @Override
-    public void run(SourceContext<AugmentedEvent> sourceContext) throws Exception {
+    public void run(SourceContext<List<AugmentedEvent>> sourceContext) throws Exception {
 
         while (isRunning) {
 
@@ -98,38 +98,63 @@ public class BinlogSource
 
                 if (isLeader) {
 
-                    AugmentedEvent event = incomingEvents.take();
+                    List<AugmentedEvent> events = incomingEvents.take();
 
-                    sourceContext.collectWithTimestamp(
-                            event,
-                            event.getHeader().getTimestamp()
-                    );
+                    Optional<AugmentedEvent> atLeastOne = events
+                            .stream()
+                            .filter(event -> event.getHeader().getEventTransaction() != null)
+                            .findFirst();
 
-                    currentBinlogCheckpoint = event.getHeader().getCheckpoint();
+                    if (atLeastOne.isPresent()) {
 
-                    gtidsSeen.add(currentBinlogCheckpoint);
+                        long transactionTimestamp = events
+                                .stream()
+                                .filter(event -> event.getHeader().getEventTransaction() != null)
+                                .findFirst()
+                                .get().getHeader().getEventTransaction().getCommitTimestamp();
 
-                    if (!gtidsSeenByFlinkCheckpointID.containsKey(lastConfirmedFlinkCheckpoint)) {
-                        gtidsSeenByFlinkCheckpointID.put(
-                                lastConfirmedFlinkCheckpoint,
-                                Tuple2.of(false , new ArrayList<>())
+                        // all events in the list are part of the same transaction
+                        // TODO: make this more obvious
+                        sourceContext.collectWithTimestamp(
+                                events,
+                                transactionTimestamp
                         );
-                    }
 
-                    gtidsSeenByFlinkCheckpointID.get(lastConfirmedFlinkCheckpoint).f0 = false;
-                    gtidsSeenByFlinkCheckpointID.get(lastConfirmedFlinkCheckpoint).f1.add(
-                            new Checkpoint(
-                                currentBinlogCheckpoint.getTimestamp(),
-                                currentBinlogCheckpoint.getServerId(),
-                                currentBinlogCheckpoint.getGtidSet()
-                            )
-                    );
+                        currentBinlogCheckpoint = events.stream().findFirst().get().getHeader().getCheckpoint();
 
-                    count++;
+                        gtidsSeen.add(currentBinlogCheckpoint);
 
-                    if (chaosMonkeySwitch) {
-                        System.out.println("Chaos Monkey is awake!!!");
-                        throw  new RuntimeException();
+                        if (!gtidsSeenByFlinkCheckpointID.containsKey(lastConfirmedFlinkCheckpoint)) {
+                            gtidsSeenByFlinkCheckpointID.put(
+                                    lastConfirmedFlinkCheckpoint,
+                                    Tuple2.of(false, new ArrayList<>())
+                            );
+                        }
+
+                        gtidsSeenByFlinkCheckpointID.get(lastConfirmedFlinkCheckpoint).f0 = false;
+                        gtidsSeenByFlinkCheckpointID.get(lastConfirmedFlinkCheckpoint).f1.add(
+                                new Checkpoint(
+                                        currentBinlogCheckpoint.getTimestamp(),
+                                        currentBinlogCheckpoint.getServerId(),
+                                        currentBinlogCheckpoint.getGtidSet()
+                                )
+                        );
+
+                        count++;
+
+                        if (chaosMonkeySwitch) {
+                            System.out.println("Chaos Monkey is awake!!!");
+                            throw new RuntimeException();
+                        }
+                    } else {
+                        System.out.println("Events missing transaction information => ");
+                        events.stream().forEach(e -> {
+                            try {
+                                System.out.println(e.toJSONString());
+                            } catch (IOException e1) {
+                                e1.printStackTrace();
+                            }
+                        });
                     }
 
                 } else {
@@ -137,7 +162,6 @@ public class BinlogSource
                 }
 
             }
-
             Thread.sleep(1000);
         }
     }
@@ -196,15 +220,16 @@ public class BinlogSource
             supplier.onEvent((event) -> {
 
                 synchronized (this) {
+
                     Collection<AugmentedEvent> augmentedEvents = augmenter.apply(event);
 
-                    Collection<AugmentedEvent> filteredEvents = augmenterFilter.apply(augmentedEvents);
+                    if (augmentedEvents != null) { // <- null if event buffered, but commit not reached yet
 
-                    if (augmentedEvents != null) {
-                        for (AugmentedEvent filteredEvent : filteredEvents) {
+                        Collection<AugmentedEvent> filteredEvents = augmenterFilter.apply(augmentedEvents);
 
+                        if (filteredEvents != null) {
                             try {
-                                incomingEvents.put(filteredEvent);
+                                incomingEvents.put((List<AugmentedEvent>) filteredEvents);
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }

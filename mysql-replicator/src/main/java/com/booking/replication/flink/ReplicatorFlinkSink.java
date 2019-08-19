@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
  * Simple POC sink { Experimental }
  * */
 public class ReplicatorFlinkSink
-        extends RichSinkFunction<AugmentedEvent>
+        extends RichSinkFunction<List<AugmentedEvent>>
         implements CheckpointedFunction {
 
     private Map<String, Object> configuration;
@@ -45,13 +45,8 @@ public class ReplicatorFlinkSink
     }
 
     @Override
-    public void invoke(AugmentedEvent augmentedEvent) throws Exception {
-
-        // POC hack
-        List<AugmentedEvent> events = new ArrayList<>();
-        events.add(augmentedEvent);
-        applier.apply(events);
-
+    public void invoke(List<AugmentedEvent> augmentedEvents) throws Exception {
+        applier.apply(augmentedEvents);
     }
 
     @Override

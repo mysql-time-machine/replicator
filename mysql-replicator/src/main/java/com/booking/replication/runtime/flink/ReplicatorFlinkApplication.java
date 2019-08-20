@@ -82,15 +82,15 @@ public class ReplicatorFlinkApplication {
 
         this.binlogSource = new BinlogSource(configuration);
 
-        Partitioner<AugmentedEvent> binlogEventFlinkPartitioner = BinlogEventFlinkPartitioner.build(configuration);
+        Partitioner<List<AugmentedEvent>> binlogEventFlinkPartitioner = BinlogEventFlinkPartitioner.build(configuration);
 
         DataStream<List<AugmentedEvent>> augmentedEventStream = env.addSource(binlogSource).forceNonParallel();
 
          augmentedEventStream
-//                .partitionCustom(
-//                        binlogEventFlinkPartitioner, // <- event to partition, so no need for separate KeySelector
-//                        event -> event // <- identity key selector
-//                )
+                .partitionCustom(
+                        binlogEventFlinkPartitioner, // <- event to partition, so no need for separate KeySelector
+                        event -> event // <- identity key selector
+                )
                 .addSink(new ReplicatorFlinkSink(configuration))
         ;
 

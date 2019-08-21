@@ -2,7 +2,7 @@ package com.booking.replication;
 
 import com.booking.replication.applier.Applier;
 import com.booking.replication.commons.map.MapFlatter;
-import com.booking.replication.runtime.flink.ReplicatorFlinkApplication;
+import com.booking.replication.runtime.ReplicatorRuntime;
 import com.booking.replication.supplier.Supplier;
 
 import com.booking.utils.BootstrapReplicator;
@@ -84,7 +84,7 @@ public class Replicator {
 
                 new BootstrapReplicator(configuration).run();
 
-                ReplicatorFlinkApplication replicator = new ReplicatorFlinkApplication(configuration);
+                ReplicatorRuntime replicator = ReplicatorRuntime.build(configuration);
 
                 Runtime.getRuntime().addShutdownHook(new Thread(replicator::stop));
 

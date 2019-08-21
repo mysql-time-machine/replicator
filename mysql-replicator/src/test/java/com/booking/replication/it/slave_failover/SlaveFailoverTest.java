@@ -1,7 +1,7 @@
 package com.booking.replication.it.slave_failover;
 
 import avro.shaded.com.google.common.collect.Maps;
-import com.booking.replication.runtime.standalone.ReplicatorStandaloneApplication;
+import com.booking.replication.runtime.standalone.StandAlone;
 import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.BinlogEventPartitioner;
 import com.booking.replication.applier.count.CountApplier;
@@ -204,7 +204,7 @@ public class SlaveFailoverTest {
     @Test
     public void testReplicator() {
         // Initialize and start replicator with slave 1
-        ReplicatorStandaloneApplication replicator = new ReplicatorStandaloneApplication(this.getConfiguration(mysqlSlave1));
+        StandAlone replicator = new StandAlone(this.getConfiguration(mysqlSlave1));
         try {
             replicator.start();
         } catch (Exception e) {
@@ -244,7 +244,7 @@ public class SlaveFailoverTest {
         Assert.assertTrue(execBinLog2);
 
         // Re-Initialize and start replicator with slave 2
-        replicator = new ReplicatorStandaloneApplication(this.getConfiguration(mysqlSlave2));
+        replicator = new StandAlone(this.getConfiguration(mysqlSlave2));
         try {
             replicator.start();
         } catch (Exception e) {
@@ -292,7 +292,7 @@ public class SlaveFailoverTest {
 
         configuration.put(Applier.Configuration.TYPE, Applier.Type.COUNT.name());
         configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name());
-        configuration.put(ReplicatorStandaloneApplication.Configuration.CHECKPOINT_PATH, FILE_CHECKPOINT_PATH);
+        configuration.put(StandAlone.Configuration.CHECKPOINT_PATH, FILE_CHECKPOINT_PATH);
 
         return configuration;
     }

@@ -19,7 +19,7 @@ import com.booking.replication.commons.services.ServicesProvider;
 import com.booking.replication.controller.WebServer;
 import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.coordinator.ZookeeperCoordinator;
-import com.booking.replication.runtime.flink.ReplicatorFlinkApplication;
+import com.booking.replication.runtime.flink.Flink;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 
@@ -141,7 +141,7 @@ public class ReplicatorFlinkKafkaTest {
     @Test
     public void testReplicator() throws Exception {
 
-        ReplicatorFlinkApplication replicator = new ReplicatorFlinkApplication(this.getConfiguration());
+        Flink replicator = new Flink(this.getConfiguration());
 
         System.out.println("Starting the replicator");
 
@@ -334,8 +334,8 @@ public class ReplicatorFlinkKafkaTest {
 
 
         configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name());
-        configuration.put(ReplicatorFlinkApplication.Configuration.CHECKPOINT_PATH, ReplicatorFlinkKafkaTest.ZOOKEEPER_CHECKPOINT_PATH);
-        configuration.put(ReplicatorFlinkApplication.Configuration.CHECKPOINT_DEFAULT, ReplicatorFlinkKafkaTest.CHECKPOINT_DEFAULT);
+        configuration.put(Flink.Configuration.CHECKPOINT_PATH, ReplicatorFlinkKafkaTest.ZOOKEEPER_CHECKPOINT_PATH);
+        configuration.put(Flink.Configuration.CHECKPOINT_DEFAULT, ReplicatorFlinkKafkaTest.CHECKPOINT_DEFAULT);
 
         configuration.put(BinaryLogSupplier.Configuration.GTID_FALLBACK_TO_PURGED, true);
 

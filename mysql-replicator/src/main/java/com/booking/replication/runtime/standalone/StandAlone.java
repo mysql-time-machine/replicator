@@ -13,6 +13,7 @@ import com.booking.replication.commons.checkpoint.ForceRewindException;
 import com.booking.replication.commons.metrics.Metrics;
 import com.booking.replication.controller.WebServer;
 import com.booking.replication.coordinator.Coordinator;
+import com.booking.replication.runtime.ReplicatorRuntime;
 import com.booking.replication.streams.Streams;
 import com.booking.replication.supplier.Supplier;
 
@@ -31,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
-public class ReplicatorStandaloneApplication {
+public class StandAlone implements ReplicatorRuntime {
 
         public interface Configuration {
             String CHECKPOINT_PATH = "checkpoint.path";
@@ -71,7 +72,7 @@ public class ReplicatorStandaloneApplication {
         private final String METRIC_STREAM_DESTINATION_QUEUE_SIZE   = MetricRegistry.name("streams", "destination", "queue", "size");
         private final String METRIC_STREAM_SOURCE_QUEUE_SIZE        = MetricRegistry.name("streams", "source", "queue", "size");
 
-        public ReplicatorStandaloneApplication(final Map<String, Object> configuration) {
+        public StandAlone(final Map<String, Object> configuration) {
 
             Object checkpointPath = configuration.get(Configuration.CHECKPOINT_PATH);
             Object checkpointDefault = configuration.get(Configuration.CHECKPOINT_DEFAULT);
@@ -196,12 +197,12 @@ public class ReplicatorStandaloneApplication {
 
                 if (ForceRewindException.class.isInstance(exception)) {
 
-                    ReplicatorStandaloneApplication.LOG.warn(exception.getMessage(), exception);
+                    StandAlone.LOG.warn(exception.getMessage(), exception);
                     this.rewind();
 
                 } else {
 
-                    ReplicatorStandaloneApplication.LOG.error(exception.getMessage(), exception);
+                    StandAlone.LOG.error(exception.getMessage(), exception);
                     this.stop();
 
                 }
@@ -209,15 +210,15 @@ public class ReplicatorStandaloneApplication {
 
             this.coordinator.onLeadershipTake(() -> {
                 try {
-                    ReplicatorStandaloneApplication.LOG.info("starting replicator");
+                    StandAlone.LOG.info("starting replicator");
 
-                    ReplicatorStandaloneApplication.LOG.info("starting streams applier");
+                    StandAlone.LOG.info("starting streams applier");
                     this.destinationStream.start();
 
-                    ReplicatorStandaloneApplication.LOG.info("starting streams supplier");
+                    StandAlone.LOG.info("starting streams supplier");
                     this.sourceStream.start();
 
-                    ReplicatorStandaloneApplication.LOG.info("starting supplier");
+                    StandAlone.LOG.info("starting supplier");
 
                     Checkpoint from;
 
@@ -255,7 +256,7 @@ public class ReplicatorStandaloneApplication {
 
                     this.supplier.start(from);
 
-                    ReplicatorStandaloneApplication.LOG.info("replicator started");
+                    StandAlone.LOG.info("replicator started");
                 } catch (IOException | InterruptedException exception) {
                     exceptionHandle.accept(exception);
                 }
@@ -263,21 +264,21 @@ public class ReplicatorStandaloneApplication {
 
             this.coordinator.onLeadershipLose(() -> {
                 try {
-                    ReplicatorStandaloneApplication.LOG.info("stopping replicator");
+                    StandAlone.LOG.info("stopping replicator");
 
-                    ReplicatorStandaloneApplication.LOG.info("stopping supplier");
+                    StandAlone.LOG.info("stopping supplier");
                     this.supplier.stop();
 
-                    ReplicatorStandaloneApplication.LOG.info("stopping streams supplier");
+                    StandAlone.LOG.info("stopping streams supplier");
                     this.sourceStream.stop();
 
-                    ReplicatorStandaloneApplication.LOG.info("stopping streams applier");
+                    StandAlone.LOG.info("stopping streams applier");
                     this.destinationStream.stop();
 
-                    ReplicatorStandaloneApplication.LOG.info("stopping web server");
+                    StandAlone.LOG.info("stopping web server");
                     this.webServer.stop();
 
-                    ReplicatorStandaloneApplication.LOG.info("replicator stopped");
+                    StandAlone.LOG.info("replicator stopped");
                 } catch (IOException | InterruptedException exception) {
                     exceptionHandle.accept(exception);
                 }
@@ -309,14 +310,14 @@ public class ReplicatorStandaloneApplication {
 
         public void start() {
 
-            ReplicatorStandaloneApplication.LOG.info("starting webserver");
+            StandAlone.LOG.info("starting webserver");
             try {
                 this.webServer.start();
             } catch (IOException e) {
-                ReplicatorStandaloneApplication.LOG.error("error starting webserver", e);
+                StandAlone.LOG.error("error starting webserver", e);
             }
 
-            ReplicatorStandaloneApplication.LOG.info("starting coordinator");
+            StandAlone.LOG.info("starting coordinator");
             this.coordinator.start();
         }
 
@@ -330,42 +331,42 @@ public class ReplicatorStandaloneApplication {
 
         public void stop() {
             try {
-                ReplicatorStandaloneApplication.LOG.info("stopping coordinator");
+                StandAlone.LOG.info("stopping coordinator");
                 this.coordinator.stop();
 
-                ReplicatorStandaloneApplication.LOG.info("closing augmenter");
+                StandAlone.LOG.info("closing augmenter");
                 this.augmenter.close();
 
-                ReplicatorStandaloneApplication.LOG.info("closing seeker");
+                StandAlone.LOG.info("closing seeker");
                 this.seeker.close();
 
-                ReplicatorStandaloneApplication.LOG.info("closing partitioner");
+                StandAlone.LOG.info("closing partitioner");
                 this.partitioner.close();
 
-                ReplicatorStandaloneApplication.LOG.info("closing applier");
+                StandAlone.LOG.info("closing applier");
                 this.applier.close();
 
-                ReplicatorStandaloneApplication.LOG.info("stopping web server");
+                StandAlone.LOG.info("stopping web server");
                 this.webServer.stop();
 
-                ReplicatorStandaloneApplication.LOG.info("closing metrics applier");
+                StandAlone.LOG.info("closing metrics applier");
                 this.metrics.close();
 
-                ReplicatorStandaloneApplication.LOG.info("closing checkpoint applier");
+                StandAlone.LOG.info("closing checkpoint applier");
                 this.checkpointApplier.close();
             } catch (IOException exception) {
-                ReplicatorStandaloneApplication.LOG.error("error stopping coordinator", exception);
+                StandAlone.LOG.error("error stopping coordinator", exception);
             }
         }
 
         public void rewind() {
             try {
-                ReplicatorStandaloneApplication.LOG.info("rewinding supplier");
+                StandAlone.LOG.info("rewinding supplier");
 
                 this.supplier.disconnect();
                 this.supplier.connect(this.seeker.seek(this.loadSafeCheckpoint()));
             } catch (IOException exception) {
-                ReplicatorStandaloneApplication.LOG.error("error rewinding supplier", exception);
+                StandAlone.LOG.error("error rewinding supplier", exception);
             }
         }
 

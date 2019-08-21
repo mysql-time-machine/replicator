@@ -13,7 +13,8 @@ import com.booking.replication.commons.services.ServicesProvider;
 import com.booking.replication.controller.WebServer;
 import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.coordinator.ZookeeperCoordinator;
-import com.booking.replication.runtime.flink.ReplicatorFlinkApplication;
+import com.booking.replication.flink.sources.binlog.BinlogEventFlinkPartitioner;
+import com.booking.replication.runtime.flink.Flink;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 
@@ -109,7 +110,7 @@ public class ReplicatorFlinkConsoleTest {
     @Test
     public void testReplicator() throws Exception {
 
-        ReplicatorFlinkApplication replicator = new ReplicatorFlinkApplication(this.getConfiguration());
+        Flink replicator = new Flink(this.getConfiguration());
 
         File file = new File("src/test/resources/" + ReplicatorFlinkConsoleTest.MYSQL_TEST_SCRIPT);
 
@@ -227,12 +228,12 @@ public class ReplicatorFlinkConsoleTest {
         configuration.put(Augmenter.Configuration.SCHEMA_TYPE, Augmenter.SchemaType.ACTIVE.name());
         configuration.put(Seeker.Configuration.TYPE, Seeker.Type.NONE.name());
 
-        configuration.put(BinlogEventPartitioner.Configuration.TYPE, BinlogEventPartitioner.Type.TABLE_NAME.name());
+        configuration.put(BinlogEventPartitioner.Configuration.TYPE, BinlogEventFlinkPartitioner.Type.RANDOM.name());
 
         configuration.put(Applier.Configuration.TYPE, Applier.Type.CONSOLE);
         configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name());
-        configuration.put(ReplicatorFlinkApplication.Configuration.CHECKPOINT_PATH, ReplicatorFlinkConsoleTest.ZOOKEEPER_CHECKPOINT_PATH);
-        configuration.put(ReplicatorFlinkApplication.Configuration.CHECKPOINT_DEFAULT, ReplicatorFlinkConsoleTest.CHECKPOINT_DEFAULT);
+        configuration.put(Flink.Configuration.CHECKPOINT_PATH, ReplicatorFlinkConsoleTest.ZOOKEEPER_CHECKPOINT_PATH);
+        configuration.put(Flink.Configuration.CHECKPOINT_DEFAULT, ReplicatorFlinkConsoleTest.CHECKPOINT_DEFAULT);
 
         configuration.put(BinaryLogSupplier.Configuration.GTID_FALLBACK_TO_PURGED, true);
 

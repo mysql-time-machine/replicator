@@ -1,7 +1,9 @@
 package com.booking.replication.it.hbase
 
 import com.booking.replication.Replicator
-import com.booking.replication.runtime.standalone.ReplicatorStandaloneApplication
+import com.booking.replication.runtime.ReplicatorRuntime
+import com.booking.replication.runtime.flink.Flink
+import com.booking.replication.runtime.standalone.StandAlone
 import com.booking.replication.applier.Applier
 import com.booking.replication.applier.BinlogEventPartitioner
 import com.booking.replication.applier.Seeker
@@ -118,7 +120,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     )
     @Shared ServicesControl hbase = servicesProvider.startHbase()
 
-    @Shared  ReplicatorStandaloneApplication replicator
+    @Shared  ReplicatorRuntime replicator
 
     static String getStorageType() {
         String storage = System.getProperty("sink")
@@ -197,11 +199,11 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
     }
 
-    private stopReplicator(Replicator replicator) {
+    private stopReplicator(ReplicatorRuntime replicator) {
         replicator.stop()
     }
 
-    private ReplicatorStandaloneApplication startReplicator() {
+    private StandAlone startReplicator() {
 
         LOG.info("waiting for containers setSink start...")
 
@@ -228,7 +230,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         }
 
         LOG.info("Starting the Replicator...")
-        ReplicatorStandaloneApplication replicator = new ReplicatorStandaloneApplication(this.getConfiguration())
+        replicator = ReplicatorRuntime.build(this.getConfiguration())
 
         replicator.start()
 
@@ -417,13 +419,16 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
         Map<String, Object> configuration = new HashMap<>()
 
+        // Runtime conf
+        configuration.put(ReplicatorRuntime.Configuration.RUNTIME, ReplicatorRuntime.Type.STANDALONE);
+
         // Streams
-        configuration.put(Replicator.Configuration.REPLICATOR_THREADS, String.valueOf(NUMBER_OF_THREADS))
-        configuration.put(Replicator.Configuration.REPLICATOR_TASKS, String.valueOf(NUMBER_OF_TASKS))
+        configuration.put(Flink.Configuration.REPLICATOR_THREADS, String.valueOf(NUMBER_OF_THREADS))
+        configuration.put(Flink.Configuration.REPLICATOR_TASKS, String.valueOf(NUMBER_OF_TASKS))
 
         // Coordinator Configuration
-        configuration.put(Replicator.Configuration.CHECKPOINT_PATH, ZOOKEEPER_CHECKPOINT_PATH)
-        configuration.put(Replicator.Configuration.CHECKPOINT_DEFAULT, CHECKPOINT_DEFAULT)
+        configuration.put(Flink.Configuration.CHECKPOINT_PATH, ZOOKEEPER_CHECKPOINT_PATH)
+        configuration.put(Flink.Configuration.CHECKPOINT_DEFAULT, CHECKPOINT_DEFAULT)
         configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name())
         configuration.put(Coordinator.Configuration.TYPE, Coordinator.Type.ZOOKEEPER.name())
         configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, zookeeper.getURL())

@@ -1,4 +1,4 @@
-package com.booking.replication.flink;
+package com.booking.replication.flink.sources.binlog;
 
 import com.booking.replication.applier.Seeker;
 import com.booking.replication.augmenter.Augmenter;
@@ -7,7 +7,7 @@ import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.commons.checkpoint.Binlog;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.coordinator.Coordinator;
-import com.booking.replication.runtime.flink.ReplicatorFlinkApplication;
+import com.booking.replication.flink.sources.config.BinlogConfiguration;
 import com.booking.replication.supplier.Supplier;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.api.common.state.ListState;
@@ -63,7 +63,7 @@ public class BinlogSource
     // augmenterFilter
     private transient  AugmenterFilter augmenterFilter;
     // supplier
-    private transient  Supplier supplier;
+    private transient Supplier supplier;
     // coordinator
     private transient Coordinator coordinator;
 
@@ -73,7 +73,7 @@ public class BinlogSource
 
         this.configuration = configuration;
 
-        this.checkpointPath = configuration.get(ReplicatorFlinkApplication.Configuration.CHECKPOINT_PATH).toString();
+        this.checkpointPath = configuration.get(BinlogConfiguration.CHECKPOINT_PATH).toString();
 
         this.gtidsSeenByFlinkCheckpointID = new TreeMap<>();
         this.gtidsSeen = new ArrayList<>();
@@ -245,10 +245,10 @@ public class BinlogSource
             coordinator.onLeadershipTake(() -> {
 
                 // vars
-                boolean overrideCheckpointStartPosition = Boolean.parseBoolean(configuration.getOrDefault(ReplicatorFlinkApplication.Configuration.OVERRIDE_CHECKPOINT_START_POSITION, false).toString());
-                String overrideCheckpointBinLogFileName = configuration.getOrDefault(ReplicatorFlinkApplication.Configuration.OVERRIDE_CHECKPOINT_BINLOG_FILENAME, "").toString();
-                long overrideCheckpointBinlogPosition = Long.parseLong(configuration.getOrDefault(ReplicatorFlinkApplication.Configuration.OVERRIDE_CHECKPOINT_BINLOG_POSITION, "0").toString());
-                String overrideCheckpointGtidSet = configuration.getOrDefault(ReplicatorFlinkApplication.Configuration.OVERRIDE_CHECKPOINT_GTID_SET, "").toString();
+                boolean overrideCheckpointStartPosition = Boolean.parseBoolean(configuration.getOrDefault(BinlogConfiguration.OVERRIDE_CHECKPOINT_START_POSITION, false).toString());
+                String overrideCheckpointBinLogFileName = configuration.getOrDefault(BinlogConfiguration.OVERRIDE_CHECKPOINT_BINLOG_FILENAME, "").toString();
+                long overrideCheckpointBinlogPosition = Long.parseLong(configuration.getOrDefault(BinlogConfiguration.OVERRIDE_CHECKPOINT_BINLOG_POSITION, "0").toString());
+                String overrideCheckpointGtidSet = configuration.getOrDefault(BinlogConfiguration.OVERRIDE_CHECKPOINT_GTID_SET, "").toString();
 
                 try {
 
@@ -367,7 +367,7 @@ public class BinlogSource
         }
 
         if (this.currentBinlogCheckpoint == null) {
-            Object checkpointDefault = configuration.get(ReplicatorFlinkApplication.Configuration.CHECKPOINT_DEFAULT);
+            Object checkpointDefault = configuration.get(BinlogConfiguration.CHECKPOINT_DEFAULT);
             String checkpointDefaultString = (checkpointDefault != null) ? (checkpointDefault.toString()) : (null);
             if (checkpointDefaultString != null) {
                 this.currentBinlogCheckpoint = new ObjectMapper().readValue(checkpointDefaultString, Checkpoint.class);
@@ -534,7 +534,7 @@ public class BinlogSource
 
         Checkpoint checkpoint = coordinator.loadCheckpoint(this.checkpointPath);
 
-        Object checkpointDefault = configuration.get(ReplicatorFlinkApplication.Configuration.CHECKPOINT_DEFAULT);
+        Object checkpointDefault = configuration.get(BinlogConfiguration.CHECKPOINT_DEFAULT);
 
         String checkpointDefaultString = (checkpointDefault != null) ? (checkpointDefault.toString()) : (null);
 

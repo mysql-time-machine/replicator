@@ -154,6 +154,10 @@
             <groupId>com.booking.replication</groupId>
             <artifactId>mysql-replicator-applier</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.booking.replication</groupId>
+            <artifactId>mysql-replicator-flink</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>io.dropwizard.metrics</groupId>

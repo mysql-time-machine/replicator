@@ -1,4 +1,4 @@
-package com.booking.replication.flink;
+package com.booking.replication.flink.sources.binlog;
 
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.event.AugmentedEventTransaction;

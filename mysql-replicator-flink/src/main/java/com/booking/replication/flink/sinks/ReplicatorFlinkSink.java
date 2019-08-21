@@ -1,4 +1,4 @@
-package com.booking.replication.flink;
+package com.booking.replication.flink.sinks;
 
 import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.kafka.KafkaApplier;

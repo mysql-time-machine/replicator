@@ -3,26 +3,27 @@ package com.booking.replication.runtime.flink;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.commons.metrics.Metrics;
 import com.booking.replication.controller.WebServer;
-import com.booking.replication.flink.BinlogEventFlinkPartitioner;
-import com.booking.replication.flink.BinlogSource;
-import com.booking.replication.flink.ReplicatorFlinkSink;
+import com.booking.replication.flink.sinks.ReplicatorFlinkSink;
+import com.booking.replication.flink.sources.binlog.BinlogEventFlinkPartitioner;
+import com.booking.replication.flink.sources.binlog.BinlogSource;
+import com.booking.replication.runtime.ReplicatorRuntime;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 import org.apache.flink.api.common.functions.Partitioner;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class ReplicatorFlinkApplication {
+public class Flink implements ReplicatorRuntime {
 
     // TODO: adapt/use these props for flink
     public interface Configuration {
@@ -52,7 +53,7 @@ public class ReplicatorFlinkApplication {
     private final String METRIC_STREAM_DESTINATION_QUEUE_SIZE   = MetricRegistry.name("streams", "destination", "queue", "size");
     private final String METRIC_STREAM_SOURCE_QUEUE_SIZE        = MetricRegistry.name("streams", "source", "queue", "size");
 
-    public ReplicatorFlinkApplication(final Map<String, Object> configuration) throws IOException {
+    public Flink(final Map<String, Object> configuration) throws IOException {
 
         this.webServer = WebServer.build(configuration);
         this.metrics = Metrics.build(configuration, webServer.getServer());
@@ -96,27 +97,31 @@ public class ReplicatorFlinkApplication {
 
     }
 
-    public void start() throws Exception {
+    public void start() {
         LOG.info("Execution plan => " + env.getExecutionPlan());
-        env.execute("Replicator");
+        try {
+            env.execute("Replicator");
+        } catch (Exception e) {
+            Flink.LOG.error("error starting replicator ", e);
+        }
     }
 
     public void stop() {
         try {
 
-            ReplicatorFlinkApplication.LOG.info("Stopping Binlog Flink Source");
+            Flink.LOG.info("Stopping Binlog Flink Source");
             if (this.binlogSource != null) {
                 this.binlogSource.cancel();
             }
 
-            ReplicatorFlinkApplication.LOG.info("stopping web server");
+            Flink.LOG.info("stopping web server");
             this.webServer.stop();
 
-            ReplicatorFlinkApplication.LOG.info("closing metrics sink");
+            Flink.LOG.info("closing metrics sink");
             this.metrics.close();
 
         } catch (IOException exception) {
-            ReplicatorFlinkApplication.LOG.error("error stopping coordinator", exception);
+            Flink.LOG.error("error stopping coordinator", exception);
         } catch (Exception e) {
             e.printStackTrace();
         }

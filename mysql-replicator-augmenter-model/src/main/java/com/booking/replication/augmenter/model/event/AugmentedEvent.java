@@ -41,7 +41,7 @@ public class AugmentedEvent implements Serializable {
 
     public List<GenericRecord> dataToAvro() throws IOException{
         EventDataPresenterAvro eventDataPresenterAvro = new EventDataPresenterAvro(this);
-        return eventDataPresenterAvro.convertAugumentedEventDataToAvro();
+        return eventDataPresenterAvro.convertAugmentedEventDataToAvro();
     }
 
     public AugmentedEventHeader headerToAvro()

@@ -129,11 +129,9 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
 
         Map<String,List<Put>> mutationsByTable = generateMutations( events );
 
-        for (String tableName : mutationsByTable.keySet()) {
-
-            Table table = connection.getTable(TableName.valueOf(Bytes.toBytes(tableName)));
-
-            table.put(mutationsByTable.get(tableName));
+        for (Map.Entry<String, List<Put>> entry: mutationsByTable.entrySet()) {
+            Table table = connection.getTable(TableName.valueOf(Bytes.toBytes(entry.getKey())));
+            table.put(entry.getValue());
             table.close();
         }
     }

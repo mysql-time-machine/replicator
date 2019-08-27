@@ -8,15 +8,17 @@ import com.booking.replication.augmenter.model.event.format.avro.EventDataPresen
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.FullTableName;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
-
+import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import org.apache.avro.Schema;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -42,17 +44,18 @@ public class BootstrapReplicator {
 
         ActiveSchemaManager activeSchemaManager = new ActiveSchemaManager(configuration);
         boolean dbCreated = activeSchemaManager.createDbIfNotExists(configuration);
-        if (!dbCreated) throw new IllegalStateException("Could not create active schema.");
+        if (!dbCreated) {
+            throw new IllegalStateException("Could not create active schema.");
+        }
 
         Object binlogSchemaObj = configuration.get(BinaryLogSupplier.Configuration.MYSQL_SCHEMA);
         Objects.requireNonNull(binlogSchemaObj);
         String binlogSchema = String.valueOf(binlogSchemaObj);
 
-        BasicDataSource binLogDS = activeSchemaManager.initBinlogDatasource(configuration);
+        BasicDataSource binLogDS = activeSchemaManager.initBinlogDataSource(configuration);
 
-        try (Connection binlogConn = binLogDS.getConnection()) {
-            PreparedStatement binlogShowTablesQuery = binlogConn.prepareStatement("show tables");
-//            List<String> activeSchemaTables = activeSchemaManager.getActiveSchemaTables();
+        try (Connection binlogConn = binLogDS.getConnection();
+             PreparedStatement binlogShowTablesQuery = binlogConn.prepareStatement("show tables")) {
             ResultSet binlogTables = binlogShowTablesQuery.executeQuery();
 
             Object schemaRegistryUrlConfig = configuration.get(KafkaApplier.Configuration.SCHEMA_REGISTRY_URL);
@@ -72,7 +75,9 @@ public class BootstrapReplicator {
                 // implicitly creates table in active schema if doesnt exist
                 List<ColumnSchema> columnSchemas = activeSchemaManager.listColumns(binlogTableName);
 
-                if (schemaRegistryClient == null) continue;
+                if (schemaRegistryClient == null) {
+                    continue;
+                }
 
                 Schema avroSchema = EventDataPresenterAvro.createAvroSchema(true, true, new FullTableName(binlogSchema, binlogTableName), columnSchemas);
                 String schemaKey = String.format("bigdata-%s-%s-value", binlogSchema, binlogTableName);
@@ -80,7 +85,7 @@ public class BootstrapReplicator {
                 schemaRegistryClient.register(schemaKey, avroSchema);
             }
             LOG.info("Finished bootstrapping.");
-        } catch (Exception e) {
+        } catch (SQLException | IOException | RestClientException e) {
             LOG.error("Error while bootstrapping", e);
         }
     }

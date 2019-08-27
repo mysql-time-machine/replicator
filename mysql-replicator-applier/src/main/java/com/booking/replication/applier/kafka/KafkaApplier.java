@@ -24,12 +24,12 @@ import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -89,8 +89,8 @@ public class KafkaApplier implements Applier {
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
 
         this.delayName = MetricRegistry.name(
-                String.valueOf(configuration.getOrDefault(Metrics.Configuration.BASE_PATH, "events")),
-                "delay"
+            String.valueOf(configuration.getOrDefault(Metrics.Configuration.BASE_PATH, "events")),
+            "delay"
         );
         this.metricBase = MetricRegistry.name(this.metrics.basePath(), "kafka");
     }
@@ -124,33 +124,33 @@ public class KafkaApplier implements Applier {
                     List<GenericRecord> records = event.dataToAvro();
                     int numRows = records.size();
                     for (GenericRecord row : records) {
-                        //todo: use value.subject.name.strategy
+                        //TODO: use value.subject.name.strategy
                         try {
                             this.kafkaAvroSerializer.register(event.getHeader().schemaKey() + "-value", row.getSchema());
                         } catch (RestClientException e) {
-                            LOG.error("Could not register schema fore event : " + new String(event.toJSON()) + "schema: " + row.getSchema().toString(), e);
-                            throw new IllegalStateException("Could not register schema " + new String(event.toJSON()) + "schema: " + row.getSchema().toString(), e);
+                            LOG.error("Could not register schema for event : " + new String(event.toJSON(), StandardCharsets.UTF_8) + "schema: " + row.getSchema().toString(), e);
+                            throw new IllegalStateException("Could not register schema " + new String(event.toJSON(), StandardCharsets.UTF_8) + "schema: " + row.getSchema().toString(), e);
                         }
                         byte[] serialized;
                         try {
                             serialized = this.kafkaAvroSerializer.serialize(event.getHeader().schemaKey(), row);
                         } catch (SerializationException e) {
                             throw new IOException("Error serializing data: event header: " + event.getHeader().toString()
-                                    + ", Event json: " + new String(event.toJSON()), e);
+                                + ", Event json: " + new String(event.toJSON(), StandardCharsets.UTF_8), e);
                         }
                         ProducerRecord<byte[], byte[]> record = new ProducerRecord<>(
-                                this.topic,
-                                partition,
-                                KafkaApplier.MAPPER.writeValueAsBytes(event.headerToAvro()),
-                                serialized,
-                                new RecordHeaders().add(new RecordHeader("meta", event.getHeader().headerString().getBytes()))
+                            this.topic,
+                            partition,
+                            KafkaApplier.MAPPER.writeValueAsBytes(event.headerToAvro()),
+                            serialized,
+                            new RecordHeaders().add(new RecordHeader("meta", event.getHeader().headerString().getBytes(StandardCharsets.UTF_8)))
                         );
 
                         this.producers.computeIfAbsent(
-                                partition, key -> this.getProducer()
+                            partition, key -> this.getProducer()
                         ).send(record, (metadata, exception) -> {
-                            if (exception != null){
-                                // todo: collect producer errors and decide if we have to throw exception here
+                            if (exception != null) {
+                                // TODO: collect producer errors and decide if we have to throw exception here
                                 // 1. Exception occurred while writing to kafka:
                                 // org.apache.kafka.common.errors.NotLeaderForPartitionException: This server is not the leader for that topic-partition. (A warning. No message is lost)
                                 LOG.warn("Exception occurred while writing to kafka: ", exception);
@@ -171,13 +171,13 @@ public class KafkaApplier implements Applier {
                     int partition = this.partitioner.apply(event, this.totalPartitions);
 
                     this.producers.computeIfAbsent(
-                            partition, key -> this.getProducer()
+                        partition, key -> this.getProducer()
                     ).send(new ProducerRecord<>(
-                            this.topic,
-                            partition,
-                            event.getHeader().getTimestamp(),
-                            KafkaApplier.MAPPER.writeValueAsBytes(event.getHeader()),
-                            KafkaApplier.MAPPER.writeValueAsBytes(event.getData())
+                        this.topic,
+                        partition,
+                        event.getHeader().getTimestamp(),
+                        KafkaApplier.MAPPER.writeValueAsBytes(event.getHeader()),
+                        KafkaApplier.MAPPER.writeValueAsBytes(event.getData())
                     ));
 
                     writeMetrics(event, 1);
@@ -200,13 +200,17 @@ public class KafkaApplier implements Applier {
     private void handleIncompatibleSchemaChange(AugmentedEvent event) throws IOException {
         if (event.getData() instanceof QueryAugmentedEventData) {
             List<GenericRecord> genericRecords = event.dataToAvro();
-            if (genericRecords.size() != 1) return;
+            if (genericRecords.size() != 1) {
+                return;
+            }
             GenericRecord genericRecord = genericRecords.get(0);
             try {
                 Schema schema = new Schema.Parser().parse((String) genericRecord.get("schema"));
                 String subject = event.getHeader().schemaKey() + "-value";
                 boolean b = this.schemaRegistryClient.testCompatibility(subject, schema);
-                if (b) return;
+                if (b) {
+                    return;
+                }
                 QueryAugmentedEventData eventData = (QueryAugmentedEventData) event.getData();
                 eventData.setSchemaCompatibilityFlag(false);
 

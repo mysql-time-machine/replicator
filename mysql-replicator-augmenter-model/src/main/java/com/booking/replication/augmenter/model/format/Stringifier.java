@@ -2,7 +2,6 @@ package com.booking.replication.augmenter.model.format;
 
 import com.booking.replication.augmenter.model.row.RowBeforeAfter;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -21,12 +20,12 @@ public class Stringifier {
     private static final Logger LOG = LogManager.getLogger(Stringifier.class);
 
     public static Map<String, Map<String, String>> stringifyRowCellsValues(
-            String eventType,
-            List<ColumnSchema> columns,
-            BitSet includedColumns,
-            RowBeforeAfter row,
-            Map<String, String[]> cache
-        ) {
+        String eventType,
+        List<ColumnSchema> columns,
+        BitSet includedColumns,
+        RowBeforeAfter row,
+        Map<String, String[]> cache
+    ) {
 
         Map<String, Map<String, String>> stringifiedCellValues = new HashMap<>();
 
@@ -109,8 +108,7 @@ public class Stringifier {
             } else {
                 throw new RuntimeException("Invalid event type in stringifier: " + eventType);
             }
-        }
-        else {
+        } else {
             throw new RuntimeException("Invalid data. Columns list cannot be null!");
         }
         return stringifiedCellValues;
@@ -148,16 +146,16 @@ public class Stringifier {
                     break;
 
                 case "timestamp": // created as java.sql.Timestamp in binlog connector
-                    if (! (cellValue instanceof java.sql.Timestamp) ) {
-                       LOG.warn("binlog parser has changed java type for timestamp!");
+                    if (!(cellValue instanceof java.sql.Timestamp)) {
+                        LOG.warn("binlog parser has changed java type for timestamp!");
                     }
 
                     // a workaround for UTC-enforcement by mysql-binlog-connector
                     String tzId = ZonedDateTime.now().getZone().toString();
                     ZoneId zoneId = ZoneId.of(tzId);
-                    Long timestamp =  ((java.sql.Timestamp) cellValue).getTime();
+                    Long timestamp = ((java.sql.Timestamp) cellValue).getTime();
                     LocalDateTime aLDT = Instant.ofEpochMilli(timestamp).atZone(zoneId).toLocalDateTime();
-                    Integer offset  = ZonedDateTime.from(aLDT.atZone(ZoneId.of(tzId))).getOffset().getTotalSeconds();
+                    Integer offset = ZonedDateTime.from(aLDT.atZone(ZoneId.of(tzId))).getOffset().getTotalSeconds();
                     timestamp = timestamp - offset * 1000;
                     stringifiedCellValue = String.valueOf(timestamp);
 
@@ -167,15 +165,16 @@ public class Stringifier {
                 case "time":      // <- this is not reliable outside of UTC
                     break;
 
-                default: break;
+                default:
+                    break;
             }
 
             if (columnType.contains("tiny")) {
                 if (columnType.contains("unsigned")) {
                     stringifiedCellValue = String.valueOf(
-                            Byte.toUnsignedLong(
-                                    (Integer.valueOf((int) cellValue)).byteValue()
-                            )
+                        Byte.toUnsignedLong(
+                            (Integer.valueOf((int) cellValue)).byteValue()
+                        )
                     );
                 } else {
                     stringifiedCellValue = String.valueOf(Number.class.cast(cellValue).longValue());
@@ -183,7 +182,7 @@ public class Stringifier {
             } else if (columnType.contains("smallint")) {
                 if (columnType.contains("unsigned")) {
                     stringifiedCellValue = String.valueOf(
-                            (Integer.parseInt(cellValue.toString()) & 0xffff)
+                        (Integer.parseInt(cellValue.toString()) & 0xffff)
                     );
                 } else {
                     stringifiedCellValue = String.valueOf(Number.class.cast(cellValue).longValue());
@@ -191,7 +190,7 @@ public class Stringifier {
             } else if (columnType.contains("mediumint")) {
                 if (columnType.contains("unsigned")) {
                     stringifiedCellValue = String.valueOf(
-                            ((Integer) cellValue) & 0xffffff
+                        ((Integer) cellValue) & 0xffffff
                     );
                 } else {
                     stringifiedCellValue = String.valueOf(Number.class.cast(cellValue).longValue());
@@ -202,9 +201,9 @@ public class Stringifier {
                     int upper = (int) (i >>> 32);
                     int lower = (int) i;
                     stringifiedCellValue = String.valueOf(
-                            BigInteger.valueOf(
-                                    Integer.toUnsignedLong(upper)
-                            )
+                        BigInteger.valueOf(
+                            Integer.toUnsignedLong(upper)
+                        )
                             .shiftLeft(32)
                             .add(
                                 BigInteger.valueOf(Integer.toUnsignedLong(lower))
@@ -217,7 +216,7 @@ public class Stringifier {
                 if (columnType.contains("unsigned")) {
                     stringifiedCellValue = String.valueOf(Long.valueOf(((Integer) cellValue)) & 0x00000000FFFFFFFFl);
                 } else {
-                    stringifiedCellValue =  String.valueOf(Number.class.cast(cellValue).intValue());
+                    stringifiedCellValue = String.valueOf(Number.class.cast(cellValue).intValue());
                 }
             }
 
@@ -243,7 +242,7 @@ public class Stringifier {
                                 items.add(members[index]);
                             }
                         }
-                        stringifiedCellValue = String.valueOf(items.toArray(new String[0]));
+                        stringifiedCellValue = Arrays.toString(items.toArray(new String[0]));
                     } else {
                         stringifiedCellValue = null;
                     }

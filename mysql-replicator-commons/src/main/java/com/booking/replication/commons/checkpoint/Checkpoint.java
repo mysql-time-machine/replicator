@@ -93,9 +93,9 @@ public class Checkpoint implements Serializable, Comparable<Checkpoint> {
 
                 comparison = this.gtid.compareTo(checkpoint.gtid);
             } else if (this.gtid != null) {
-                comparison = Integer.MAX_VALUE;
+                comparison = 1;
             } else if (checkpoint.gtid != null) {
-                comparison = Integer.MIN_VALUE;
+                comparison = -1;
             }
 
             if (comparison == 0) {
@@ -106,13 +106,13 @@ public class Checkpoint implements Serializable, Comparable<Checkpoint> {
                 if (this.binlog != null && checkpoint.binlog != null) {
                     comparison = this.binlog.compareTo(checkpoint.binlog);
                 } else if (this.binlog != null) {
-                    comparison = Integer.MAX_VALUE;
+                    comparison = 1;
                 } else if (checkpoint.binlog != null) {
-                    comparison = Integer.MIN_VALUE;
+                    comparison = -1;
                 }
             }
         } else {
-            comparison = Integer.MAX_VALUE;
+            comparison = 1;
         }
 
         return comparison;
@@ -120,8 +120,8 @@ public class Checkpoint implements Serializable, Comparable<Checkpoint> {
 
     @Override
     public boolean equals(Object checkpoint) {
-        if (Checkpoint.class.isInstance(checkpoint)) {
-            return this.compareTo(Checkpoint.class.cast(checkpoint)) == 0;
+        if (checkpoint instanceof Checkpoint) {
+            return this.compareTo((Checkpoint) checkpoint) == 0;
         } else {
             return false;
         }

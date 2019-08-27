@@ -14,23 +14,23 @@ public class SchemaTransitionSequence {
     private final TableSchema tableSchemaAfter;
 
     public SchemaTransitionSequence(
-            AtomicReference<FullTableName> tableName,
-            AtomicReference<Collection<ColumnSchema>> columnsBefore,
-            AtomicReference<String> createTableBefore,
-            AtomicReference<Collection<ColumnSchema>> columnsAfter,
-            AtomicReference<String> createTableAfter,
-            String ddl,
-            Long schemaTransitionTimestamp) {
+        AtomicReference<FullTableName> tableName,
+        AtomicReference<Collection<ColumnSchema>> columnsBefore,
+        AtomicReference<String> createTableBefore,
+        AtomicReference<Collection<ColumnSchema>> columnsAfter,
+        AtomicReference<String> createTableAfter,
+        String ddl,
+        Long schemaTransitionTimestamp) {
 
         this.tableName = tableName.get();
 
-        this.schemaTransitionTimestamp = new Long(schemaTransitionTimestamp);
+        this.schemaTransitionTimestamp = schemaTransitionTimestamp;
 
         if (columnsBefore.get() != null) { // <- null if table was just created
             this.tableSchemaBefore = new TableSchema(
-                    this.tableName,
-                    columnsBefore.get().stream().map(c -> c.deepCopy()).collect(Collectors.toList()),
-                    new String(createTableBefore.get())
+                this.tableName,
+                columnsBefore.get().stream().map(ColumnSchema::deepCopy).collect(Collectors.toList()),
+                createTableBefore.get()
             );
         } else {
             this.tableSchemaBefore = null;
@@ -38,14 +38,14 @@ public class SchemaTransitionSequence {
 
         if (columnsAfter.get() != null) { // <- null if table was dropped
             this.tableSchemaAfter = new TableSchema(
-                    this.tableName,
-                    columnsAfter.get().stream().map(c -> c.deepCopy()).collect(Collectors.toList()),
-                    new String(createTableAfter.get()));
+                this.tableName,
+                columnsAfter.get().stream().map(ColumnSchema::deepCopy).collect(Collectors.toList()),
+                createTableAfter.get());
         } else {
             this.tableSchemaAfter = null;
         }
 
-        this.ddl = new String(ddl);
+        this.ddl = ddl;
     }
 
     public String getTableName() {

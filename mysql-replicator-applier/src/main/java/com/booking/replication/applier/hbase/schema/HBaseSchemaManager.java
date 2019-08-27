@@ -5,12 +5,8 @@ import com.booking.replication.applier.hbase.StorageConfig;
 import com.booking.replication.augmenter.model.schema.SchemaAtPositionCache;
 import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
 import com.booking.replication.augmenter.model.schema.SchemaTransitionSequence;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.hadoop.conf.Configuration;
-
-import java.util.Map;
-
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableExistsException;
@@ -18,11 +14,11 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.io.compress.Compression;
 import org.apache.hadoop.hbase.util.Bytes;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -49,8 +45,8 @@ public class HBaseSchemaManager {
     // schema history table
     private static final int SCHEMA_HISTORY_TABLE_NR_VERSIONS = 1;
 
-    private final boolean DRY_RUN;
-    private static boolean USE_SNAPPY;
+    private final boolean dryRun;
+    private final boolean useSnappy;
 
     private static final byte[] CF = Bytes.toBytes("d");
 
@@ -59,8 +55,8 @@ public class HBaseSchemaManager {
 
     public HBaseSchemaManager(Map<String, Object> configuration) {
 
-        DRY_RUN = (boolean) configuration.get(HBaseApplier.Configuration.DRYRUN);
-        USE_SNAPPY = (boolean) configuration.get(HBaseApplier.Configuration.HBASE_USE_SNAPPY);
+        dryRun = (boolean) configuration.get(HBaseApplier.Configuration.DRYRUN);
+        useSnappy = (boolean) configuration.get(HBaseApplier.Configuration.HBASE_USE_SNAPPY);
 
         this.configuration = configuration;
 
@@ -68,7 +64,7 @@ public class HBaseSchemaManager {
 
         this.hbaseConfig = storageConfig.getConfig();
 
-        if (!DRY_RUN) {
+        if (!dryRun) {
             try {
                 connection = ConnectionFactory.createConnection(storageConfig.getConfig());
                 LOG.info("HBaseSchemaManager successfully established connection to HBase.");
@@ -80,16 +76,15 @@ public class HBaseSchemaManager {
 
     public synchronized void createHBaseTableIfNotExists(String hbaseTableName) throws IOException {
 
-        if (!DRY_RUN) {
+        if (!dryRun) {
+            if (connection == null) {
+                connection = ConnectionFactory.createConnection(storageConfig.getConfig());
+            }
             hbaseTableName = hbaseTableName.toLowerCase();
-            try ( Admin admin = connection.getAdmin() ){
+            try (Admin admin = connection.getAdmin()) {
 
                 if (seenHBaseTables.containsKey(hbaseTableName)) {
                     return;
-                }
-
-                if (connection == null) {
-                    connection = ConnectionFactory.createConnection(storageConfig.getConfig());
                 }
 
                 TableName tableName;
@@ -108,7 +103,7 @@ public class HBaseSchemaManager {
                     HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);
                     HColumnDescriptor cd = new HColumnDescriptor("d");
 
-                    if (USE_SNAPPY) {
+                    if (useSnappy) {
                         cd.setCompressionType(Compression.Algorithm.SNAPPY);
                     }
 
@@ -130,7 +125,7 @@ public class HBaseSchemaManager {
     }
 
     public void writeSchemaSnapshot(SchemaSnapshot schemaSnapshot, Map<String, Object> configuration)
-            throws IOException, SchemaTransitionException {
+        throws IOException, SchemaTransitionException {
 
         // get sql_statement
         String ddl = schemaSnapshot.getSchemaTransitionSequence().getDdl();
@@ -142,7 +137,7 @@ public class HBaseSchemaManager {
         SchemaAtPositionCache schemaSnapshotBefore = schemaSnapshot.getSchemaBefore();
         SchemaAtPositionCache schemaSnapshotAfter = schemaSnapshot.getSchemaAfter();
 
-        Map<String, String> createStatementsBefore  = schemaSnapshot.getSchemaBefore().getCreateTableStatements();
+        Map<String, String> createStatementsBefore = schemaSnapshot.getSchemaBefore().getCreateTableStatements();
         Map<String, String> createStatementsAfter = schemaSnapshot.getSchemaAfter().getCreateTableStatements();
 
         SchemaTransitionSequence schemaTransitionSequence = schemaSnapshot.getSchemaTransitionSequence();
@@ -161,7 +156,7 @@ public class HBaseSchemaManager {
         String hbaseTableName = HBaseTableNameMapper.getSchemaSnapshotHistoryHBaseTableName(configuration);
 
         String hbaseRowKey = eventTimestamp.toString();
-        if ((boolean)configuration.get(HBaseApplier.Configuration.INITIAL_SNAPSHOT_MODE)) {
+        if ((boolean) configuration.get(HBaseApplier.Configuration.INITIAL_SNAPSHOT_MODE)) {
             // in initial-snapshot mode timestamp is overridden by 0 so all create statements
             // fall under the same timestamp. This is ok since there should be only one schema
             // snapshot for the initial-snapshot. However, having key=0 is not good, so replace
@@ -169,12 +164,10 @@ public class HBaseSchemaManager {
             hbaseRowKey = "initial-snapshot";
         }
 
-        try ( Admin admin = connection.getAdmin() ) {
-
-            if (connection == null) {
-                connection = ConnectionFactory.createConnection(storageConfig.getConfig());
-            }
-
+        if (connection == null) {
+            connection = ConnectionFactory.createConnection(storageConfig.getConfig());
+        }
+        try (Admin admin = connection.getAdmin()) {
             TableName tableName = TableName.valueOf(hbaseTableName);
 
             if (!admin.tableExists(tableName)) {
@@ -197,50 +190,50 @@ public class HBaseSchemaManager {
 
             String ddlColumnName = "ddl";
             put.addColumn(
-                    CF,
-                    Bytes.toBytes(ddlColumnName),
-                    eventTimestamp,
-                    Bytes.toBytes(ddl)
+                CF,
+                Bytes.toBytes(ddlColumnName),
+                eventTimestamp,
+                Bytes.toBytes(ddl)
             );
 
             String schemaTransitionSequenceColumnName = "schemaTransitionSequence";
             put.addColumn(
-                    CF,
-                    Bytes.toBytes(schemaTransitionSequenceColumnName),
-                    eventTimestamp,
-                    Bytes.toBytes(jsonSchemaTransitionSequence)
+                CF,
+                Bytes.toBytes(schemaTransitionSequenceColumnName),
+                eventTimestamp,
+                Bytes.toBytes(jsonSchemaTransitionSequence)
             );
 
             String schemaSnapshotPreColumnName = "schemaPreChange";
             put.addColumn(
-                    CF,
-                    Bytes.toBytes(schemaSnapshotPreColumnName),
-                    eventTimestamp,
-                    Bytes.toBytes(jsonSchemaSnapshotBefore)
+                CF,
+                Bytes.toBytes(schemaSnapshotPreColumnName),
+                eventTimestamp,
+                Bytes.toBytes(jsonSchemaSnapshotBefore)
             );
 
             String schemaSnapshotPostColumnName = "schemaPostChange";
             put.addColumn(
-                    CF,
-                    Bytes.toBytes(schemaSnapshotPostColumnName),
-                    eventTimestamp,
-                    Bytes.toBytes(jsonSchemaSnapshotAfter)
+                CF,
+                Bytes.toBytes(schemaSnapshotPostColumnName),
+                eventTimestamp,
+                Bytes.toBytes(jsonSchemaSnapshotAfter)
             );
 
             String preChangeCreateStatementsColumn = "createsPreChange";
             put.addColumn(
-                    CF,
-                    Bytes.toBytes(preChangeCreateStatementsColumn),
-                    eventTimestamp,
-                    Bytes.toBytes(jsonCreateStatementsBefore)
+                CF,
+                Bytes.toBytes(preChangeCreateStatementsColumn),
+                eventTimestamp,
+                Bytes.toBytes(jsonCreateStatementsBefore)
             );
 
             String postChangeCreateStatementsColumn = "createsPostChange";
             put.addColumn(
-                    CF,
-                    Bytes.toBytes(postChangeCreateStatementsColumn),
-                    eventTimestamp,
-                    Bytes.toBytes(jsonCreateStatementsAfter)
+                CF,
+                Bytes.toBytes(postChangeCreateStatementsColumn),
+                eventTimestamp,
+                Bytes.toBytes(jsonCreateStatementsAfter)
             );
 
             Table hbaseTable = connection.getTable(tableName);

@@ -36,8 +36,8 @@ public class GTID implements Serializable, Comparable<GTID>{
 
     @Override
     public boolean equals(Object gtid) {
-        if (GTID.class.isInstance(gtid)) {
-            return this.compareTo(GTID.class.cast(gtid)) == 0;
+        if (gtid instanceof GTID) {
+            return this.compareTo((GTID) gtid) == 0;
         } else {
             return false;
         }

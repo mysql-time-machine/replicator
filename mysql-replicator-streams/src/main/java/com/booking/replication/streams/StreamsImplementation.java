@@ -1,14 +1,14 @@
 package com.booking.replication.streams;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.*;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 public final class StreamsImplementation<Input, Output> implements Streams<Input, Output> {
     private static final Logger LOG = LogManager.getLogger(StreamsImplementation.class);
@@ -32,17 +32,17 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
 
     @SuppressWarnings("unchecked")
     StreamsImplementation(
-            int threads,
-            int tasks,
-            BiFunction<Input, Integer, Integer> partitioner,
-            Class<? extends BlockingDeque> queueType,
-            int queueSize,
-            long queueTimeout,
-            Function<Integer, Input> fnGetNextItem,
-            Predicate<Input> filter,
-            Function<Input, Output> process,
-            Function<Output, Boolean> sink,
-            BiConsumer<Input, Integer> post
+        int threads,
+        int tasks,
+        BiFunction<Input, Integer, Integer> partitioner,
+        Class<? extends BlockingDeque> queueType,
+        int queueSize,
+        long queueTimeout,
+        Function<Integer, Input> fnGetNextItem,
+        Predicate<Input> filter,
+        Function<Input, Output> process,
+        Function<Output, Boolean> sink,
+        BiConsumer<Input, Integer> post
     ) {
         this.threads = threads + 1;
         this.tasks = tasks;
@@ -115,8 +115,6 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
     private void process(Input input, int task) {
         if (input != null && this.filter.test(input)) {
             Output output = this.process.apply(input);
-            if (output == null) {
-            }
             if (output != null && this.sink.apply(output)) {
                 this.post.accept(input, task);
             }

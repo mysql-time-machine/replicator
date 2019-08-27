@@ -2,6 +2,7 @@ package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.event.AugmentedEventTransaction;
+import com.booking.replication.commons.checkpoint.GTID;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -15,7 +16,6 @@ public class CurrentTransaction {
 
     private final AtomicBoolean started;
     private final AtomicBoolean resuming;
-    private final AtomicReference<UUID> identifier;
     private final AtomicReference<Collection<AugmentedEvent>> buffer;
     private final AtomicLong xxid;
     private final AtomicLong transactionSequenceNumber;
@@ -23,10 +23,12 @@ public class CurrentTransaction {
     private final Class<?> bufferClass;
     private final int bufferSizeLimit;
 
+    private GTID identifier;
+
     public CurrentTransaction(String bufferClass, int bufferSizeLimit) {
         this.started = new AtomicBoolean();
         this.resuming = new AtomicBoolean();
-        this.identifier = new AtomicReference<>();
+        this.identifier = new GTID();
         this.buffer = new AtomicReference<>();
         this.xxid = new AtomicLong();
         this.transactionSequenceNumber = new AtomicLong();
@@ -38,7 +40,6 @@ public class CurrentTransaction {
     public boolean begin() {
         if (!this.started.getAndSet(true)) {
             if (!this.resuming.get()) {
-                this.identifier.set(UUID.randomUUID());
                 this.buffer.set(this.getBufferInstance());
                 this.xxid.set(0L);
                 this.timestamp.set(0L);
@@ -85,7 +86,7 @@ public class CurrentTransaction {
                 augmentedEvent.getHeader().setEventTransaction(
                         new AugmentedEventTransaction(
                             this.timestamp.get(),
-                            this.identifier.get().toString(),
+                            this.identifier.getValue(),
                             this.xxid.get(),
                             this.transactionSequenceNumber.get()
                         )
@@ -158,8 +159,12 @@ public class CurrentTransaction {
         return timestamp;
     }
 
-    public AtomicReference<UUID> getIdentifier() {
+    public GTID getIdentifier() {
         return identifier;
+    }
+
+    public void setIdentifier(GTID newIdentifier) {
+        this.identifier = newIdentifier;
     }
 
     public Long getXxid() {

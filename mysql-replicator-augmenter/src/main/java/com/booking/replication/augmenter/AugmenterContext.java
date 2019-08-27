@@ -30,6 +30,8 @@ import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 
 import com.codahale.metrics.MetricRegistry;
 
+import com.github.shyiko.mysql.binlog.event.GtidEventData;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -430,6 +432,9 @@ public class AugmenterContext implements Closeable {
                         gtidRawEventData.getFlags(),
                         0
                 );
+
+                this.getTransaction().setIdentifier( this.getGTID() );
+
                 break;
 
             case TABLE_MAP:
@@ -777,7 +782,7 @@ public class AugmenterContext implements Closeable {
     public Collection<AugmentedRow> computeAugmentedEventRows(
             AugmentedEventType eventType,
             Long commitTimestamp,
-            UUID transactionUUID,
+            String transactionUUID,
             Long xxid,
             long tableId,
             BitSet includedColumns,
@@ -816,7 +821,7 @@ public class AugmenterContext implements Closeable {
     private AugmentedRow getAugmentedRow(
             AugmentedEventType eventType,
             Long commitTimestamp,
-            UUID transactionUUID,
+            String transactionUUID,
             Long transactionXid,
             List<ColumnSchema> columnSchemas,
             BitSet includedColumns,

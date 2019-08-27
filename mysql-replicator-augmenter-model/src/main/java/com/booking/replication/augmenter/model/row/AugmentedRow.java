@@ -12,7 +12,7 @@ public class AugmentedRow {
 
     private static final String NULL_STRING = "NULL";
 
-    private UUID         transactionUUID;
+    private String       transactionUUID;
     private Long         transactionXid;
 
     private Long commitTimestamp;
@@ -35,7 +35,7 @@ public class AugmentedRow {
                         String schemaName,
                         String tableName,
                         Long commitTimestamp,
-                        UUID transactionUUID,
+                        String transactionUUID,
                         Long transactionXid,
                         List<String> primaryKeyColumns,
                         Map<String, Object> values) {
@@ -86,7 +86,7 @@ public class AugmentedRow {
         return primaryKeyColumns;
     }
 
-    public UUID getTransactionUUID() {
+    public String getTransactionUUID() {
         return transactionUUID;
     }
 

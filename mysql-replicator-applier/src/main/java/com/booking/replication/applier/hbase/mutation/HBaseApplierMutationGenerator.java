@@ -115,7 +115,7 @@ public class HBaseApplierMutationGenerator {
 
         // Mutation
         Put put = new Put(Bytes.toBytes(hbaseRowID));
-        UUID uuid = augmentedRow.getTransactionUUID();
+        String uuid = augmentedRow.getTransactionUUID();
         Long xid = augmentedRow.getTransactionXid();
 
         Long microsecondsTimestamp = augmentedRow.getRowMicrosecondTimestamp();
@@ -143,7 +143,7 @@ public class HBaseApplierMutationGenerator {
                             CF,
                             TID,
                             microsecondsTimestamp,
-                            Bytes.toBytes(uuid.toString())
+                            Bytes.toBytes(uuid)
                     );
 
                     this.metrics.getRegistry()
@@ -219,7 +219,7 @@ public class HBaseApplierMutationGenerator {
                             CF,
                             TID,
                             microsecondsTimestamp,
-                            Bytes.toBytes(uuid.toString())
+                            Bytes.toBytes(uuid)
                     );
                     this.metrics.getRegistry()
                             .counter("hbase.applier.columns.mutations.count").inc(1L);
@@ -281,7 +281,7 @@ public class HBaseApplierMutationGenerator {
                             CF,
                             TID,
                             microsecondsTimestamp,
-                            Bytes.toBytes(uuid.toString())
+                            Bytes.toBytes(uuid)
                     );
                     this.metrics.getRegistry()
                             .counter("hbase.applier.columns.mutations.count").inc(1L);

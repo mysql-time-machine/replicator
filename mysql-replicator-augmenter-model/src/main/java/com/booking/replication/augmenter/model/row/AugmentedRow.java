@@ -146,4 +146,21 @@ public class AugmentedRow {
             return value.toString();
         }
     }
+
+
+    @Override
+    public String toString() {
+        return "AugmentedRow{"
+                + "transactionUUID='" + transactionUUID
+                + ", transactionXid=" + transactionXid
+                + ", commitTimestamp=" + commitTimestamp
+                + ", transactionSequenceNumber=" + transactionSequenceNumber
+                + ", rowMicrosecondTimestamp=" + rowMicrosecondTimestamp
+                + ", primaryKeyColumns=" + primaryKeyColumns
+                + ", eventType=" + eventType
+                + ", tableName='" + tableName
+                + ", tableSchema='" + tableSchema
+                + ", values=" + values
+                + '}';
+    }
 }

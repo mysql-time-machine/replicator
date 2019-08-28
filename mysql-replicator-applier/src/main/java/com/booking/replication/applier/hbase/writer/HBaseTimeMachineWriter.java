@@ -201,12 +201,6 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
             for (AugmentedEvent event : buffered.get(threadID).get(transactionUUID)) {
                 List<AugmentedRow> augmentedRows = AugmentedEventRowExtractor.extractAugmentedRows(event);
 
-
-		//TODO: Adding this to see the test case output
-		if (augmentedRows != null) {
-                	LOG.info("List<AugmentedRow>" + augmentedRows);
-		}
-
                 String augmentedRowsTableName = extractTableName(augmentedRows);
 
                 hbaseSchemaManager.createHBaseTableIfNotExists(augmentedRowsTableName);

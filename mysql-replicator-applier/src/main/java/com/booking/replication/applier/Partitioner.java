@@ -53,7 +53,7 @@ public interface Partitioner extends BiFunction<AugmentedEvent, Integer, Integer
 
                     if (event.getHeader().getEventTransaction() != null) {
                         AugmentedEventTransaction transaction = event.getHeader().getEventTransaction();
-                        return Math.abs( transaction.hashCode() ) % totalPartitions;
+                        return Math.abs( transaction.getIdentifier().hashCode() ) % totalPartitions;
                     } else {
                         return ThreadLocalRandom.current().nextInt(totalPartitions);
                     }

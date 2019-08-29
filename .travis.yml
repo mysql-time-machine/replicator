@@ -2,6 +2,9 @@ sudo: false
 language: java
 install: true
 
+jdk:
+  - openjdk8
+
 addons:
   sonarcloud:
     organization: "bookingcom"
@@ -14,11 +17,6 @@ cache:
   directories:
     - '$HOME/.m2/repository'
     - '$HOME/.sonar/cache'
-
-matrix:
-  fast_finish: true
-  include:
-    - jdk: oraclejdk8
 
 script:
   - mvn package -V -U -B

@@ -1,6 +1,5 @@
 package com.booking.replication.it.slave_failover;
 
-import avro.shaded.com.google.common.collect.Maps;
 import com.booking.replication.Replicator;
 import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.Partitioner;
@@ -17,6 +16,7 @@ import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.it.util.MySQLRunner;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
+import com.google.common.collect.Maps;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.AfterClass;

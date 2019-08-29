@@ -2,21 +2,21 @@ sudo: false
 language: java
 install: true
 
+jdk:
+  - openjdk8
+
 addons:
   sonarcloud:
     organization: "bookingcom"
     token:
       secure: "J7QRlxFewXR72imzwzV6L1a228AbDCvm1VFvWN5ODNHmW0DEPqqGwqwH023ejdTP/UXARBljjng0xKL7yBvk+pjtOmTQjgbu9+0EBn9MwzNFkM3ZZmWATMtV1TpNy6aUFVC4ZCdAkHuCyFn/dTGQsMbKFIA7eon13uKdJQUx3xFpaL2IEx8/6ZDR0dApTvVqNeEeeibTXZaISjY7zCY8Kf2DTd3lcjKm2aMnqwJdjdtsudQgjUqRrgNcBLfrDOgZYyEtaGD5pP43g+fLSGcELO33EuqfmKOY/5DV7YdDvrpwaN+wr2YcFJOPwjzQhiHUxoW6ML87569o7FSwBPy3oc3qbHVYqrePjA77KoZ4R54CL3xxPampkogZTFtruYyihGHjeRM5JzESjspvwisy/MH4YsSnfqxD5MHp/0YLE2fkIwFYYxIpkVpYs1h+uTyRY39Ljh7H1Gv56p2Bk6Ggj0QB+UItB+bX7MZ2KXDpYdZMpsQ5nmaC6zXIpbTYQzXFVLtI/eOliguXAA14UReDx96jFkhI3Lxfqy3aT/Iw2xPNCAHJo2WnToZEHSa/2+ypcmQfwZzBf4PoxwroMcrddakWXg+ZVWrWzIuJO3pEMBgW1Gl56yWrnI/Gw5MiiH+xvY5giRZ5/urHhwAqDbOIgPf7+XOxvF4JcYB0JgDGTjc="
+  hosts:
+    - HBASE_HOST
 
 cache:
   directories:
     - '$HOME/.m2/repository'
     - '$HOME/.sonar/cache'
-
-matrix:
-  fast_finish: true
-  include:
-    - jdk: oraclejdk8
 
 script:
   - mvn package -V -U -B
@@ -27,7 +27,3 @@ after_success:
 
 services:
   - docker
-
-addons:
-  hosts:
-    - HBASE_HOST

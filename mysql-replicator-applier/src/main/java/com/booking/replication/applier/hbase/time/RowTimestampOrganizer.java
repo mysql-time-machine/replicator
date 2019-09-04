@@ -4,11 +4,13 @@ import static com.booking.replication.applier.hbase.schema.HBaseRowKeyMapper.get
 
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
 
 /**
  * class: RowTimestampOrganizer
@@ -42,6 +44,8 @@ import java.util.concurrent.ConcurrentHashMap;
  *<p>We support up to 50 changes for 1 table/PK combinations in 1 transaction
  */
 public class RowTimestampOrganizer {
+
+    private static final Logger LOG = LogManager.getLogger(RowTimestampOrganizer.class);
 
     private class TimestampTuple {
         public long timestamp;
@@ -84,7 +88,16 @@ public class RowTimestampOrganizer {
                 timestampsCache.get(threadID).put(key, timestampTuple);
             }
 
+            printLogger("Before", row);
+
             row.setRowMicrosecondTimestamp(timestampTuple.timestamp);
+
+            printLogger("After", row);
         }
+    }
+
+    private static void printLogger(String prefix, AugmentedRow row) {
+        LOG.debug(String.format("[%s] table : %s, UUID: %s, ts: %d", prefix, row.getTableName(),
+                row.getTransactionUUID(), row.getRowMicrosecondTimestamp()));
     }
 }

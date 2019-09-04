@@ -6,11 +6,16 @@ import com.booking.replication.augmenter.model.event.UpdateRowsAugmentedEventDat
 import com.booking.replication.augmenter.model.event.WriteRowsAugmentedEventData;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
 public class AugmentedEventRowExtractor {
+
+    private static final Logger LOG = LogManager.getLogger(AugmentedEventRowExtractor.class);
 
     public static List<AugmentedRow> extractAugmentedRows(AugmentedEvent augmentedEvent) {
 
@@ -94,6 +99,9 @@ public class AugmentedEventRowExtractor {
             ar.setTransactionSequenceNumber(transactionSequenceNumber);
 
             Long microsOverride = commitTimestamp * 1000 + ar.getMicrosecondTransactionOffset();
+
+            LOG.debug(String.format("table : %s, UUID: %s, commit-ts: %d, seq-no: %d, micro-ts: %d",ar.getTableName(),
+                    ar.getTransactionUUID(), commitTimestamp, transactionSequenceNumber, microsOverride));
 
             ar.setRowMicrosecondTimestamp(microsOverride);
         }

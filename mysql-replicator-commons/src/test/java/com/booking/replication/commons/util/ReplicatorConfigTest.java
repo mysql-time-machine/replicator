@@ -8,7 +8,7 @@ import static org.junit.Assert.*;
 
 public class ReplicatorConfigTest {
     @Test
-    public void get() throws Exception {
+    public void get() {
         ReplicatorConfig myMap = new ReplicatorConfig();
         myMap.put("one", "foo");
         Object one = myMap.get("one");
@@ -16,9 +16,9 @@ public class ReplicatorConfigTest {
     }
 
     @Test(expected = NullPointerException.class)
-    public void getWithContraint() throws Exception {
+    public void getWithContraint() {
         ReplicatorConfig<String, Object> myMap = new ReplicatorConfig<>();
-        Object one = myMap.get("one", true);
+        myMap.get("one", true);
     }
 
 }

@@ -29,6 +29,7 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -191,7 +192,7 @@ public class SlaveFailoverTest {
             File tempFile = File.createTempFile("replicator_checkpoint", null);
             FILE_CHECKPOINT_PATH = tempFile.getAbsolutePath();
             LOG.info("Created checkpoint file: " + FILE_CHECKPOINT_PATH);
-            PrintWriter out = new PrintWriter(FILE_CHECKPOINT_PATH);
+            PrintWriter out = new PrintWriter(StandardCharsets.UTF_8.name(), FILE_CHECKPOINT_PATH);
             out.println(cp);
             out.close();
         } catch (IOException e) {

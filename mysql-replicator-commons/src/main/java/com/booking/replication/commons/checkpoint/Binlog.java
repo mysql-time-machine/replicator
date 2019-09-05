@@ -1,6 +1,7 @@
 package com.booking.replication.commons.checkpoint;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 public class Binlog implements Serializable, Comparable<Binlog> {
     private String filename;
@@ -50,6 +51,11 @@ public class Binlog implements Serializable, Comparable<Binlog> {
         } else {
             return false;
         }
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(filename, position);
     }
 
     @Override

@@ -171,11 +171,7 @@ public class Stringifier {
 
             if (columnType.contains("tiny")) {
                 if (columnType.contains("unsigned")) {
-                    stringifiedCellValue = String.valueOf(
-                        Byte.toUnsignedLong(
-                            (Integer.valueOf((int) cellValue)).byteValue()
-                        )
-                    );
+                    stringifiedCellValue = String.valueOf(Integer.toUnsignedLong((int) cellValue));
                 } else {
                     stringifiedCellValue = String.valueOf(Number.class.cast(cellValue).longValue());
                 }

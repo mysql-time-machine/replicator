@@ -1,6 +1,7 @@
 package com.booking.replication.commons.checkpoint;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 @SuppressWarnings("unused")
 public class Checkpoint implements Serializable, Comparable<Checkpoint> {
@@ -125,6 +126,11 @@ public class Checkpoint implements Serializable, Comparable<Checkpoint> {
         } else {
             return false;
         }
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(timestamp, serverId, gtid, binlog, gtidSet);
     }
 
     @Override

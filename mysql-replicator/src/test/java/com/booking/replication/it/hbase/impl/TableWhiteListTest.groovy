@@ -14,6 +14,7 @@ import org.apache.hadoop.hbase.*
 import org.apache.hadoop.hbase.client.*
 import org.apache.hadoop.hbase.util.Bytes
 
+import java.sql.SQLException
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -126,7 +127,7 @@ class TableWhiteListTest implements ReplicatorHBasePipelineIntegrationTest {
 
                     replicantMySQLHandle.commit()
 
-                } catch (Exception ex) {
+                } catch (SQLException ex) {
                     replicantMySQLHandle.rollback()
                 }
         }
@@ -179,7 +180,7 @@ class TableWhiteListTest implements ReplicatorHBasePipelineIntegrationTest {
                     replicantMySQLHandle.execute(sqlString2)
                     replicantMySQLHandle.commit()
 
-                } catch (Exception ex) {
+                } catch (SQLException ex) {
                     replicantMySQLHandle.rollback()
                 }
         }

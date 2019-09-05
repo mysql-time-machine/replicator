@@ -1,9 +1,10 @@
 package com.booking.replication.commons.checkpoint;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 @SuppressWarnings("unused")
-public class GTID implements Serializable, Comparable<GTID>{
+public class GTID implements Serializable, Comparable<GTID> {
     private GTIDType type;
     private String value;
     private byte flags;
@@ -41,6 +42,11 @@ public class GTID implements Serializable, Comparable<GTID>{
         } else {
             return false;
         }
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(type, value, flags);
     }
 
     @Override

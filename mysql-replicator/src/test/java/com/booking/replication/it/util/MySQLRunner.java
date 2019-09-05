@@ -11,7 +11,9 @@ import org.testcontainers.shaded.org.apache.commons.lang.text.StrSubstitutor;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.*;
 
@@ -25,15 +27,14 @@ public class MySQLRunner {
                                   String scriptFilePath,
                                   Map<String, String> scriptParams,
                                   boolean runAsRoot) {
-        Statement statement;
         BasicDataSource dataSource = initDatasource(mysql, configuration, Driver.class.getName(), runAsRoot);
-        try (Connection connection = dataSource.getConnection()) {
-            statement = connection.createStatement();
+        try (Connection connection = dataSource.getConnection();
+             Statement statement = connection.createStatement()) {
             LOG.info("Executing query from " + scriptFilePath);
             String s;
             StringBuilder sb = new StringBuilder();
 
-            FileReader fr = new FileReader(new File(scriptFilePath));
+            InputStreamReader fr = new InputStreamReader(new FileInputStream(new File(scriptFilePath)), StandardCharsets.UTF_8.name());
             BufferedReader br = new BufferedReader(fr);
             while ((s = br.readLine()) != null) {
                 sb.append(s);
@@ -53,20 +54,19 @@ public class MySQLRunner {
             return true;
         } catch (Exception exception) {
             LOG.warn(String.format("error executing query \"%s\": %s",
-                    scriptFilePath, exception.getMessage()));
+                scriptFilePath, exception.getMessage()));
             return false;
         }
 
     }
 
-    public List<HashMap<String,Object>> runMysqlQuery(ServicesControl mysql,
-                               MySQLConfiguration configuration,
-                               String query,
-                               boolean runAsRoot) {
-        Statement statement;
+    public List<HashMap<String, Object>> runMysqlQuery(ServicesControl mysql,
+                                                       MySQLConfiguration configuration,
+                                                       String query,
+                                                       boolean runAsRoot) {
         BasicDataSource dataSource = initDatasource(mysql, configuration, Driver.class.getName(), runAsRoot);
-        try (Connection connection = dataSource.getConnection()) {
-            statement = connection.createStatement();
+        try (Connection connection = dataSource.getConnection();
+             Statement statement = connection.createStatement()) {
             LOG.debug("Executing query - " + query);
 
             if (!query.trim().equals("")) {
@@ -77,21 +77,21 @@ public class MySQLRunner {
             return convertResultSetToList(result);
         } catch (Exception exception) {
             LOG.warn(String.format("error executing query \"%s\": %s",
-                    query, exception.getMessage()));
+                query, exception.getMessage()));
             return null;
         }
 
     }
 
-    private List<HashMap<String,Object>> convertResultSetToList(ResultSet rs) throws SQLException {
+    private List<HashMap<String, Object>> convertResultSetToList(ResultSet rs) throws SQLException {
         ResultSetMetaData md = rs.getMetaData();
         int columns = md.getColumnCount();
-        List<HashMap<String,Object>> list = new ArrayList<>();
+        List<HashMap<String, Object>> list = new ArrayList<>();
 
         while (rs.next()) {
-            HashMap<String,Object> row = new HashMap<>(columns);
-            for(int i=1; i<=columns; ++i) {
-                row.put(md.getColumnName(i),rs.getObject(i));
+            HashMap<String, Object> row = new HashMap<>(columns);
+            for (int i = 1; i <= columns; ++i) {
+                row.put(md.getColumnName(i), rs.getObject(i));
             }
             list.add(row);
         }
@@ -115,11 +115,11 @@ public class MySQLRunner {
         Objects.requireNonNull(password, String.format("Configuration required: %s", BinaryLogSupplier.Configuration.MYSQL_PASSWORD));
 
         return this.getDataSource(driverClass.toString(),
-                hostname,
-                Integer.parseInt(port.toString()),
-                schema,
-                username,
-                password);
+            hostname,
+            Integer.parseInt(port.toString()),
+            schema,
+            username,
+            password);
     }
 
     private BasicDataSource getDataSource(String driverClass, String hostname, int port, String schema, String username, String password) {

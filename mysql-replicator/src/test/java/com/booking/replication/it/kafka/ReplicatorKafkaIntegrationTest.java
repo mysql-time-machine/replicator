@@ -11,28 +11,28 @@ import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.AugmenterContext;
 import com.booking.replication.checkpoint.CheckpointApplier;
 import com.booking.replication.commons.conf.MySQLConfiguration;
-import com.booking.replication.commons.services.ServicesControl;
-import com.booking.replication.commons.services.ServicesProvider;
+import com.booking.replication.commons.services.containers.kafka.KafkaContainer;
+import com.booking.replication.commons.services.containers.kafka.KafkaContainerNetworkConfig;
+import com.booking.replication.commons.services.containers.kafka.KafkaContainerProvider;
+import com.booking.replication.commons.services.containers.kafka.KafkaContainerTopicConfig;
+import com.booking.replication.commons.services.containers.mysql.MySQLContainer;
+import com.booking.replication.commons.services.containers.mysql.MySQLContainerProvider;
+import com.booking.replication.commons.services.containers.schemaregistry.SchemaRegistryContainer;
+import com.booking.replication.commons.services.containers.schemaregistry.SchemaRegistryContainerProvider;
+import com.booking.replication.commons.services.containers.zookeeper.ZookeeperContainer;
+import com.booking.replication.commons.services.containers.zookeeper.ZookeeperContainerProvider;
 import com.booking.replication.controller.WebServer;
 import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.coordinator.ZookeeperCoordinator;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
-
 import com.mysql.jdbc.Driver;
-
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
-
-import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericDatumReader;
-import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.io.*;
 import org.apache.commons.dbcp2.BasicDataSource;
-
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -40,25 +40,22 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.testcontainers.containers.Network;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
-
 import java.sql.Statement;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-public class ReplicatorKafkaTest {
-    private static final Logger LOG = LogManager.getLogger(ReplicatorKafkaTest.class);
+public class ReplicatorKafkaIntegrationTest {
+    private static final Logger LOG = LogManager.getLogger(ReplicatorKafkaIntegrationTest.class);
 
     private static final String ZOOKEEPER_LEADERSHIP_PATH = "/replicator/leadership";
     private static final String ZOOKEEPER_CHECKPOINT_PATH = "/replicator/checkpoint";
@@ -82,54 +79,58 @@ public class ReplicatorKafkaTest {
     private static final int KAFKA_TOPIC_PARTITIONS = 3;
     private static final int KAFKA_TOPIC_REPLICAS = 1;
 
-    private static ServicesControl zookeeper;
-    private static ServicesControl mysqlBinaryLog;
-    private static ServicesControl mysqlActiveSchema;
-    private static ServicesControl kafka;
-    private static ServicesControl schemaRegistry;
-    private static ServicesControl kafkaZk;
+    private static MySQLContainer mysqlBinaryLogContainer;
+    private static MySQLContainer mysqlActiveSchemaContainer;
+    private static ZookeeperContainer zookeeperContainer;
+    private static ZookeeperContainer kafkaZookeeperContainer;
+    private static KafkaContainer kafkaContainer;
+    private static SchemaRegistryContainer schemaRegistryContainer;
 
     @BeforeClass
     public static void before() {
-        ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS);
+        zookeeperContainer = ZookeeperContainerProvider.start();
 
-        ReplicatorKafkaTest.zookeeper = servicesProvider.startZookeeper();
-
-        MySQLConfiguration mySQLConfiguration = new MySQLConfiguration(
-                ReplicatorKafkaTest.MYSQL_SCHEMA,
-                ReplicatorKafkaTest.MYSQL_USERNAME,
-                ReplicatorKafkaTest.MYSQL_PASSWORD,
-                ReplicatorKafkaTest.MYSQL_CONF_FILE,
-                Collections.singletonList(ReplicatorKafkaTest.MYSQL_INIT_SCRIPT),
-                null,
-                null
-                );
-
-        MySQLConfiguration mySQLActiveSchemaConfiguration = new MySQLConfiguration(
-                ReplicatorKafkaTest.MYSQL_ACTIVE_SCHEMA,
-                ReplicatorKafkaTest.MYSQL_USERNAME,
-                ReplicatorKafkaTest.MYSQL_PASSWORD,
-                ReplicatorKafkaTest.MYSQL_CONF_FILE,
-                Collections.emptyList(),
-                null,
-                null
+        final MySQLConfiguration mySQLConfiguration = new MySQLConfiguration(
+            MYSQL_SCHEMA,
+            MYSQL_USERNAME,
+            MYSQL_PASSWORD,
+            MYSQL_CONF_FILE,
+            Collections.singletonList(MYSQL_INIT_SCRIPT),
+            null,
+            null
         );
 
-        ReplicatorKafkaTest.mysqlBinaryLog = servicesProvider.startMySQL(mySQLConfiguration);
-        ReplicatorKafkaTest.mysqlActiveSchema = servicesProvider.startMySQL(mySQLActiveSchemaConfiguration);
-        Network network = Network.newNetwork();
-        ReplicatorKafkaTest.kafkaZk = servicesProvider.startZookeeper(network, "kafkaZk");
-        ReplicatorKafkaTest.kafka = servicesProvider.startKafka(network, ReplicatorKafkaTest.KAFKA_REPLICATOR_TOPIC_NAME, ReplicatorKafkaTest.KAFKA_TOPIC_PARTITIONS, ReplicatorKafkaTest.KAFKA_TOPIC_REPLICAS, "kafka");
-        ReplicatorKafkaTest.schemaRegistry = servicesProvider.startSchemaRegistry(network);
+        final MySQLConfiguration mySQLActiveSchemaConfiguration = new MySQLConfiguration(
+            MYSQL_ACTIVE_SCHEMA,
+            MYSQL_USERNAME,
+            MYSQL_PASSWORD,
+            MYSQL_CONF_FILE,
+            Collections.emptyList(),
+            null,
+            null
+        );
+
+        mysqlBinaryLogContainer = MySQLContainerProvider.startWithMySQLConfiguration(mySQLConfiguration);
+        mysqlActiveSchemaContainer = MySQLContainerProvider.startWithMySQLConfiguration(mySQLActiveSchemaConfiguration);
+
+        final Network network = Network.newNetwork();
+
+        kafkaZookeeperContainer = ZookeeperContainerProvider.startWithNetworkAndPortBindings(network, "kafkaZk");
+        kafkaContainer = KafkaContainerProvider.start(
+            new KafkaContainerNetworkConfig(network, "kafka"),
+            new KafkaContainerTopicConfig(KAFKA_REPLICATOR_TOPIC_NAME, KAFKA_TOPIC_PARTITIONS, KAFKA_TOPIC_REPLICAS),
+            kafkaZookeeperContainer
+        );
+        schemaRegistryContainer = SchemaRegistryContainerProvider.startWithKafka(kafkaZookeeperContainer);
     }
 
     @Test
-    public void testReplicator() throws Exception {
+    public void testReplicator() {
         Replicator replicator = new Replicator(this.getConfiguration());
 
         replicator.start();
 
-        File file = new File("src/test/resources/" + ReplicatorKafkaTest.MYSQL_TEST_SCRIPT);
+        File file = new File("src/test/resources/" + MYSQL_TEST_SCRIPT);
 
         runMysqlScripts(this.getConfiguration(), file.getAbsolutePath());
 
@@ -137,8 +138,8 @@ public class ReplicatorKafkaTest {
 
         Map<String, Object> kafkaConfiguration = new HashMap<>();
 
-        kafkaConfiguration.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, ReplicatorKafkaTest.kafka.getURL());
-        kafkaConfiguration.put(ConsumerConfig.GROUP_ID_CONFIG, ReplicatorKafkaTest.KAFKA_REPLICATOR_IT_GROUP_ID);
+        kafkaConfiguration.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaContainer.getURL());
+        kafkaConfiguration.put(ConsumerConfig.GROUP_ID_CONFIG, KAFKA_REPLICATOR_IT_GROUP_ID);
         kafkaConfiguration.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         String schemaRegistryUrl = (String) this.getConfiguration().get(KafkaApplier.Configuration.SCHEMA_REGISTRY_URL);
@@ -147,21 +148,15 @@ public class ReplicatorKafkaTest {
         KafkaAvroDeserializer kafkaAvroDeserializer = new KafkaAvroDeserializer(client);
 
         try (Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(kafkaConfiguration, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
-            consumer.subscribe(Collections.singleton(ReplicatorKafkaTest.KAFKA_REPLICATOR_TOPIC_NAME));
+            consumer.subscribe(Collections.singleton(KAFKA_REPLICATOR_TOPIC_NAME));
 
             boolean consumed = false;
 
             while (!consumed) {
-
                 for (ConsumerRecord<byte[], byte[]> record : consumer.poll(1000L)) {
                     GenericRecord deserialize = (GenericRecord) kafkaAvroDeserializer.deserialize("", record.value());
-                    System.out.println(deserialize.toString());
-//                    AugmentedEvent augmentedEvent = AugmentedEvent.fromJSON(record.key(), record.value());
-
-//                    ReplicatorKafkaTest.LOG.info(new String(augmentedEvent.toJSON()));
-
-                    System.out.println(new String(record.key()));
-
+                    LOG.info(deserialize.toString());
+                    LOG.info(record.key());
                     consumed = true;
                 }
             }
@@ -171,19 +166,15 @@ public class ReplicatorKafkaTest {
     }
 
     private boolean runMysqlScripts(Map<String, Object> configuration, String scriptFilePath) {
-        BufferedReader reader;
-        Statement statement;
         BasicDataSource dataSource = initDatasource(configuration, Driver.class.getName());
-        try (Connection connection = dataSource.getConnection()) {
-            statement = connection.createStatement();
-            reader = new BufferedReader(new FileReader(scriptFilePath));
-            String line;
+        try (Connection connection = dataSource.getConnection();
+             Statement statement = connection.createStatement()) {
             // read script line by line
-            ReplicatorKafkaTest.LOG.info("Executing query from " + scriptFilePath);
+            LOG.info("Executing query from " + scriptFilePath);
             String s;
             StringBuilder sb = new StringBuilder();
 
-            FileReader fr = new FileReader(new File(scriptFilePath));
+            InputStreamReader fr = new InputStreamReader(new FileInputStream(new File(scriptFilePath)), StandardCharsets.UTF_8.name());
             BufferedReader br = new BufferedReader(fr);
             while ((s = br.readLine()) != null) {
                 sb.append(s);
@@ -194,12 +185,12 @@ public class ReplicatorKafkaTest {
             for (String query : inst) {
                 if (!query.trim().equals("")) {
                     statement.execute(query);
-                    ReplicatorKafkaTest.LOG.info(query);
+                    LOG.info(query);
                 }
             }
             return true;
         } catch (Exception exception) {
-            ReplicatorKafkaTest.LOG.warn(String.format("error executing query \"%s\": %s", scriptFilePath, exception.getMessage()));
+            LOG.warn(String.format("error executing query \"%s\": %s", scriptFilePath, exception.getMessage()));
             return false;
         }
 
@@ -234,36 +225,36 @@ public class ReplicatorKafkaTest {
     private Map<String, Object> getConfiguration() {
         Map<String, Object> configuration = new HashMap<>();
 
-        configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, ReplicatorKafkaTest.zookeeper.getURL());
-        configuration.put(ZookeeperCoordinator.Configuration.LEADERSHIP_PATH, ReplicatorKafkaTest.ZOOKEEPER_LEADERSHIP_PATH);
+        configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, zookeeperContainer.getURL());
+        configuration.put(ZookeeperCoordinator.Configuration.LEADERSHIP_PATH, ZOOKEEPER_LEADERSHIP_PATH);
 
         configuration.put(WebServer.Configuration.TYPE, WebServer.ServerType.JETTY.name());
 
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_HOSTNAME, Collections.singletonList(ReplicatorKafkaTest.mysqlBinaryLog.getHost()));
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_PORT, String.valueOf(ReplicatorKafkaTest.mysqlBinaryLog.getPort()));
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_SCHEMA, ReplicatorKafkaTest.MYSQL_SCHEMA);
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_USERNAME, ReplicatorKafkaTest.MYSQL_ROOT_USERNAME);
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_PASSWORD, ReplicatorKafkaTest.MYSQL_PASSWORD);
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_HOSTNAME, Collections.singletonList(mysqlBinaryLogContainer.getHost()));
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_PORT, String.valueOf(mysqlBinaryLogContainer.getPort()));
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_SCHEMA, MYSQL_SCHEMA);
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_USERNAME, MYSQL_ROOT_USERNAME);
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_PASSWORD, MYSQL_PASSWORD);
 
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, ReplicatorKafkaTest.mysqlActiveSchema.getHost());
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(ReplicatorKafkaTest.mysqlActiveSchema.getPort()));
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_SCHEMA, ReplicatorKafkaTest.MYSQL_ACTIVE_SCHEMA);
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, ReplicatorKafkaTest.MYSQL_ROOT_USERNAME);
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PASSWORD, ReplicatorKafkaTest.MYSQL_PASSWORD);
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, mysqlActiveSchemaContainer.getHost());
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(mysqlActiveSchemaContainer.getPort()));
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_SCHEMA, MYSQL_ACTIVE_SCHEMA);
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, MYSQL_ROOT_USERNAME);
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PASSWORD, MYSQL_PASSWORD);
 
-        configuration.put(AugmenterContext.Configuration.TRANSACTION_BUFFER_LIMIT, String.valueOf(ReplicatorKafkaTest.TRANSACTION_LIMIT));
+        configuration.put(AugmenterContext.Configuration.TRANSACTION_BUFFER_LIMIT, String.valueOf(TRANSACTION_LIMIT));
         configuration.put(AugmenterContext.Configuration.TRANSACTIONS_ENABLED, true);
 
-        configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorKafkaTest.kafka.getURL());
+        configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.BOOTSTRAP_SERVERS_CONFIG), kafkaContainer.getURL());
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG), ByteArraySerializer.class);
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG), KafkaAvroSerializer.class);
-        configuration.put(KafkaApplier.Configuration.SCHEMA_REGISTRY_URL, String.format("http://%s:%d", ReplicatorKafkaTest.schemaRegistry.getHost(), ReplicatorKafkaTest.schemaRegistry.getPort()));
+        configuration.put(KafkaApplier.Configuration.SCHEMA_REGISTRY_URL, String.format("http://%s", schemaRegistryContainer.getURL()));
         configuration.put(KafkaApplier.Configuration.FORMAT, "avro");
 
-        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorKafkaTest.kafka.getURL());
-        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.GROUP_ID_CONFIG), ReplicatorKafkaTest.KAFKA_REPLICATOR_GROUP_ID);
+        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG), kafkaContainer.getURL());
+        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.GROUP_ID_CONFIG), KAFKA_REPLICATOR_GROUP_ID);
         configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.AUTO_OFFSET_RESET_CONFIG), "earliest");
-        configuration.put(KafkaApplier.Configuration.TOPIC, ReplicatorKafkaTest.KAFKA_REPLICATOR_TOPIC_NAME);
+        configuration.put(KafkaApplier.Configuration.TOPIC, KAFKA_REPLICATOR_TOPIC_NAME);
 
         configuration.put(Coordinator.Configuration.TYPE, Coordinator.Type.ZOOKEEPER.name());
 
@@ -277,35 +268,21 @@ public class ReplicatorKafkaTest {
 
         configuration.put(Applier.Configuration.TYPE, Applier.Type.KAFKA.name());
         configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name());
-        configuration.put(Replicator.Configuration.CHECKPOINT_PATH, ReplicatorKafkaTest.ZOOKEEPER_CHECKPOINT_PATH);
-        configuration.put(Replicator.Configuration.CHECKPOINT_DEFAULT, ReplicatorKafkaTest.CHECKPOINT_DEFAULT);
-        configuration.put(Replicator.Configuration.REPLICATOR_THREADS, String.valueOf(ReplicatorKafkaTest.KAFKA_TOPIC_PARTITIONS));
-        configuration.put(Replicator.Configuration.REPLICATOR_TASKS, String.valueOf(ReplicatorKafkaTest.KAFKA_TOPIC_PARTITIONS));
+        configuration.put(Replicator.Configuration.CHECKPOINT_PATH, ZOOKEEPER_CHECKPOINT_PATH);
+        configuration.put(Replicator.Configuration.CHECKPOINT_DEFAULT, CHECKPOINT_DEFAULT);
+        configuration.put(Replicator.Configuration.REPLICATOR_THREADS, String.valueOf(KAFKA_TOPIC_PARTITIONS));
+        configuration.put(Replicator.Configuration.REPLICATOR_TASKS, String.valueOf(KAFKA_TOPIC_PARTITIONS));
 
         return configuration;
     }
 
     @AfterClass
     public static void after() {
-        ReplicatorKafkaTest.kafka.close();
-        ReplicatorKafkaTest.mysqlBinaryLog.close();
-        ReplicatorKafkaTest.mysqlActiveSchema.close();
-        ReplicatorKafkaTest.schemaRegistry.close();
-        ReplicatorKafkaTest.zookeeper.close();
-        ReplicatorKafkaTest.kafkaZk.close();
-    }
-
-    public static String avroToJson(byte[] avro, Schema schema) throws IOException {
-        boolean pretty = false;
-        GenericDatumReader<Object> reader = new GenericDatumReader<>(schema);
-        DatumWriter<Object> writer = new GenericDatumWriter<>(schema);
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-        JsonEncoder encoder = EncoderFactory.get().jsonEncoder(schema, output, pretty);
-        Decoder decoder = DecoderFactory.get().binaryDecoder(avro, null);
-        Object datum = reader.read(null, decoder);
-        writer.write(datum, encoder);
-        encoder.flush();
-        output.flush();
-        return new String(output.toByteArray(), "UTF-8");
+        kafkaContainer.stop();
+        mysqlBinaryLogContainer.stop();
+        mysqlActiveSchemaContainer.stop();
+        schemaRegistryContainer.stop();
+        zookeeperContainer.stop();
+        kafkaZookeeperContainer.stop();
     }
 }

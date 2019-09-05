@@ -11,20 +11,21 @@ import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.GTID;
 import com.booking.replication.commons.checkpoint.GTIDType;
 import com.booking.replication.commons.metrics.Metrics;
-import com.booking.replication.commons.services.ServicesControl;
-import com.booking.replication.commons.services.ServicesProvider;
+import com.booking.replication.commons.services.containers.kafka.KafkaContainer;
+import com.booking.replication.commons.services.containers.kafka.KafkaContainerNetworkConfig;
+import com.booking.replication.commons.services.containers.kafka.KafkaContainerProvider;
+import com.booking.replication.commons.services.containers.kafka.KafkaContainerTopicConfig;
+import com.booking.replication.commons.services.containers.zookeeper.ZookeeperContainer;
+import com.booking.replication.commons.services.containers.zookeeper.ZookeeperContainerProvider;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.testcontainers.containers.Network;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.junit.Assert.assertNotNull;
@@ -38,21 +39,22 @@ public class KafkaTest {
 
     private static List<AugmentedEvent> events;
     private static AugmentedEvent lastEvent;
-    private static ServicesControl servicesControl;
+    private static ZookeeperContainer zookeeperContainer;
+    private static KafkaContainer kafkaContainer;
 
     private static Checkpoint getCheckpoint(int index) {
         return new Checkpoint(
-                System.currentTimeMillis(),
-                0,
-                new GTID(
-                        GTIDType.PSEUDO,
-                        String.valueOf(index),
-                        Byte.MAX_VALUE
-                ),
-                new Binlog(
-                        null,
-                        0
-                )
+            System.currentTimeMillis(),
+            0,
+            new GTID(
+                GTIDType.PSEUDO,
+                String.valueOf(index),
+                Byte.MAX_VALUE
+            ),
+            new Binlog(
+                null,
+                0
+            )
         );
     }
 
@@ -62,27 +64,34 @@ public class KafkaTest {
         ThreadLocalRandom.current().nextBytes(data);
 
         return new AugmentedEvent(
-                new AugmentedEventHeader(
-                        System.currentTimeMillis(),
-                        KafkaTest.getCheckpoint(index),
-                        AugmentedEventType.BYTE_ARRAY,
-                        "dbName",
-                        "tableName"
-                ),
-                new ByteArrayAugmentedEventData(data)
+            new AugmentedEventHeader(
+                System.currentTimeMillis(),
+                KafkaTest.getCheckpoint(index),
+                AugmentedEventType.BYTE_ARRAY,
+                "dbName",
+                "tableName"
+            ),
+            new ByteArrayAugmentedEventData(data)
         );
     }
 
     @BeforeClass
     public static void before() {
-        KafkaTest.events = new ArrayList<>();
+        events = new ArrayList<>();
 
-        for (int index  = 0; index < 3; index ++) {
-            KafkaTest.events.add(KafkaTest.getAugmentedEvent(index));
+        for (int index = 0; index < 3; index++) {
+            events.add(KafkaTest.getAugmentedEvent(index));
         }
 
-        KafkaTest.lastEvent = KafkaTest.getAugmentedEvent(KafkaTest.events.size());
-        KafkaTest.servicesControl = ServicesProvider.build(ServicesProvider.Type.CONTAINERS).startKafka(KafkaTest.TOPIC_NAME, KafkaTest.TOPIC_PARTITIONS, KafkaTest.TOPIC_REPLICAS);
+        lastEvent = KafkaTest.getAugmentedEvent(KafkaTest.events.size());
+
+        final Network network = Network.newNetwork();
+        zookeeperContainer = ZookeeperContainerProvider.startWithNetworkAndPortBindings(network);
+        kafkaContainer = KafkaContainerProvider.start(
+            new KafkaContainerNetworkConfig(network),
+            new KafkaContainerTopicConfig(TOPIC_NAME, TOPIC_PARTITIONS, TOPIC_REPLICAS),
+            zookeeperContainer
+        );
     }
 
     @Test
@@ -91,7 +100,7 @@ public class KafkaTest {
 
         configuration.put(Applier.Configuration.TYPE, Applier.Type.KAFKA.name());
         configuration.put(KafkaApplier.Configuration.TOPIC, KafkaTest.TOPIC_NAME);
-        configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.BOOTSTRAP_SERVERS_CONFIG), KafkaTest.servicesControl.getURL());
+        configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.BOOTSTRAP_SERVERS_CONFIG), kafkaContainer.getURL());
 
         Metrics.build(configuration, null);
         try (Applier applier = Applier.build(configuration)) {
@@ -105,7 +114,7 @@ public class KafkaTest {
 
         configuration.put(Seeker.Configuration.TYPE, Seeker.Type.KAFKA.name());
         configuration.put(KafkaSeeker.Configuration.TOPIC, KafkaTest.TOPIC_NAME);
-        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG), KafkaTest.servicesControl.getURL());
+        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG), kafkaContainer.getURL());
         configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.GROUP_ID_CONFIG), KafkaTest.GROUP_ID);
 
         Metrics.build(configuration, null);
@@ -119,6 +128,7 @@ public class KafkaTest {
 
     @AfterClass
     public static void after() {
-        KafkaTest.servicesControl.close();
+        zookeeperContainer.stop();
+        kafkaContainer.stop();
     }
 }

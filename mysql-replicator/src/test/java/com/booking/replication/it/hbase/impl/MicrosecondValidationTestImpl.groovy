@@ -1,17 +1,18 @@
 package com.booking.replication.it.hbase.impl
 
 import com.booking.replication.applier.hbase.StorageConfig
-import com.booking.replication.augmenter.model.AugmenterModel;
-import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
 import com.booking.replication.applier.hbase.time.RowTimestampOrganizer
-import com.booking.replication.commons.services.ServicesControl
+import com.booking.replication.augmenter.model.AugmenterModel
+import com.booking.replication.commons.services.containers.TestContainer
+import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTestRunner
 import com.booking.replication.it.util.HBase
 import com.booking.replication.it.util.MySQL
 import com.fasterxml.jackson.databind.ObjectMapper
-
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.hbase.*
+import org.apache.hadoop.hbase.Cell
+import org.apache.hadoop.hbase.CellScanner
+import org.apache.hadoop.hbase.TableName
 import org.apache.hadoop.hbase.client.*
 import org.apache.hadoop.hbase.util.Bytes
 
@@ -51,17 +52,17 @@ class MicrosecondValidationTestImpl implements ReplicatorHBasePipelineIntegratio
         def expFirst = expectedIntVal.remove(0)
 
         // all should be equal except the last version
-        return(
-            retrievedIntVal
-                    .join("|")
-                    .equals(expectedIntVal.join("|"))
-            &&
-            (retFirst != expFirst)
+        return (
+                retrievedIntVal
+                        .join("|")
+                        .equals(expectedIntVal.join("|"))
+                        &&
+                        (retFirst != expFirst)
         )
     }
 
     @Override
-    void doAction(ServicesControl mysqlReplicant) {
+    void doAction(TestContainer mysqlReplicant) {
 
         // get handle
         def replicant = MySQL.getSqlHandle(
@@ -97,7 +98,7 @@ class MicrosecondValidationTestImpl implements ReplicatorHBasePipelineIntegratio
 
         def cap = RowTimestampOrganizer.TIMESTAMP_SPAN_MICROSECONDS + NR_ABOVE_MAX_VERSIONS + 1
 
-        for (int i=1; i < cap; i ++) {
+        for (int i = 1; i < cap; i++) {
             replicant.execute(sprintf(
                     "update %s set randomInt = %d, randomVarchar = 'c%s' %s", TABLE_NAME, i, i, where
             ))
@@ -113,15 +114,15 @@ class MicrosecondValidationTestImpl implements ReplicatorHBasePipelineIntegratio
         def range = (RowTimestampOrganizer.TIMESTAMP_SPAN_MICROSECONDS..0)
 
         def l = range.toList()
-        def r = range.toList().collect({ x -> "c${x}"})
+        def r = range.toList().collect({ x -> "c${x}" })
 
         // all should be equal except the last version
         l.remove(0)
         r.remove(0)
 
         return [
-            l.join("|"),
-            r.join("|")
+                l.join("|"),
+                r.join("|")
         ].join("|")
     }
 
@@ -149,11 +150,11 @@ class MicrosecondValidationTestImpl implements ReplicatorHBasePipelineIntegratio
             scan.setMaxVersions(1000)
             ResultScanner scanner = table.getScanner(scan)
             for (Result row : scanner) {
-                CellScanner cs =  row.cellScanner()
+                CellScanner cs = row.cellScanner()
                 while (cs.advance()) {
                     Cell cell = cs.current()
                     String rowKey = Bytes.toString(cell.getRow())
-                    String columnName =  Bytes.toString(cell.getQualifier())
+                    String columnName = Bytes.toString(cell.getQualifier())
 
                     if (rowKey != 'ee11cbb1;user;42') {
                         continue
@@ -161,8 +162,8 @@ class MicrosecondValidationTestImpl implements ReplicatorHBasePipelineIntegratio
 
                     if (columnName ==
                             AugmenterModel.Configuration.UUID_FIELD_NAME
-                         ||
-                         columnName ==
+                            ||
+                            columnName ==
                             AugmenterModel.Configuration.XID_FIELD_NAME) {
                         continue
                     }

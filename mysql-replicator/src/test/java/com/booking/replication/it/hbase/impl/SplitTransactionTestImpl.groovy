@@ -1,9 +1,8 @@
 package com.booking.replication.it.hbase.impl
 
 import com.booking.replication.applier.hbase.StorageConfig
-import com.booking.replication.augmenter.model.AugmenterModel
+import com.booking.replication.commons.services.containers.TestContainer
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
-import com.booking.replication.commons.services.ServicesControl
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTestRunner
 import com.booking.replication.it.util.HBase
 import com.booking.replication.it.util.MySQL
@@ -12,21 +11,17 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hbase.Cell
 import org.apache.hadoop.hbase.CellScanner
 import org.apache.hadoop.hbase.TableName
-import org.apache.hadoop.hbase.client.Connection
-import org.apache.hadoop.hbase.client.ConnectionFactory
-import org.apache.hadoop.hbase.client.Result
-import org.apache.hadoop.hbase.client.ResultScanner
-import org.apache.hadoop.hbase.client.Scan
-import org.apache.hadoop.hbase.client.Table
+import org.apache.hadoop.hbase.client.*
 import org.apache.hadoop.hbase.util.Bytes
 
+import java.time.Instant
 
 /**
  * Implements test for microsecond correctness for a case of a
  * 'split' transaction which begins in one second and commits
  * during the next second
  */
-class SplitTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest  {
+class SplitTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper()
 
@@ -40,7 +35,7 @@ class SplitTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest
     }
 
     @Override
-    void doAction(ServicesControl mysqlReplicant) {
+    void doAction(TestContainer mysqlReplicant) {
 
         // get handle
         def replicantMySQLHandle = MySQL.getSqlHandle(
@@ -71,18 +66,18 @@ class SplitTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest
         long firstSecond = sleepUntilAndGetNextSecond()
 
         // commit 10 transactions -> bumps internal transaction ordinal 10 times
-        for (int i=1; i < 10; i ++) {
+        for (int i = 1; i < 10; i++) {
             // INSERT
             replicantMySQLHandle.execute(sprintf(
-                    "insert into %s %s values ('user',${i},${i*i},'xx')", tableName, columns
+                    "insert into %s %s values ('user',${i},${i * i},'xx')", tableName, columns
             ))
             replicantMySQLHandle.commit()
         }
 
-        if (firstSecond == java.time.Instant.now().getEpochSecond() ) {
+        if (firstSecond == Instant.now().getEpochSecond()) {
             System.out.println("Still at first second. Beginning long transaction")
         } else {
-            System.out.println("Moved to next second before long transaction started" );
+            System.out.println("Moved to next second before long transaction started");
             // TODO: handle this case
         }
 
@@ -113,7 +108,7 @@ class SplitTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest
 
         replicantMySQLHandle.commit()
 
-        if (nextSecond == java.time.Instant.now().getEpochSecond() ) {
+        if (nextSecond == Instant.now().getEpochSecond()) {
             System.out.println("Timeline consistent, all transaction committed by the end of nextSecond")
         }
 
@@ -122,12 +117,12 @@ class SplitTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest
     }
 
     long sleepUntilAndGetNextSecond() {
-        long current = java.time.Instant.now().getEpochSecond();
-        boolean  next = false;
+        long current = Instant.now().getEpochSecond();
+        boolean next = false;
 
         while (!next) {
             sleep(10)
-            long sec = java.time.Instant.now().getEpochSecond();
+            long sec = Instant.now().getEpochSecond();
             if (sec > current) {
                 current = sec
                 next = true;
@@ -139,7 +134,7 @@ class SplitTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest
     @Override
     Object getExpectedState() {
         // expected ordering of values when sorted by microseconds timestamp
-        return ["1","20","30","443"]
+        return ["1", "20", "30", "443"]
     }
 
     @Override
@@ -161,13 +156,13 @@ class SplitTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest
             ResultScanner scanner = table.getScanner(scan)
             for (Result row : scanner) {
 
-                CellScanner cs =  row.cellScanner()
+                CellScanner cs = row.cellScanner()
                 while (cs.advance()) {
                     Cell cell = cs.current()
 
                     String rowKey = Bytes.toString(cell.getRow())
 
-                    String columnName =  Bytes.toString(cell.getQualifier())
+                    String columnName = Bytes.toString(cell.getQualifier())
 
                     if (columnName != "randomInt") {
                         continue
@@ -229,6 +224,6 @@ class SplitTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest
         String expJSON = MAPPER.writeValueAsString(exp)
         String actJSON = MAPPER.writeValueAsString(act)
 
-        expJSON.equals(actJSON)
+        expJSON == actJSON
     }
 }

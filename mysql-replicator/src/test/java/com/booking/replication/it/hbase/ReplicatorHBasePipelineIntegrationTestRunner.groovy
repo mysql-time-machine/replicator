@@ -12,79 +12,100 @@ import com.booking.replication.augmenter.AugmenterContext
 import com.booking.replication.augmenter.AugmenterFilter
 import com.booking.replication.checkpoint.CheckpointApplier
 import com.booking.replication.commons.conf.MySQLConfiguration
-import com.booking.replication.commons.services.ServicesControl
-import com.booking.replication.commons.services.ServicesProvider
+import com.booking.replication.commons.services.containers.hbase.HBaseContainer
+import com.booking.replication.commons.services.containers.hbase.HBaseContainerProvider
+import com.booking.replication.commons.services.containers.mysql.MySQLContainer
+import com.booking.replication.commons.services.containers.mysql.MySQLContainerProvider
+import com.booking.replication.commons.services.containers.zookeeper.ZookeeperContainer
+import com.booking.replication.commons.services.containers.zookeeper.ZookeeperContainerProvider
 import com.booking.replication.coordinator.Coordinator
 import com.booking.replication.coordinator.ZookeeperCoordinator
-import com.booking.replication.it.hbase.impl.MicrosecondValidationTestImpl
-import com.booking.replication.it.hbase.impl.LongTransactionTestImpl
-import com.booking.replication.it.hbase.impl.PayloadTableTestImpl
-import com.booking.replication.it.hbase.impl.SplitTransactionTestImpl
-import com.booking.replication.it.hbase.impl.TableNameMergeFilterTestImpl
 import com.booking.replication.it.hbase.impl.TableWhiteListTest
 import com.booking.replication.it.util.HBase
 import com.booking.replication.supplier.Supplier
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier
-import com.booking.replication.it.hbase.impl.TransmitInsertsTestImpl
 import com.mysql.jdbc.Driver
 import org.apache.commons.dbcp2.BasicDataSource
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hbase.*
 import org.apache.hadoop.hbase.client.*
 import org.apache.hadoop.hbase.util.Bytes
-import org.testcontainers.containers.Network
-
+import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.apache.logging.log4j.LogManager;
+import org.testcontainers.containers.Network
+import spock.lang.Shared
+import spock.lang.Specification
+import spock.lang.Unroll
 
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.sql.Statement
 import java.util.concurrent.TimeUnit
 
-import spock.lang.Shared
-import spock.lang.Specification
-import spock.lang.Unroll
-
 class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
-    @Shared private static final Logger LOG = LogManager.getLogger(ReplicatorHBasePipelineIntegrationTestRunner.class)
+    @Shared
+    private static final Logger LOG = LogManager.getLogger(ReplicatorHBasePipelineIntegrationTestRunner.class)
 
     // TODO: add integration test for buffer size limit exceeded (rewind mode)
-    @Shared private static final int AUGMENTER_TRANSACTION_BUFFER_SIZE_LIMIT = 100
+    @Shared
+    private static final int AUGMENTER_TRANSACTION_BUFFER_SIZE_LIMIT = 100
 
-    @Shared private static final int NUMBER_OF_THREADS = 3
-    @Shared private static final int NUMBER_OF_TASKS = 3
+    @Shared
+    private static final int NUMBER_OF_THREADS = 3
+    @Shared
+    private static final int NUMBER_OF_TASKS = 3
 
-    @Shared private static final String ZOOKEEPER_LEADERSHIP_PATH = "/replicator/leadership"
-    @Shared private static final String ZOOKEEPER_CHECKPOINT_PATH = "/replicator/checkpoint"
+    @Shared
+    private static final String ZOOKEEPER_LEADERSHIP_PATH = "/replicator/leadership"
+    @Shared
+    private static final String ZOOKEEPER_CHECKPOINT_PATH = "/replicator/checkpoint"
 
-    @Shared private static final String CHECKPOINT_DEFAULT = "{\"timestamp\": 0, \"serverId\": 1, \"gtid\": null, \"binlog\": {\"filename\": \"binlog.000001\", \"position\": 4}}"
+    @Shared
+    private static final String CHECKPOINT_DEFAULT = "{\"timestamp\": 0, \"serverId\": 1, \"gtid\": null, \"binlog\": {\"filename\": \"binlog.000001\", \"position\": 4}}"
 
-    @Shared private static final String MYSQL_SCHEMA = "replicator"
-    @Shared private static final String MYSQL_ROOT_USERNAME = "root"
-    @Shared private static final String MYSQL_USERNAME = "replicator"
-    @Shared private static final String MYSQL_PASSWORD = "replicator"
-    @Shared private static final String MYSQL_ACTIVE_SCHEMA = "active_schema"
-    @Shared private static final String MYSQL_INIT_SCRIPT = "mysql.init.sql"
-    @Shared private static final String MYSQL_CONF_FILE = "my.cnf"
+    @Shared
+    private static final String MYSQL_SCHEMA = "replicator"
+    @Shared
+    private static final String MYSQL_ROOT_USERNAME = "root"
+    @Shared
+    private static final String MYSQL_USERNAME = "replicator"
+    @Shared
+    private static final String MYSQL_PASSWORD = "replicator"
+    @Shared
+    private static final String MYSQL_ACTIVE_SCHEMA = "active_schema"
+    @Shared
+    private static final String MYSQL_INIT_SCRIPT = "mysql.init.sql"
+    @Shared
+    private static final String MYSQL_CONF_FILE = "my.cnf"
 
-    @Shared private static final String ACTIVE_SCHEMA_INIT_SCRIPT = "active_schema.init.sql"
+    @Shared
+    private static final String ACTIVE_SCHEMA_INIT_SCRIPT = "active_schema.init.sql"
 
-    @Shared public static final String AUGMENTER_FILTER_TYPE = "TABLE_MERGE_PATTERN"
-    @Shared public static final String AUGMENTER_FILTER_CONFIGURATION = "([_][12]\\d{3}(0[1-9]|1[0-2]))"
+    @Shared
+    public static final String AUGMENTER_FILTER_TYPE = "TABLE_MERGE_PATTERN"
+    @Shared
+    public static final String AUGMENTER_FILTER_CONFIGURATION = "([_][12]\\d{3}(0[1-9]|1[0-2]))"
 
-    @Shared private static final String HBASE_COLUMN_FAMILY_NAME = "d"
-    @Shared public static final String HBASE_TEST_PAYLOAD_TABLE_NAME = "tbl_payload_context"
+    @Shared
+    private static final String HBASE_COLUMN_FAMILY_NAME = "d"
+    @Shared
+    public static final String HBASE_TEST_PAYLOAD_TABLE_NAME = "tbl_payload_context"
 
     // HBase/BigTable specific config
-    @Shared public static final String HBASE_TARGET_NAMESPACE = getTargetNamespace()
-    @Shared public static final String HBASE_SCHEMA_HISTORY_NAMESPACE = getSchemaNamespace()
-    @Shared public static final String STORAGE_TYPE  = getStorageType()
-    @Shared public static final String BIGTABLE_PROJECT = getBigTableProject()
-    @Shared public static final String  BIGTABLE_INSTANCE = getBigTableInstance()
+    @Shared
+    public static final String HBASE_TARGET_NAMESPACE = getTargetNamespace()
+    @Shared
+    public static final String HBASE_SCHEMA_HISTORY_NAMESPACE = getSchemaNamespace()
+    @Shared
+    public static final String STORAGE_TYPE = getStorageType()
+    @Shared
+    public static final String BIGTABLE_PROJECT = getBigTableProject()
+    @Shared
+    public static final String BIGTABLE_INSTANCE = getBigTableInstance()
 
-    @Shared private TESTS = [
+    @Shared
+    private TESTS = [
             new TableWhiteListTest()
 //            new TableNameMergeFilterTestImpl(),
 //            new TransmitInsertsTestImpl(),
@@ -94,12 +115,15 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 //            new SplitTransactionTestImpl()
     ]
 
-    @Shared ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS)
+    @Shared
+    Network network = Network.newNetwork()
 
-    @Shared Network network = Network.newNetwork()
+    @Shared
+    ZookeeperContainer zookeeperContainer = ZookeeperContainerProvider
+            .startWithNetwork(network, "replicatorZK")
 
-    @Shared  ServicesControl zookeeper = servicesProvider.startZookeeper(network, "replicatorZK")
-    @Shared  ServicesControl mysqlBinaryLog = servicesProvider.startMySQL(
+    @Shared
+    MySQLContainer mySQLBinaryLogContainer = MySQLContainerProvider.startWithMySQLConfiguration(
             new MySQLConfiguration(
                     MYSQL_SCHEMA,
                     MYSQL_USERNAME,
@@ -110,7 +134,8 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
                     null
             )
     )
-    @Shared  ServicesControl mysqlActiveSchema = servicesProvider.startMySQL(
+    @Shared
+    MySQLContainer mySQLActiveSchemaContainer = MySQLContainerProvider.startWithMySQLConfiguration(
             new MySQLConfiguration(
                     MYSQL_ACTIVE_SCHEMA,
                     MYSQL_USERNAME,
@@ -121,39 +146,56 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
                     null
             )
     )
-    @Shared ServicesControl hbase = servicesProvider.startHbase()
+    @Shared
+    HBaseContainer hbaseContainer = HBaseContainerProvider.startWithNewNetworkAndZookeeper(zookeeperContainer)
 
-    @Shared  Replicator replicator
+    @Shared
+    Replicator replicator
 
     static String getStorageType() {
         String storage = System.getProperty("sink")
-        if (storage != null &&  storage.equals("bigtable")) { return "BIGTABLE" }
-        else { return "HBASE"}
+        if (storage != null && storage == "bigtable") {
+            return "BIGTABLE"
+        } else {
+            return "HBASE"
+        }
     }
 
     static String getTargetNamespace() {
         String storage = System.getProperty("sink")
-        if (storage != null &&  storage.equals("bigtable")) { return "" }
-        else { return "replicator_test"}
+        if (storage != null && storage == "bigtable") {
+            return ""
+        } else {
+            return "replicator_test"
+        }
     }
 
     static String getSchemaNamespace() {
         String storage = System.getProperty("sink")
-        if (storage != null &&  storage.equals("bigtable")) { return "" }
-        else { return "schema_history"}
+        if (storage != null && storage == "bigtable") {
+            return ""
+        } else {
+            return "schema_history"
+        }
 
     }
 
     static String getBigTableProject() {
         String projectID = System.getProperty("bigtable.projectID")
-        if (projectID != null && !projectID.equals("")) { return projectID }
-        else { return ""}
+        if (projectID != null && projectID != "") {
+            return projectID
+        } else {
+            return ""
+        }
     }
 
     static String getBigTableInstance() {
         String instanceID = System.getProperty("bigtable.instanceID")
-        if (instanceID != null && !instanceID.equals("")) { return instanceID }
-        else { return ""}
+        if (instanceID != null && instanceID != "") {
+            return instanceID
+        } else {
+            return ""
+        }
     }
 
     void setupSpec() throws Exception {
@@ -175,10 +217,10 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         // stop
         stopReplicator(replicator)
 
-        hbase.close()
-        mysqlBinaryLog.close()
-        mysqlActiveSchema.close()
-        zookeeper.close()
+        hbaseContainer.stop()
+        mySQLBinaryLogContainer.stop()
+        mySQLActiveSchemaContainer.stop()
+        zookeeperContainer.stop()
 
         LOG.info("pipeline stopped")
 
@@ -192,17 +234,17 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
         where:
         testName << TESTS.collect({ test ->
-            test.doAction(mysqlBinaryLog)
+            test.doAction(mySQLBinaryLogContainer)
             sleep(60000)
-            ( (HBaseApplier) replicator.getApplier() ).forceFlushAll()
+            ((HBaseApplier) replicator.getApplier()).forceFlushAll()
             test.testName()
         })
-        expected << TESTS.collect({ test -> test.getExpectedState()})
-        received << TESTS.collect({ test -> test.getActualState()})
+        expected << TESTS.collect({ test -> test.getExpectedState() })
+        received << TESTS.collect({ test -> test.getActualState() })
 
     }
 
-    private stopReplicator(Replicator replicator) {
+    private static stopReplicator(Replicator replicator) {
         replicator.stop()
     }
 
@@ -243,13 +285,9 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     }
 
     private boolean activeSchemaIsReady() {
-
         Map<String, Object> configuration = getConfiguration()
-
         Object hostname = configuration.get(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME)
-
         Object port = configuration.getOrDefault(ActiveSchemaManager.Configuration.MYSQL_PORT, "3306")
-
         Object schema = configuration.get(ActiveSchemaManager.Configuration.MYSQL_SCHEMA)
         Object username = configuration.get(ActiveSchemaManager.Configuration.MYSQL_USERNAME)
         Object password = configuration.get(ActiveSchemaManager.Configuration.MYSQL_PASSWORD)
@@ -272,13 +310,13 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
                 return true
             }
 
-        } catch (SQLException exception) {
+        } catch (SQLException ignored) {
             return false
         }
         return false
     }
 
-    private BasicDataSource getDataSource(String driverClass, String hostname, int port, String schema, String username, String password) {
+    private static BasicDataSource getDataSource(String driverClass, String hostname, int port, String schema, String username, String password) {
         BasicDataSource dataSource = new BasicDataSource()
         dataSource.setUrl(String.format("jdbc:mysql://%s:%d/%s", hostname, port, schema))
         dataSource.setUsername(username)
@@ -302,7 +340,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
             Admin admin = connection.getAdmin()
 
-            if (STORAGE_TYPE.equals("HBASE")) {
+            if (STORAGE_TYPE == "HBASE") {
 
                 LOG.info("storage type => " + STORAGE_TYPE)
 
@@ -340,7 +378,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
             }
 
             // write test data
-            HashMap<String,HashMap<String, HashMap<Long, String>>> data = new HashMap<>()
+            HashMap<String, HashMap<String, HashMap<Long, String>>> data = new HashMap<>()
             Table table = connection.getTable(TableName.valueOf(Bytes.toBytes(sanityCheckTableName)))
             long timestamp = System.currentTimeMillis()
 
@@ -375,18 +413,16 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
             scan.setMaxVersions(1000)
             ResultScanner scanner = table.getScanner(scan)
             for (Result row : scanner) {
-
-                for (Cell version: row.getColumnCells(Bytes.toBytes(HBASE_COLUMN_FAMILY_NAME), Bytes.toBytes("c1"))) {
-
-                    String retrievedRowKey    = Bytes.toString(row.getRow())
-                    String retrievedValue     = Bytes.toString(version.getValue())
-                    Long   retrievedTimestamp = version.getTimestamp()
+                for (Cell version : row.getColumnCells(Bytes.toBytes(HBASE_COLUMN_FAMILY_NAME), Bytes.toBytes("c1"))) {
+                    String retrievedRowKey = Bytes.toString(row.getRow())
+                    String retrievedValue = Bytes.toString(CellUtil.cloneValue(version))
+                    Long retrievedTimestamp = version.getTimestamp()
 
                     if (!data.get(retrievedRowKey).get("c1").containsKey(retrievedTimestamp)) {
                         passed = false
                         break
                     }
-                    if (!data.get(retrievedRowKey).get("c1").get(retrievedTimestamp).equals(retrievedValue)) {
+                    if (data.get(retrievedRowKey).get("c1").get(retrievedTimestamp) != retrievedValue) {
                         passed = false
                         break
                     }
@@ -411,7 +447,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         for (int i = 0; i < targetStringLength; i++) {
             Number randomLimitedInt = leftLimit + ((Number)
                     (random.nextFloat() * (rightLimit - leftLimit + 1)))
-            buffer.append((char) randomLimitedInt)
+            buffer.append(randomLimitedInt as char)
         }
         String generatedString = buffer.toString()
 
@@ -419,7 +455,6 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     }
 
     private Map<String, Object> getConfiguration() {
-
         Map<String, Object> configuration = new HashMap<>()
 
         // Streams
@@ -431,21 +466,21 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         configuration.put(Replicator.Configuration.CHECKPOINT_DEFAULT, CHECKPOINT_DEFAULT)
         configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name())
         configuration.put(Coordinator.Configuration.TYPE, Coordinator.Type.ZOOKEEPER.name())
-        configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, zookeeper.getURL())
+        configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, zookeeperContainer.getURL())
         configuration.put(ZookeeperCoordinator.Configuration.LEADERSHIP_PATH, ZOOKEEPER_LEADERSHIP_PATH)
 
         // Supplier Configuration
         configuration.put(Supplier.Configuration.TYPE, Supplier.Type.BINLOG.name())
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_HOSTNAME, Collections.singletonList(mysqlBinaryLog.getHost()))
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_PORT, String.valueOf(mysqlBinaryLog.getPort()))
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_HOSTNAME, Collections.singletonList(mySQLBinaryLogContainer.getHost()))
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_PORT, String.valueOf(mySQLBinaryLogContainer.getPort()))
         configuration.put(BinaryLogSupplier.Configuration.MYSQL_SCHEMA, MYSQL_SCHEMA)
         configuration.put(BinaryLogSupplier.Configuration.MYSQL_USERNAME, MYSQL_ROOT_USERNAME)
         configuration.put(BinaryLogSupplier.Configuration.MYSQL_PASSWORD, MYSQL_PASSWORD)
 
         // SchemaManager Manager Configuration
         configuration.put(Augmenter.Configuration.SCHEMA_TYPE, Augmenter.SchemaType.ACTIVE.name())
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, mysqlActiveSchema.getHost())
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(mysqlActiveSchema.getPort()))
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, mySQLActiveSchemaContainer.getHost())
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(mySQLActiveSchemaContainer.getPort()))
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_SCHEMA, MYSQL_ACTIVE_SCHEMA)
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, MYSQL_ROOT_USERNAME)
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PASSWORD, MYSQL_PASSWORD)
@@ -468,7 +503,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         configuration.put(HBaseApplier.Configuration.HBASE_ZOOKEEPER_QUORUM, "localhost:2181")
         configuration.put(HBaseApplier.Configuration.REPLICATED_SCHEMA_NAME, MYSQL_SCHEMA)
 
-        configuration.put(HBaseApplier.Configuration.TARGET_NAMESPACE,  HBASE_TARGET_NAMESPACE)
+        configuration.put(HBaseApplier.Configuration.TARGET_NAMESPACE, HBASE_TARGET_NAMESPACE)
         configuration.put(HBaseApplier.Configuration.SCHEMA_HISTORY_NAMESPACE, HBASE_SCHEMA_HISTORY_NAMESPACE)
 
         configuration.put(HBaseApplier.Configuration.INITIAL_SNAPSHOT_MODE, false)

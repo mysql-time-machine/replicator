@@ -2,23 +2,22 @@ package com.booking.replication.commons.util;
 
 import org.junit.Test;
 
-import java.util.HashMap;
-
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 public class ReplicatorConfigTest {
+
     @Test
-    public void get() throws Exception {
-        ReplicatorConfig myMap = new ReplicatorConfig();
+    public void get() {
+        final ReplicatorConfig<String, String> myMap = new ReplicatorConfig<>();
         myMap.put("one", "foo");
-        Object one = myMap.get("one");
+        final Object one = myMap.get("one");
         assertEquals("foo", one);
     }
 
     @Test(expected = NullPointerException.class)
-    public void getWithContraint() throws Exception {
-        ReplicatorConfig<String, Object> myMap = new ReplicatorConfig<>();
-        Object one = myMap.get("one", true);
+    public void getWithConstraint() {
+        final ReplicatorConfig<String, Object> myMap = new ReplicatorConfig<>();
+        myMap.get("one", true);
     }
 
 }

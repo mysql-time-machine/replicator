@@ -5,10 +5,11 @@ import java.util.Objects;
 
 public class ReplicatorConfig<K, V> extends HashMap<K, V> {
 
-    public V get(Object k, boolean required){
-        V v = super.get(k);
-        if(required)
-            Objects.requireNonNull(v);
-        return v;
+    public V get(Object key, boolean required) {
+        V value = super.get(key);
+        if (required) {
+            Objects.requireNonNull(value);
+        }
+        return value;
     }
 }

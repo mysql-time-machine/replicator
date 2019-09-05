@@ -1,17 +1,17 @@
 package com.booking.replication.it.util
 
-import com.booking.replication.commons.services.ServicesControl
+import com.booking.replication.commons.services.containers.TestContainer
 import groovy.sql.Sql
 
 class MySQL {
 
-     static Sql getSqlHandle(
+    static Sql getSqlHandle(
             boolean autoCommit,
             String schemaName,
-            ServicesControl mysqlReplicant
-        ) {
+            TestContainer mysqlReplicant
+    ) {
 
-        def urlReplicant =  new StringBuilder()
+        def urlReplicant = new StringBuilder()
                 .append("jdbc:mysql://")
                 .append(mysqlReplicant.getHost())
                 .append(":")

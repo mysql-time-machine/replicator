@@ -1,6 +1,6 @@
 package com.booking.replication.it.hbase;
 
-import com.booking.replication.commons.services.ServicesControl;
+import com.booking.replication.commons.services.containers.TestContainer;
 
 import java.io.IOException;
 
@@ -8,7 +8,7 @@ public interface ReplicatorHBasePipelineIntegrationTest {
 
     String testName();
 
-    void doAction(ServicesControl service);
+    void doAction(TestContainer container);
 
     Object getExpectedState();
 

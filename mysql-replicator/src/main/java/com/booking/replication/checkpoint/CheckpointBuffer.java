@@ -20,16 +20,21 @@ public class CheckpointBuffer {
 
     public void writeToBuffer(Checkpoint checkpoint) {
         bufferWriteLock.lock();
-        writableBuffer.add(checkpoint);
-        bufferWriteLock.unlock();
-        return;
+        try {
+            writableBuffer.add(checkpoint);
+        } finally {
+            bufferWriteLock.unlock();
+        }
     }
 
     public List<Checkpoint> getBufferedSoFar() {
         bufferWriteLock.lock();
-        readableBuffer = writableBuffer;
-        writableBuffer = new ArrayList<>();
-        bufferWriteLock.unlock();
+        try {
+            readableBuffer = writableBuffer;
+            writableBuffer = new ArrayList<>();
+        } finally {
+            bufferWriteLock.unlock();
+        }
         return readableBuffer;
     }
 

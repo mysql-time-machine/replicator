@@ -67,17 +67,17 @@ public class ZookeeperCoordinatorTest {
         Thread.sleep(2000L);
 
         Checkpoint checkpoint1 = new Checkpoint(
-                System.currentTimeMillis(),
-                ThreadLocalRandom.current().nextLong(),
-                new GTID(
-                        GTIDType.PSEUDO,
-                        UUID.randomUUID().toString(),
-                        Byte.MAX_VALUE
-                ),
-                new Binlog(
-                        UUID.randomUUID().toString(),
-                        ThreadLocalRandom.current().nextLong()
-                )
+            System.currentTimeMillis(),
+            ThreadLocalRandom.current().nextLong(),
+            new GTID(
+                GTIDType.PSEUDO,
+                UUID.randomUUID().toString(),
+                Byte.MAX_VALUE
+            ),
+            new Binlog(
+                UUID.randomUUID().toString(),
+                ThreadLocalRandom.current().nextLong()
+            )
         );
 
         ZookeeperCoordinatorTest.coordinator1.saveCheckpoint("/checkpoint.coordinator", checkpoint1);
@@ -98,4 +98,3 @@ public class ZookeeperCoordinatorTest {
         assertEquals(0, ZookeeperCoordinatorTest.count.get());
     }
 }
-

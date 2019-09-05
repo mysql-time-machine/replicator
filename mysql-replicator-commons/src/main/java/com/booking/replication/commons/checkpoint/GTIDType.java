@@ -14,8 +14,8 @@ public enum GTIDType implements Serializable, Comparator<GTID> {
             for (int index = 0; index < transactions1.length && index < transactions2.length; index++) {
                 if (!transactions1[index].equals(transactions2[index])) {
                     return Long.compare(
-                            Long.parseLong(transactions1[index]),
-                            Long.parseLong(transactions2[index])
+                        Long.parseLong(transactions1[index]),
+                        Long.parseLong(transactions2[index])
                     );
                 }
             }
@@ -49,14 +49,14 @@ public enum GTIDType implements Serializable, Comparator<GTID> {
             if (gtid1.getValue() != null && gtid2.getValue() != null) {
                 return this.compareValue(gtid1.getValue(), gtid2.getValue());
             } else if (gtid1.getValue() != null) {
-                return Integer.MAX_VALUE;
+                return 1;
             } else if (gtid2.getValue() != null) {
-                return Integer.MIN_VALUE;
+                return -1;
             } else {
                 return 0;
             }
         } else {
-            return Integer.MAX_VALUE;
+            return 1;
         }
     }
 

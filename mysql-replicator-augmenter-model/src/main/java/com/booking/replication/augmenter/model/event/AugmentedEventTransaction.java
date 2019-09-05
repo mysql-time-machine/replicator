@@ -1,6 +1,7 @@
 package com.booking.replication.augmenter.model.event;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 @SuppressWarnings("unused")
 public class AugmentedEventTransaction implements Serializable, Comparable<AugmentedEventTransaction> {
@@ -35,11 +36,16 @@ public class AugmentedEventTransaction implements Serializable, Comparable<Augme
 
     @Override
     public boolean equals(Object object) {
-        if (AugmentedEventTransaction.class.isInstance(object)) {
-            return this.compareTo(AugmentedEventTransaction.class.cast(object)) == 0;
+        if (object instanceof AugmentedEventTransaction) {
+            return this.compareTo((AugmentedEventTransaction) object) == 0;
         } else {
             return false;
         }
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(commitTimestamp, identifier, xxid, transactionSequenceNumber);
     }
 
     @Override

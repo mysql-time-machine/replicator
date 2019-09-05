@@ -1,6 +1,5 @@
 package com.booking.replication.applier.schema.registry;
 
-import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaMetadata;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.RestService;
@@ -32,7 +31,7 @@ public class BCachedSchemaRegistryClient implements SchemaRegistryClient {
     private final Map<String, Map<Schema, Integer>> schemaCache;
     private final Map<String, Map<Integer, Schema>> idCache;
     private final Map<String, Map<Schema, Integer>> versionCache;
-    public static final Map<String, String> DEFAULT_REQUEST_PROPERTIES = new HashMap();
+    private final Map<String, String> defaultRequestProperties = Collections.singletonMap("Content-Type", "application/vnd.schemaregistry.v1+json");
 
     public BCachedSchemaRegistryClient(String baseUrl, int identityMapCapacity) {
         this(new RestService(baseUrl), identityMapCapacity);
@@ -43,7 +42,7 @@ public class BCachedSchemaRegistryClient implements SchemaRegistryClient {
     }
 
     public BCachedSchemaRegistryClient(RestService restService, int identityMapCapacity) {
-        this((RestService)restService, identityMapCapacity, (Map)null);
+        this(restService, identityMapCapacity, null);
     }
 
     public BCachedSchemaRegistryClient(String baseUrl, int identityMapCapacity, Map<String, ?> originals) {
@@ -60,19 +59,18 @@ public class BCachedSchemaRegistryClient implements SchemaRegistryClient {
         this.idCache = new HashMap<>();
         this.versionCache = new HashMap<>();
         this.restService = restService;
-        this.idCache.put((String) null, new HashMap<>());
+        this.idCache.put(null, new HashMap<>());
         this.configureRestService(configs);
     }
 
     private void configureRestService(Map<String, ?> configs) {
-        if(configs != null) {
-            String credentialSourceConfig = (String)configs.get("basic.auth.credentials.source");
-            if(credentialSourceConfig != null && !credentialSourceConfig.isEmpty()) {
+        if (configs != null) {
+            String credentialSourceConfig = (String) configs.get("basic.auth.credentials.source");
+            if (credentialSourceConfig != null && !credentialSourceConfig.isEmpty()) {
                 BasicAuthCredentialProvider basicAuthCredentialProvider = BasicAuthCredentialProviderFactory.getBasicAuthCredentialProvider(credentialSourceConfig, configs);
                 this.restService.setBasicAuthCredentialProvider(basicAuthCredentialProvider);
             }
         }
-
     }
 
     private int registerAndGetId(String subject, Schema schema) throws IOException, RestClientException {
@@ -86,31 +84,31 @@ public class BCachedSchemaRegistryClient implements SchemaRegistryClient {
 
     private int getVersionFromRegistry(String subject, Schema schema) throws IOException, RestClientException {
         io.confluent.kafka.schemaregistry.client.rest.entities.Schema response = this.restService.lookUpSubjectVersion(schema.toString(), subject, true);
-        return response.getVersion().intValue();
+        return response.getVersion();
     }
 
     private int getIdFromRegistry(String subject, Schema schema) throws IOException, RestClientException {
         io.confluent.kafka.schemaregistry.client.rest.entities.Schema response = this.restService.lookUpSubjectVersion(schema.toString(), subject, false);
-        return response.getId().intValue();
+        return response.getId();
     }
 
     public synchronized int register(String subject, Schema schema) throws IOException, RestClientException {
         Map<Schema, Integer> schemaIdMap;
-        if(this.schemaCache.containsKey(subject)) {
-            schemaIdMap = (Map<Schema, Integer>) this.schemaCache.get(subject);
+        if (this.schemaCache.containsKey(subject)) {
+            schemaIdMap = this.schemaCache.get(subject);
         } else {
-            schemaIdMap = new HashMap<Schema, Integer>();
+            schemaIdMap = new HashMap<>();
             this.schemaCache.put(subject, schemaIdMap);
         }
 
-        if(((Map)schemaIdMap).containsKey(schema)) {
-            return ((Integer)((Map)schemaIdMap).get(schema)).intValue();
-        } else if(((Map)schemaIdMap).size() >= this.identityMapCapacity) {
+        if (schemaIdMap.containsKey(schema)) {
+            return (Integer) ((Map) schemaIdMap).get(schema);
+        } else if (schemaIdMap.size() >= this.identityMapCapacity) {
             throw new IllegalStateException("Too many schema objects created for " + subject + "!");
         } else {
             int id = this.registerAndGetId(subject, schema);
-            ((Map)schemaIdMap).put(schema, Integer.valueOf(id));
-            ((Map)this.idCache.get((Object)null)).put(Integer.valueOf(id), schema);
+            schemaIdMap.put(schema, id);
+            this.idCache.get(null).put(id, schema);
             return id;
         }
     }
@@ -120,7 +118,7 @@ public class BCachedSchemaRegistryClient implements SchemaRegistryClient {
     }
 
     public synchronized Schema getById(int id) throws IOException, RestClientException {
-        return this.getBySubjectAndId((String)null, id);
+        return this.getBySubjectAndId(null, id);
     }
 
     public Schema getBySubjectAndID(String subject, int id) throws IOException, RestClientException {
@@ -129,15 +127,15 @@ public class BCachedSchemaRegistryClient implements SchemaRegistryClient {
 
     public synchronized Schema getBySubjectAndId(String subject, int id) throws IOException, RestClientException {
         Map<Integer, Schema> idSchemaMap;
-        if(this.idCache.containsKey(subject)) {
-            idSchemaMap = (Map<Integer, Schema>)this.idCache.get(subject);
+        if (this.idCache.containsKey(subject)) {
+            idSchemaMap = this.idCache.get(subject);
         } else {
-            idSchemaMap = new HashMap<Integer, Schema>();
+            idSchemaMap = new HashMap<>();
             this.idCache.put(subject, idSchemaMap);
         }
 
-        if(idSchemaMap.containsKey(Integer.valueOf(id))) {
-            return (Schema)((Map)idSchemaMap).get(Integer.valueOf(id));
+        if (idSchemaMap.containsKey(id)) {
+            return (Schema) ((Map) idSchemaMap).get(id);
         } else {
             Schema schema = this.getSchemaByIdFromRegistry(id);
             idSchemaMap.put(id, schema);
@@ -147,35 +145,35 @@ public class BCachedSchemaRegistryClient implements SchemaRegistryClient {
 
     public SchemaMetadata getSchemaMetadata(String subject, int version) throws IOException, RestClientException {
         io.confluent.kafka.schemaregistry.client.rest.entities.Schema response = this.restService.getVersion(subject, version);
-        int id = response.getId().intValue();
+        int id = response.getId();
         String schema = response.getSchema();
         return new SchemaMetadata(id, version, schema);
     }
 
     public synchronized SchemaMetadata getLatestSchemaMetadata(String subject) throws IOException, RestClientException {
         io.confluent.kafka.schemaregistry.client.rest.entities.Schema response = this.restService.getLatestVersion(subject);
-        int id = response.getId().intValue();
-        int version = response.getVersion().intValue();
+        int id = response.getId();
+        int version = response.getVersion();
         String schema = response.getSchema();
         return new SchemaMetadata(id, version, schema);
     }
 
     public synchronized int getVersion(String subject, Schema schema) throws IOException, RestClientException {
         Map<Schema, Integer> schemaVersionMap;
-        if(this.versionCache.containsKey(subject)) {
-            schemaVersionMap = (Map)this.versionCache.get(subject);
+        if (this.versionCache.containsKey(subject)) {
+            schemaVersionMap = this.versionCache.get(subject);
         } else {
-            schemaVersionMap = new IdentityHashMap();
+            schemaVersionMap = new IdentityHashMap<>();
             this.versionCache.put(subject, schemaVersionMap);
         }
 
-        if(((Map)schemaVersionMap).containsKey(schema)) {
-            return ((Integer)((Map)schemaVersionMap).get(schema)).intValue();
-        } else if(((Map)schemaVersionMap).size() >= this.identityMapCapacity) {
+        if (schemaVersionMap.containsKey(schema)) {
+            return (Integer) ((Map) schemaVersionMap).get(schema);
+        } else if (schemaVersionMap.size() >= this.identityMapCapacity) {
             throw new IllegalStateException("Too many schema objects created for " + subject + "!");
         } else {
             int version = this.getVersionFromRegistry(subject, schema);
-            ((Map)schemaVersionMap).put(schema, Integer.valueOf(version));
+            schemaVersionMap.put(schema, version);
             return version;
         }
     }
@@ -186,27 +184,27 @@ public class BCachedSchemaRegistryClient implements SchemaRegistryClient {
 
     public synchronized int getId(String subject, Schema schema) throws IOException, RestClientException {
         Map<Schema, Integer> schemaIdMap;
-        if(this.schemaCache.containsKey(subject)) {
-            schemaIdMap = (Map)this.schemaCache.get(subject);
+        if (this.schemaCache.containsKey(subject)) {
+            schemaIdMap = this.schemaCache.get(subject);
         } else {
-            schemaIdMap = new HashMap<Schema, Integer>();
+            schemaIdMap = new HashMap<>();
             this.schemaCache.put(subject, schemaIdMap);
         }
 
-        if(((Map)schemaIdMap).containsKey(schema)) {
-            return ((Integer)((Map)schemaIdMap).get(schema)).intValue();
-        } else if(((Map)schemaIdMap).size() >= this.identityMapCapacity) {
+        if (schemaIdMap.containsKey(schema)) {
+            return (Integer) ((Map) schemaIdMap).get(schema);
+        } else if (schemaIdMap.size() >= this.identityMapCapacity) {
             throw new IllegalStateException("Too many schema objects created for " + subject + "!");
         } else {
             int id = this.getIdFromRegistry(subject, schema);
-            ((Map)schemaIdMap).put(schema, Integer.valueOf(id));
-            ((Map)this.idCache.get((Object)null)).put(Integer.valueOf(id), schema);
+            schemaIdMap.put(schema, id);
+            this.idCache.get(null).put(id, schema);
             return id;
         }
     }
 
     public List<Integer> deleteSubject(String subject) throws IOException, RestClientException {
-        return this.deleteSubject(DEFAULT_REQUEST_PROPERTIES, subject);
+        return this.deleteSubject(defaultRequestProperties, subject);
     }
 
     public List<Integer> deleteSubject(Map<String, String> requestProperties, String subject) throws IOException, RestClientException {
@@ -217,11 +215,11 @@ public class BCachedSchemaRegistryClient implements SchemaRegistryClient {
     }
 
     public Integer deleteSchemaVersion(String subject, String version) throws IOException, RestClientException {
-        return this.deleteSchemaVersion(DEFAULT_REQUEST_PROPERTIES, subject, version);
+        return this.deleteSchemaVersion(defaultRequestProperties, subject, version);
     }
 
     public Integer deleteSchemaVersion(Map<String, String> requestProperties, String subject, String version) throws IOException, RestClientException {
-        ((Map)this.versionCache.get(subject)).values().remove(Integer.valueOf(version));
+        ((Map) this.versionCache.get(subject)).values().remove(Integer.valueOf(version));
         return this.restService.deleteSchemaVersion(requestProperties, subject, version);
     }
 
@@ -241,9 +239,5 @@ public class BCachedSchemaRegistryClient implements SchemaRegistryClient {
 
     public Collection<String> getAllSubjects() throws IOException, RestClientException {
         return this.restService.getAllSubjects();
-    }
-
-    static {
-        DEFAULT_REQUEST_PROPERTIES.put("Content-Type", "application/vnd.schemaregistry.v1+json");
     }
 }

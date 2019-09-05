@@ -7,7 +7,6 @@ import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.FullTableName;
 import com.booking.replication.augmenter.model.schema.TableSchema;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
@@ -16,12 +15,12 @@ import org.apache.avro.io.BinaryEncoder;
 import org.apache.avro.io.DatumWriter;
 import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumWriter;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class EventDataPresenterAvro {
@@ -92,24 +91,27 @@ public class EventDataPresenterAvro {
 
     }
 
-    public AvroMessageKey convertAugumentedEventHeaderToAvro() {
+    public AvroMessageKey convertAugmentedEventHeaderToAvro() {
         return new AvroMessageKey(eventTable.getName(), eventTable.getDatabase(), this.eventType, this.header.getTimestamp());
     }
 
-    public List<GenericRecord> convertAugumentedEventDataToAvro() throws IOException {
-        if (this.skipRow) return new ArrayList<>();
+    public List<GenericRecord> convertAugmentedEventDataToAvro() throws IOException {
+        if (this.skipRow) {
+            return new ArrayList<>();
+        }
         try {
             Schema avroSchema = createAvroSchema(ADD_META_FILEDS, CONVERT_BIN_TO_HEX, this.eventTable, this.columns);
             if (Objects.equals(this.eventType, "ddl")) {
                 final GenericRecord rec = new DDL(
-                        this.sql,
-                        avroSchema.toString(),
-                        this.isCompatibleSchemaChange
+                    this.sql,
+                    avroSchema.toString(),
+                    this.isCompatibleSchemaChange
                 );
                 return Collections.singletonList(rec);
             }
             ArrayList<GenericRecord> records = new ArrayList<>();
-            for (AugmentedRow row : rows) {
+
+            rows.forEach(row -> {
                 final GenericRecord rec = new GenericData.Record(avroSchema);
                 for (Map.Entry<String, Object> each : row.getRawRowColumns().entrySet()) {
                     rec.put(each.getKey(), each.getValue());
@@ -123,7 +125,7 @@ public class EventDataPresenterAvro {
                 }
 
                 records.add(rec);
-            }
+            });
             return records;
         } catch (Exception e) {
             LOG.error("Error while converting data to avro: table: " + this.eventTable + " event header: " + MAPPER.writeValueAsString(this.header), e);
@@ -133,7 +135,7 @@ public class EventDataPresenterAvro {
 
     private byte[] serializeAvroMessage(GenericRecord rec, Schema schema) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        out.write(schema.toString().getBytes());
+        out.write(schema.toString().getBytes(StandardCharsets.UTF_8));
         BinaryEncoder encoder = EncoderFactory.get().binaryEncoder(out, null);
         DatumWriter<GenericRecord> writer = new SpecificDatumWriter<>(schema);
         writer.write(rec, encoder);
@@ -150,8 +152,7 @@ public class EventDataPresenterAvro {
         /**
          * Some missing Avro types - Decimal, Date types. May need some additional work.
          */
-        for (ColumnSchema col : columns) {
-
+        columns.forEach(col -> {
             String columnName = col.getName();
 
             String colType = col.getType();
@@ -160,9 +161,9 @@ public class EventDataPresenterAvro {
                 // mysql stores it as tinyint
                 addIntField(columnName, col.getValueDefault(), builder);
             } else if (colType.startsWith("tinyint") ||
-                    colType.startsWith("smallint") ||
-                    colType.startsWith("mediumint")
-                    ) {
+                colType.startsWith("smallint") ||
+                colType.startsWith("mediumint")
+            ) {
                 addIntField(columnName, col.getValueDefault(), builder);
             } else if (colType.startsWith("int") || colType.startsWith("integer")) {
                 if (colType.contains("unsigned")) {
@@ -181,23 +182,23 @@ public class EventDataPresenterAvro {
                     addLongField(columnName, col.getValueDefault(), builder);
                 }
             } else if (colType.startsWith("float") ||
-                    colType.startsWith("real")
-                    ) {
+                colType.startsWith("real")
+            ) {
 
                 addFloatField(columnName, col.getValueDefault(), builder);
             } else if (colType.startsWith("double")) {
                 addDoubleField(columnName, col.getValueDefault(), builder);
             } else if (colType.startsWith("date") ||
-                    colType.startsWith("time") ||
-                    colType.startsWith("timestamp")
-                    ) {
+                colType.startsWith("time") ||
+                colType.startsWith("timestamp")
+            ) {
                 addStringField(columnName, col.getValueDefault(), builder);
             } else if (colType.startsWith("binary") ||
-                    colType.startsWith("varbinary") ||
-                    colType.startsWith("longvarbinary") ||
-                    colType.startsWith("array") ||
-                    colType.startsWith("blob")
-                    ) {
+                colType.startsWith("varbinary") ||
+                colType.startsWith("longvarbinary") ||
+                colType.startsWith("array") ||
+                colType.startsWith("blob")
+            ) {
                 if (convertBinToHex) {
                     addStringField(columnName, col.getValueDefault(), builder);
                 } else {
@@ -205,52 +206,58 @@ public class EventDataPresenterAvro {
                 }
             } else if (colType.contains("bit")) {
                 addStringField(columnName, col.getValueDefault(), builder);
-            } else if (colType.startsWith("decimal") ||
-                    colType.startsWith("numeric") ){
-                //todo: get precision and decide data type
-                addStringField(columnName, col.getValueDefault(), builder);
+                //TODO: get precision and decide data type
+//            } else if (colType.startsWith("decimal") ||
+//                colType.startsWith("numeric")) {
+//                addStringField(columnName, col.getValueDefault(), builder);
             } else {
                 addStringField(columnName, col.getValueDefault(), builder);
             }
-        }
-        if (addMetaFields)
+        });
+        if (addMetaFields) {
             addMetaFields(builder);
+        }
         return builder.endRecord();
     }
 
     private static void addIntField(String name, String defaultVal, SchemaBuilder.FieldAssembler<Schema> builder) {
-        if (isNullValue(defaultVal))
+        if (isNullValue(defaultVal)) {
             builder.optionalInt(name);
-        else
-            builder.nullableInt(name, Integer.valueOf(defaultVal));
+        } else {
+            builder.nullableInt(name, Integer.parseInt(defaultVal));
+        }
     }
 
     private static void addFloatField(String name, String defaultVal, SchemaBuilder.FieldAssembler<Schema> builder) {
-        if (isNullValue(defaultVal))
+        if (isNullValue(defaultVal)) {
             builder.optionalFloat(name);
-        else
-            builder.nullableFloat(name, Float.valueOf(defaultVal));
+        } else {
+            builder.nullableFloat(name, Float.parseFloat(defaultVal));
+        }
     }
 
     private static void addLongField(String name, String defaultVal, SchemaBuilder.FieldAssembler<Schema> builder) {
-        if (isNullValue(defaultVal))
+        if (isNullValue(defaultVal)) {
             builder.optionalLong(name);
-        else
-            builder.nullableLong(name, Long.valueOf(defaultVal));
+        } else {
+            builder.nullableLong(name, Long.parseLong(defaultVal));
+        }
     }
 
     private static void addDoubleField(String name, String defaultVal, SchemaBuilder.FieldAssembler<Schema> builder) {
-        if (isNullValue(defaultVal))
+        if (isNullValue(defaultVal)) {
             builder.optionalDouble(name);
-        else
-            builder.nullableDouble(name, Double.valueOf(defaultVal));
+        } else {
+            builder.nullableDouble(name, Double.parseDouble(defaultVal));
+        }
     }
 
     private static void addStringField(String name, String defaultVal, SchemaBuilder.FieldAssembler<Schema> builder) {
-        if (isNullValue(defaultVal))
+        if (isNullValue(defaultVal)) {
             builder.optionalString(name);
-        else
+        } else {
             builder.nullableString(name, defaultVal);
+        }
     }
 
     private static void addMetaFields(SchemaBuilder.FieldAssembler<Schema> builder) {
@@ -259,7 +266,7 @@ public class EventDataPresenterAvro {
         addLongField("__binlog_position", "NULL", builder);
     }
 
-    private static boolean isNullValue(String val){
+    private static boolean isNullValue(String val) {
         return val == null || Objects.equals(val.toUpperCase(), "NULL");
     }
 

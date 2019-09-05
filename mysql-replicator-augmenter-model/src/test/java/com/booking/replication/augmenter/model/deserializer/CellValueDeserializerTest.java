@@ -4,6 +4,7 @@ import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import org.junit.Test;
 
 import javax.xml.bind.DatatypeConverter;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 
 import static org.junit.Assert.assertEquals;
@@ -109,22 +110,22 @@ public class CellValueDeserializerTest {
 
         ColumnSchema columnSchema = new ColumnSchema("name", "char(2)", "latin1_swedish_ci", true, "", "NULL", "");
         HashMap<String, String[]> cache = new HashMap<>();
-        Object result = CellValueDeserializer.deserialize(cache, columnSchema, "fr".getBytes(), "NULL");
+        Object result = CellValueDeserializer.deserialize(cache, columnSchema, "fr".getBytes(StandardCharsets.UTF_8.name()), "NULL");
         assertEquals("fr", result);
 
         ColumnSchema columnSchema1 = new ColumnSchema("name", "varchar(255)", "utf8_general_ci", true, "", "NULL", "");
         HashMap<String, String[]> cache1 = new HashMap<>();
-        Object result1 = CellValueDeserializer.deserialize(cache1, columnSchema1, "foobar".getBytes(), "NULL");
+        Object result1 = CellValueDeserializer.deserialize(cache1, columnSchema1, "foobar".getBytes(StandardCharsets.UTF_8.name()), "NULL");
         assertEquals("foobar", result1);
 
         ColumnSchema columnSchema3 = new ColumnSchema("name", "varchar(255)", "utf8_general_ci", true, "", "NULL", "");
         HashMap<String, String[]> cache3 = new HashMap<>();
-        Object result3 = CellValueDeserializer.deserialize(cache3, columnSchema3, "sÃƒÂ¥".getBytes(), "NULL");
+        Object result3 = CellValueDeserializer.deserialize(cache3, columnSchema3, "sÃƒÂ¥".getBytes(StandardCharsets.UTF_8.name()), "NULL");
         assertEquals("sÃƒÂ¥", result3);
 
         ColumnSchema columnSchema2 = new ColumnSchema("name", "mediumtext(255)", "utf8_general_ci", true, "", "NULL", "");
         HashMap<String, String[]> cache2 = new HashMap<>();
-        Object result2 = CellValueDeserializer.deserialize(cache2, columnSchema2, "Hello World".getBytes(), "NULL");
+        Object result2 = CellValueDeserializer.deserialize(cache2, columnSchema2, "Hello World".getBytes(StandardCharsets.UTF_8.name()), "NULL");
         assertEquals("Hello World", result2);
     }
 

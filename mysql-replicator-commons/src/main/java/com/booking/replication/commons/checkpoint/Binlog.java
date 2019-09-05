@@ -1,6 +1,7 @@
 package com.booking.replication.commons.checkpoint;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 public class Binlog implements Serializable, Comparable<Binlog> {
     private String filename;
@@ -32,24 +33,29 @@ public class Binlog implements Serializable, Comparable<Binlog> {
                     return this.filename.compareTo(binlog.filename);
                 }
             } else if (this.filename != null) {
-                return Integer.MAX_VALUE;
+                return 1;
             } else if (binlog.filename != null) {
-                return Integer.MIN_VALUE;
+                return -1;
             } else {
                 return 0;
             }
         } else {
-            return Integer.MAX_VALUE;
+            return 1;
         }
     }
 
     @Override
     public boolean equals(Object binlog) {
-        if (Binlog.class.isInstance(binlog)) {
-            return this.compareTo(Binlog.class.cast(binlog)) == 0;
+        if (binlog instanceof Binlog) {
+            return this.compareTo((Binlog) binlog) == 0;
         } else {
             return false;
         }
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(filename, position);
     }
 
     @Override

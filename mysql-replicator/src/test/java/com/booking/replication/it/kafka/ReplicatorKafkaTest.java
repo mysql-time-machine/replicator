@@ -18,21 +18,17 @@ import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.coordinator.ZookeeperCoordinator;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
-
 import com.mysql.jdbc.Driver;
-
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
-
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.*;
 import org.apache.commons.dbcp2.BasicDataSource;
-
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -40,19 +36,16 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.testcontainers.containers.Network;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
-
 import java.sql.Statement;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -96,23 +89,23 @@ public class ReplicatorKafkaTest {
         ReplicatorKafkaTest.zookeeper = servicesProvider.startZookeeper();
 
         MySQLConfiguration mySQLConfiguration = new MySQLConfiguration(
-                ReplicatorKafkaTest.MYSQL_SCHEMA,
-                ReplicatorKafkaTest.MYSQL_USERNAME,
-                ReplicatorKafkaTest.MYSQL_PASSWORD,
-                ReplicatorKafkaTest.MYSQL_CONF_FILE,
-                Collections.singletonList(ReplicatorKafkaTest.MYSQL_INIT_SCRIPT),
-                null,
-                null
-                );
+            ReplicatorKafkaTest.MYSQL_SCHEMA,
+            ReplicatorKafkaTest.MYSQL_USERNAME,
+            ReplicatorKafkaTest.MYSQL_PASSWORD,
+            ReplicatorKafkaTest.MYSQL_CONF_FILE,
+            Collections.singletonList(ReplicatorKafkaTest.MYSQL_INIT_SCRIPT),
+            null,
+            null
+        );
 
         MySQLConfiguration mySQLActiveSchemaConfiguration = new MySQLConfiguration(
-                ReplicatorKafkaTest.MYSQL_ACTIVE_SCHEMA,
-                ReplicatorKafkaTest.MYSQL_USERNAME,
-                ReplicatorKafkaTest.MYSQL_PASSWORD,
-                ReplicatorKafkaTest.MYSQL_CONF_FILE,
-                Collections.emptyList(),
-                null,
-                null
+            ReplicatorKafkaTest.MYSQL_ACTIVE_SCHEMA,
+            ReplicatorKafkaTest.MYSQL_USERNAME,
+            ReplicatorKafkaTest.MYSQL_PASSWORD,
+            ReplicatorKafkaTest.MYSQL_CONF_FILE,
+            Collections.emptyList(),
+            null,
+            null
         );
 
         ReplicatorKafkaTest.mysqlBinaryLog = servicesProvider.startMySQL(mySQLConfiguration);
@@ -155,12 +148,8 @@ public class ReplicatorKafkaTest {
 
                 for (ConsumerRecord<byte[], byte[]> record : consumer.poll(1000L)) {
                     GenericRecord deserialize = (GenericRecord) kafkaAvroDeserializer.deserialize("", record.value());
-                    System.out.println(deserialize.toString());
-//                    AugmentedEvent augmentedEvent = AugmentedEvent.fromJSON(record.key(), record.value());
-
-//                    ReplicatorKafkaTest.LOG.info(new String(augmentedEvent.toJSON()));
-
-                    System.out.println(new String(record.key()));
+                    LOG.debug(deserialize.toString());
+                    LOG.debug(record.key());
 
                     consumed = true;
                 }
@@ -171,19 +160,16 @@ public class ReplicatorKafkaTest {
     }
 
     private boolean runMysqlScripts(Map<String, Object> configuration, String scriptFilePath) {
-        BufferedReader reader;
-        Statement statement;
-        BasicDataSource dataSource = initDatasource(configuration, Driver.class.getName());
-        try (Connection connection = dataSource.getConnection()) {
-            statement = connection.createStatement();
-            reader = new BufferedReader(new FileReader(scriptFilePath));
+        BasicDataSource dataSource = initDataSource(configuration, Driver.class.getName());
+        try (Connection connection = dataSource.getConnection();
+             Statement statement = connection.createStatement()) {
             String line;
             // read script line by line
             ReplicatorKafkaTest.LOG.info("Executing query from " + scriptFilePath);
             String s;
             StringBuilder sb = new StringBuilder();
 
-            FileReader fr = new FileReader(new File(scriptFilePath));
+            InputStreamReader fr = new InputStreamReader(new FileInputStream(new File(scriptFilePath)), StandardCharsets.UTF_8.name());
             BufferedReader br = new BufferedReader(fr);
             while ((s = br.readLine()) != null) {
                 sb.append(s);
@@ -205,7 +191,7 @@ public class ReplicatorKafkaTest {
 
     }
 
-    private BasicDataSource initDatasource(Map<String, Object> configuration, Object driverClass) {
+    private BasicDataSource initDataSource(Map<String, Object> configuration, Object driverClass) {
         List<String> hostnames = (List<String>) configuration.get(BinaryLogSupplier.Configuration.MYSQL_HOSTNAME);
         Object port = configuration.getOrDefault(BinaryLogSupplier.Configuration.MYSQL_PORT, "3306");
         Object schema = configuration.get(BinaryLogSupplier.Configuration.MYSQL_SCHEMA);
@@ -306,6 +292,6 @@ public class ReplicatorKafkaTest {
         writer.write(datum, encoder);
         encoder.flush();
         output.flush();
-        return new String(output.toByteArray(), "UTF-8");
+        return new String(output.toByteArray(), StandardCharsets.UTF_8.name());
     }
 }

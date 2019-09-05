@@ -34,7 +34,7 @@ public class BootstrapReplicatorTest {
     private static ServicesControl kafkaZk;
     private static ServicesControl kafka;
     private static ServicesControl schemaRegistry;
-    private static BootstrapReplicator bootstrapReplicator;
+    private BootstrapReplicator bootstrapReplicator;
 
     @BeforeClass
     public static void before() {

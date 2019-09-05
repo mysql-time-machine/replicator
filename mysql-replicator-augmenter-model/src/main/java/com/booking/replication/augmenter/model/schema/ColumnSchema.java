@@ -21,14 +21,14 @@ public class ColumnSchema implements Serializable {
     }
 
     public ColumnSchema(
-            String name,
-            String type,
-            String collation,
-            boolean nullable,
-            String key,
-            String valueDefault,
-            String extra
-        ) {
+        String name,
+        String type,
+        String collation,
+        boolean nullable,
+        String key,
+        String valueDefault,
+        String extra
+    ) {
         this.name = name;
         this.type = type;
         this.collation = collation;
@@ -69,13 +69,13 @@ public class ColumnSchema implements Serializable {
 
     public ColumnSchema deepCopy() {
 
-        String name = new String(this.getName());
-        String type = new String(this.getType());
-        String collation = (this.getCollation() == null) ? null : new String(this.getCollation());
-        boolean nullable = new Boolean(this.isNullable());
-        String key = new String(this.getKey());
-        String valueDefault = (this.getValueDefault() == null) ? "NULL" : new String(this.getValueDefault());
-        String extra = new String(this.getExtra());
+        String name = this.getName();
+        String type = this.getType();
+        String collation = this.getCollation();
+        boolean nullable = this.isNullable();
+        String key = this.getKey();
+        String valueDefault = (this.getValueDefault() == null) ? "NULL" : this.getValueDefault();
+        String extra = this.getExtra();
 
         ColumnSchema columnSchemaCopy = new ColumnSchema(
             name, type, collation, nullable, key, valueDefault, extra

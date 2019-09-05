@@ -31,24 +31,24 @@ public class SchemaAtPositionCache {
 
     public Map<String, String> getCreateTableStatements() {
         Map<String, String> tableCreateStatements = this
-                .tableSchemaCache
-                .entrySet()
-                .stream()
-                .collect(
-                        Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue().getCreate()));
+            .tableSchemaCache
+            .entrySet()
+            .stream()
+            .collect(
+                Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue().getCreate()));
         return tableCreateStatements;
     }
 
     // get from tableSchemaCache or from active schema
     public TableSchema getTableColumns(
-            String tableName,
-            Function<String,TableSchema> computeAndReturnTableSchema) {
+        String tableName,
+        Function<String, TableSchema> computeAndReturnTableSchema) {
         return this.tableSchemaCache.computeIfAbsent(tableName, computeAndReturnTableSchema);
     }
 
     public void reloadTableSchema(
-            String tableName,
-            Function<String, TableSchema> computeAndReturnTableSchema) {
+        String tableName,
+        Function<String, TableSchema> computeAndReturnTableSchema) {
         this.tableSchemaCache.computeIfAbsent(tableName, computeAndReturnTableSchema);
     }
 
@@ -62,16 +62,16 @@ public class SchemaAtPositionCache {
 
             List<ColumnSchema> clonedColumnSchemaList = new ArrayList<>();
 
-            String create = new String(tableSchema.getCreate());
+            String create = tableSchema.getCreate();
 
             FullTableName fullTableNameCloned = new FullTableName(
-                    new String(tableSchema.getFullTableName().getDatabase()),
-                    new String(tableSchema.getFullTableName().getName())
+                tableSchema.getFullTableName().getDatabase(),
+                tableSchema.getFullTableName().getName()
             );
 
-            for(ColumnSchema columnSchema : tableSchema.getColumnSchemas()) {
-                 ColumnSchema columnSchemaCopy = columnSchema.deepCopy();
-                 clonedColumnSchemaList.add(columnSchemaCopy);
+            for (ColumnSchema columnSchema : tableSchema.getColumnSchemas()) {
+                ColumnSchema columnSchemaCopy = columnSchema.deepCopy();
+                clonedColumnSchemaList.add(columnSchemaCopy);
             }
 
             TableSchema tableSchemaClone = new TableSchema(fullTableNameCloned, clonedColumnSchemaList, create);
@@ -79,15 +79,9 @@ public class SchemaAtPositionCache {
             deepCopy.getTableSchemaCache().put(tableName, tableSchemaClone);
         }
 
-        for (Long tableId : this.tableIdToTableNameMap.keySet()) {
-
-            Long tableIdCopy = new Long(tableId);
-            FullTableName fullTableNameCopy = new FullTableName(
-                new String(this.tableIdToTableNameMap.get(tableId).getDatabase()),
-                new String(this.tableIdToTableNameMap.get(tableId).getName())
-            );
-
-            deepCopy.getTableIdToTableNameMap().put(tableIdCopy, fullTableNameCopy);
+        for (Map.Entry<Long, FullTableName> entry : tableIdToTableNameMap.entrySet()) {
+            deepCopy.getTableIdToTableNameMap()
+                .put(entry.getKey(), new FullTableName(entry.getValue().getDatabase(), entry.getValue().getName()));
         }
         return deepCopy;
     }

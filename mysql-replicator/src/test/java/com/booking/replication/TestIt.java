@@ -28,6 +28,7 @@ import org.junit.Test;
 import java.io.*;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.Future;
 
@@ -89,7 +90,7 @@ public class TestIt {
 
     private byte[] serializeAvroMessage(GenericRecord rec, Schema schema) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        out.write(schema.toString().getBytes());
+        out.write(schema.toString().getBytes(StandardCharsets.UTF_8.name()));
         BinaryEncoder encoder = EncoderFactory.get().binaryEncoder(out, null);
         DatumWriter<GenericRecord> writer = new SpecificDatumWriter<>(schema);
 
@@ -110,16 +111,13 @@ public class TestIt {
         CachedSchemaRegistryClient client = new CachedSchemaRegistryClient(SCHEMA_REGISTRY_KVM, 1000);
 
         client.register("akonale-schema-value", rec.getSchema());
-        HashMap<String, Object> properties = new HashMap<String, Object>();
-//        properties.put("auto.register.schemas", false);
-//        properties.put("schema.registry.url", SCHEMA_REGISTRY_);
 
         KafkaAvroSerializer kafkaAvroSerializer = new KafkaAvroSerializer(client);
 
         byte[] bytes = kafkaAvroSerializer.serialize("akonale-schema", rec);
 
         KafkaProducer<byte[], byte[]> producer = createProducer();
-        final ProducerRecord<byte[], byte[]> record = new ProducerRecord<byte[], byte[]>("test", "key".getBytes(), bytes);
+        final ProducerRecord<byte[], byte[]> record = new ProducerRecord<>("test", "key".getBytes(StandardCharsets.UTF_8.name()), bytes);
         Future<RecordMetadata> send = producer.send(record);
         RecordMetadata recordMetadata = send.get();
         System.out.println(recordMetadata.offset());

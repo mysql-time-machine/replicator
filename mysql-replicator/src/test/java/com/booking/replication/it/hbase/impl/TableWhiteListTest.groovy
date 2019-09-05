@@ -1,24 +1,21 @@
 package com.booking.replication.it.hbase.impl
 
 import com.booking.replication.applier.hbase.StorageConfig
-import com.booking.replication.augmenter.model.AugmenterModel
+import com.booking.replication.commons.services.containers.TestContainer
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
-import com.booking.replication.commons.services.ServicesControl
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTestRunner
 import com.booking.replication.it.util.HBase
 import com.booking.replication.it.util.MySQL
 import com.fasterxml.jackson.databind.ObjectMapper
 import groovy.sql.Sql
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.*
-import org.apache.hadoop.hbase.client.*
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.hbase.TableName
+import org.apache.hadoop.hbase.client.Admin
+import org.apache.hadoop.hbase.client.Connection
+import org.apache.hadoop.hbase.client.ConnectionFactory
 import org.apache.hadoop.hbase.util.Bytes
 
-import java.time.Instant
-import java.time.LocalDateTime
-import java.time.ZoneId
-import java.time.ZoneOffset
-import java.time.ZonedDateTime
+import java.time.*
 
 class TableWhiteListTest implements ReplicatorHBasePipelineIntegrationTest {
 
@@ -39,8 +36,7 @@ class TableWhiteListTest implements ReplicatorHBasePipelineIntegrationTest {
             ['E', '5', '637616', 'ajFNkiZExAiHkKiJePMp', '1994-01-01', '1994-01-01T16:00:00']
     ]
 
-    void createTableWithDefaultSchema(Sql mysqlHandle, String tableName) {
-
+    static void createTableWithDefaultSchema(Sql mysqlHandle, String tableName) {
         def sqlCreate = """
             CREATE TABLE """ + tableName + """ (
             
@@ -67,7 +63,7 @@ class TableWhiteListTest implements ReplicatorHBasePipelineIntegrationTest {
     }
 
     @Override
-    void doAction(ServicesControl mysqlReplicant) {
+    void doAction(TestContainer mysqlReplicant) {
 
         // get handle
         def replicantMySQLHandle = MySQL.getSqlHandle(
@@ -136,7 +132,7 @@ class TableWhiteListTest implements ReplicatorHBasePipelineIntegrationTest {
             row ->
                 try {
                     def sqlString1 =
-                                """INSERT INTO sometable_included  (
+                            """INSERT INTO sometable_included  (
                                 pk_part_1,
                                 pk_part_2,
                                 randomInt,
@@ -196,7 +192,7 @@ class TableWhiteListTest implements ReplicatorHBasePipelineIntegrationTest {
         String retJSON = MAPPER.writeValueAsString(retrieved)
         String expJSON = MAPPER.writeValueAsString(expected)
 
-        expJSON.equals(retJSON)
+        expJSON == retJSON
     }
 
     @Override
@@ -235,7 +231,7 @@ class TableWhiteListTest implements ReplicatorHBasePipelineIntegrationTest {
         Connection connection = ConnectionFactory.createConnection(config)
         Admin admin = connection.getAdmin()
 
-        if (admin.tableExists( TableName.valueOf(
+        if (admin.tableExists(TableName.valueOf(
                 Bytes.toBytes(NAMESPACE),
                 Bytes.toBytes(TABLE_NAME_INCLUDED)
         ))) {

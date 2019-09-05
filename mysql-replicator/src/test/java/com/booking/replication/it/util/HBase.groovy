@@ -1,19 +1,19 @@
 package com.booking.replication.it.util
 
 import com.booking.replication.applier.hbase.StorageConfig
-import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTestRunner;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.Cell;
-import org.apache.hadoop.hbase.CellScanner;
-import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.client.*;
-import org.apache.hadoop.hbase.util.Bytes;
+import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTestRunner
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.hbase.Cell
+import org.apache.hadoop.hbase.CellScanner
+import org.apache.hadoop.hbase.TableName
+import org.apache.hadoop.hbase.client.*
+import org.apache.hadoop.hbase.util.Bytes
 
 class HBase {
 
-    private static  Map<String, Object> configuration
+    private static Map<String, Object> configuration
 
-    static setConfiguration( Map<String, Object> cnf) {
+    static setConfiguration(Map<String, Object> cnf) {
         configuration = cnf
     }
 
@@ -21,13 +21,13 @@ class HBase {
         return configuration
     }
 
-    static Map<String, Map<String, Map<String,String>>> scanHBaseTable(String tableName) {
+    static Map<String, Map<String, Map<String, String>>> scanHBaseTable(String tableName) {
 
         def data = new TreeMap()
 
         try {
             // config
-            StorageConfig storageConfig = StorageConfig.build(this.getConfiguration())
+            StorageConfig storageConfig = StorageConfig.build(getConfiguration())
             Configuration config = storageConfig.getConfig()
 
             Connection connection = ConnectionFactory.createConnection(config)
@@ -72,6 +72,6 @@ class HBase {
         }
 
         def tableData = data[tableName]
-        return tableData
+        return tableData as Map<String, Map<String, Map<String, String>>>
     }
 }

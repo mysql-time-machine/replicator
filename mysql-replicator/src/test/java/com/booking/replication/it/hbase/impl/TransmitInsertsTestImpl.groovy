@@ -2,22 +2,20 @@ package com.booking.replication.it.hbase.impl
 
 import com.booking.replication.applier.hbase.StorageConfig
 import com.booking.replication.augmenter.model.AugmenterModel
+import com.booking.replication.commons.services.containers.TestContainer
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
-import com.booking.replication.commons.services.ServicesControl
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTestRunner
 import com.booking.replication.it.util.HBase
 import com.booking.replication.it.util.MySQL
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.*
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.hbase.Cell
+import org.apache.hadoop.hbase.CellScanner
+import org.apache.hadoop.hbase.TableName
 import org.apache.hadoop.hbase.client.*
 import org.apache.hadoop.hbase.util.Bytes
 
-import java.time.Instant
-import java.time.LocalDateTime
-import java.time.ZoneId
-import java.time.ZoneOffset
-import java.time.ZonedDateTime
+import java.time.*
 
 class TransmitInsertsTestImpl implements ReplicatorHBasePipelineIntegrationTest {
 
@@ -38,7 +36,7 @@ class TransmitInsertsTestImpl implements ReplicatorHBasePipelineIntegrationTest 
     ]
 
     @Override
-    void doAction(ServicesControl mysqlReplicant) {
+    void doAction(TestContainer mysqlReplicant) {
 
         // get handle
         def replicantMySQLHandle = MySQL.getSqlHandle(
@@ -114,7 +112,7 @@ class TransmitInsertsTestImpl implements ReplicatorHBasePipelineIntegrationTest 
         String retJSON = MAPPER.writeValueAsString(retrieved)
         String expJSON = MAPPER.writeValueAsString(expected)
 
-        expJSON.equals(retJSON)
+        expJSON == retJSON
     }
 
     @Override
@@ -183,7 +181,9 @@ class TransmitInsertsTestImpl implements ReplicatorHBasePipelineIntegrationTest 
         ].collect({ x ->
             def r = x.tokenize('|')
 
-            if (expected[r[0]] == null) { expected[r[0]] = new TreeMap<>() }
+            if (expected[r[0]] == null) {
+                expected[r[0]] = new TreeMap<>()
+            }
 
             expected[r[0]][r[1]] = r[2]
         })
@@ -218,13 +218,13 @@ class TransmitInsertsTestImpl implements ReplicatorHBasePipelineIntegrationTest 
             ResultScanner scanner = table.getScanner(scan)
             for (Result row : scanner) {
 
-                CellScanner cs =  row.cellScanner()
+                CellScanner cs = row.cellScanner()
                 while (cs.advance()) {
                     Cell cell = cs.current()
 
                     String rowKey = Bytes.toString(cell.getRow())
 
-                    String columnName =  Bytes.toString(cell.getQualifier())
+                    String columnName = Bytes.toString(cell.getQualifier())
 
                     if (columnName ==
                             AugmenterModel.Configuration.UUID_FIELD_NAME

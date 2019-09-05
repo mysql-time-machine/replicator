@@ -2,8 +2,8 @@ package com.booking.replication.it.hbase.impl
 
 import com.booking.replication.applier.hbase.StorageConfig
 import com.booking.replication.augmenter.model.AugmenterModel
+import com.booking.replication.commons.services.containers.TestContainer
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
-import com.booking.replication.commons.services.ServicesControl
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTestRunner
 import com.booking.replication.it.util.HBase
 import com.booking.replication.it.util.MySQL
@@ -12,12 +12,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hbase.Cell
 import org.apache.hadoop.hbase.CellScanner
 import org.apache.hadoop.hbase.TableName
-import org.apache.hadoop.hbase.client.Connection
-import org.apache.hadoop.hbase.client.ConnectionFactory
-import org.apache.hadoop.hbase.client.Result
-import org.apache.hadoop.hbase.client.ResultScanner
-import org.apache.hadoop.hbase.client.Scan
-import org.apache.hadoop.hbase.client.Table
+import org.apache.hadoop.hbase.client.*
 import org.apache.hadoop.hbase.util.Bytes
 
 /**
@@ -80,7 +75,7 @@ import org.apache.hadoop.hbase.util.Bytes
  *  the values would be spread in time setSink far away from the actual commit
  *  time that matters.
  */
-class LongTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest  {
+class LongTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper()
 
@@ -94,7 +89,7 @@ class LongTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest 
     }
 
     @Override
-    void doAction(ServicesControl mysqlReplicant) {
+    void doAction(TestContainer mysqlReplicant) {
 
         // get handle
         def replicantMySQLHandle = MySQL.getSqlHandle(
@@ -187,13 +182,13 @@ class LongTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest 
             ResultScanner scanner = table.getScanner(scan)
             for (Result row : scanner) {
 
-                CellScanner cs =  row.cellScanner()
+                CellScanner cs = row.cellScanner()
                 while (cs.advance()) {
                     Cell cell = cs.current()
 
                     String rowKey = Bytes.toString(cell.getRow())
 
-                    String columnName =  Bytes.toString(cell.getQualifier())
+                    String columnName = Bytes.toString(cell.getQualifier())
 
                     if (columnName ==
                             AugmenterModel.Configuration.UUID_FIELD_NAME
@@ -248,7 +243,7 @@ class LongTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest 
 
         // this is the diff in timestamps between insert and first update after
         // microsecond logic is applied.
-        def diff_01 = (Long.parseLong(timestamps[1]) -  Long.parseLong(timestamps[0]))
+        def diff_01 = (Long.parseLong(timestamps[1]) - Long.parseLong(timestamps[0]))
 
         // there is a 5s sleep between two updates and no sleep between insert and
         // fist update, so assumption is that the commit time after the second
@@ -264,7 +259,7 @@ class LongTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest 
 
         // this is the diff between timestamps of two updates, after microsecond logic
         // is applied.
-        def diff_12 = (Long.parseLong(timestamps[2]) -  Long.parseLong(timestamps[1]))
+        def diff_12 = (Long.parseLong(timestamps[2]) - Long.parseLong(timestamps[1]))
 
         return [
                 String.valueOf(commit_time_in_boundaries),
@@ -280,6 +275,6 @@ class LongTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest 
         String expJSON = MAPPER.writeValueAsString(exp)
         String actJSON = MAPPER.writeValueAsString(act)
 
-        expJSON.equals(actJSON)
+        expJSON == actJSON
     }
 }

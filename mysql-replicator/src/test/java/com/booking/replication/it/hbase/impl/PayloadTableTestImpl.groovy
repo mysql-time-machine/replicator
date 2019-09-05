@@ -1,13 +1,12 @@
 package com.booking.replication.it.hbase.impl
 
 import com.booking.replication.augmenter.model.AugmenterModel
+import com.booking.replication.commons.services.containers.TestContainer
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
-import com.booking.replication.commons.services.ServicesControl
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTestRunner
 import com.booking.replication.it.util.HBase
 import com.booking.replication.it.util.MySQL
 import groovy.sql.Sql
-
 
 /**
  * This test verifies that we get the payloads injected into transactions and
@@ -28,12 +27,12 @@ class PayloadTableTestImpl implements ReplicatorHBasePipelineIntegrationTest {
     }
 
     @Override
-    void doAction(ServicesControl mysqlReplicant) {
+    void doAction(TestContainer mysqlReplicant) {
 
         def replicantMySQLHandle = MySQL.getSqlHandle(
-            false,
-            SCHEMA_NAME,
-            mysqlReplicant
+                false,
+                SCHEMA_NAME,
+                mysqlReplicant
         )
 
         createPayloadTable(replicantMySQLHandle)
@@ -106,18 +105,16 @@ class PayloadTableTestImpl implements ReplicatorHBasePipelineIntegrationTest {
 
         def transactionUUIDsSortedByTimestampInDataTable =
                 data['8b04d5e3;first']['d:' + AugmenterModel.Configuration.UUID_FIELD_NAME]
-                        .sort{ it.key }
+                        .sort { it.key }
                         .collect {
-                            timestamp, transactionUUID  ->
+                            timestamp, transactionUUID ->
                                 transactionUUID
-        }
+                        }
 
         def sortedUnique = []
         def processed = [].toSet()
         for (String uuid : transactionUUIDsSortedByTimestampInDataTable) {
-            if (processed.contains(uuid)) {
-                continue
-            } else {
+            if (!processed.contains(uuid)) {
                 sortedUnique.add(uuid)
                 processed.add(uuid)
             }
@@ -125,7 +122,7 @@ class PayloadTableTestImpl implements ReplicatorHBasePipelineIntegrationTest {
 
         def payloadVals = sortedUnique.collect { transactionUUID ->
             def r = [:]
-            payload[transactionUUID].each { columnName,v ->      // (k,v) is (columnName, {timestamp => value})
+            payload[transactionUUID].each { columnName, v ->      // (k,v) is (columnName, {timestamp => value})
                 r[columnName] = columnName + "|" + v.values()[0] // "column_name|column_value"
             }
             r
@@ -145,7 +142,7 @@ class PayloadTableTestImpl implements ReplicatorHBasePipelineIntegrationTest {
         def tdiff = (Long.parseLong(timestampsSorted[1][0]) - Long.parseLong(timestampsSorted[0][0]))
 
         def result = payloadVals.collect {
-            it["d:event_id"]+"}{"+it["d:server_role"]+"}{"+it["d:strange_int"]
+            it["d:event_id"] + "}{" + it["d:server_role"] + "}{" + it["d:strange_int"]
         }
 
         result.add("tdiff|" + tdiff)
@@ -161,9 +158,11 @@ class PayloadTableTestImpl implements ReplicatorHBasePipelineIntegrationTest {
         def exp = (List<String>) expected
         def act = (List<String>) actual
         boolean ok = true
-        exp.eachWithIndex{
+        exp.eachWithIndex {
             String entry, int i ->
-                if (!entry.equals(act[i])) { ok = false }
+                if (entry != act[i]) {
+                    ok = false
+                }
         }
         ok
     }

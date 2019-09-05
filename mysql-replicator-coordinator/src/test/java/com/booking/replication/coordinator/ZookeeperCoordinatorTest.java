@@ -4,8 +4,8 @@ import com.booking.replication.commons.checkpoint.Binlog;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.GTID;
 import com.booking.replication.commons.checkpoint.GTIDType;
-import com.booking.replication.commons.services.ServicesControl;
-import com.booking.replication.commons.services.ServicesProvider;
+import com.booking.replication.commons.services.containers.zookeeper.ZookeeperContainer;
+import com.booking.replication.commons.services.containers.zookeeper.ZookeeperContainerProvider;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -20,30 +20,27 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.assertEquals;
 
 public class ZookeeperCoordinatorTest {
-    private static ServicesControl servicesControl;
+    private static ZookeeperContainer zookeeperContainer;
     private static AtomicInteger count;
     private static Coordinator coordinator1;
     private static Coordinator coordinator2;
 
     @BeforeClass
     public static void before() {
-        ZookeeperCoordinatorTest.servicesControl = ServicesProvider.build(ServicesProvider.Type.CONTAINERS).startZookeeper();
+        zookeeperContainer = ZookeeperContainerProvider.startWithPortBindings();
+
         ZookeeperCoordinatorTest.count = new AtomicInteger();
 
-        Runnable leadershipTake = () -> {
-            ZookeeperCoordinatorTest.count.getAndIncrement();
-        };
+        Runnable leadershipTake = () -> ZookeeperCoordinatorTest.count.getAndIncrement();
 
         Runnable leaderShipLoss = () -> {
             assertEquals(1, ZookeeperCoordinatorTest.count.get());
-
             ZookeeperCoordinatorTest.count.getAndDecrement();
         };
 
         Map<String, Object> configuration = new HashMap<>();
-
         configuration.put(Coordinator.Configuration.TYPE, Coordinator.Type.ZOOKEEPER.name());
-        configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, ZookeeperCoordinatorTest.servicesControl.getURL());
+        configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, zookeeperContainer.getURL());
         configuration.put(ZookeeperCoordinator.Configuration.LEADERSHIP_PATH, "/leadership.coordinator");
 
         ZookeeperCoordinatorTest.coordinator1 = Coordinator.build(configuration);
@@ -67,17 +64,17 @@ public class ZookeeperCoordinatorTest {
         Thread.sleep(2000L);
 
         Checkpoint checkpoint1 = new Checkpoint(
-                System.currentTimeMillis(),
-                ThreadLocalRandom.current().nextLong(),
-                new GTID(
-                        GTIDType.PSEUDO,
-                        UUID.randomUUID().toString(),
-                        Byte.MAX_VALUE
-                ),
-                new Binlog(
-                        UUID.randomUUID().toString(),
-                        ThreadLocalRandom.current().nextLong()
-                )
+            System.currentTimeMillis(),
+            ThreadLocalRandom.current().nextLong(),
+            new GTID(
+                GTIDType.PSEUDO,
+                UUID.randomUUID().toString(),
+                Byte.MAX_VALUE
+            ),
+            new Binlog(
+                UUID.randomUUID().toString(),
+                ThreadLocalRandom.current().nextLong()
+            )
         );
 
         ZookeeperCoordinatorTest.coordinator1.saveCheckpoint("/checkpoint.coordinator", checkpoint1);
@@ -91,11 +88,10 @@ public class ZookeeperCoordinatorTest {
     public static void after() throws Exception {
         ZookeeperCoordinatorTest.coordinator1.stop();
         ZookeeperCoordinatorTest.coordinator2.stop();
-        ZookeeperCoordinatorTest.servicesControl.close();
+        zookeeperContainer.stop();
 
         Thread.sleep(2000L);
 
         assertEquals(0, ZookeeperCoordinatorTest.count.get());
     }
 }
-

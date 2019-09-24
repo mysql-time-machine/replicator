@@ -4,6 +4,8 @@ import com.booking.replication.applier.hbase.HBaseApplier;
 
 import com.booking.replication.applier.hbase.schema.HBaseRowKeyMapper;
 import com.booking.replication.augmenter.model.AugmenterModel;
+import com.booking.replication.augmenter.model.event.AugmentedEventType;
+import com.booking.replication.augmenter.model.format.EventDeserializer;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.commons.metrics.Metrics;
 import org.apache.hadoop.hbase.client.Put;
@@ -113,14 +115,14 @@ public class HBaseApplierMutationGenerator {
 
         // Mutation
         Put put = new Put(Bytes.toBytes(hbaseRowID));
-        UUID uuid = augmentedRow.getTransactionUUID();
+        String uuid = augmentedRow.getTransactionUUID();
         Long xid = augmentedRow.getTransactionXid();
 
         Long microsecondsTimestamp = augmentedRow.getRowMicrosecondTimestamp();
 
         switch (augmentedRow.getEventType()) {
 
-            case "DELETE": {
+            case DELETE: {
 
                 // No need to process columns on DELETE. Only write delete marker.
                 String columnName = "row_status";
@@ -141,7 +143,7 @@ public class HBaseApplierMutationGenerator {
                             CF,
                             TID,
                             microsecondsTimestamp,
-                            Bytes.toBytes(uuid.toString())
+                            Bytes.toBytes(uuid)
                     );
 
                     this.metrics.getRegistry()
@@ -164,15 +166,15 @@ public class HBaseApplierMutationGenerator {
                 }
                 break;
             }
-            case "UPDATE": {
+            case UPDATE: {
 
                 // Only write values that have changed
                 String columnValue;
 
-                for (String columnName : augmentedRow.getStringifiedRowColumns().keySet()) {
+                for (String columnName : augmentedRow.getValues().keySet()) {
 
-                    String valueBefore = augmentedRow.getStringifiedRowColumns().get(columnName).get("value_before");
-                    String valueAfter = augmentedRow.getStringifiedRowColumns().get(columnName).get("value_after");
+                    String valueBefore = augmentedRow.getValueAsString(columnName, EventDeserializer.Constants.VALUE_BEFORE);
+                    String valueAfter  = augmentedRow.getValueAsString(columnName, EventDeserializer.Constants.VALUE_AFTER);
 
                     if ((valueAfter == null) && (valueBefore == null)) {
                         // no change, skip;
@@ -217,7 +219,7 @@ public class HBaseApplierMutationGenerator {
                             CF,
                             TID,
                             microsecondsTimestamp,
-                            Bytes.toBytes(uuid.toString())
+                            Bytes.toBytes(uuid)
                     );
                     this.metrics.getRegistry()
                             .counter("hbase.applier.columns.mutations.count").inc(1L);
@@ -239,13 +241,12 @@ public class HBaseApplierMutationGenerator {
                 }
                 break;
             }
-            case "INSERT": {
+            case INSERT: {
 
                 String columnValue;
 
-                for (String columnName : augmentedRow.getStringifiedRowColumns().keySet()) {
-
-                    columnValue = augmentedRow.getStringifiedRowColumns().get(columnName).get("value");
+                for (String columnName : augmentedRow.getValues().keySet()) {
+                    columnValue = augmentedRow.getValueAsString(columnName);
                     if (columnValue == null) {
                         columnValue = "NULL";
                     }
@@ -280,7 +281,7 @@ public class HBaseApplierMutationGenerator {
                             CF,
                             TID,
                             microsecondsTimestamp,
-                            Bytes.toBytes(uuid.toString())
+                            Bytes.toBytes(uuid)
                     );
                     this.metrics.getRegistry()
                             .counter("hbase.applier.columns.mutations.count").inc(1L);
@@ -312,7 +313,7 @@ public class HBaseApplierMutationGenerator {
         );
     }
 
-    private String getRowUri(AugmentedRow row){
+    private String getRowUri(AugmentedRow row) {
 
         // TODO: add validator config options
         //        validation:
@@ -324,18 +325,15 @@ public class HBaseApplierMutationGenerator {
         // if (configuration.validationConfig == null) return null;
         String sourceDomain = row.getTableSchema().toString().toLowerCase();
 
-        String eventType = row.getEventType();
+        AugmentedEventType eventType = row.getEventType();
 
         String table = row.getTableName();
 
         String keys  = row.getPrimaryKeyColumns().stream()
                 .map( column -> {
                     try {
-
-                        String value = row.getStringifiedRowColumns().get(column).get( "UPDATE".equals(eventType) ? "value_after" : "value" );
-
+                        String value = row.getValueAsString(column, AugmentedEventType.UPDATE == eventType ? EventDeserializer.Constants.VALUE_AFTER : null);
                         return URLEncoder.encode(column,"UTF-8") + "=" + URLEncoder.encode(value,"UTF-8");
-
                     } catch (UnsupportedEncodingException e) {
 
                         LOGGER.error("Unexpected encoding exception", e);

@@ -1,6 +1,7 @@
 package com.booking.replication.coordinator;
 
 import com.booking.replication.commons.checkpoint.Checkpoint;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.apache.curator.framework.CuratorFramework;
@@ -8,10 +9,11 @@ import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.leader.LeaderLatch;
 import org.apache.curator.framework.recipes.leader.LeaderLatchListener;
 import org.apache.curator.retry.ExponentialBackoffRetry;
-import org.apache.zookeeper.CreateMode;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import org.apache.zookeeper.CreateMode;
 
 import java.io.EOFException;
 import java.io.IOException;

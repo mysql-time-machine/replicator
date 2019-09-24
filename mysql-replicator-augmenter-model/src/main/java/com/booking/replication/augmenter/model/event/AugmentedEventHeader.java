@@ -13,8 +13,7 @@ public class AugmentedEventHeader implements Serializable {
     private AugmentedEventType eventType;
     private AugmentedEventTransaction eventTransaction;
 
-    public AugmentedEventHeader() {
-    }
+    public AugmentedEventHeader() { }
 
     public AugmentedEventHeader(long timestamp, Checkpoint checkpoint, AugmentedEventType eventType, String databaseName, String tableName) {
         this.timestamp = timestamp;
@@ -62,13 +61,14 @@ public class AugmentedEventHeader implements Serializable {
     }
 
     public String schemaKey() {
-        if(eventType == AugmentedEventType.QUERY){
+        if (eventType == AugmentedEventType.QUERY) {
             return "bigdata-ddl-schema";
         }
+
         return String.format("bigdata-%s-%s", databaseName, tableName);
     }
 
-    public String headerString(){
+    public String headerString() {
         return String.format("%s-%s-%s", this.databaseName, this.tableName, timestamp);
     }
 

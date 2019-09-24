@@ -1,6 +1,7 @@
 package com.booking.replication.coordinator;
 
 import com.booking.replication.commons.checkpoint.Checkpoint;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;

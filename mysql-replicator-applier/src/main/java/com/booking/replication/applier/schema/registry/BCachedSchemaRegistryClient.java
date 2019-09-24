@@ -1,6 +1,5 @@
 package com.booking.replication.applier.schema.registry;
 
-import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaMetadata;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.RestService;
@@ -13,8 +12,13 @@ import io.confluent.kafka.schemaregistry.client.security.basicauth.BasicAuthCred
 import org.apache.avro.Schema;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
 
+// TODO: remove this and update to: https://github.com/confluentinc/schema-registry/pull/1009
 // This class is identical to CachedSchemaRegistry except register method which uses hashmap instead of identityHashMap there by not recognising similar schemas
 //        IdentityHashMap<Schema, String> myIhashmap = new IdentityHashMap<Schema, String>();
 //        HashMap<Schema, String> myhashmap = new HashMap<Schema, String>();
@@ -65,14 +69,13 @@ public class BCachedSchemaRegistryClient implements SchemaRegistryClient {
     }
 
     private void configureRestService(Map<String, ?> configs) {
-        if(configs != null) {
+        if (configs != null) {
             String credentialSourceConfig = (String)configs.get("basic.auth.credentials.source");
-            if(credentialSourceConfig != null && !credentialSourceConfig.isEmpty()) {
+            if (credentialSourceConfig != null && !credentialSourceConfig.isEmpty()) {
                 BasicAuthCredentialProvider basicAuthCredentialProvider = BasicAuthCredentialProviderFactory.getBasicAuthCredentialProvider(credentialSourceConfig, configs);
                 this.restService.setBasicAuthCredentialProvider(basicAuthCredentialProvider);
             }
         }
-
     }
 
     private int registerAndGetId(String subject, Schema schema) throws IOException, RestClientException {
@@ -96,16 +99,16 @@ public class BCachedSchemaRegistryClient implements SchemaRegistryClient {
 
     public synchronized int register(String subject, Schema schema) throws IOException, RestClientException {
         Map<Schema, Integer> schemaIdMap;
-        if(this.schemaCache.containsKey(subject)) {
+        if (this.schemaCache.containsKey(subject)) {
             schemaIdMap = (Map<Schema, Integer>) this.schemaCache.get(subject);
         } else {
             schemaIdMap = new HashMap<Schema, Integer>();
             this.schemaCache.put(subject, schemaIdMap);
         }
 
-        if(((Map)schemaIdMap).containsKey(schema)) {
+        if (((Map)schemaIdMap).containsKey(schema)) {
             return ((Integer)((Map)schemaIdMap).get(schema)).intValue();
-        } else if(((Map)schemaIdMap).size() >= this.identityMapCapacity) {
+        } else if (((Map)schemaIdMap).size() >= this.identityMapCapacity) {
             throw new IllegalStateException("Too many schema objects created for " + subject + "!");
         } else {
             int id = this.registerAndGetId(subject, schema);
@@ -129,14 +132,14 @@ public class BCachedSchemaRegistryClient implements SchemaRegistryClient {
 
     public synchronized Schema getBySubjectAndId(String subject, int id) throws IOException, RestClientException {
         Map<Integer, Schema> idSchemaMap;
-        if(this.idCache.containsKey(subject)) {
+        if (this.idCache.containsKey(subject)) {
             idSchemaMap = (Map<Integer, Schema>)this.idCache.get(subject);
         } else {
             idSchemaMap = new HashMap<Integer, Schema>();
             this.idCache.put(subject, idSchemaMap);
         }
 
-        if(idSchemaMap.containsKey(Integer.valueOf(id))) {
+        if (idSchemaMap.containsKey(Integer.valueOf(id))) {
             return (Schema)((Map)idSchemaMap).get(Integer.valueOf(id));
         } else {
             Schema schema = this.getSchemaByIdFromRegistry(id);
@@ -162,16 +165,16 @@ public class BCachedSchemaRegistryClient implements SchemaRegistryClient {
 
     public synchronized int getVersion(String subject, Schema schema) throws IOException, RestClientException {
         Map<Schema, Integer> schemaVersionMap;
-        if(this.versionCache.containsKey(subject)) {
+        if (this.versionCache.containsKey(subject)) {
             schemaVersionMap = (Map)this.versionCache.get(subject);
         } else {
             schemaVersionMap = new IdentityHashMap();
             this.versionCache.put(subject, schemaVersionMap);
         }
 
-        if(((Map)schemaVersionMap).containsKey(schema)) {
+        if (((Map)schemaVersionMap).containsKey(schema)) {
             return ((Integer)((Map)schemaVersionMap).get(schema)).intValue();
-        } else if(((Map)schemaVersionMap).size() >= this.identityMapCapacity) {
+        } else if (((Map)schemaVersionMap).size() >= this.identityMapCapacity) {
             throw new IllegalStateException("Too many schema objects created for " + subject + "!");
         } else {
             int version = this.getVersionFromRegistry(subject, schema);
@@ -186,16 +189,16 @@ public class BCachedSchemaRegistryClient implements SchemaRegistryClient {
 
     public synchronized int getId(String subject, Schema schema) throws IOException, RestClientException {
         Map<Schema, Integer> schemaIdMap;
-        if(this.schemaCache.containsKey(subject)) {
+        if (this.schemaCache.containsKey(subject)) {
             schemaIdMap = (Map)this.schemaCache.get(subject);
         } else {
             schemaIdMap = new HashMap<Schema, Integer>();
             this.schemaCache.put(subject, schemaIdMap);
         }
 
-        if(((Map)schemaIdMap).containsKey(schema)) {
+        if (((Map)schemaIdMap).containsKey(schema)) {
             return ((Integer)((Map)schemaIdMap).get(schema)).intValue();
-        } else if(((Map)schemaIdMap).size() >= this.identityMapCapacity) {
+        } else if (((Map)schemaIdMap).size() >= this.identityMapCapacity) {
             throw new IllegalStateException("Too many schema objects created for " + subject + "!");
         } else {
             int id = this.getIdFromRegistry(subject, schema);

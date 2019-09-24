@@ -7,9 +7,14 @@ import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.event.QueryAugmentedEventData;
 import com.booking.replication.commons.map.MapFilter;
 import com.booking.replication.commons.metrics.Metrics;
+
 import com.codahale.metrics.MetricRegistry;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter;
+import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
@@ -34,23 +39,25 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class KafkaApplier implements Applier {
+    private static final Logger LOG = LogManager.getLogger(KafkaApplier.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final String dataFormat;
 
-    private static final Logger LOG = LogManager.getLogger(KafkaApplier.class);
-
-    private final String metricBase;
     private KafkaAvroSerializer kafkaAvroSerializer;
     private SchemaRegistryClient schemaRegistryClient;
 
-    public interface Configuration {
-        String TOPIC = "kafka.topic";
-        String SCHEMA_REGISTRY_URL = "kafka.schema.registry.url";
-        String PRODUCER_PREFIX = "kafka.producer.";
+    private final String metricBase;
 
-        String BASE_PATH = "events";
-        String FORMAT = "kafka.message.format";
+    private Set<String> includeInColumns = new HashSet<>();
+
+    public interface Configuration {
+        String TOPIC                = "kafka.topic";
+        String SCHEMA_REGISTRY_URL  = "kafka.schema.registry.url";
+        String PRODUCER_PREFIX      = "kafka.producer.";
+        String FORMAT               = "kafka.message.format";
+        String INCLUDE_IN_COLUMNS   = "kafka.output.columns.include";
     }
 
     public interface MessageFormat {
@@ -60,30 +67,34 @@ public class KafkaApplier implements Applier {
 
     private final Map<Integer, Producer<byte[], byte[]>> producers;
     private final Map<String, Object> configuration;
-    private final String topic;
-    private final int totalPartitions;
-    private final Partitioner partitioner;
+
     private final Metrics<?> metrics;
+    private final Partitioner partitioner;
+
+    private final String topic;
     private final String delayName;
+
+    private final int totalPartitions;
 
     public KafkaApplier(Map<String, Object> configuration) {
         Object topic = configuration.get(Configuration.TOPIC);
 
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
 
-        this.producers = new ConcurrentHashMap<>();
-        this.configuration = new MapFilter(configuration).filter(Configuration.PRODUCER_PREFIX);
-        this.topic = topic.toString();
-        this.totalPartitions = this.getTotalPartitions();
-        this.partitioner = Partitioner.build(configuration);
-        this.metrics = Metrics.getInstance(configuration);
-        this.dataFormat = configuration.get(Configuration.FORMAT) == null ? MessageFormat.AVRO : String.valueOf(configuration.get(Configuration.FORMAT));
+        this.producers          = new ConcurrentHashMap<>();
+        this.configuration      = new MapFilter(configuration).filter(Configuration.PRODUCER_PREFIX);
+        this.topic              = topic.toString();
+        this.totalPartitions    = this.getTotalPartitions();
+        this.partitioner        = Partitioner.build(configuration);
+        this.metrics            = Metrics.getInstance(configuration);
+        this.dataFormat         = configuration.get(Configuration.FORMAT) == null ? MessageFormat.AVRO : String.valueOf(configuration.get(Configuration.FORMAT));
 
-        Object schemaRegistryUrlConfig = configuration.get(Configuration.SCHEMA_REGISTRY_URL);
         if (Objects.equals(dataFormat, MessageFormat.AVRO)) {
-            Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.SCHEMA_REGISTRY_URL));
+            Object schemaRegistryUrlConfig = configuration.get(Configuration.SCHEMA_REGISTRY_URL);
+            Objects.requireNonNull(schemaRegistryUrlConfig, String.format("Configuration required: %s", Configuration.SCHEMA_REGISTRY_URL));
+
             this.schemaRegistryClient = new BCachedSchemaRegistryClient(String.valueOf(schemaRegistryUrlConfig), 2000);
-            this.kafkaAvroSerializer = new KafkaAvroSerializer(this.schemaRegistryClient);
+            this.kafkaAvroSerializer  = new KafkaAvroSerializer(this.schemaRegistryClient);
         }
 
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
@@ -92,10 +103,27 @@ public class KafkaApplier implements Applier {
                 String.valueOf(configuration.getOrDefault(Metrics.Configuration.BASE_PATH, "events")),
                 "delay"
         );
+
         this.metricBase = MetricRegistry.name(this.metrics.basePath(), "kafka");
+
+        this.setupColumnsFilter(configuration);
+    }
+
+    private void setupColumnsFilter(Map<String, Object> configuration) {
+        this.includeInColumns.add("name");
+        this.includeInColumns.add("columnType");
+
+        this.includeInColumns.addAll(this.getAsSet(configuration.get(Configuration.INCLUDE_IN_COLUMNS)));
+
+        LOG.info("Adding " + this.includeInColumns.toString() + " fields in metadata.columns.");
+
+        SimpleFilterProvider filterProvider = new SimpleFilterProvider();
+        filterProvider.addFilter("column", SimpleBeanPropertyFilter.filterOutAllExcept(this.includeInColumns));
+        MAPPER.setFilterProvider(filterProvider);
     }
 
     private Producer<byte[], byte[]> getProducer() {
+        LOG.info("Kafka producer configuration : " + configuration.toString());
         return new KafkaProducer<>(this.configuration, new ByteArraySerializer(), new ByteArraySerializer());
     }
 
@@ -105,16 +133,9 @@ public class KafkaApplier implements Applier {
         }
     }
 
-    private List<String> getList(Object object) {
-        if (List.class.isInstance(object)) {
-            return (List<String>) object;
-        } else {
-            return Collections.singletonList(object.toString());
-        }
-    }
-
     @Override
     public Boolean apply(Collection<AugmentedEvent> events) {
+
         if (Objects.equals(this.dataFormat, MessageFormat.AVRO)) {
 
             try {
@@ -141,7 +162,7 @@ public class KafkaApplier implements Applier {
                         ProducerRecord<byte[], byte[]> record = new ProducerRecord<>(
                                 this.topic,
                                 partition,
-                                KafkaApplier.MAPPER.writeValueAsBytes(event.headerToAvro()),
+                                KafkaApplier.MAPPER.writeValueAsBytes(event.getHeader()),
                                 serialized,
                                 new RecordHeaders().add(new RecordHeader("meta", event.getHeader().headerString().getBytes()))
                         );
@@ -149,7 +170,7 @@ public class KafkaApplier implements Applier {
                         this.producers.computeIfAbsent(
                                 partition, key -> this.getProducer()
                         ).send(record, (metadata, exception) -> {
-                            if (exception != null){
+                            if (exception != null) {
                                 // todo: collect producer errors and decide if we have to throw exception here
                                 // 1. Exception occurred while writing to kafka:
                                 // org.apache.kafka.common.errors.NotLeaderForPartitionException: This server is not the leader for that topic-partition. (A warning. No message is lost)
@@ -170,6 +191,8 @@ public class KafkaApplier implements Applier {
                 for (AugmentedEvent event : events) {
                     int partition = this.partitioner.apply(event, this.totalPartitions);
 
+                    byte[] data = KafkaApplier.MAPPER.writeValueAsBytes(event.getData());
+
                     this.producers.computeIfAbsent(
                             partition, key -> this.getProducer()
                     ).send(new ProducerRecord<>(
@@ -177,7 +200,7 @@ public class KafkaApplier implements Applier {
                             partition,
                             event.getHeader().getTimestamp(),
                             KafkaApplier.MAPPER.writeValueAsBytes(event.getHeader()),
-                            KafkaApplier.MAPPER.writeValueAsBytes(event.getData())
+                            data
                     ));
 
                     writeMetrics(event, 1);
@@ -200,13 +223,21 @@ public class KafkaApplier implements Applier {
     private void handleIncompatibleSchemaChange(AugmentedEvent event) throws IOException {
         if (event.getData() instanceof QueryAugmentedEventData) {
             List<GenericRecord> genericRecords = event.dataToAvro();
-            if (genericRecords.size() != 1) return;
+
+            if (genericRecords.size() != 1) {
+                return;
+            }
+
             GenericRecord genericRecord = genericRecords.get(0);
             try {
                 Schema schema = new Schema.Parser().parse((String) genericRecord.get("schema"));
                 String subject = event.getHeader().schemaKey() + "-value";
-                boolean b = this.schemaRegistryClient.testCompatibility(subject, schema);
-                if (b) return;
+                boolean testCompatibility = this.schemaRegistryClient.testCompatibility(subject, schema);
+
+                if (testCompatibility) {
+                    return;
+                }
+
                 QueryAugmentedEventData eventData = (QueryAugmentedEventData) event.getData();
                 eventData.setSchemaCompatibilityFlag(false);
 
@@ -227,5 +258,17 @@ public class KafkaApplier implements Applier {
         this.partitioner.close();
         this.producers.values().forEach(Producer::close);
         this.producers.clear();
+    }
+
+    private Set<String> getAsSet(Object object) {
+        if (object != null) {
+            if (List.class.isInstance(object)) {
+                return new HashSet<>((List<String>) object);
+            } else {
+                return Collections.singleton(object.toString());
+            }
+        } else {
+            return Collections.emptySet();
+        }
     }
 }

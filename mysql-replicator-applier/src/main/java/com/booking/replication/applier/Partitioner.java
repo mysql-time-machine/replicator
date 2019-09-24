@@ -1,9 +1,9 @@
 package com.booking.replication.applier;
 
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
-import com.booking.replication.augmenter.model.schema.FullTableName;
 import com.booking.replication.augmenter.model.event.AugmentedEventTransaction;
 import com.booking.replication.augmenter.model.event.TableAugmentedEventData;
+import com.booking.replication.augmenter.model.schema.FullTableName;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -19,7 +19,7 @@ public interface Partitioner extends BiFunction<AugmentedEvent, Integer, Integer
             protected Partitioner newInstance(Map<String, Object> configuration) {
                 return (event, totalPartitions) -> {
                     if (TableAugmentedEventData.class.isInstance(event.getData())) {
-                        FullTableName eventTable = TableAugmentedEventData.class.cast(event.getData()).getEventTable();
+                        FullTableName eventTable = TableAugmentedEventData.class.cast(event.getData()).getMetadata().getEventTable();
 
                         if (eventTable != null) {
                             return Math.abs(eventTable.toString().hashCode()) % totalPartitions;
@@ -53,8 +53,7 @@ public interface Partitioner extends BiFunction<AugmentedEvent, Integer, Integer
 
                     if (event.getHeader().getEventTransaction() != null) {
                         AugmentedEventTransaction transaction = event.getHeader().getEventTransaction();
-                        long tmp = UUID.fromString(transaction.getIdentifier()).getMostSignificantBits() & Integer.MAX_VALUE;
-                        return Math.toIntExact(Long.remainderUnsigned(tmp, totalPartitions));
+                        return Math.abs( transaction.getIdentifier().hashCode() ) % totalPartitions;
                     } else {
                         return ThreadLocalRandom.current().nextInt(totalPartitions);
                     }

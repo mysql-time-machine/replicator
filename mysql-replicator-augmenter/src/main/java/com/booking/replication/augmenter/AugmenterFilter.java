@@ -2,6 +2,7 @@ package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.filters.TableNameMergePatternFilter;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
+
 import java.util.Collection;
 import java.util.Map;
 import java.util.function.Function;
@@ -28,8 +29,8 @@ public interface AugmenterFilter extends Function<Collection<AugmentedEvent>,Col
     }
 
     interface Configuration {
-            String FILTER_TYPE = "augmenter.filter.type";
-            String FILTER_CONFIGURATION = "augmenter.filter.pattern";
+        String FILTER_TYPE = "augmenter.filter.type";
+        String FILTER_CONFIGURATION = "augmenter.filter.pattern";
     }
 
     @SuppressWarnings("unchecked")

@@ -5,28 +5,32 @@ import java.io.Serializable;
 @SuppressWarnings("unused")
 public class FullTableName implements Serializable {
 
-    private String database;
+    private String db;
     private String name;
 
-    public FullTableName() {
+    public FullTableName() { }
+
+    public FullTableName(String db, String fullName) {
+        this.db     = db;
+        this.name   = this.getTableName(fullName);
     }
 
-    public FullTableName(String database, String name) {
-        this.database = database;
-        this.name = this.cleaned(name);
-    }
-
-    private String cleaned(String name) {
-        if(name == null) return name;
-        name = name.replaceAll("`", "");
-        if ( name.contains(".") ) {
-            return name.split("\\.")[1];
+    private String getTableName(String fullName) {
+        if (fullName == null) {
+            return null;
         }
-        return name;
+
+        fullName = fullName.replaceAll("`", "");
+
+        if ( fullName.contains(".") ) {
+            return fullName.split("\\.")[1];
+        }
+
+        return fullName;
     }
 
-    public String getDatabase() {
-        return this.database;
+    public String getDb() {
+        return this.db;
     }
 
     public String getName() {
@@ -39,6 +43,6 @@ public class FullTableName implements Serializable {
 
     @Override
     public String toString() {
-        return String.format("%s.%s", this.database, this.name);
+        return String.format("%s.%s", this.db, this.name);
     }
 }

@@ -8,6 +8,7 @@ import com.booking.replication.applier.count.CountApplier;
 import com.booking.replication.augmenter.ActiveSchemaManager;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.AugmenterContext;
+import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.checkpoint.CheckpointApplier;
 import com.booking.replication.commons.conf.MySQLConfiguration;
 import com.booking.replication.commons.services.ServicesControl;
@@ -73,19 +74,18 @@ public class SlaveFailoverTest {
 
     private static Coordinator testCoordinator;
 
-    private static final ImmutableMap<String, Long> expectedSlave1Counts = ImmutableMap.of(
-            "QUERY", 2L,
-            "DELETE_ROWS", 2L,
-            "WRITE_ROWS", 14L,
-            "UPDATE_ROWS", 1L
+    private static final ImmutableMap<AugmentedEventType, Long> expectedSlave1Counts = ImmutableMap.of(
+            AugmentedEventType.QUERY, 2L,
+            AugmentedEventType.DELETE, 2L,
+            AugmentedEventType.INSERT, 14L,
+            AugmentedEventType.UPDATE, 1L
     );
 
-    private static final ImmutableMap<String, Long> expectedSlave2Counts = ImmutableMap.of(
-            "DELETE_ROWS", 2L,
-            "WRITE_ROWS", 1L,
-            "UPDATE_ROWS", 4L
+    private static final ImmutableMap<AugmentedEventType, Long> expectedSlave2Counts = ImmutableMap.of(
+            AugmentedEventType.DELETE, 2L,
+            AugmentedEventType.INSERT, 1L,
+            AugmentedEventType.UPDATE, 4L
     );
-
 
     @BeforeClass
     public static void before() throws InterruptedException {
@@ -222,7 +222,7 @@ public class SlaveFailoverTest {
 
         // Validate if the event type counts from slave 1 queries match
         if (replicator.getApplier() instanceof  CountApplier) {
-            Map<String, Long> eventCounts = ((CountApplier) replicator.getApplier()).getEventCounts();
+            Map<AugmentedEventType, Long> eventCounts = ((CountApplier) replicator.getApplier()).getEventCounts();
             LOG.info("Event Counts (slave 1) - " + eventCounts.toString());
             Assert.assertTrue(Maps.difference(expectedSlave1Counts, eventCounts).areEqual());
         }
@@ -248,7 +248,7 @@ public class SlaveFailoverTest {
 
         // Validate if the event type counts from slave 2 queries match
         if (replicator.getApplier() instanceof  CountApplier) {
-            Map<String, Long> eventCounts = ((CountApplier) replicator.getApplier()).getEventCounts();
+            Map<AugmentedEventType, Long> eventCounts = ((CountApplier) replicator.getApplier()).getEventCounts();
             LOG.info("Event Counts (slave 2) - " + eventCounts.toString());
             Assert.assertTrue(Maps.difference(expectedSlave2Counts, eventCounts).areEqual());
         }

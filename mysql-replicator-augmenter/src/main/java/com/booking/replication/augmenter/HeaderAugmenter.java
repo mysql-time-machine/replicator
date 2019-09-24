@@ -23,7 +23,7 @@ public class HeaderAugmenter {
         String dbName = null;
         String tableName = null;
         if (eventTable != null) {
-            dbName = eventTable.getDatabase();
+            dbName = eventTable.getDb();
             tableName = eventTable.getName();
         }
         return new AugmentedEventHeader(eventHeader.getTimestamp(), this.context.newCheckpoint(), type, dbName, tableName);
@@ -33,13 +33,13 @@ public class HeaderAugmenter {
         switch (eventHeader.getEventType()) {
             case WRITE_ROWS:
             case EXT_WRITE_ROWS:
-                return AugmentedEventType.WRITE_ROWS;
+                return AugmentedEventType.INSERT;
             case UPDATE_ROWS:
             case EXT_UPDATE_ROWS:
-                return AugmentedEventType.UPDATE_ROWS;
+                return AugmentedEventType.UPDATE;
             case DELETE_ROWS:
             case EXT_DELETE_ROWS:
-                return AugmentedEventType.DELETE_ROWS;
+                return AugmentedEventType.DELETE;
             case QUERY:
             case XID:
                 return AugmentedEventType.QUERY;

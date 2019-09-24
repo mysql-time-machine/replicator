@@ -54,4 +54,14 @@ public class AugmentedEventTransaction implements Serializable, Comparable<Augme
             return Integer.MAX_VALUE;
         }
     }
+
+    @Override
+    public String toString() {
+        return "AugmentedEventTransaction{"
+                + "commitTimestamp=" + commitTimestamp
+                + ", identifier='" + identifier
+                + ", xxid=" + xxid
+                + ", transactionSequenceNumber=" + transactionSequenceNumber
+                + '}';
+    }
 }

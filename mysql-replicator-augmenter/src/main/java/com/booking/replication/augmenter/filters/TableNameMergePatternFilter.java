@@ -1,13 +1,17 @@
 package com.booking.replication.augmenter.filters;
 
 import com.booking.replication.augmenter.AugmenterFilter;
-import com.booking.replication.augmenter.model.event.*;
-import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
+import com.booking.replication.augmenter.model.event.AugmentedEvent;
+import com.booking.replication.augmenter.model.event.AugmentedEventType;
+import com.booking.replication.augmenter.model.event.DeleteRowsAugmentedEventData;
+import com.booking.replication.augmenter.model.event.EventMetadata;
+import com.booking.replication.augmenter.model.event.RowEventMetadata;
+import com.booking.replication.augmenter.model.event.UpdateRowsAugmentedEventData;
+import com.booking.replication.augmenter.model.event.WriteRowsAugmentedEventData;
 import com.booking.replication.commons.metrics.Metrics;
 
 import java.util.Collection;
 import java.util.Map;
-import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -15,9 +19,7 @@ import java.util.stream.Collectors;
 /**
  * Table name rewrite filter - removes part of the table name that
  * matches the provided regex.
- *
  * Example:
- *
  *      Some_Table_201812
  *          with ([_][12]\d{3}(0[1-9]|1[0-2]))
  *      becomes
@@ -42,37 +44,37 @@ public class TableNameMergePatternFilter implements AugmenterFilter {
                 .counter("hbase.augmenter.filter.table_name_merge.attempt").inc(1L);
 
         Collection<AugmentedEvent> filtered = augmentedEvents.stream()
-                .map(
-                        ev -> {
-                            if (ev.getHeader().getEventType() == AugmentedEventType.WRITE_ROWS) {
-                                WriteRowsAugmentedEventData writeEv = ((WriteRowsAugmentedEventData) ev.getData());
-                                String originalName = writeEv.getEventTable().getName();
-                                String rewrittenName = getRewrittenName(originalName);
-                                // override
-                                writeEv.getEventTable().setName(rewrittenName);
-                                writeEv.getAugmentedRows().stream().forEach(au -> au.setTableName(rewrittenName));
-                            }
-                            if (ev.getHeader().getEventType() == AugmentedEventType.UPDATE_ROWS) {
-                                UpdateRowsAugmentedEventData updateEv = ((UpdateRowsAugmentedEventData) ev.getData());
-                                String originalName = updateEv.getEventTable().getName();
-                                String rewrittenName = getRewrittenName(originalName);
-                                // override
-                                updateEv.getEventTable().setName(rewrittenName);
-                                updateEv.getEventTable().setName(rewrittenName);
-                                updateEv.getAugmentedRows().stream().forEach(au -> au.setTableName(rewrittenName));
-                            }
-                            if (ev.getHeader().getEventType() == AugmentedEventType.DELETE_ROWS) {
-                                DeleteRowsAugmentedEventData deleteEv = ((DeleteRowsAugmentedEventData) ev.getData());
-                                String originalName = deleteEv.getEventTable().getName();
-                                String rewrittenName = getRewrittenName(originalName);
-                                // override
-                                deleteEv.getEventTable().setName(rewrittenName);
-                                deleteEv.getEventTable().setName(rewrittenName);
-                                deleteEv.getAugmentedRows().stream().forEach(au -> au.setTableName(rewrittenName));
-                            }
-                            return ev;
-                        }
-                )
+                .map(ev -> {
+                    if (ev.getHeader().getEventType() == AugmentedEventType.INSERT) {
+                        WriteRowsAugmentedEventData writeEv = ((WriteRowsAugmentedEventData) ev.getData());
+                        EventMetadata metadata = writeEv.getMetadata();
+                        String originalName = metadata.getEventTable().getName();
+                        String rewrittenName = getRewrittenName(originalName);
+                        // override
+                        metadata.getEventTable().setName(rewrittenName);
+                        writeEv.getRows().stream().forEach(au -> au.setTableName(rewrittenName));
+                    }
+                    if (ev.getHeader().getEventType() == AugmentedEventType.UPDATE) {
+                        UpdateRowsAugmentedEventData updateEv = ((UpdateRowsAugmentedEventData) ev.getData());
+                        EventMetadata metadata = updateEv.getMetadata();
+                        String originalName = metadata.getEventTable().getName();
+                        String rewrittenName = getRewrittenName(originalName);
+                        // override
+                        metadata.getEventTable().setName(rewrittenName);
+                        updateEv.getRows().stream().forEach(au -> au.setTableName(rewrittenName));
+                    }
+                    if (ev.getHeader().getEventType() == AugmentedEventType.DELETE) {
+                        DeleteRowsAugmentedEventData deleteEv = ((DeleteRowsAugmentedEventData) ev.getData());
+                        EventMetadata metadata = deleteEv.getMetadata();
+
+                        String originalName = metadata.getEventTable().getName();
+                        String rewrittenName = getRewrittenName(originalName);
+                        // override
+                        metadata.getEventTable().setName(rewrittenName);
+                        deleteEv.getRows().stream().forEach(au -> au.setTableName(rewrittenName));
+                    }
+                    return ev;
+                })
                 .collect(Collectors.toList());
 
         metrics.getRegistry()
@@ -85,8 +87,8 @@ public class TableNameMergePatternFilter implements AugmenterFilter {
     }
 
     public String getRewrittenName(String originalTableName) {
-        Matcher m = tableNameSufixPattern.matcher(originalTableName); // TODO: <- cache this
-        if (m.find()) {
+        Matcher matcher = tableNameSufixPattern.matcher(originalTableName); // TODO: <- cache this
+        if (matcher.find()) {
             String mergedTableName = originalTableName.replaceAll(pattern, "");
             return mergedTableName;
         } else {

@@ -22,6 +22,10 @@ class PayloadTableTestImpl implements ReplicatorHBasePipelineIntegrationTest {
 
     private String SCHEMA_NAME = "replicator"
 
+    Map<String, Object> perTestConfiguration(Map<String,Object> genericConfig) {
+        return genericConfig;
+    }
+
     @Override
     String testName() {
         return "PayloadTableTestImpl"

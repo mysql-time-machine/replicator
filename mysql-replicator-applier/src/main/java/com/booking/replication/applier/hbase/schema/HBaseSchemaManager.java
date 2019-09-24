@@ -7,15 +7,22 @@ import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
 import com.booking.replication.augmenter.model.schema.SchemaTransitionSequence;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.hadoop.conf.Configuration;
 
-import java.util.Map;
+import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter;
+import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
+import org.apache.hadoop.conf.Configuration;
 
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableExistsException;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.client.*;
+
+import org.apache.hadoop.hbase.client.Admin;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Table;
+
 import org.apache.hadoop.hbase.io.compress.Compression;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -23,6 +30,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -56,6 +67,15 @@ public class HBaseSchemaManager {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    {
+        Set<String> includeInColumns = new HashSet<>();
+
+        Collections.addAll(includeInColumns, "name", "columnType", "key", "valueDefault", "collation", "nullable");
+
+        SimpleFilterProvider filterProvider = new SimpleFilterProvider();
+        filterProvider.addFilter("column", SimpleBeanPropertyFilter.filterOutAllExcept(includeInColumns));
+        MAPPER.setFilterProvider(filterProvider);
+    }
 
     public HBaseSchemaManager(Map<String, Object> configuration) {
 
@@ -82,7 +102,7 @@ public class HBaseSchemaManager {
 
         if (!DRY_RUN) {
             hbaseTableName = hbaseTableName.toLowerCase();
-            try ( Admin admin = connection.getAdmin() ){
+            try ( Admin admin = connection.getAdmin()) {
 
                 if (seenHBaseTables.containsKey(hbaseTableName)) {
                     return;
@@ -179,15 +199,21 @@ public class HBaseSchemaManager {
 
             if (!admin.tableExists(tableName)) {
 
-                LOG.info("table " + hbaseTableName + " does not exist in HBase. Creating...");
+                synchronized (HBaseSchemaManager.class) {
+                    if (!admin.tableExists(tableName)) {
+                        LOG.info("table " + hbaseTableName + " does not exist in HBase. Creating...");
 
-                HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);
-                HColumnDescriptor cd = new HColumnDescriptor("d");
-                cd.setMaxVersions(SCHEMA_HISTORY_TABLE_NR_VERSIONS);
-                tableDescriptor.addFamily(cd);
-                tableDescriptor.setCompactionEnabled(true);
+                        HTableDescriptor tableDescriptor = new HTableDescriptor(tableName);
+                        HColumnDescriptor cd = new HColumnDescriptor("d");
+                        cd.setMaxVersions(SCHEMA_HISTORY_TABLE_NR_VERSIONS);
+                        tableDescriptor.addFamily(cd);
+                        tableDescriptor.setCompactionEnabled(true);
 
-                admin.createTable(tableDescriptor);
+                        admin.createTable(tableDescriptor);
+                    } else {
+                        LOG.info("Table " + hbaseTableName + " already exists in HBase. Probably a case of other thread created it.");
+                    }
+                }
 
             } else {
                 LOG.info("Table " + hbaseTableName + " already exists in HBase. Probably a case of replaying the binlog.");

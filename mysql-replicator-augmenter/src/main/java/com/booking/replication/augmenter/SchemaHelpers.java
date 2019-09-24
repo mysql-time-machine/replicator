@@ -1,24 +1,30 @@
 package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
+import com.booking.replication.augmenter.model.schema.DataType;
 import com.booking.replication.augmenter.model.schema.FullTableName;
 import com.booking.replication.augmenter.model.schema.TableSchema;
+
 import org.apache.commons.dbcp2.BasicDataSource;
 
-import javax.sql.DataSource;
-import java.net.ConnectException;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
+
+import javax.sql.DataSource;
 
 public class SchemaHelpers {
 
-    public static TableSchema computeTableSchema(String tableName, BasicDataSource dataSource, DataSource binlogDataSource) {
+    public static TableSchema computeTableSchema(String schema, String tableName, BasicDataSource dataSource, DataSource binlogDataSource) {
 
         try (Connection connection = dataSource.getConnection()) {
-            Statement statementListColumns = connection.createStatement();
-            Statement statementShowCreateTable = connection.createStatement();
+            Statement statementListColumns      = connection.createStatement();
+            Statement statementShowCreateTable  = connection.createStatement();
 
             //  connection.getSchema() returns null for MySQL, so we do this ugly hack
             // TODO: find nicer way
@@ -26,38 +32,46 @@ public class SchemaHelpers {
             String schemaName = terms[terms.length - 1];
 
             List<ColumnSchema> columnList = new ArrayList<>();
-            String tableCreateStatement = null;
 
-            // TODO: get this info from information_schema instead of 'show full columns from'
-            //       to avoid dealing with columns indexes
-            ResultSet resultSet = null;
+            ResultSet resultSet;
             SchemaHelpers.createTableIfNotExists(tableName, connection, binlogDataSource);
 
             resultSet = statementListColumns.executeQuery(
-                    String.format(ActiveSchemaManager.LIST_COLUMNS_SQL, tableName)
+                    String.format(ActiveSchemaManager.LIST_COLUMNS_SQL, schema, tableName)
             );
+
             while (resultSet.next()) {
 
-                String collation = resultSet.getString(3);
+                boolean isNullable = (resultSet.getString("IS_NULLABLE").equals("NO") ? false : true);
 
-                boolean nullable = (resultSet.getString(4).equals("NO") ? false : true);
+                DataType dataType = DataType.byCode(resultSet.getString("DATA_TYPE"));
 
-                columnList.add(new ColumnSchema(
-                        resultSet.getString(1),
-                        resultSet.getString(2),
-                        collation,
-                        nullable,
-                        resultSet.getString(5),
-                        resultSet.getString(6),
-                        resultSet.getString(7)
-                ));
+                ColumnSchema columnSchema = new ColumnSchema(
+                        resultSet.getString("COLUMN_NAME"),
+                        dataType,
+                        resultSet.getString("COLUMN_TYPE"),
+                        isNullable,
+                        resultSet.getString("COLUMN_KEY"),
+                        resultSet.getString("EXTRA")
+                );
+
+                columnSchema
+                        .setCollation(resultSet.getString("COLLATION_NAME"))
+                        .setDefaultValue(resultSet.getString("COLUMN_DEFAULT"))
+                        .setDateTimePrecision(resultSet.getInt("DATETIME_PRECISION"))
+                        .setCharMaxLength(resultSet.getInt("CHARACTER_MAXIMUM_LENGTH"))
+                        .setCharOctetLength(resultSet.getInt("CHARACTER_OCTET_LENGTH"))
+                        .setNumericPrecision(resultSet.getInt("NUMERIC_PRECISION"))
+                        .setNumericScale(resultSet.getInt("NUMERIC_SCALE"));
+
+                columnList.add(columnSchema);
             }
 
             ResultSet showCreateTableResultSet = statementShowCreateTable.executeQuery(
                     String.format(ActiveSchemaManager.SHOW_CREATE_TABLE_SQL, tableName)
             );
             ResultSetMetaData showCreateTableResultSetMetadata = showCreateTableResultSet.getMetaData();
-            tableCreateStatement = SchemaHelpers.getCreateTableStatement(tableName, showCreateTableResultSet, showCreateTableResultSetMetadata);
+            String tableCreateStatement = SchemaHelpers.getCreateTableStatement(tableName, showCreateTableResultSet, showCreateTableResultSetMetadata);
 
 
             return new TableSchema(new FullTableName(schemaName, tableName),

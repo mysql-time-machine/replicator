@@ -134,7 +134,7 @@ public class GtidSetAlgebra {
     }
 
 
-    private TreeSet<Long> getMaxUninteruptedRangeStartingFromMinimalTransaction (String serverId) {
+    private TreeSet<Long> getMaxUninteruptedRangeStartingFromMinimalTransaction(String serverId) {
 
         TreeSet<Long> range = (TreeSet) serverTransactionUpperLimits.get(serverId);
         TreeSet<Long> uninteruptedRange = new TreeSet<>();

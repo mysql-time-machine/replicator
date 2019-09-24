@@ -27,3 +27,6 @@ after_success:
 
 services:
   - docker
+
+dist: trusty
+

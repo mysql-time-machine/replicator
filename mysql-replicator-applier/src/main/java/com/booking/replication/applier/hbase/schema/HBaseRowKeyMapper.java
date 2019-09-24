@@ -1,5 +1,6 @@
 package com.booking.replication.applier.hbase.schema;
 
+import com.booking.replication.augmenter.model.format.EventDeserializer;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.google.common.base.Joiner;
 import org.apache.logging.log4j.LogManager;
@@ -28,23 +29,17 @@ public class HBaseRowKeyMapper {
         List<String> pkColumnValues = new ArrayList<>();
 
         for (String pkColumnName : pkColumnNames) {
-
-            Map<String, String> pkCell = row.getStringifiedRowColumns().get(pkColumnName);
-
             switch (row.getEventType()) {
 
-                case "INSERT":
-                    pkColumnValues.add(pkCell.get("value"));
+                case INSERT:
+                case DELETE: {
+                    pkColumnValues.add(row.getValueAsString(pkColumnName));
                     break;
-
-                case "DELETE":
-                    pkColumnValues.add(pkCell.get("value_before"));
+                }
+                case UPDATE: {
+                    pkColumnValues.add(row.getValueAsString(pkColumnName, EventDeserializer.Constants.VALUE_AFTER));
                     break;
-
-                case "UPDATE":
-                    pkColumnValues.add(pkCell.get("value_after"));
-                    break;
-
+                }
                 default:
                     throw new RuntimeException("Wrong event type. Expected RowType event.");
             }

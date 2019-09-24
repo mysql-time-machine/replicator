@@ -1,8 +1,8 @@
 package com.booking.replication.supplier.mysql.binlog;
 
 import com.booking.replication.commons.checkpoint.Checkpoint;
-import com.booking.replication.supplier.model.RawEvent;
 import com.booking.replication.supplier.Supplier;
+import com.booking.replication.supplier.model.RawEvent;
 import com.booking.replication.supplier.mysql.binlog.handler.RawEventInvocationHandler;
 
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
@@ -107,7 +107,9 @@ public class BinaryLogSupplier implements Supplier {
         client.setHeartbeatInterval(TimeUnit.MILLISECONDS.toMillis(1000));
 
         EventDeserializer eventDeserializer = new EventDeserializer();
-        eventDeserializer.setCompatibilityMode(EventDeserializer.CompatibilityMode.CHAR_AND_BINARY_AS_BYTE_ARRAY);
+        eventDeserializer.setCompatibilityMode(
+                EventDeserializer.CompatibilityMode.CHAR_AND_BINARY_AS_BYTE_ARRAY,
+                EventDeserializer.CompatibilityMode.DATE_AND_TIME_AS_LONG);
         client.setEventDeserializer(eventDeserializer);
 
         return client;
@@ -149,95 +151,96 @@ public class BinaryLogSupplier implements Supplier {
     public void connect(Checkpoint checkpoint) {
         if (this.client == null || !this.client.isConnected()) {
 
-                for (String hostname : this.hostname) {
-                    try {
-                        this.client = this.getClient(hostname);
+            for (String hostname : this.hostname) {
+                try {
+                    this.client = this.getClient(hostname);
 
-                        if (this.consumer != null) {
+                    if (this.consumer != null) {
 
-                            this.client.registerLifecycleListener(new BinaryLogClient.LifecycleListener() {
-                                @Override
-                                public void onConnect(BinaryLogClient client) {
-                                    BinaryLogSupplier.LOG.info(
-                                            String.format("Binlog client connected to:%s : %s, %s",
-                                                    hostname,
-                                                    client.getBinlogFilename(),
-                                                    client.getBinlogPosition(),
-                                                    client.getGtidSet()));
-                                }
-
-                                @Override
-                                public void onCommunicationFailure(BinaryLogClient client, Exception ex) {
-                                    BinaryLogSupplier.LOG.error(String.format("Binlog client had communication failure :%s, %s", hostname, ex.getMessage()));
-                                }
-
-                                @Override
-                                public void onEventDeserializationFailure(BinaryLogClient client, Exception ex) {
-                                    BinaryLogSupplier.LOG.error(String.format("Binlog client had Event deserialization failure : %s, %s", hostname, ex.getMessage()));
-                                }
-
-                                @Override
-                                public void onDisconnect(BinaryLogClient client) {
-                                    BinaryLogSupplier.LOG.info(String.format("Binlog client disconnected from: %s", hostname));
-                                }
-                            });
-
-                            this.client.registerEventListener(
-                                    event -> {
-                                        try {
-                                            this.consumer.accept(RawEvent.getRawEventProxy(new RawEventInvocationHandler(this.client, event)));
-                                        } catch (ReflectiveOperationException exception) {
-                                            throw new RuntimeException(exception);
-                                        }
-                                    }
-                            );
-
-                        }
-
-                        this.client.setServerId(new Random().nextLong() );
-
-                        if (checkpoint != null) {
-                            if (checkpoint.getGtidSet() != null && !checkpoint.getGtidSet().equals("")) {
-                                LOG.info("Starting Binlog Client from GTIDSet checkpoint. GTIDSet: " + checkpoint.getGtidSet());
-                                this.client.setGtidSet(checkpoint.getGtidSet());
-                                this.binlogClientGTIDSet.set(this.client.getGtidSet());
-                                this.client.connect();
-                                LOG.info("Started binlog Client from GTIDSet checkpoint. GTIDSet: " + checkpoint.getGtidSet());
-                                this.connected.set(true);
-                            } else {
-                                LOG.info("Starting binlog Client from binlogFilename and position: "
-                                        + checkpoint.getBinlog().getFilename()
-                                        + "/"
-                                        + checkpoint.getBinlog().getPosition()
-                                );
-                                this.client.setBinlogFilename(checkpoint.getBinlog().getFilename());
-                                this.client.setBinlogPosition(checkpoint.getBinlog().getPosition());
-                                this.client.connect();
-                                LOG.info("Started binlog Client from binlogFilename and position: "
-                                        + checkpoint.getBinlog().getFilename()
-                                        + "/"
-                                        + checkpoint.getBinlog().getPosition()
-                                );
-                                this.connected.set(true);
+                        this.client.registerLifecycleListener(new BinaryLogClient.LifecycleListener() {
+                            @Override
+                            public void onConnect(BinaryLogClient client) {
+                                BinaryLogSupplier.LOG.info(
+                                        String.format("Binlog client connected to:%s : %s, %s",
+                                                hostname,
+                                                client.getBinlogFilename(),
+                                                client.getBinlogPosition(),
+                                                client.getGtidSet()));
                             }
-                        } else {
-                            throw new RuntimeException("No startup checkpoint provided.");
-                        }
-                    } catch (IOException exception) {
-                        BinaryLogSupplier.LOG.warn(String.format("error connecting to %s, falling over to the next one", hostname), exception);
-                    }
-                }
 
-                if (!this.connected.get()) {
-                    if (this.running.get() && this.handler != null) {
-                        this.handler.accept(new IOException("error connecting"));
-                    } else {
-                        BinaryLogSupplier.LOG.error("error connecting");
-                        throw  new RuntimeException("MySQL server pool depleted, could not connect to any of the provided hosts.");
+                            @Override
+                            public void onCommunicationFailure(BinaryLogClient client, Exception ex) {
+                                BinaryLogSupplier.LOG.error(String.format("Binlog client had communication failure :%s, %s", hostname, ex.getMessage()));
+                            }
+
+                            @Override
+                            public void onEventDeserializationFailure(BinaryLogClient client, Exception ex) {
+                                BinaryLogSupplier.LOG.error(String.format("Binlog client had Event deserialization failure : %s, %s", hostname, ex.getMessage()));
+                            }
+
+                            @Override
+                            public void onDisconnect(BinaryLogClient client) {
+                                BinaryLogSupplier.LOG.info(String.format("Binlog client disconnected from: %s", hostname));
+                            }
+                        });
+
+                        this.client.registerEventListener(
+                            event -> {
+                                try {
+                                    this.consumer.accept(RawEvent.getRawEventProxy(new RawEventInvocationHandler(this.client, event)));
+                                } catch (ReflectiveOperationException exception) {
+                                    throw new RuntimeException(exception);
+                                }
+                            }
+                        );
+
                     }
+
+                    this.client.setServerId(new Random().nextLong() );
+
+                    if (checkpoint != null) {
+                        if (checkpoint.getGtidSet() != null && !checkpoint.getGtidSet().equals("")) {
+                            LOG.info("Starting Binlog Client from GTIDSet checkpoint. GTIDSet: " + checkpoint.getGtidSet());
+                            this.client.setGtidSet(checkpoint.getGtidSet());
+                            this.binlogClientGTIDSet.set(this.client.getGtidSet());
+                            this.client.connect();
+                            LOG.info("Started binlog Client from GTIDSet checkpoint. GTIDSet: " + checkpoint.getGtidSet());
+                            this.connected.set(true);
+                        } else {
+                            LOG.info("Starting binlog Client from binlogFilename and position: "
+                                    + checkpoint.getBinlog().getFilename()
+                                    + "/"
+                                    + checkpoint.getBinlog().getPosition()
+                            );
+                            this.client.setBinlogFilename(checkpoint.getBinlog().getFilename());
+                            this.client.setBinlogPosition(checkpoint.getBinlog().getPosition());
+                            this.client.connect();
+                            LOG.info("Started binlog Client from binlogFilename and position: "
+                                    + checkpoint.getBinlog().getFilename()
+                                    + "/"
+                                    + checkpoint.getBinlog().getPosition()
+                            );
+                            this.connected.set(true);
+                        }
+                    } else {
+                        throw new RuntimeException("No startup checkpoint provided.");
+                    }
+                } catch (IOException exception) {
+                    BinaryLogSupplier.LOG.warn(String.format("error connecting to %s, falling over to the next one", hostname), exception);
                 }
-                return;
             }
+
+            if (!this.connected.get()) {
+                if (this.running.get() && this.handler != null) {
+                    this.handler.accept(new IOException("error connecting"));
+                } else {
+                    BinaryLogSupplier.LOG.error("error connecting");
+                    throw  new RuntimeException("MySQL server pool depleted, could not connect to any of the provided hosts.");
+                }
+            }
+
+            return;
+        }
     }
 
     @Override

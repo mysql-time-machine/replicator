@@ -4,11 +4,21 @@ import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.event.DeleteRowsAugmentedEventData;
 import com.booking.replication.augmenter.model.event.UpdateRowsAugmentedEventData;
 import com.booking.replication.augmenter.model.event.WriteRowsAugmentedEventData;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.*;
-import org.apache.hadoop.hbase.client.*;
+
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Admin;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.util.Bytes;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -16,7 +26,6 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 // Dummy applier for testing: writes raw events, grouped by table name
 // with rowKey as timestamp
@@ -64,8 +73,8 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
 
     @Override
     public boolean forceFlushThreadBuffer(Long threadID) throws IOException {
-        Boolean s = flushThreadBuffer(threadID);
-        if (s) {
+        Boolean isSuccess = flushThreadBuffer(threadID);
+        if (isSuccess) {
             return true; // <- markedForCommit, will advance safe checkpoint
         } else {
             throw new IOException("Failed to write buffer to HBase");
@@ -123,7 +132,7 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
 
         Collection<AugmentedEvent> events = new ArrayList<>();
 
-        for ( String transactionID : buffered.get(threadID).keySet() ){
+        for ( String transactionID : buffered.get(threadID).keySet() ) {
             events.addAll( buffered.get(threadID).get(transactionID) );
         }
 
@@ -193,12 +202,12 @@ public class HBaseRawEventsWriter implements HBaseApplierWriter {
 
     private String getTableName(AugmentedEvent event) {
         switch (event.getHeader().getEventType()) {
-            case WRITE_ROWS:
-                return ((WriteRowsAugmentedEventData)event.getData()).getEventTable().getName();
-            case UPDATE_ROWS:
-                return ((UpdateRowsAugmentedEventData)event.getData()).getEventTable().getName();
-            case DELETE_ROWS:
-                return ((DeleteRowsAugmentedEventData)event.getData()).getEventTable().getName();
+            case INSERT:
+                return ((WriteRowsAugmentedEventData)event.getData()).getMetadata().getEventTable().getName();
+            case UPDATE:
+                return ((UpdateRowsAugmentedEventData)event.getData()).getMetadata().getEventTable().getName();
+            case DELETE:
+                return ((DeleteRowsAugmentedEventData)event.getData()).getMetadata().getEventTable().getName();
             default:
                 return null;
         }

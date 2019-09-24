@@ -54,8 +54,8 @@ public abstract class Coordinator implements LeaderCoordinator, CheckpointStorag
         this.semaphore = new Semaphore(0);
         this.hasLeadership = new AtomicBoolean(false);
         this.lostLeadership = new AtomicBoolean(true);
-        this.takeRunnable = new AtomicReference<>(() -> {});
-        this.loseRunnable = new AtomicReference<>(() -> {});
+        this.takeRunnable = new AtomicReference<>(() -> { });
+        this.loseRunnable = new AtomicReference<>(() -> { });
     }
 
     @Override
@@ -73,16 +73,16 @@ public abstract class Coordinator implements LeaderCoordinator, CheckpointStorag
     protected void takeLeadership() {
         if (!this.hasLeadership.getAndSet(true)) {
             try {
-                    this.awaitLeadership();
-                    this.lostLeadership.set(false);
+                this.awaitLeadership();
+                this.lostLeadership.set(false);
 
-                    try {
-                        this.takeRunnable.get().run();
-                    } catch (Exception exception) {
-                        Coordinator.LOG.error("error taking leadership", exception);
-                    }
+                try {
+                    this.takeRunnable.get().run();
+                } catch (Exception exception) {
+                    Coordinator.LOG.error("error taking leadership", exception);
+                }
 
-                    this.semaphore.acquire();
+                this.semaphore.acquire();
             } catch (Exception exception) {
                 Coordinator.LOG.warn("cannot take leadership");
             } finally {

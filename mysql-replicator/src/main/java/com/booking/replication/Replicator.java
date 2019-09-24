@@ -16,9 +16,9 @@ import com.booking.replication.controller.WebServer;
 import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.streams.Streams;
 import com.booking.replication.supplier.Supplier;
-
 import com.booking.replication.supplier.model.RawEvent;
 import com.booking.utils.BootstrapReplicator;
+
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 
@@ -26,13 +26,21 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
-import org.apache.commons.cli.*;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -40,16 +48,15 @@ import java.util.function.Consumer;
 public class Replicator {
 
     public interface Configuration {
-        String CHECKPOINT_PATH = "checkpoint.path";
-        String CHECKPOINT_DEFAULT = "checkpoint.default";
-        String REPLICATOR_THREADS = "replicator.threads";
-        String REPLICATOR_TASKS = "replicator.tasks";
-        String REPLICATOR_QUEUE_SIZE = "replicator.queue.size";
-        String REPLICATOR_QUEUE_TIMEOUT = "replicator.queue.timeout";
-        String OVERRIDE_CHECKPOINT_START_POSITION = "override.checkpoint.start.position";
-        String OVERRIDE_CHECKPOINT_BINLOG_FILENAME = "override.checkpoint.binLog.filename";
-        String OVERRIDE_CHECKPOINT_BINLOG_POSITION = "override.checkpoint.binLog.position";
-        String OVERRIDE_CHECKPOINT_GTID_SET = "override.checkpoint.gtidSet";
+        String CHECKPOINT_PATH      = "checkpoint.path";
+        String CHECKPOINT_DEFAULT   = "checkpoint.default";
+        String REPLICATOR_THREADS   = "replicator.threads";
+        String REPLICATOR_TASKS     = "replicator.tasks";
+
+        String OVERRIDE_CHECKPOINT_START_POSITION   = "override.checkpoint.start.position";
+        String OVERRIDE_CHECKPOINT_BINLOG_FILENAME  = "override.checkpoint.binLog.filename";
+        String OVERRIDE_CHECKPOINT_BINLOG_POSITION  = "override.checkpoint.binLog.position";
+        String OVERRIDE_CHECKPOINT_GTID_SET         = "override.checkpoint.gtidSet";
     }
 
     private static final Logger LOG = LogManager.getLogger(Replicator.class);
@@ -86,13 +93,11 @@ public class Replicator {
 
         int threads = Integer.parseInt(configuration.getOrDefault(Configuration.REPLICATOR_THREADS, "1").toString());
         int tasks = Integer.parseInt(configuration.getOrDefault(Configuration.REPLICATOR_TASKS, "1").toString());
-        int queueSize = Integer.parseInt(configuration.getOrDefault(Configuration.REPLICATOR_QUEUE_SIZE, "10000").toString());
-        long queueTimeout = Long.parseLong(configuration.getOrDefault(Configuration.REPLICATOR_QUEUE_TIMEOUT, "300").toString());
 
         boolean overrideCheckpointStartPosition = Boolean.parseBoolean(configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_START_POSITION, false).toString());
         String overrideCheckpointBinLogFileName = configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_BINLOG_FILENAME, "").toString();
-        long overrideCheckpointBinlogPosition = Long.parseLong(configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_BINLOG_POSITION, "0").toString());
-        String overrideCheckpointGtidSet = configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_GTID_SET, "").toString();
+        long overrideCheckpointBinlogPosition   = Long.parseLong(configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_BINLOG_POSITION, "0").toString());
+        String overrideCheckpointGtidSet        = configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_GTID_SET, "").toString();
 
 
         this.checkpointPath = checkpointPath.toString();
@@ -108,21 +113,15 @@ public class Replicator {
                 "error"
         );
 
-        this.coordinator = Coordinator.build(configuration);
-
-        this.supplier = Supplier.build(configuration);
-
-        this.augmenter = Augmenter.build(configuration);
-
-        this.augmenterFilter = AugmenterFilter.build(configuration);
-
-        this.seeker = Seeker.build(configuration);
-
-        this.partitioner = Partitioner.build(configuration);
-
-        this.applier = Applier.build(configuration);
-
-        this.lastSafeCheckpoint = new AtomicLong(0L);
+        this.coordinator        = Coordinator.build(configuration);
+        this.supplier           = Supplier.build(configuration);
+        this.augmenter          = Augmenter.build(configuration);
+        this.augmenterFilter    = AugmenterFilter.build(configuration);
+        this.seeker             = Seeker.build(configuration);
+        this.partitioner        = Partitioner.build(configuration);
+        this.applier            = Applier.build(configuration);
+        
+	this.lastSafeCheckpoint = new AtomicLong(0L);
 
         this.checkpointApplier = CheckpointApplier.build(configuration,
                 this.coordinator,
@@ -227,30 +226,25 @@ public class Replicator {
 
                 Checkpoint from;
 
-                if(overrideCheckpointStartPosition){
-
+                if (overrideCheckpointStartPosition) {
                     if (overrideCheckpointBinLogFileName != null && !overrideCheckpointBinLogFileName.equals("")) {
 
-                        LOG.info("Checkpoint startup mode: override Binlog filename and position:" +
-                                overrideCheckpointBinLogFileName +
-                                ":" +
-                                overrideCheckpointBinlogPosition);
+                        LOG.info("Checkpoint startup mode: override Binlog filename and position:"
+                                + overrideCheckpointBinLogFileName
+                                + ":"
+                                + overrideCheckpointBinlogPosition);
 
                         from = this.seeker.seek(
                                 new Checkpoint(new Binlog(overrideCheckpointBinLogFileName, overrideCheckpointBinlogPosition))
                         );
 
                     } else if (overrideCheckpointGtidSet != null && !overrideCheckpointGtidSet.equals("")) {
+                        LOG.info("Checkpoint startup mode: override gtidSet: " + overrideCheckpointGtidSet);
 
-                       LOG.info("Checkpoint startup mode: override gtidSet: " + overrideCheckpointGtidSet);
-                       from = this.seeker.seek(
-                               new Checkpoint(overrideCheckpointGtidSet)
-                       );
-
+                        from = this.seeker.seek(new Checkpoint(overrideCheckpointGtidSet));
                     } else {
                         throw new RuntimeException("Impossible case!");
                     }
-
                 } else {
                     LOG.info("Checkpoint startup mode: loading safe checkpoint from zookeeper");
 
@@ -296,7 +290,6 @@ public class Replicator {
         this.supplier.onException(exceptionHandle);
         this.sourceStream.onException(exceptionHandle);
         this.destinationStream.onException(exceptionHandle);
-
     }
 
     public Applier getApplier() {
@@ -306,7 +299,7 @@ public class Replicator {
     private Checkpoint loadSafeCheckpoint() throws IOException {
         Checkpoint checkpoint = this.coordinator.loadCheckpoint(this.checkpointPath);
 
-        if (checkpoint == null && this.checkpointDefault != null) {
+        if (checkpoint == null && this.checkpointDefault != null && !"".equals(this.checkpointDefault) ) {
             checkpoint = new ObjectMapper().readValue(this.checkpointDefault, Checkpoint.class);
         }
 
@@ -328,10 +321,6 @@ public class Replicator {
 
     public void wait(long timeout, TimeUnit unit) {
         this.coordinator.wait(timeout, unit);
-    }
-
-    public void join() {
-        this.coordinator.join();
     }
 
     public void stop() {
@@ -388,7 +377,6 @@ public class Replicator {
         options.addOption(Option.builder().longOpt("applier").argName("applier").desc("the applier setSink be used").hasArg().build());
         options.addOption(Option.builder().longOpt("secret-file").argName("filename").desc("the secret file which has Mysql user/password config (JSON)").hasArg().build());
 
-
         try {
             CommandLine line = new DefaultParser().parse(options, arguments);
 
@@ -422,9 +410,7 @@ public class Replicator {
                 if (line.hasOption("secret-file")) {
                     configuration.putAll(new ObjectMapper().readValue(
                             new File(line.getOptionValue("secret-file")),
-                            new TypeReference<Map<String, String>>() {
-
-                    }));
+                            new TypeReference<Map<String, String>>() {}));
                 }
 
                 if (line.hasOption("supplier")) {
@@ -434,7 +420,6 @@ public class Replicator {
                 if (line.hasOption("applier")) {
                     configuration.put(Applier.Configuration.TYPE, line.getOptionValue("applier").toUpperCase());
                 }
-
 
                 new BootstrapReplicator(configuration).run();
 

@@ -1,6 +1,7 @@
 package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.model.event.AugmentedEventData;
+import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.augmenter.model.event.DeleteRowsAugmentedEventData;
 import com.booking.replication.augmenter.model.event.QueryAugmentedEventData;
 import com.booking.replication.augmenter.model.event.UpdateRowsAugmentedEventData;
@@ -28,7 +29,6 @@ public class DataAugmenter {
     }
 
     public synchronized AugmentedEventData apply(RawEventHeaderV4 eventHeader, RawEventData eventData) {
-
         switch (eventHeader.getEventType()) {
 
             case WRITE_ROWS:
@@ -48,16 +48,20 @@ public class DataAugmenter {
                 this.context.incrementRowCounterMetrics(eventHeader.getEventType(), eventRowsBeforeAfter.size());
 
                 Collection<ColumnSchema> columns = this.context.getColumns(writeRowsRawEventData.getTableId());
-                if(columns == null) return null;
-                return new WriteRowsAugmentedEventData(
+                if (columns == null) {
+                    return null;
+                }
 
+                return new WriteRowsAugmentedEventData(
+                        AugmentedEventType.INSERT,
                         this.context.getEventTable(writeRowsRawEventData.getTableId()),
                         this.context.getIncludedColumns(writeRowsRawEventData.getIncludedColumns()),
                         columns,
 
                         this.context.computeAugmentedEventRows(
-                                "INSERT",
-                                this.context.getTransaction().getIdentifier().get(),
+                                AugmentedEventType.INSERT,
+                                eventHeader.getTimestamp(),
+                                this.context.getTransaction().getIdentifier().getValue(),
                                 this.context.getTransaction().getXxid(),
                                 writeRowsRawEventData.getTableId(),
                                 includedColumnsInsert,
@@ -80,17 +84,20 @@ public class DataAugmenter {
 
                 this.context.incrementRowCounterMetrics(eventHeader.getEventType(), rowsBeforeAfterUpdate.size());
                 Collection<ColumnSchema> columns1 = this.context.getColumns(updateRowsRawEventData.getTableId());
-                if(columns1 == null) return null;
-                return new UpdateRowsAugmentedEventData(
+                if (columns1 == null) {
+                    return null;
+                }
 
+                return new UpdateRowsAugmentedEventData(
+                        AugmentedEventType.UPDATE,
                         this.context.getEventTable(updateRowsRawEventData.getTableId()),
                         this.context.getIncludedColumns(updateRowsRawEventData.getIncludedColumnsBeforeUpdate()),
                         this.context.getIncludedColumns(updateRowsRawEventData.getIncludedColumns()),
                         columns1,
-
                         this.context.computeAugmentedEventRows(
-                                "UPDATE",
-                                this.context.getTransaction().getIdentifier().get(),
+                                AugmentedEventType.UPDATE,
+                                eventHeader.getTimestamp(),
+                                this.context.getTransaction().getIdentifier().getValue(),
                                 this.context.getTransaction().getXxid(),
                                 updateRowsRawEventData.getTableId(),
 
@@ -115,14 +122,19 @@ public class DataAugmenter {
                 this.context.incrementRowCounterMetrics(eventHeader.getEventType(), rowsBeforeAfterDelete.size());
 
                 Collection<ColumnSchema> columns2 = this.context.getColumns(deleteRowsRawEventData.getTableId());
-                if(columns2 == null) return null;
+                if (columns2 == null) {
+                    return null;
+                }
+
                 return new DeleteRowsAugmentedEventData(
+                        AugmentedEventType.DELETE,
                         this.context.getEventTable(deleteRowsRawEventData.getTableId()),
                         this.context.getIncludedColumns(deleteRowsRawEventData.getIncludedColumns()),
                         columns2,
                         this.context.computeAugmentedEventRows(
-                                "DELETE",
-                                this.context.getTransaction().getIdentifier().get(),
+                                AugmentedEventType.DELETE,
+                                eventHeader.getTimestamp(),
+                                this.context.getTransaction().getIdentifier().getValue(),
                                 this.context.getTransaction().getXxid(),
                                 deleteRowsRawEventData.getTableId(),
 
@@ -136,6 +148,7 @@ public class DataAugmenter {
                 this.context.incrementRowCounterMetrics(eventHeader.getEventType(), 1);
                 
                 return new QueryAugmentedEventData(
+                        AugmentedEventType.QUERY,
                         this.context.getQueryType(),
                         this.context.getQueryOperationType(),
                         this.context.getEventTable(),
@@ -148,6 +161,7 @@ public class DataAugmenter {
                 );
             case XID:
                 return new QueryAugmentedEventData(
+                        AugmentedEventType.QUERY,
                         this.context.getQueryType(),
                         this.context.getQueryOperationType(),
                         this.context.getEventTable(),

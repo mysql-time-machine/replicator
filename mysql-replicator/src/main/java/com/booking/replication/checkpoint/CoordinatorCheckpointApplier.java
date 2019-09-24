@@ -5,16 +5,18 @@ import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.CheckpointStorage;
 import com.booking.replication.supplier.mysql.binlog.gtid.GtidSetAlgebra;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -46,7 +48,7 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
 
             List<Checkpoint> checkpointsSeenSoFar = new ArrayList<>();
             for (CheckpointBuffer checkpointBuffer: taskCheckpointBuffer.values()) {
-                    checkpointsSeenSoFar.addAll(checkpointBuffer.getBufferedSoFar());
+                checkpointsSeenSoFar.addAll(checkpointBuffer.getBufferedSoFar());
             }
 
             List<Checkpoint> checkpointsSeenWithGtidSet = checkpointsSeenSoFar

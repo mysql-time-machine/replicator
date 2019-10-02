@@ -25,13 +25,9 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 public class HBaseApplier implements Applier {
@@ -57,6 +53,10 @@ public class HBaseApplier implements Applier {
 
     private final int FLUSH_BUFFER_SIZE;
     private final int BUFFER_FLUSH_TIME_LIMIT;
+    private final int BUFFER_FLUSH_TIME_MINIMUM;
+    private final int BUFFER_FLUSH_TIME_MAXIMUM;
+
+    private final boolean FLUSH_BUFFER_WITH_JITTER;
 
     private final boolean dryRun;
 
@@ -68,6 +68,8 @@ public class HBaseApplier implements Applier {
 
     org.apache.hadoop.conf.Configuration hbaseConfig;
 
+    HashMap<Long, Integer> timeoutPerThreadID;
+
     public interface Configuration {
         String HBASE_ZOOKEEPER_QUORUM   = "applier.hbase.zookeeper.quorum";
         String REPLICATED_SCHEMA_NAME   = "applier.hbase.sourcedb.name";
@@ -77,6 +79,9 @@ public class HBaseApplier implements Applier {
         String HBASE_USE_SNAPPY         = "applier.hbase.snappy";
         String DRYRUN                   = "applier.hbase.dryrun";
         String PAYLOAD_TABLE_NAME       = "applier.hbase.payload.table.name";
+        String FLUSH_BUFFER_WITH_JITTER = "applier.hbase.buffer.flush.jitter"; // true || false
+        String FLUSH_BUFFER_JITTER_MINIMUM = "applier.hbase.buffer.time.minimum";
+        String FLUSH_BUFFER_JITTER_MAXIMUM = "applier.hbase.buffer.time.maximum";
         String FLUSH_BUFFER_SIZE        = "applier.hbase.buffer.size";
         String BUFFER_FLUSH_TIME_LIMIT  = "applier.hbase.buffer.time.limit";
     }
@@ -95,6 +100,32 @@ public class HBaseApplier implements Applier {
         }
 
         LOG.info("HBase FLUSH_BUFFER_SIZE set to " + FLUSH_BUFFER_SIZE);
+
+        if (configuration.containsKey(Configuration.FLUSH_BUFFER_WITH_JITTER)){
+            FLUSH_BUFFER_WITH_JITTER = (boolean) configuration.get(Configuration.FLUSH_BUFFER_WITH_JITTER);
+
+            if ( FLUSH_BUFFER_WITH_JITTER ) {
+                if (    configuration.containsKey(Configuration.FLUSH_BUFFER_JITTER_MAXIMUM)
+                     && configuration.containsKey(Configuration.FLUSH_BUFFER_JITTER_MAXIMUM)
+                ) {
+                    this.BUFFER_FLUSH_TIME_MAXIMUM = (int) configuration.get(Configuration.FLUSH_BUFFER_JITTER_MAXIMUM);
+                    this.BUFFER_FLUSH_TIME_MINIMUM = (int) configuration.get(Configuration.FLUSH_BUFFER_JITTER_MINIMUM);
+                    timeoutPerThreadID = new HashMap<>();
+                    LOG.info("HBase buffer timeout set to 'jitter' mode, flush time will be randomized between " + this.BUFFER_FLUSH_TIME_MINIMUM +
+                                " and " + this.BUFFER_FLUSH_TIME_MAXIMUM + " seconds");
+                } else {
+                    throw new RuntimeException(
+                            "You must supply both '" + Configuration.FLUSH_BUFFER_JITTER_MINIMUM + "'" +
+                            "and '" + Configuration.FLUSH_BUFFER_JITTER_MAXIMUM + "' if '" + Configuration.FLUSH_BUFFER_WITH_JITTER + "'" +
+                            " is set to true");
+                }
+            }else {
+                this.BUFFER_FLUSH_TIME_MINIMUM = this.BUFFER_FLUSH_TIME_MAXIMUM = 0;
+            }
+        } else {
+            FLUSH_BUFFER_WITH_JITTER = false;
+            this.BUFFER_FLUSH_TIME_MINIMUM = this.BUFFER_FLUSH_TIME_MAXIMUM = 0;
+        }
 
         if (configuration.containsKey(Configuration.BUFFER_FLUSH_TIME_LIMIT)) {
             BUFFER_FLUSH_TIME_LIMIT = (int) configuration.get(Configuration.BUFFER_FLUSH_TIME_LIMIT);
@@ -115,7 +146,6 @@ public class HBaseApplier implements Applier {
 
             hbaseApplierWriter = new HBaseTimeMachineWriter(hbaseConfig, hbaseSchemaManager,configuration);
             LOG.info("Created HBaseApplierWriter.");
-
         } catch (IOException | NoSuchAlgorithmException e) {
             LOG.error(e.getMessage(), e);
         }
@@ -284,7 +314,20 @@ public class HBaseApplier implements Applier {
 
     private void checkIfBufferExpired() {
         long now = Instant.now().toEpochMilli();
-        if (now - hbaseApplierWriter.getThreadLastFlushTime() > BUFFER_FLUSH_TIME_LIMIT) {
+        int BUFFER_TIMEOUT = BUFFER_FLUSH_TIME_LIMIT;
+
+        if ( FLUSH_BUFFER_WITH_JITTER ) {
+            if ( timeoutPerThreadID.containsKey( Thread.currentThread().getId() ) ) {
+                // We've already generated a timeout for this queue
+                BUFFER_TIMEOUT = timeoutPerThreadID.get( Thread.currentThread().getId() );
+            } else {
+                BUFFER_TIMEOUT = ThreadLocalRandom.current().nextInt( this.BUFFER_FLUSH_TIME_MINIMUM, this.BUFFER_FLUSH_TIME_MAXIMUM + 1);
+                LOG.info("Thread " + Thread.currentThread().getId() + " timeout set to: " + BUFFER_TIMEOUT);
+                timeoutPerThreadID.put( Thread.currentThread().getId(), BUFFER_TIMEOUT );
+            }
+        }
+
+        if (now - hbaseApplierWriter.getThreadLastFlushTime() > BUFFER_TIMEOUT) {
             forceFlush();
         }
     }

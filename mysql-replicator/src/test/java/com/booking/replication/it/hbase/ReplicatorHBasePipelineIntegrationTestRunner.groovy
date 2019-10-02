@@ -476,6 +476,9 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         // HBase Specifics
         configuration.put(HBaseApplier.Configuration.HBASE_ZOOKEEPER_QUORUM, "localhost:2181")
         configuration.put(HBaseApplier.Configuration.REPLICATED_SCHEMA_NAME, MYSQL_SCHEMA)
+        configuration.put(HBaseApplier.Configuration.FLUSH_BUFFER_WITH_JITTER,true);
+        configuration.put(HBaseApplier.Configuration.FLUSH_BUFFER_JITTER_MINIMUM,15);
+        configuration.put(HBaseApplier.Configuration.FLUSH_BUFFER_JITTER_MAXIMUM,30);
 
         configuration.put(HBaseApplier.Configuration.TARGET_NAMESPACE,  HBASE_TARGET_NAMESPACE)
         configuration.put(HBaseApplier.Configuration.SCHEMA_HISTORY_NAMESPACE, HBASE_SCHEMA_HISTORY_NAMESPACE)

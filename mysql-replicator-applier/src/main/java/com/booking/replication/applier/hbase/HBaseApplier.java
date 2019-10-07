@@ -322,13 +322,18 @@ public class HBaseApplier implements Applier {
                 BUFFER_TIMEOUT = timeoutPerThreadID.get( Thread.currentThread().getId() );
             } else {
                 BUFFER_TIMEOUT = ThreadLocalRandom.current().nextInt( this.BUFFER_FLUSH_TIME_MINIMUM, this.BUFFER_FLUSH_TIME_MAXIMUM + 1);
-                LOG.info("Thread " + Thread.currentThread().getId() + " timeout set to: " + BUFFER_TIMEOUT);
                 timeoutPerThreadID.put( Thread.currentThread().getId(), BUFFER_TIMEOUT );
             }
         }
 
-        if (now - hbaseApplierWriter.getThreadLastFlushTime() > BUFFER_TIMEOUT) {
+        long timeDiff = now - hbaseApplierWriter.getThreadLastFlushTime();
+
+        if (timeDiff > BUFFER_TIMEOUT) {
             forceFlush();
+            if ( FLUSH_BUFFER_WITH_JITTER ) {
+                LOG.info("Flushed thread " + Thread.currentThread().getId() + " due to timeout");
+                timeoutPerThreadID.remove(Thread.currentThread().getId());
+            }
         }
     }
 

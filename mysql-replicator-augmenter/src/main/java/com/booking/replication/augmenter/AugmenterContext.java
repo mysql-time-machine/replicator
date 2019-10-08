@@ -61,6 +61,7 @@ public class AugmenterContext implements Closeable {
         String ENUM_PATTERN                 = "augmenter.context.pattern.enum";
         String SET_PATTERN                  = "augmenter.context.pattern.set";
         String EXCLUDE_TABLE                = "augmenter.context.exclude.table";
+        String EXCLUDE_PATTERN              = "augmenter.context.exclude.pattern";
         String INCLUDE_TABLE                = "augmenter.context.include.table";
         String TRANSACTIONS_ENABLED         = "augmenter.context.transactions.enabled";
     }
@@ -92,6 +93,7 @@ public class AugmenterContext implements Closeable {
     private final Pattern ddlAnalyzePattern;
     private final Pattern enumPattern;
     private final Pattern setPattern;
+    private final Pattern excludePattern;
     private final boolean transactionsEnabled;
     private final Metrics<?> metrics;
     private final String binlogsBasePath;
@@ -164,6 +166,7 @@ public class AugmenterContext implements Closeable {
         this.ddlAnalyzePattern = this.getPattern(configuration, Configuration.DDL_ANALYZE_PATTERN, AugmenterContext.DEFAULT_DDL_ANALYZE_PATTERN);
         this.enumPattern = this.getPattern(configuration, Configuration.ENUM_PATTERN, AugmenterContext.DEFAULT_ENUM_PATTERN);
         this.setPattern = this.getPattern(configuration, Configuration.SET_PATTERN, AugmenterContext.DEFAULT_SET_PATTERN);
+        this.excludePattern = this.getPattern(configuration, Configuration.EXCLUDE_PATTERN,null);
         this.transactionsEnabled = Boolean.parseBoolean(configuration.getOrDefault(Configuration.TRANSACTIONS_ENABLED, "true").toString());
         this.excludeTableList = this.getList(configuration.get(Configuration.EXCLUDE_TABLE));
         this.includeTableList = this.getList(configuration.get(Configuration.INCLUDE_TABLE));
@@ -201,13 +204,16 @@ public class AugmenterContext implements Closeable {
     }
 
     private Pattern getPattern(Map<String, Object> configuration, String configurationPath, String configurationDefault) {
-        return Pattern.compile(
-                configuration.getOrDefault(
-                        configurationPath,
-                        configurationDefault
-                ).toString(),
-                Pattern.CASE_INSENSITIVE
+        Object pattern = configuration.getOrDefault(
+                configurationPath,
+                configurationDefault
         );
+
+        if ( pattern != null ) {
+            return Pattern.compile(pattern.toString(),Pattern.CASE_INSENSITIVE);
+        }
+
+        return null;
     }
 
     @SuppressWarnings("unchecked")
@@ -636,6 +642,9 @@ public class AugmenterContext implements Closeable {
     }
 
     private boolean excludeTable(String tableName) {
+        if ( this.excludePattern != null && this.excludePattern.matcher(tableName).find() ) {
+            return true;
+        }
         return this.excludeTableList.contains(tableName);
     }
 

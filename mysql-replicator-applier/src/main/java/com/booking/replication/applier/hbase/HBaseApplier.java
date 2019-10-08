@@ -105,7 +105,7 @@ public class HBaseApplier implements Applier {
             FLUSH_BUFFER_WITH_JITTER = (boolean) configuration.get(Configuration.FLUSH_BUFFER_WITH_JITTER);
 
             if ( FLUSH_BUFFER_WITH_JITTER ) {
-                if (    configuration.containsKey(Configuration.FLUSH_BUFFER_JITTER_MAXIMUM)
+                if (    configuration.containsKey(Configuration.FLUSH_BUFFER_JITTER_MINIMUM)
                      && configuration.containsKey(Configuration.FLUSH_BUFFER_JITTER_MAXIMUM)
                 ) {
                     this.BUFFER_FLUSH_TIME_MAXIMUM = (int) configuration.get(Configuration.FLUSH_BUFFER_JITTER_MAXIMUM);

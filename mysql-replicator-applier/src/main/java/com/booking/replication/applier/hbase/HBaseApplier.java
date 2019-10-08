@@ -331,7 +331,6 @@ public class HBaseApplier implements Applier {
         if (timeDiff > BUFFER_TIMEOUT) {
             forceFlush();
             if ( FLUSH_BUFFER_WITH_JITTER ) {
-                LOG.info("Flushed thread " + Thread.currentThread().getId() + " due to timeout");
                 timeoutPerThreadID.remove(Thread.currentThread().getId());
             }
         }

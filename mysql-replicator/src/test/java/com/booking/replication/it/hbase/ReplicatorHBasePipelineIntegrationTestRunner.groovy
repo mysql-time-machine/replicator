@@ -6,10 +6,9 @@ import com.booking.replication.applier.Partitioner
 import com.booking.replication.applier.Seeker
 import com.booking.replication.applier.hbase.HBaseApplier
 import com.booking.replication.applier.hbase.StorageConfig
-import com.booking.replication.augmenter.ActiveSchemaManager
+import com.booking.replication.augmenter.schema.impl.active.ActiveSchemaManager
 import com.booking.replication.augmenter.Augmenter
 import com.booking.replication.augmenter.AugmenterContext
-import com.booking.replication.augmenter.AugmenterFilter
 import com.booking.replication.checkpoint.CheckpointApplier
 import com.booking.replication.commons.conf.MySQLConfiguration
 import com.booking.replication.commons.services.ServicesControl
@@ -86,14 +85,18 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     @Shared public static final String BIGTABLE_PROJECT = getBigTableProject()
     @Shared public static final String  BIGTABLE_INSTANCE = getBigTableInstance()
 
+
+    @Shared public static final String AUGMENTER_TYPE = Augmenter.SchemaType.ACTIVE.name();
+//    @Shared public static final String AUGMENTER_TYPE = Augmenter.SchemaType.BINLOG_METADATA.name();
+
     @Shared private TESTS = [
-            new TableWhiteListTest(),
-            new TableNameMergeFilterTestImpl(),
-            new TransmitInsertsTestImpl(),
-            new MicrosecondValidationTestImpl(),
-            new LongTransactionTestImpl(),
-            new PayloadTableTestImpl(),
-            new SplitTransactionTestImpl()
+//            new TableWhiteListTest(),
+//            new TableNameMergeFilterTestImpl(),
+//            new TransmitInsertsTestImpl(),
+//            new MicrosecondValidationTestImpl(),
+//            new LongTransactionTestImpl(),
+            new PayloadTableTestImpl()//,
+//            new SplitTransactionTestImpl()
     ]
 
     @Shared ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS)
@@ -163,6 +166,31 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
     void setupSpec() throws Exception {
 
+        // Active SchemaManager
+        LOG.info("Checking ActiveSchemaManager...")
+
+        int counter = 60
+        while (counter > 0) {
+            Thread.sleep(1000)
+            if (activeSchemaIsReady()) {
+                LOG.info("ActiveSchemaManager container is ready.")
+                break
+            }
+            counter--
+        }
+
+        // HBase
+        LOG.info("Checking HBase/BigTable...")
+        counter = 60
+        while (counter > 0) {
+            Thread.sleep(1000)
+            if (hbaseSanityCheck()) {
+                LOG.info("HBase/BigTable is ready.")
+                break
+            }
+            counter--
+        }
+
         LOG.info("env: HBASE_TARGET_NAMESPACE => " + HBASE_TARGET_NAMESPACE)
         LOG.info("env: HBASE_SCHEMA_HISTORY_NAMESPACE => " + HBASE_SCHEMA_HISTORY_NAMESPACE)
         LOG.info("env: STORAGE_TYPE => " + STORAGE_TYPE)
@@ -221,30 +249,6 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     }
 
     private Replicator startReplicator(Map<String,Object> configuration) {
-
-        LOG.info("waiting for containers setSink start...")
-
-        // Active SchemaManager
-        int counter = 60
-        while (counter > 0) {
-            Thread.sleep(1000)
-            if (activeSchemaIsReady()) {
-                LOG.info("ActiveSchemaManager container is ready.")
-                break
-            }
-            counter--
-        }
-
-        // HBase
-        counter = 60
-        while (counter > 0) {
-            Thread.sleep(1000)
-            if (hbaseSanityCheck()) {
-                LOG.info("HBase/BigTable is ready.")
-                break
-            }
-            counter--
-        }
 
         LOG.info("Starting the Replicator...")
         Replicator replicator = new Replicator(configuration)
@@ -353,7 +357,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
                 LOG.info("table already exists, moving on...")
             }
 
-            // write test data
+            // write test dummyValue
             HashMap<String,HashMap<String, HashMap<Long, String>>> data = new HashMap<>()
             Table table = connection.getTable(TableName.valueOf(Bytes.toBytes(sanityCheckTableName)))
             long timestamp = System.currentTimeMillis()
@@ -457,7 +461,8 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         configuration.put(BinaryLogSupplier.Configuration.MYSQL_PASSWORD, MYSQL_PASSWORD)
 
         // SchemaManager Manager Configuration
-        configuration.put(Augmenter.Configuration.SCHEMA_TYPE, Augmenter.SchemaType.ACTIVE.name())
+        configuration.put(Augmenter.Configuration.SCHEMA_TYPE, AUGMENTER_TYPE);
+//        configuration.put(Augmenter.Configuration.SCHEMA_TYPE, Augmenter.SchemaType.ACTIVE.name())
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, mysqlActiveSchema.getHost())
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(mysqlActiveSchema.getPort()))
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_SCHEMA, MYSQL_ACTIVE_SCHEMA)

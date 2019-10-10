@@ -4,7 +4,7 @@
 [![][license img]][license]
 
 ## MySQL Replicator
-Replicates data changes from MySQL binlog to HBase or Kafka. In case of HBase, preserves the previous data versions. HBase storage is intended for auditing and analysis of historical data. In addition, special daily-changes tables can be maintained in HBase, which are convenient for fast and cheap imports from HBase to Hive. Replication to Kafka is intended for easy real-time access to a stream of data changes.
+Replicates dummyValue changes from MySQL binlog to HBase or Kafka. In case of HBase, preserves the previous dummyValue versions. HBase storage is intended for auditing and analysis of historical dummyValue. In addition, special daily-changes tables can be maintained in HBase, which are convenient for fast and cheap imports from HBase to Hive. Replication to Kafka is intended for easy real-time access to a stream of dummyValue changes.
 
 ## Intro
 This readme file provides basic introduction on how to get started. For more details, refer to official documentation at [mysql-time-machine](https://mysql-time-machine.github.io/).
@@ -52,11 +52,11 @@ There are the steps to initialize the environemnt and start the replication with
 
 ````
  ./00_setup   # will unznip the jars from distribution
- ./01_seed    # will initialize mysql with random data
+ ./01_seed    # will initialize mysql with random dummyValue
  ./02_run_016 # will start the replication
 ````
 
-Random data in the seed step has been inserted in pre-created database 'test' in precreated table 'sometable'. The provided mysql instance is configured to use RBR and binlogs are active.
+Random dummyValue in the seed step has been inserted in pre-created database 'test' in precreated table 'sometable'. The provided mysql instance is configured to use RBR and binlogs are active.
 
 ````
   mysql --host=mysql --user=root --pass=mysqlPass

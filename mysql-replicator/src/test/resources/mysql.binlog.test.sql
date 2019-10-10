@@ -1,5 +1,7 @@
 use replicator;
 
+set @@global.binlog_row_metadata='FULL';
+
 CREATE TABLE animal (
      id INTEGER NOT NULL AUTO_INCREMENT,
      name VARCHAR(30) CHARACTER SET utf8 NOT NULL,
@@ -24,10 +26,6 @@ COMMIT;
 
 BEGIN;
 RENAME TABLE animal TO _animal_old, _animal_new TO animal;
-COMMIT;
-
-BEGIN;
-DROP TABLE _animal_old;
 COMMIT;
 
 BEGIN;

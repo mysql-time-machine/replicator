@@ -147,6 +147,29 @@ public class AugmentedRow {
         }
     }
 
+    public void setTransactionUUID(String transactionUUID) {
+        this.transactionUUID = transactionUUID;
+    }
+
+    public void setTransactionXid(Long transactionXid) {
+        this.transactionXid = transactionXid;
+    }
+
+    public void setPrimaryKeyColumns(List<String> primaryKeyColumns) {
+        this.primaryKeyColumns = primaryKeyColumns;
+    }
+
+    public void setEventType(AugmentedEventType eventType) {
+        this.eventType = eventType;
+    }
+
+    public void setTableSchema(String tableSchema) {
+        this.tableSchema = tableSchema;
+    }
+
+    public void setValues(Map<String, Object> values) {
+        this.values = values;
+    }
 
     @Override
     public String toString() {

@@ -8,11 +8,13 @@ binlog-ignore-db = mysql
 binlog-ignore-db = performance_schema
 binlog_format    = ROW
 binlog_row_image = full
+binlog_row_metadata = FULL
 max_binlog_size  = 100K
 collation-server = utf8_unicode_ci
 init-connect='SET NAMES utf8'
 character-set-server = utf8
 bind_address     = 0.0.0.0
+default-authentication-plugin=mysql_native_password
 
 
 

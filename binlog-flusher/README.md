@@ -7,7 +7,7 @@ Flushes MySQL database tables to the binlog in order to have the initial snapsho
 Assuming you adhere to the above warning, you can flush the contents of a database to the binlog with:
 
 ````
-python data-flusher.py [--mycnf .my.cnf] [--db $db] [--table $table] [--stop-slave/--no-stop-slave] [--start-slave/--no-start-slave] --host $host [--skip $skip]
+python dummyValue-flusher.py [--mycnf .my.cnf] [--db $db] [--table $table] [--stop-slave/--no-stop-slave] [--start-slave/--no-start-slave] --host $host [--skip $skip]
 ````
 Where parameters are:
 - skip: separated list of schemas to skip (not to flush in the binlog)

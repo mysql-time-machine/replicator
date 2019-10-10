@@ -46,38 +46,44 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
 
         this.executor.scheduleAtFixedRate(() -> {
 
-            List<Checkpoint> checkpointsSeenSoFar = new ArrayList<>();
-            for (CheckpointBuffer checkpointBuffer: taskCheckpointBuffer.values()) {
-                checkpointsSeenSoFar.addAll(checkpointBuffer.getBufferedSoFar());
-            }
-
-            List<Checkpoint> checkpointsSeenWithGtidSet = checkpointsSeenSoFar
-                    .stream()
-                    .filter(c -> (c.getGtidSet() != null && !c.getGtidSet().equals(""))).collect(Collectors.toList());
-
-            int currentSize = checkpointsSeenWithGtidSet.size();
-
-            LOG.info("Checkpoints seen in last " + period + "ms, [total/withGTIDSet]: " + checkpointsSeenSoFar.size() + "/" + checkpointsSeenWithGtidSet.size());
-
-            if (currentSize > 0) {
-
-                Checkpoint safeCheckpoint = gtidSetAlgebra.getSafeCheckpoint(checkpointsSeenSoFar);
-
-                if (safeCheckpoint != null && !safeCheckpoint.getGtidSet().equals("")) {
-
-                    LOG.info("CheckpointApplier, storing safe checkpoint: " + safeCheckpoint.getGtidSet());
-                    try {
-                        this.storage.saveCheckpoint(this.path, safeCheckpoint);
-                        CoordinatorCheckpointApplier.LOG.info("CheckpointApplier, stored checkpoint: " + safeCheckpoint.toString());
-                        this.lastExecution.set(System.currentTimeMillis());
-                        safeCheckpointCallback.accept(safeCheckpoint);
-                    } catch (IOException exception) {
-                        CoordinatorCheckpointApplier.LOG.info( "error saving checkpoint", exception);
-                    }
-                } else {
-                    throw new RuntimeException("Could not find safe checkpoint. Not safe to continue running!");
+            try {
+                List<Checkpoint> checkpointsSeenSoFar = new ArrayList<>();
+                for (CheckpointBuffer checkpointBuffer : taskCheckpointBuffer.values()) {
+                    checkpointsSeenSoFar.addAll(checkpointBuffer.getBufferedSoFar());
                 }
 
+                List<Checkpoint> checkpointsSeenWithGtidSet = checkpointsSeenSoFar
+                        .stream()
+                        .filter(c -> (c.getGtidSet() != null && !c.getGtidSet().equals(""))).collect(Collectors.toList());
+
+                int currentSize = checkpointsSeenWithGtidSet.size();
+
+                LOG.info("Checkpoints seen in last " + period + "ms, [total/withGTIDSet]: " + checkpointsSeenSoFar.size() + "/" + checkpointsSeenWithGtidSet.size());
+
+                if (currentSize > 0) {
+
+                    Checkpoint safeCheckpoint = gtidSetAlgebra.getSafeCheckpoint(checkpointsSeenSoFar);
+
+                    if (safeCheckpoint != null && !safeCheckpoint.getGtidSet().equals("")) {
+
+                        LOG.info("CheckpointApplier, storing safe checkpoint: " + safeCheckpoint.getGtidSet());
+                        try {
+                            this.storage.saveCheckpoint(this.path, safeCheckpoint);
+                            CoordinatorCheckpointApplier.LOG.info("CheckpointApplier, stored checkpoint: " + safeCheckpoint.toString());
+                            this.lastExecution.set(System.currentTimeMillis());
+                            safeCheckpointCallback.accept(safeCheckpoint);
+                        } catch (IOException exception) {
+                            CoordinatorCheckpointApplier.LOG.info("error saving checkpoint", exception);
+                        }
+                    } else {
+                        throw new RuntimeException("Could not find safe checkpoint. Not safe to continue running!");
+                    }
+
+                }
+            } catch (NullPointerException ne) {
+                ne.printStackTrace();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }, period, period, TimeUnit.MILLISECONDS);
     }

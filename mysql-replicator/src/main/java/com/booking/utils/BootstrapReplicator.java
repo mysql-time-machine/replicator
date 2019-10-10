@@ -2,7 +2,7 @@ package com.booking.utils;
 
 import com.booking.replication.applier.kafka.KafkaApplier;
 import com.booking.replication.applier.schema.registry.BCachedSchemaRegistryClient;
-import com.booking.replication.augmenter.ActiveSchemaManager;
+import com.booking.replication.augmenter.schema.impl.active.ActiveSchemaManager;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.model.event.format.avro.EventDataPresenterAvro;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;

@@ -45,4 +45,8 @@ public class FullTableName implements Serializable {
     public String toString() {
         return String.format("%s.%s", this.db, this.name);
     }
+
+    public void setDb(String db) {
+        this.db = db;
+    }
 }

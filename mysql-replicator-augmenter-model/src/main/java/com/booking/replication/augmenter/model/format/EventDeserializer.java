@@ -21,8 +21,8 @@ public class EventDeserializer {
             AugmentedEventType eventType,
             List<ColumnSchema> columns,
             BitSet includedColumns,
-            RowBeforeAfter row,
-            Map<String, String[]> cache) {
+            RowBeforeAfter row
+         ) {
 
         Map<String, Object> deserializeCellValues = new HashMap<>();
 
@@ -34,7 +34,7 @@ public class EventDeserializer {
                             ? row.getAfter().get()
                             : row.getBefore().get();
 
-                    addToDeserializeCellValues(deserializeCellValues, columns, includedColumns, cache, rowByteSlices);
+                    addToDeserializeCellValues(deserializeCellValues, columns, includedColumns, rowByteSlices);
                     break;
                 }
                 case UPDATE: {
@@ -42,7 +42,7 @@ public class EventDeserializer {
                     Serializable[] rowByteSlicesForUpdateBefore = row.getBefore().get();
                     Serializable[] rowByteSlicesForUpdateAfter  = row.getAfter().get();
 
-                    addToDeserializeCellValues(deserializeCellValues, columns, includedColumns, cache,
+                    addToDeserializeCellValues(deserializeCellValues, columns, includedColumns,
                             new Serializable[][]{rowByteSlicesForUpdateBefore, rowByteSlicesForUpdateAfter},
                             new String[]{Constants.VALUE_BEFORE, Constants.VALUE_AFTER});
 
@@ -62,19 +62,17 @@ public class EventDeserializer {
     private static void addToDeserializeCellValues(Map<String, Object> deserializeCellValues,
                                                    List<ColumnSchema> columns,
                                                    BitSet includedColumns,
-                                                   Map<String, String[]> cache,
                                                    Serializable[] rowByteSlices) {
         for (int columnIndex = 0, rowIndex = 0; columnIndex < columns.size() && rowIndex < rowByteSlices.length; columnIndex++) {
 
             if (includedColumns.get(columnIndex)) {
 
-                ColumnSchema column = columns.get(columnIndex);
+                ColumnSchema columnSchema = columns.get(columnIndex);
 
-                String columnName = column.getName();
-                String columnType = column.getColumnType().toLowerCase();
+                String columnName = columnSchema.getName();
 
                 Serializable cellValue = rowByteSlices[rowIndex];
-                Object deserializeValue = MysqlTypeDeserializer.convertToObject(cellValue, column, cache.get(columnType));
+                Object deserializeValue = MysqlTypeDeserializer.convertToObject(cellValue, columnSchema);
                 deserializeCellValues.put(columnName, deserializeValue);
 
                 rowIndex++;
@@ -85,7 +83,6 @@ public class EventDeserializer {
     private static void addToDeserializeCellValues(Map<String, Object> deserializeCellValues,
                                                    List<ColumnSchema> columns,
                                                    BitSet includedColumns,
-                                                   Map<String, String[]> cache,
                                                    Serializable[][] rowByteSlices,
                                                    String[] values) {
 
@@ -95,10 +92,9 @@ public class EventDeserializer {
 
             if (includedColumns.get(columnIndex)) {
 
-                ColumnSchema column = columns.get(columnIndex);
+                ColumnSchema columnSchema = columns.get(columnIndex);
 
-                String columnName = column.getName();
-                String columnType = column.getColumnType().toLowerCase();
+                String columnName = columnSchema.getName();
 
                 Map<String, Object> columnUpdates = new HashMap<>();
 
@@ -107,7 +103,7 @@ public class EventDeserializer {
                 for (int i = 0; i < rowByteSlices.length; ++i) {
                     Serializable cellValue = rowByteSlices[i][rowIndex];
 
-                    Object deserializeValue = MysqlTypeDeserializer.convertToObject(cellValue, column, cache.get(columnType));
+                    Object deserializeValue = MysqlTypeDeserializer.convertToObject(cellValue, columnSchema);
 
                     columnUpdates.put(values[i], deserializeValue);
                 }

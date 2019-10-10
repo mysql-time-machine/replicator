@@ -45,35 +45,37 @@ public class MysqlTypeDeserializer {
         TIME_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
 
-    public static Object convertToObject(Serializable cellValue, ColumnSchema columnSchema, String[] groupValues) {
+    public static Object convertToObject(Serializable cellValue, ColumnSchema columnSchema) {
 
         if (cellValue == null) {
             return null;
         }
 
-        String collation    = columnSchema.getCollation();
+        String collation = columnSchema.getCollation();
         String columnType   = columnSchema.getColumnType();
         DataType dataType   = columnSchema.getDataType();
+
         boolean isUnsigned  = columnType.contains("unsigned");
 
         switch (dataType) {
-            case BINARY:
-            case VARBINARY: {
+            case BINARY: {
                 byte[] bytes = (byte[]) cellValue;
-
-                if (bytes.length == columnSchema.getCharMaxLength()) {
+                if (columnSchema.getCharMaxLength() == null) {
                     return DatatypeConverter.printHexBinary(bytes);
                 } else {
-                    byte[] bytesWithPadding = new byte[columnSchema.getCharMaxLength()];
-
-                    for (int i = 0; i < bytesWithPadding.length; ++i) {
-                        bytesWithPadding[i] = (i < bytes.length) ? bytes[i] : 0;
+                    if (bytes.length == columnSchema.getCharMaxLength()) {
+                        return DatatypeConverter.printHexBinary(bytes);
+                    } else {
+                        // Add 00 padding
+                        byte[] bytesWithPadding = new byte[columnSchema.getCharMaxLength()];
+                        for (int i = 0; i < bytesWithPadding.length; ++i) {
+                            bytesWithPadding[i] = (i < bytes.length) ? bytes[i] : 0;
+                        }
+                        return DatatypeConverter.printHexBinary(bytesWithPadding);
                     }
-
-                    return DatatypeConverter.printHexBinary(bytesWithPadding);
                 }
             }
-
+            case VARBINARY:
             case TINYBLOB:
             case MEDIUMBLOB:
             case BLOB:
@@ -88,7 +90,6 @@ public class MysqlTypeDeserializer {
             case MEDIUMTEXT:
             case TINYTEXT: {
                 byte[] bytes = (byte[]) cellValue;
-
                 if (collation.contains("latin1")) {
                     return new String(bytes, StandardCharsets.ISO_8859_1);
                 } else {
@@ -129,7 +130,8 @@ public class MysqlTypeDeserializer {
             }
 
             case DATETIME:
-            case TIMESTAMP: {
+            case TIMESTAMP:
+            case TIMESTAMP_V2: {
                 Long timestamp = (Long) cellValue;
 
                 ZoneId zoneId = ZonedDateTime.now().getZone();
@@ -144,8 +146,9 @@ public class MysqlTypeDeserializer {
             case ENUM: {
                 int index = (Integer) cellValue;
 
-                if (index > 0) {
-                    return String.valueOf(groupValues[index - 1]);
+                if (index > 0 && columnSchema.getEnumOrSetValueList().isPresent()) {
+                    List<String> groupValues = columnSchema.getEnumOrSetValueList().get();
+                    return String.valueOf(groupValues.get(index - 1));
                 } else {
                     return null;
                 }
@@ -157,9 +160,11 @@ public class MysqlTypeDeserializer {
                 if (bits > 0) {
                     List<String> items = new ArrayList<>();
 
-                    for (int index = 0; index < groupValues.length; index++) {
+                    List<String> groupValues = columnSchema.getEnumOrSetValueList().get();
+
+                    for (int index = 0; index < groupValues.size(); index++) {
                         if (((bits >> index) & 1) == 1) {
-                            items.add(groupValues[index]);
+                            items.add(groupValues.get(index));
                         }
                     }
 
@@ -212,7 +217,8 @@ public class MysqlTypeDeserializer {
                 return cellValue;
             }
 
-            case DECIMAL: {
+            case DECIMAL:
+            case NEWDECIMAL: {
                 BigDecimal decimal = (BigDecimal) cellValue;
                 return decimal.toPlainString();
             }

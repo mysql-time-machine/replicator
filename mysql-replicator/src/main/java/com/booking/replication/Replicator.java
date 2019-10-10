@@ -80,9 +80,9 @@ public class Replicator {
     private final Streams<Collection<AugmentedEvent>, Collection<AugmentedEvent>> destinationStream;
     private final Streams<RawEvent, Collection<AugmentedEvent>> sourceStream;
 
-    private final String METRIC_COORDINATOR_DELAY               = MetricRegistry.name("coordinator", "delay");
-    private final String METRIC_STREAM_DESTINATION_QUEUE_SIZE   = MetricRegistry.name("streams", "destination", "queue", "size");
-    private final String METRIC_STREAM_SOURCE_QUEUE_SIZE        = MetricRegistry.name("streams", "source", "queue", "size");
+    private final String METRIC_COORDINATOR_DELAY               = MetricRegistry.name("replicator", "coordinator", "delay");
+    private final String METRIC_STREAM_DESTINATION_QUEUE_SIZE   = MetricRegistry.name("replicator", "streams", "destination", "queue", "size");
+    private final String METRIC_STREAM_SOURCE_QUEUE_SIZE        = MetricRegistry.name("replicator", "streams", "source", "queue", "size");
 
     public Replicator(final Map<String, Object> configuration) {
 
@@ -154,10 +154,10 @@ public class Replicator {
                 .tasks(tasks)
                 .partitioner((events, totalPartitions) -> {
                     this.metrics.getRegistry()
-                            .counter("hbase.streams.destination.partitioner.event.apply.attempt").inc(1L);
+                            .counter("replicator.streams.destination.partitioner.event.apply.attempt").inc(1L);
                     Integer partitionNumber = this.partitioner.apply(events.iterator().next(), totalPartitions);
                     this.metrics.getRegistry()
-                            .counter("hbase.streams.destination.partitioner.event.apply.success").inc(1L);
+                            .counter("replicator.streams.destination.partitioner.event.apply.success").inc(1L);
                     return partitionNumber;
                 })
                 .useDefaultQueueType()

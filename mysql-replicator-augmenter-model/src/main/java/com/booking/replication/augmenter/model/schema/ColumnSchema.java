@@ -7,31 +7,30 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.Serializable;
+import java.util.List;
+import java.util.Optional;
 
 @SuppressWarnings("unused")
 @JsonFilter("column")
 public class ColumnSchema implements Cloneable, Serializable {
+
     private static final Logger LOG = LogManager.getLogger(ColumnSchema.class);
 
     private String name;
     private String columnType;
-    private String key;
     private String valueDefault;
-    private String extra;
     private String collation;
 
     private DataType dataType;
 
     private Integer charMaxLength;
-    private Integer charOctetLength;
-    private Integer numericPrecision;
-    private Integer numericScale;
-    private Integer dateTimePrecision;
 
     private boolean isNullable;
 
+    private Optional<List<String>> enumOrSetValueList;
+
     @JsonIgnore
-    public boolean primary; // temp transition
+    private boolean primary;
 
     public ColumnSchema() { }
 
@@ -40,56 +39,36 @@ public class ColumnSchema implements Cloneable, Serializable {
             DataType dataType,
             String columnType,
             boolean isNullable,
-            String key,
-            String extra
+            boolean isPrimary,
+            Optional<List<String>> enumOrSetValueList
     ) {
         this.name       = columnName;
         this.dataType   = dataType;
         this.columnType = columnType;
         this.isNullable = isNullable;
-        this.key        = key;
-        this.extra      = extra;
+        this.primary    = isPrimary;
+
+        if (enumOrSetValueList.isPresent()) {
+            this.enumOrSetValueList = enumOrSetValueList;
+
+        } else {
+            this.enumOrSetValueList = Optional.empty();
+        }
+
     }
 
     public ColumnSchema setDefaultValue(String defaultValue) {
         this.valueDefault = defaultValue;
-
         return this;
     }
 
     public ColumnSchema setCollation(String collation) {
-        this.collation  = collation;
-
+        this.collation = collation;
         return this;
     }
 
     public ColumnSchema setCharMaxLength(Integer charMaxLength) {
         this.charMaxLength = charMaxLength;
-
-        return this;
-    }
-
-    public ColumnSchema setCharOctetLength(Integer charOctetLength) {
-        this.charOctetLength = charOctetLength;
-
-        return this;
-    }
-
-    public ColumnSchema setNumericPrecision(Integer numericPrecision) {
-        this.numericPrecision = numericPrecision;
-
-        return this;
-    }
-
-    public ColumnSchema setNumericScale(Integer numericScale) {
-        this.numericScale = numericScale;
-
-        return this;
-    }
-
-    public ColumnSchema setDateTimePrecision(Integer dateTimePrecision) {
-        this.dateTimePrecision = dateTimePrecision;
-
         return this;
     }
 
@@ -105,6 +84,10 @@ public class ColumnSchema implements Cloneable, Serializable {
         return this.columnType;
     }
 
+    public void setColumnType(String columnType) {
+        this.columnType = columnType;
+    }
+
     public String getCollation() {
         return collation;
     }
@@ -113,66 +96,42 @@ public class ColumnSchema implements Cloneable, Serializable {
         return this.isNullable;
     }
 
-    public String getKey() {
-        return this.key;
-    }
-
     public String getValueDefault() {
         return this.valueDefault;
-    }
-
-    public String getExtra() {
-        return this.extra;
     }
 
     public Integer getCharMaxLength() {
         return charMaxLength;
     }
 
-    public Integer getCharOctetLength() {
-        return charOctetLength;
-    }
-
-    public Integer getNumericPrecision() {
-        return numericPrecision;
-    }
-
-    public Integer getNumericScale() {
-        return numericScale;
-    }
-
-    public Integer getDateTimePrecision() {
-        return dateTimePrecision;
-    }
-
     public boolean isPrimary() {
-        return key.equalsIgnoreCase("PRI");
+        return primary;
+    }
+
+    public Optional<List<String>> getEnumOrSetValueList() {
+        return enumOrSetValueList;
+    }
+
+    public void setEnumOrSetValueList(Optional<List<String>> enumOrSetValueList) {
+        this.enumOrSetValueList = enumOrSetValueList;
     }
 
     public ColumnSchema deepCopy() {
-        try {
-            return (ColumnSchema) this.clone();
-        } catch (CloneNotSupportedException ex) {
-            LOG.warn("Not able to clone ColumnSchema", ex);
 
-            ColumnSchema schema = new ColumnSchema(
-                    this.name,
-                    this.dataType,
-                    this.columnType,
-                    this.isNullable,
-                    this.key,
-                    this.extra
-            );
+        ColumnSchema schema = new ColumnSchema(
+                this.name,
+                this.dataType,
+                this.columnType,
+                this.isNullable,
+                this.isPrimary(),
+                this.enumOrSetValueList
+        );
 
-            schema.setDefaultValue(this.valueDefault)
-                    .setCharMaxLength(this.charMaxLength)
-                    .setCharOctetLength(this.charOctetLength)
-                    .setCollation(this.collation)
-                    .setDateTimePrecision(this.dateTimePrecision)
-                    .setNumericPrecision(this.numericPrecision)
-                    .setNumericScale(this.numericScale);
+        schema.setDefaultValue(this.valueDefault)
+                .setCharMaxLength(this.charMaxLength)
+                .setCollation(this.collation);
 
-            return schema;
-        }
+        return schema;
     }
+
 }

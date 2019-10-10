@@ -5,15 +5,15 @@ import com.booking.replication.augmenter.model.event.AugmentedEventData;
 import com.booking.replication.augmenter.model.event.AugmentedEventHeader;
 import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
-import com.booking.replication.augmenter.model.schema.SchemaAtPositionCache;
 import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
 import com.booking.replication.augmenter.model.schema.TableSchema;
+import com.booking.replication.augmenter.schema.impl.active.ActiveSchemaManager;
+import com.booking.replication.augmenter.schema.impl.metadata.BinlogMetadataSchemaManager;
+import com.booking.replication.augmenter.schema.SchemaManager;
 import com.booking.replication.commons.checkpoint.ForceRewindException;
 import com.booking.replication.commons.metrics.Metrics;
 
-import com.booking.replication.supplier.model.RawEvent;
-import com.booking.replication.supplier.model.RawEventData;
-import com.booking.replication.supplier.model.RawEventHeaderV4;
+import com.booking.replication.supplier.model.*;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -21,10 +21,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.Closeable;
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 
 public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>, Closeable {
@@ -37,24 +34,21 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
 
             @Override
             protected SchemaManager newInstance(Map<String, Object> configuration) {
+
                 return new SchemaManager() {
+
                     @Override
                     public boolean execute(String tableName, String query) {
                         return false;
                     }
 
                     @Override
-                    public SchemaAtPositionCache getSchemaAtPositionCache() {
-                        return null;
+                    public void updateTableMapCache(TableMapRawEventData tableMapEventData) {
+
                     }
 
                     @Override
                     public List<ColumnSchema> listColumns(String tableName) {
-                        return null;
-                    }
-
-                    @Override
-                    public List<String> getActiveSchemaTables() throws SQLException {
                         return null;
                     }
 
@@ -70,6 +64,7 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
 
                     @Override
                     public void close() throws IOException {
+
                     }
 
                     @Override
@@ -84,6 +79,13 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
             @Override
             protected SchemaManager newInstance(Map<String, Object> configuration) {
                 return new ActiveSchemaManager(configuration);
+            }
+        },
+
+        BINLOG_METADATA {
+            @Override
+            protected SchemaManager newInstance(Map<String, Object> configuration) {
+                return new BinlogMetadataSchemaManager(configuration);
             }
         };
 
@@ -116,6 +118,7 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
 
             RawEventHeaderV4 eventHeader = rawEvent.getHeader();
             RawEventData eventData = rawEvent.getData();
+
             String lastGTIDSet = rawEvent.getGTIDSet();
 
             this.context.updateContext(eventHeader, eventData, lastGTIDSet);

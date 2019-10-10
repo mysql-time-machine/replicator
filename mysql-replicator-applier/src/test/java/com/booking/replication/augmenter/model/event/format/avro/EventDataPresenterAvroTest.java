@@ -8,6 +8,7 @@ import org.apache.avro.Schema;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Optional;
 
 import static org.junit.Assert.*;
 
@@ -17,13 +18,13 @@ public class EventDataPresenterAvroTest {
         EventDataPresenterAvro dataPresenter = new EventDataPresenterAvro(new AugmentedEvent());
         ArrayList<ColumnSchema> columns = new ArrayList<>();
 
-        columns.add(new ColumnSchema("col1", DataType.INT, "int(11)", true, "", ""));
+        columns.add(new ColumnSchema("col1", DataType.INT, "int(11)", true, false, Optional.empty()));
 
-        columns.add(new ColumnSchema("col2", DataType.INT, "int(11)", true, "", "")
+        columns.add(new ColumnSchema("col2", DataType.INT, "int(11)", true, false, Optional.empty())
                 .setDefaultValue("10"));
 
         columns.add(new ColumnSchema("col3", DataType.ENUM,
-                "enum('boolean','integer','string','date','datetime','boolarray','intarray','stringarray','datearray','enum')", true, "", "")
+                "enum('boolean','integer','string','date','datetime','boolarray','intarray','stringarray','datearray','enum')", true, false, Optional.empty())
                 .setDefaultValue("string"));
 
         Schema avroSchema = dataPresenter.createAvroSchema(false, true,

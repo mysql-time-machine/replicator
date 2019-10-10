@@ -19,9 +19,6 @@ import com.booking.replication.coordinator.ZookeeperCoordinator;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 import com.mysql.jdbc.Driver;
-import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
-import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
-import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
@@ -67,7 +64,7 @@ public class ReplicatorKafkaJSONTest {
     private static final String MYSQL_INIT_SCRIPT = "mysql.init.sql";
     private static final String MYSQL_TEST_SCRIPT = "mysql.binlog.test.sql";
     private static final String MYSQL_CONF_FILE = "my.cnf";
-    private static final int TRANSACTION_LIMIT = 5;
+    private static final int TRANSACTION_LIMIT = 1000;
     private static final String CONNECTION_URL_FORMAT = "jdbc:mysql://%s:%d/%s";
 
     private static final String KAFKA_REPLICATOR_TOPIC_NAME = "replicator";
@@ -80,7 +77,6 @@ public class ReplicatorKafkaJSONTest {
     private static ServicesControl mysqlBinaryLog;
     private static ServicesControl mysqlActiveSchema;
     private static ServicesControl kafka;
-    private static ServicesControl schemaRegistry;
     private static ServicesControl kafkaZk;
 
     @BeforeClass
@@ -114,7 +110,6 @@ public class ReplicatorKafkaJSONTest {
         Network network = Network.newNetwork();
         ReplicatorKafkaJSONTest.kafkaZk = servicesProvider.startZookeeper(network, "kafkaZk");
         ReplicatorKafkaJSONTest.kafka = servicesProvider.startKafka(network, ReplicatorKafkaJSONTest.KAFKA_REPLICATOR_TOPIC_NAME, ReplicatorKafkaJSONTest.KAFKA_TOPIC_PARTITIONS, ReplicatorKafkaJSONTest.KAFKA_TOPIC_REPLICAS, "kafka");
-        ReplicatorKafkaJSONTest.schemaRegistry = servicesProvider.startSchemaRegistry(network);
     }
 
     @Test
@@ -135,11 +130,6 @@ public class ReplicatorKafkaJSONTest {
         kafkaConfiguration.put(ConsumerConfig.GROUP_ID_CONFIG, ReplicatorKafkaJSONTest.KAFKA_REPLICATOR_IT_GROUP_ID);
         kafkaConfiguration.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
-        String schemaRegistryUrl = (String) this.getConfiguration().get(KafkaApplier.Configuration.SCHEMA_REGISTRY_URL);
-        kafkaConfiguration.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl);
-        CachedSchemaRegistryClient client = new CachedSchemaRegistryClient(schemaRegistryUrl, 1000);
-        KafkaAvroDeserializer kafkaAvroDeserializer = new KafkaAvroDeserializer(client);
-
         try (Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(kafkaConfiguration, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
             consumer.subscribe(Collections.singleton(ReplicatorKafkaJSONTest.KAFKA_REPLICATOR_TOPIC_NAME));
 
@@ -148,8 +138,7 @@ public class ReplicatorKafkaJSONTest {
             while (!consumed) {
 
                 for (ConsumerRecord<byte[], byte[]> record : consumer.poll(1000L)) {
-                    GenericRecord deserialize = (GenericRecord) kafkaAvroDeserializer.deserialize("", record.value());
-                    System.out.println(deserialize.toString());
+                    System.out.println(record.toString());
                     System.out.println(new String(record.key()));
                     consumed = true;
                 }
@@ -246,8 +235,7 @@ public class ReplicatorKafkaJSONTest {
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorKafkaJSONTest.kafka.getURL());
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG), ByteArraySerializer.class);
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG), KafkaAvroSerializer.class);
-        configuration.put(KafkaApplier.Configuration.SCHEMA_REGISTRY_URL, String.format("http://%s:%d", ReplicatorKafkaJSONTest.schemaRegistry.getHost(), ReplicatorKafkaJSONTest.schemaRegistry.getPort()));
-        configuration.put(KafkaApplier.Configuration.FORMAT, "avro");
+        configuration.put(KafkaApplier.Configuration.FORMAT, "json");
 
         configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorKafkaJSONTest.kafka.getURL());
         configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.GROUP_ID_CONFIG), ReplicatorKafkaJSONTest.KAFKA_REPLICATOR_GROUP_ID);
@@ -279,7 +267,6 @@ public class ReplicatorKafkaJSONTest {
         ReplicatorKafkaJSONTest.kafka.close();
         ReplicatorKafkaJSONTest.mysqlBinaryLog.close();
         ReplicatorKafkaJSONTest.mysqlActiveSchema.close();
-        ReplicatorKafkaJSONTest.schemaRegistry.close();
         ReplicatorKafkaJSONTest.zookeeper.close();
         ReplicatorKafkaJSONTest.kafkaZk.close();
     }

@@ -16,7 +16,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -70,7 +69,7 @@ public class ActiveSchemaManager implements SchemaManager {
 
         this.computeTableSchemaLambda = (tableName) -> {
             try {
-                TableSchema ts = SchemaHelpers.computeTableSchema(schema, tableName, ActiveSchemaManager.this.dataSource, ActiveSchemaManager.this.binlogDataSource);
+                TableSchema ts = SchemaHelpers.computeTableSchemaFromActiveSchemaInstance(schema, tableName, ActiveSchemaManager.this.dataSource, ActiveSchemaManager.this.binlogDataSource);
                 return ts;
             } catch (Exception e) {
                 ActiveSchemaManager.LOG.warn(
@@ -212,11 +211,6 @@ public class ActiveSchemaManager implements SchemaManager {
     }
 
     @Override
-    public SchemaAtPositionCache getSchemaAtPositionCache() {
-        return this.schemaAtPositionCache;
-    }
-
-    @Override
     public List<ColumnSchema> listColumns(String tableName) {
         TableSchema tableSchema =
                 this.schemaAtPositionCache.getTableColumns(tableName, this.computeTableSchemaLambda);
@@ -227,20 +221,20 @@ public class ActiveSchemaManager implements SchemaManager {
         return (List<ColumnSchema>) tableSchema.getColumnSchemas();
     }
 
-    @Override
-    public List<String> getActiveSchemaTables() throws SQLException {
-        try (Connection conn = this.dataSource.getConnection()) {
-            PreparedStatement stmt = conn.prepareStatement("SHOW TABLES");
-            ArrayList<String> tables = new ArrayList<>();
-            ResultSet resultSet = stmt.executeQuery();
-
-            while (resultSet.next()) {
-                tables.add(resultSet.getString(1));
-            }
-
-            return tables;
-        }
-    }
+//    @Override
+//    public List<String> getActiveSchemaTables() throws SQLException {
+//        try (Connection conn = this.dataSource.getConnection()) {
+//            PreparedStatement stmt = conn.prepareStatement("SHOW TABLES");
+//            ArrayList<String> tables = new ArrayList<>();
+//            ResultSet resultSet = stmt.executeQuery();
+//
+//            while (resultSet.next()) {
+//                tables.add(resultSet.getString(1));
+//            }
+//
+//            return tables;
+//        }
+//    }
 
     @Override
     public boolean dropTable(String tableName) throws SQLException {

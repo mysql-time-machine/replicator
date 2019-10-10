@@ -20,12 +20,6 @@ public final class ContainersProvider implements ServicesProvider {
 
     private static final Logger LOG = LogManager.getLogger(ContainersProvider.class);
 
-//    // Tags
-//    private static final String MYSQL_DOCKER_IMAGE_DEFAULT = "mysql:5.6.38";
-//    private static final String KAFKA_DOCKER_IMAGE_DEFAULT = "wurstmeister/kafka:latest";
-//    private static final String ZOOKEEPER_DOCKER_IMAGE_DEFAULT = "zookeeper:latest";
-//    private static final String HBASE_DOCKER_IMAGE_DEFAULT = "harisekhon/hbase-dev:1.3";
-
     private static final String ZOOKEEPER_DOCKER_IMAGE_KEY = "docker.image.zookeeper";
     private static final String ZOOKEEPER_STARTUP_WAIT_REGEX = ".*binding to port.*\\n";
     private static final int ZOOKEEPER_STARTUP_WAIT_TIMES = 1;

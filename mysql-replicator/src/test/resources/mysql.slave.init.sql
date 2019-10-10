@@ -1,3 +1,6 @@
+
+set @@global.binlog_row_metadata='FULL';
+
 STOP SLAVE;
 CHANGE MASTER TO MASTER_HOST='{MASTER_HOSTNAME}',
 MASTER_USER='{MASTER_USER}',

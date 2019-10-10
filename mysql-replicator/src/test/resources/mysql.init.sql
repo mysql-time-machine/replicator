@@ -1,5 +1,7 @@
 USE replicator;
 
+set @@global.binlog_row_metadata='FULL';
+
 CREATE TABLE organisms (
      id INTEGER NOT NULL AUTO_INCREMENT,
      name VARCHAR(30) CHARACTER SET utf8 NOT NULL,

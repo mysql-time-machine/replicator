@@ -12,8 +12,8 @@ public enum DataType {
     INT("INT"),
     BIGINT("BIGINT"),
 
-
     DECIMAL("DECIMAL"),
+    NEWDECIMAL("NEWDECIMAL"),
 
     FLOAT("FLOAT"),
     DOUBLE("DOUBLE"),
@@ -44,6 +44,10 @@ public enum DataType {
     DATETIME("DATETIME"),
     TIMESTAMP("TIMESTAMP"),
     YEAR("YEAR"),
+    NEWDATE("NEWDATE"),
+    TIMESTAMP_V2("TIMESTAMP_V2"),
+    DATETIME_V2("DATETIME_V2"),
+    TIME_V2("TIME_V2"),
 
     JSON("JSON"),
 

@@ -11,4 +11,11 @@
     <artifactId>mysql-replicator-supplier-model</artifactId>
     <name>mysql-replicator-supplier-model</name>
     <packaging>jar</packaging>
+    <dependencies>
+        <dependency>
+            <groupId>com.github.shyiko</groupId>
+            <artifactId>mysql-binlog-connector-java</artifactId>
+            <version>${mysql-binlog-connector.version}</version>
+        </dependency>
+    </dependencies>
 </project>

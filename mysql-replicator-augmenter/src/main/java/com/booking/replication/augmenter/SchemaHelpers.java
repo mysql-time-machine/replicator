@@ -5,6 +5,9 @@ import com.booking.replication.augmenter.model.schema.DataType;
 import com.booking.replication.augmenter.model.schema.FullTableName;
 import com.booking.replication.augmenter.model.schema.TableSchema;
 
+import com.github.shyiko.mysql.binlog.event.TableMapEventData;
+import com.github.shyiko.mysql.binlog.event.TableMapEventMetadata;
+import com.github.shyiko.mysql.binlog.event.deserialization.ColumnType;
 import org.apache.commons.dbcp2.BasicDataSource;
 
 import java.sql.Connection;
@@ -20,7 +23,168 @@ import javax.sql.DataSource;
 
 public class SchemaHelpers {
 
-    public static TableSchema computeTableSchema(String schema, String tableName, BasicDataSource dataSource, DataSource binlogDataSource) {
+    public static TableSchema computeTableSchemaFromBinlogMetadata(String schema, String tableName, TableMapEventData tableMapEventData) {
+
+        TableMapEventMetadata tableMapEventMetadata = tableMapEventData.getEventMetadata();
+
+        List<ColumnSchema> columnSchemaList = new ArrayList<>();
+        List<String> columnNameList = tableMapEventMetadata.getColumnNames();
+
+        // TODO: we assume column index is the same for all these lists/sets/arrays - verify
+        int columnIndex = 0;
+
+        for (String columnName : columnNameList) {
+
+            boolean isNullable = tableMapEventData.getColumnNullability().get(columnIndex);
+
+            // Note:
+            //       - PRIMARY_KEY_WITH_PREFIX is not supported
+            //       - Only SIMPLE_PRIMARY_KEY is supported
+            //
+            //  Ref Read:
+            //        - https://github.com/shyiko/mysql-binlog-connector-java/blob/682a17af38d0382902d5f18040182d2d793cc055/src/main/java/com/github/shyiko/mysql/binlog/event/deserialization/TableMapEventMetadataDeserializer.java
+            //        - https://dev.mysql.com/doc/dev/mysql-server/latest/classbinary__log_1_1Table__map__event.html#a1b84e5b226c76eaf9c0df8ed03ba1393aed5533f760899bd3476ea3d14df8d35c
+            //        - https://dev.mysql.com/doc/dev/mysql-server/latest/classbinary__log_1_1Table__map__event.html#a1b84e5b226c76eaf9c0df8ed03ba1393a7779ea099ef4de159d1e0211a1d7c427
+            //        - https://dev.mysql.com/doc/dev/mysql-server/latest/namespacebinary__log.html#a10ab62a4112af1703ce26b7009aa2865
+
+            // A sequence of column indexes that make up primary key
+            List<Integer> pkColumnIndexes = tableMapEventMetadata.getSimplePrimaryKeys();
+
+            DataType dataType = getColumnTypeCode(tableMapEventData, columnIndex);
+
+            ColumnSchema columnSchema = new ColumnSchema(
+
+                    tableMapEventMetadata.getColumnNames().get(columnIndex), // Column Name
+
+                    // TODO: include Signedness
+                    dataType,                                                // Data Type
+
+                    dataType.getCode(),                                      // this is COLUMN_TYPE in active schema
+                                                                             // implementation: TODO => check if
+                                                                             // additional info (precision, length is
+                                                                             // available in binlog metadata)
+                    isNullable,
+
+                    pkColumnIndexes.isEmpty() ? "" : "PRI"                   // COLUMN_KEY->PRI; other values (UNI/MUL)
+                                                                             // seem to not be supported in binlog
+                                                                             // additional metadata
+            );
+
+            // TODO: get charset constants for:
+            //  tableMapEventData.getEventMetadata().getColumnCharsets();
+
+            // TODO: get collation constant for:
+            // tableMapEventData.getEventMetadata().getDefaultCharset().getDefaultCharsetCollation();
+
+            // TODO:
+            //      seems there is only default charset in binlog extra metadata
+            //      seems there is no character max length in binlog extra metadata
+            columnSchema
+                    .setCollation(resultSet.getString("COLLATION_NAME"))
+                    .setDefaultValue(resultSet.getString("COLUMN_DEFAULT"))
+                    .setCharMaxLength(resultSet.getInt("CHARACTER_MAXIMUM_LENGTH"));
+
+
+            columnSchemaList.add(columnSchema);
+
+            columnIndex++;
+        }
+
+        return
+                new TableSchema(
+                        new FullTableName(schema, tableName),
+                        columnSchemaList,
+                        "NA"
+                );
+    }
+
+    private static DataType getColumnTypeCode(TableMapEventData tableMapEventData, int columnIndex) {
+
+        byte[] columnTypes = tableMapEventData.getColumnTypes();
+
+        ColumnType columnType = ColumnType.byCode(columnTypes[columnIndex]);
+
+        switch (columnType) {
+
+            case DECIMAL:
+                return DataType.byCode("DECIMAL");
+            case NEWDECIMAL:
+                return DataType.byCode("NEWDECIMAL");
+
+            case TINY:
+                return DataType.byCode("TINYINT");
+            case SHORT:
+                return DataType.byCode("SMALLINT");
+            case INT24:
+                return DataType.byCode("MEDIUMINT");
+            case LONG:
+                return DataType.byCode("INT");
+            case LONGLONG:
+                return DataType.byCode("BIGINT");
+
+            case FLOAT:
+                return DataType.byCode("FLOAT");
+            case DOUBLE:
+                return DataType.byCode("DOUBLE");
+
+            case NULL:
+                return DataType.byCode("UNKNOWN");
+
+            case TIMESTAMP:
+                return DataType.byCode("TIMESTAMP");
+            case DATE:
+                return DataType.byCode("DATE");
+            case TIME:
+                return DataType.byCode("TIME");
+            case DATETIME:
+                return DataType.byCode("DATETIME");
+            case YEAR:
+                return DataType.byCode("YEAR");
+
+            case NEWDATE:
+                return DataType.byCode("NEWDATE");
+            case TIMESTAMP_V2:
+                return DataType.byCode("TIMESTAMP_V2");
+            case DATETIME_V2:
+                return DataType.byCode("DATETIME_V2");
+            case TIME_V2:
+                return DataType.byCode("TIME_V2");
+
+            case BIT:
+                return DataType.byCode("BIT");
+            case JSON:
+                return DataType.byCode("JSON");
+
+            case ENUM:
+                return DataType.byCode("ENUM");
+            case SET:
+                return DataType.byCode("SET");
+
+            case TINY_BLOB:
+                return DataType.byCode("TINYBLOB");
+            case MEDIUM_BLOB:
+                return DataType.byCode("MEDIUMBLOB");
+            case BLOB:
+                return DataType.byCode("BLOB");
+            case LONG_BLOB:
+                return DataType.byCode("LONGBLOB");
+
+            case VARCHAR:
+                return DataType.byCode("VARCHAR");
+            case VAR_STRING:
+                return DataType.byCode("VARCHAR");
+            case STRING:
+                return DataType.byCode("VARCHAR");
+
+            case GEOMETRY:
+                return DataType.byCode("GEOMETRY");
+
+            default:
+                return DataType.byCode("UNKNOWN");
+        }
+    }
+
+    public static TableSchema computeTableSchemaFromActiveSchemaInstance(String schema, String tableName, BasicDataSource dataSource, DataSource binlogDataSource) {
 
         try (Connection connection = dataSource.getConnection()) {
             Statement statementListColumns      = connection.createStatement();
@@ -51,18 +215,14 @@ public class SchemaHelpers {
                         dataType,
                         resultSet.getString("COLUMN_TYPE"),
                         isNullable,
-                        resultSet.getString("COLUMN_KEY"),
-                        resultSet.getString("EXTRA")
+                        resultSet.getString("COLUMN_KEY")
+
                 );
 
                 columnSchema
                         .setCollation(resultSet.getString("COLLATION_NAME"))
                         .setDefaultValue(resultSet.getString("COLUMN_DEFAULT"))
-                        .setDateTimePrecision(resultSet.getInt("DATETIME_PRECISION"))
-                        .setCharMaxLength(resultSet.getInt("CHARACTER_MAXIMUM_LENGTH"))
-                        .setCharOctetLength(resultSet.getInt("CHARACTER_OCTET_LENGTH"))
-                        .setNumericPrecision(resultSet.getInt("NUMERIC_PRECISION"))
-                        .setNumericScale(resultSet.getInt("NUMERIC_SCALE"));
+                        .setCharMaxLength(resultSet.getInt("CHARACTER_MAXIMUM_LENGTH"));
 
                 columnList.add(columnSchema);
             }

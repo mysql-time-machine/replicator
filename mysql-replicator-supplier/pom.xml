@@ -27,6 +27,7 @@
         <dependency>
             <groupId>com.github.shyiko</groupId>
             <artifactId>mysql-binlog-connector-java</artifactId>
+	    <version>${mysql-binlog-connector.version}</version>
         </dependency>
         <dependency>
             <groupId>com.booking.replication</groupId>

@@ -46,7 +46,6 @@ import java.sql.Statement;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-
 public class ReplicatorKafkaJSONTest {
 
     private static final Logger LOG = LogManager.getLogger(ReplicatorKafkaJSONTest.class);

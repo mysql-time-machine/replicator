@@ -1,5 +1,7 @@
 USE replicator;
 
+set @@global.binlog_row_metadata='FULL';
+
 BEGIN;
 
 UPDATE organisms SET lifespan = 20.5 WHERE name = 'cat';

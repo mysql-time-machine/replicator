@@ -13,11 +13,7 @@ import java.util.function.Function;
 public interface SchemaManager extends Closeable {
     boolean execute(String tableName, String query);
 
-    SchemaAtPositionCache getSchemaAtPositionCache();
-
     List<ColumnSchema> listColumns(String tableName);
-
-    List<String> getActiveSchemaTables() throws SQLException;
 
     boolean dropTable(String tableName) throws SQLException;
 

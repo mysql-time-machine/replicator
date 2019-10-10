@@ -353,7 +353,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
                 LOG.info("table already exists, moving on...")
             }
 
-            // write test data
+            // write test dummyValue
             HashMap<String,HashMap<String, HashMap<Long, String>>> data = new HashMap<>()
             Table table = connection.getTable(TableName.valueOf(Bytes.toBytes(sanityCheckTableName)))
             long timestamp = System.currentTimeMillis()

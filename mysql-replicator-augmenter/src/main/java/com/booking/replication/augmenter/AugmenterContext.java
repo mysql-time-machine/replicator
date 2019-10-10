@@ -32,6 +32,7 @@ import com.codahale.metrics.MetricRegistry;
 
 import com.github.shyiko.mysql.binlog.event.GtidEventData;
 
+import com.github.shyiko.mysql.binlog.event.TableMapEventMetadata;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -444,25 +445,7 @@ public class AugmenterContext implements Closeable {
                 break;
 
             case TABLE_MAP:
-                this.metrics.getRegistry()
-                        .counter("hbase.augmenter_context.type.table_map").inc(1L);
-                TableMapRawEventData tableMapRawEventData = TableMapRawEventData.class.cast(eventData);
-                this.updateCommons(
-                        false,
-                        null,
-                        null,
-                        null,
-                        tableMapRawEventData.getTable()
-                );
-
-
-                this.schemaCache.get().getTableIdToTableNameMap().put(
-                        tableMapRawEventData.getTableId(),
-                        new FullTableName(
-                                tableMapRawEventData.getDatabase(),
-                                tableMapRawEventData.getTable()
-                        )
-                );
+                handleTableMapEvent(eventData);
                 break;
 
             case WRITE_ROWS:
@@ -503,6 +486,45 @@ public class AugmenterContext implements Closeable {
                 );
                 break;
         }
+    }
+
+    private void handleTableMapEvent(RawEventData eventData) {
+
+        this.metrics
+                .getRegistry()
+                .counter("hbase.augmenter_context.type.table_map")
+                .inc(1L);
+
+        TableMapRawEventData tableMapRawEventData = TableMapRawEventData.class.cast(eventData);
+
+        this.updateCommons(
+                false,
+                null,
+                null,
+                null,
+                tableMapRawEventData.getTable()
+        );
+
+        // TODO: replace with interface TableMapRawEventMetadata
+        TableMapEventMetadata tableMapEventMetadata = tableMapRawEventData.getEventMetadata();
+
+        this.schemaCache.get()
+                .getTableIdToTableNameMap().put(
+                    tableMapRawEventData.getTableId(),
+                    new FullTableName(
+                        tableMapRawEventData.getDatabase(),
+                        tableMapRawEventData.getTable()
+                    )
+                );
+
+        // TODO: update schemaCache from tableMapEventMetadata & tableMapRawEventData
+        //  - in ActiveSchema model, this is done for QueryEvent of type DDL
+        //  - in BinlogMetadataModel, this is done in TableMap event, while DDL queries
+        //    are only logged for audit purposes
+        //  this.schemaCache.get().reloadTableSchema(
+        //                        tableName,
+        //                        this.schemaManager.getComputeTableSchemaLambda()
+        //                );
     }
 
     private synchronized void updateTransactionCounter() {

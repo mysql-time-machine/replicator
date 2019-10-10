@@ -1,19 +1,9 @@
 package com.booking.replication.augmenter;
 
-import com.booking.replication.augmenter.model.event.AugmentedEventData;
-import com.booking.replication.augmenter.model.event.AugmentedEventType;
-import com.booking.replication.augmenter.model.event.DeleteRowsAugmentedEventData;
-import com.booking.replication.augmenter.model.event.QueryAugmentedEventData;
-import com.booking.replication.augmenter.model.event.UpdateRowsAugmentedEventData;
-import com.booking.replication.augmenter.model.event.WriteRowsAugmentedEventData;
+import com.booking.replication.augmenter.model.event.*;
 import com.booking.replication.augmenter.model.row.RowBeforeAfter;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
-import com.booking.replication.supplier.model.DeleteRowsRawEventData;
-import com.booking.replication.supplier.model.QueryRawEventData;
-import com.booking.replication.supplier.model.RawEventData;
-import com.booking.replication.supplier.model.RawEventHeaderV4;
-import com.booking.replication.supplier.model.UpdateRowsRawEventData;
-import com.booking.replication.supplier.model.WriteRowsRawEventData;
+import com.booking.replication.supplier.model.*;
 
 import java.util.BitSet;
 import java.util.Collection;
@@ -29,11 +19,11 @@ public class DataAugmenter {
     }
 
     public synchronized AugmentedEventData apply(RawEventHeaderV4 eventHeader, RawEventData eventData) {
+
         switch (eventHeader.getEventType()) {
 
             case WRITE_ROWS:
             case EXT_WRITE_ROWS:
-
                 WriteRowsRawEventData writeRowsRawEventData = WriteRowsRawEventData.class.cast(eventData);
 
                 final BitSet includedColumnsInsert = writeRowsRawEventData.getIncludedColumns();

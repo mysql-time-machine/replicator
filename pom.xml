@@ -32,7 +32,7 @@
         <zookeeper.version>3.4.12</zookeeper.version>
         <curator.version>4.0.1</curator.version>
         <mysql-connector.version>5.1.47</mysql-connector.version>
-        <mysql-binlog-connector.version>0.16.1</mysql-binlog-connector.version>
+        <mysql-binlog-connector.version>0.20.1</mysql-binlog-connector.version>
         <commons-dbcp2.version>2.4.0</commons-dbcp2.version>
         <kafka.version>1.1.0</kafka.version>
         <dropwizard.metrics.version>4.0.2</dropwizard.metrics.version>
@@ -566,7 +566,7 @@
                         </property>
                         <property>
                             <name>docker.image.mysql</name>
-                            <value>mysql:5.6.38</value>
+                            <value>mysql:8.0.3</value>
                         </property>
                     </systemProperties>
                 </configuration>

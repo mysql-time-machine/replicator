@@ -56,8 +56,8 @@ class PayloadTableTestImpl implements ReplicatorHBasePipelineIntegrationTest {
         replicantMySQLHandle.commit()
 
         // begin 1:
-        //  - insert data
-        //  - update data
+        //  - insert dummyValue
+        //  - update dummyValue
         //  - insert context
         def columns = "(pk,val)"
         replicantMySQLHandle.execute(sprintf(

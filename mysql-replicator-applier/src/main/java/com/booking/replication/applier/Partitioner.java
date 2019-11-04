@@ -8,7 +8,6 @@ import com.booking.replication.augmenter.model.schema.FullTableName;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiFunction;
 
@@ -53,7 +52,18 @@ public interface Partitioner extends BiFunction<AugmentedEvent, Integer, Integer
 
                     if (event.getHeader().getEventTransaction() != null) {
                         AugmentedEventTransaction transaction = event.getHeader().getEventTransaction();
-                        return Math.abs( transaction.getIdentifier().hashCode() ) % totalPartitions;
+                        /*
+                            There exists an edge-case in which the hashCode for the value of getIdentifier is
+                            Integer.MIN_VALUE, which will result in Math.abs returning the same value (MIN_VALUE when
+                            positive is 1 larger than MAX_VALUE, causing it to overflow back to MIN_VALUE). Will need
+                            to add some metrics to this to ensure it's not common enough that we're skewing the distribution
+                            across the queues
+                         */
+
+                        int hashCode = Math.abs( transaction.getIdentifier().hashCode() );
+                        int part = ( hashCode == Integer.MIN_VALUE ? Integer.MAX_VALUE : hashCode ) % totalPartitions;
+
+                        return part;
                     } else {
                         return ThreadLocalRandom.current().nextInt(totalPartitions);
                     }

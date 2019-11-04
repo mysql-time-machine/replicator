@@ -64,6 +64,7 @@ public class AugmenterContext implements Closeable {
         String EXCLUDE_PATTERN              = "augmenter.context.exclude.pattern";
         String INCLUDE_TABLE                = "augmenter.context.include.table";
         String TRANSACTIONS_ENABLED         = "augmenter.context.transactions.enabled";
+        String DEBUG_GTIDS                  = "augmenter.context.debug.gtids";
     }
 
     private static final Logger LOG = LogManager.getLogger(AugmenterContext.class);
@@ -102,6 +103,8 @@ public class AugmenterContext implements Closeable {
 
     // in case of intersection, the include list overrides the exclude list
     private final List<String> includeTableList;
+
+    private final HashSet<String> gtidDebugList;
 
     private volatile AtomicLong timestamp;
     private volatile AtomicLong previousTimestamp;
@@ -170,6 +173,7 @@ public class AugmenterContext implements Closeable {
         this.transactionsEnabled = Boolean.parseBoolean(configuration.getOrDefault(Configuration.TRANSACTIONS_ENABLED, "true").toString());
         this.excludeTableList = this.getList(configuration.get(Configuration.EXCLUDE_TABLE));
         this.includeTableList = this.getList(configuration.get(Configuration.INCLUDE_TABLE));
+        this.gtidDebugList = new HashSet<>(this.getList(configuration.get(Configuration.DEBUG_GTIDS)));
 
         this.timestamp = new AtomicLong();
 
@@ -807,19 +811,23 @@ public class AugmenterContext implements Closeable {
 
             for (RowBeforeAfter row : rows) {
 
-                augmentedRows.add(
-                        this.getAugmentedRow(
-                                eventType,
-                                commitTimestamp,
-                                transactionUUID,
-                                xxid,
-                                columns,
-                                includedColumns,
-                                row,
-                                cache,
-                                eventTable
-                        )
+                AugmentedRow aRow = this.getAugmentedRow(
+                        eventType,
+                        commitTimestamp,
+                        transactionUUID,
+                        xxid,
+                        columns,
+                        includedColumns,
+                        row,
+                        cache,
+                        eventTable
                 );
+
+                augmentedRows.add( aRow );
+
+                if ( this.gtidDebugList.contains(transactionUUID) ) {
+                    System.out.println(aRow.toString());
+                }
             }
             return augmentedRows;
         } else {

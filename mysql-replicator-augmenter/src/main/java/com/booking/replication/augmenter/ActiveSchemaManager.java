@@ -4,6 +4,7 @@ import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.SchemaAtPositionCache;
 import com.booking.replication.augmenter.model.schema.TableSchema;
 
+import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.mysql.jdbc.Driver;
 
 import org.apache.commons.dbcp2.BasicDataSource;
@@ -16,6 +17,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -59,6 +61,7 @@ public class ActiveSchemaManager implements SchemaManager {
     private final Function<String, TableSchema> computeTableSchemaLambda;
 
     private final SchemaAtPositionCache schemaAtPositionCache;
+    private final Map<String, TableMapEventData> tableMapEventDataCache = new HashMap<>();
 
     public ActiveSchemaManager(Map<String, Object> configuration) {
         this.dataSource = initDatasource(configuration);
@@ -208,6 +211,11 @@ public class ActiveSchemaManager implements SchemaManager {
             ActiveSchemaManager.LOG.warn(String.format("error executing query \"%s\": %s", query, exception.getMessage()));
             return false;
         }
+    }
+
+    @Override
+    public void updateTableMapCache(TableMapEventData tableMapEventData) {
+        this.tableMapEventDataCache.put(tableMapEventData.getTable(), tableMapEventData);
     }
 
     @Override

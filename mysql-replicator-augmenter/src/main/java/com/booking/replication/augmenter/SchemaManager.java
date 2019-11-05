@@ -1,8 +1,8 @@
 package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
-import com.booking.replication.augmenter.model.schema.SchemaAtPositionCache;
 import com.booking.replication.augmenter.model.schema.TableSchema;
+import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -11,7 +11,10 @@ import java.util.List;
 import java.util.function.Function;
 
 public interface SchemaManager extends Closeable {
+
     boolean execute(String tableName, String query);
+
+    void updateTableMapCache(TableMapEventData tableMapEventData);
 
     List<ColumnSchema> listColumns(String tableName);
 
@@ -23,4 +26,5 @@ public interface SchemaManager extends Closeable {
     void close() throws IOException;
 
     Function<String, TableSchema> getComputeTableSchemaLambda();
+
 }

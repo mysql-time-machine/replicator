@@ -1,11 +1,13 @@
 package com.booking.replication.supplier.model;
 
+import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.TableMapEventMetadata;
 
 import java.util.BitSet;
 
 @SuppressWarnings("unused")
 public interface TableMapRawEventData extends TableIdRawEventData {
+
     String getDatabase();
 
     String getTable();
@@ -16,6 +18,6 @@ public interface TableMapRawEventData extends TableIdRawEventData {
 
     BitSet getColumnNullability();
 
-    // TODO: replace TableMapEventMetadata with interface TableMapRawEventMetadata
-    TableMapEventMetadata getEventMetadata();
+    // TODO: replace TableMapEventData with interface TableMapRawEventData
+    TableMapEventData getEventData();
 }

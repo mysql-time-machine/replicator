@@ -17,13 +17,13 @@ public class EventDataPresenterAvroTest {
         EventDataPresenterAvro dataPresenter = new EventDataPresenterAvro(new AugmentedEvent());
         ArrayList<ColumnSchema> columns = new ArrayList<>();
 
-        columns.add(new ColumnSchema("col1", DataType.INT, "int(11)", true, "", ""));
+        columns.add(new ColumnSchema("col1", DataType.INT, "int(11)", true, ""));
 
-        columns.add(new ColumnSchema("col2", DataType.INT, "int(11)", true, "", "")
+        columns.add(new ColumnSchema("col2", DataType.INT, "int(11)", true, "")
                 .setDefaultValue("10"));
 
         columns.add(new ColumnSchema("col3", DataType.ENUM,
-                "enum('boolean','integer','string','date','datetime','boolarray','intarray','stringarray','datearray','enum')", true, "", "")
+                "enum('boolean','integer','string','date','datetime','boolarray','intarray','stringarray','datearray','enum')", true, "")
                 .setDefaultValue("string"));
 
         Schema avroSchema = dataPresenter.createAvroSchema(false, true,

@@ -12,16 +12,14 @@ import com.booking.replication.commons.metrics.Metrics;
 
 import com.booking.replication.supplier.model.*;
 
+import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 
 public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>, Closeable {
@@ -34,10 +32,17 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
 
             @Override
             protected SchemaManager newInstance(Map<String, Object> configuration) {
+
                 return new SchemaManager() {
+
                     @Override
                     public boolean execute(String tableName, String query) {
                         return false;
+                    }
+
+                    @Override
+                    public void updateTableMapCache(TableMapEventData tableMapEventData) {
+
                     }
 
                     @Override
@@ -82,6 +87,13 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
 
                 return new SchemaManager() {
 
+                    private final Map<String, TableMapEventData> tableMapEventDataCache = new HashMap<>();
+
+                    @Override
+                    public void updateTableMapCache(TableMapEventData tableMapEventData) {
+                        this.tableMapEventDataCache.put(tableMapEventData.getTable(), tableMapEventData);
+                    }
+
                     @Override
                     public boolean execute(String tableName, String query) {
                         return false;
@@ -108,10 +120,17 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
 
                     @Override
                     public Function<String, TableSchema> getComputeTableSchemaLambda() {
+
                         Function<String, TableSchema> schemaComputeFn = (tableName) -> {
                             try {
-                                // TODO: replace with computeSchemaFromBinlogMetadata
-                                TableSchema ts = SchemaHelpers.computeTableSchemaFromActiveSchemaInstance(schema, tableName, ActiveSchemaManager.this.dataSource, ActiveSchemaManager.this.binlogDataSource);
+                                TableMapEventData tableMapEventData = this.tableMapEventDataCache.get(tableName);
+                                Object schema = tableMapEventData.getDatabase();
+                                TableSchema ts =
+                                        SchemaHelpers.computeTableSchemaFromBinlogMetadata(
+                                                schema.toString(),
+                                                tableName,
+                                                tableMapEventData
+                                        );
                                 return ts;
                             } catch (Exception e) {
                                 e.printStackTrace();

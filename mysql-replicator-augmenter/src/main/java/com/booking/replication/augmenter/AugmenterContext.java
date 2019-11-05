@@ -32,6 +32,7 @@ import com.codahale.metrics.MetricRegistry;
 
 import com.github.shyiko.mysql.binlog.event.GtidEventData;
 
+import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.TableMapEventMetadata;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -505,8 +506,9 @@ public class AugmenterContext implements Closeable {
                 tableMapRawEventData.getTable()
         );
 
-        // TODO: replace with interface TableMapRawEventMetadata
-        TableMapEventMetadata tableMapEventMetadata = tableMapRawEventData.getEventMetadata();
+        // TODO: replace TableMapEventData with TableMapRawEventData
+        TableMapEventData tableMapEventData = tableMapRawEventData.getEventData();
+        this.schemaManager.updateTableMapCache(tableMapEventData);
 
         this.schemaCache.get()
                 .getTableIdToTableNameMap().put(
@@ -517,14 +519,18 @@ public class AugmenterContext implements Closeable {
                     )
                 );
 
-        // TODO: update schemaCache from tableMapEventMetadata & tableMapRawEventData
-        //  - in ActiveSchema model, this is done for QueryEvent of type DDL
-        //  - in BinlogMetadataModel, this is done in TableMap event, while DDL queries
-        //    are only logged for audit purposes
-        //  this.schemaCache.get().reloadTableSchema(
-        //                        tableName,
-        //                        this.schemaManager.getComputeTableSchemaLambda()
-        //                );
+        // Update schemaCache based on info in tableMapEventMetadata & tableMapRawEventData:
+        //
+        //      - in ActiveSchema model, this is done for QueryEvent of type DDL
+        //      - in BinlogMetadata model, the latest schema info is already in TableMap event, so
+        //        we use tableMap event, while the DDL queries are only logged for audit purposes
+        //
+        this.schemaCache.get()
+                .reloadTableSchema(
+                      tableMapEventData.getTable(),
+                      this.schemaManager.getComputeTableSchemaLambda()
+                );
+
     }
 
     private synchronized void updateTransactionCounter() {
@@ -604,6 +610,7 @@ public class AugmenterContext implements Closeable {
                 }
 
                 this.schemaManager.execute(tableName, query);
+
                 this.schemaCache.get().reloadTableSchema(
                         tableName,
                         this.schemaManager.getComputeTableSchemaLambda()

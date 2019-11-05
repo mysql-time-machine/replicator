@@ -17,7 +17,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testBinaryType() {
-        ColumnSchema schema = new ColumnSchema("code", DataType.BINARY, "binary(10)", true, "", "");
+        ColumnSchema schema = new ColumnSchema("code", DataType.BINARY, "binary(10)", true, "");
         schema.setCharMaxLength(10);
 
         byte[] testByteArr;
@@ -43,7 +43,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testVarBinaryType() {
-        ColumnSchema schema = new ColumnSchema("code", DataType.VARBINARY, "binary(10)", true, "", "");
+        ColumnSchema schema = new ColumnSchema("code", DataType.VARBINARY, "binary(10)", true, "");
         schema.setCharMaxLength(10);
 
         byte[] testByteArr;
@@ -69,7 +69,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testTinyBlobType() {
-        ColumnSchema schema = new ColumnSchema("code", DataType.TINYBLOB, "tinyblob", true, "", "");
+        ColumnSchema schema = new ColumnSchema("code", DataType.TINYBLOB, "tinyblob", true, "");
 
         byte[] testByteArr;
         String expected;
@@ -86,7 +86,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testMediumBlobType() {
-        ColumnSchema schema = new ColumnSchema("code", DataType.MEDIUMBLOB, "mediumblob", true, "", "");
+        ColumnSchema schema = new ColumnSchema("code", DataType.MEDIUMBLOB, "mediumblob", true, "");
 
         byte[] testByteArr;
         String expected;
@@ -103,7 +103,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testBlobType() {
-        ColumnSchema schema = new ColumnSchema("code", DataType.BLOB, "blob", true, "", "");
+        ColumnSchema schema = new ColumnSchema("code", DataType.BLOB, "blob", true, "");
 
         byte[] testByteArr;
         String expected;
@@ -120,7 +120,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testLongBlobType() {
-        ColumnSchema schema = new ColumnSchema("code", DataType.LONGBLOB, "longblob", true, "", "");
+        ColumnSchema schema = new ColumnSchema("code", DataType.LONGBLOB, "longblob", true, "");
 
         byte[] testByteArr;
         String expected;
@@ -137,7 +137,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testCharTypeLatinCharacterSet() {
-        ColumnSchema schema = new ColumnSchema("name", DataType.CHAR, "char(30)", true, "", "");
+        ColumnSchema schema = new ColumnSchema("name", DataType.CHAR, "char(30)", true, "");
         schema.setCollation("latin1_swedish_ci");
 
         byte[] testByteArr;
@@ -187,7 +187,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testCharTypeUtf8CharacterSet() {
-        ColumnSchema schema = new ColumnSchema("name", DataType.CHAR, "char(30)", true, "", "");
+        ColumnSchema schema = new ColumnSchema("name", DataType.CHAR, "char(30)", true, "");
         schema.setCollation("utf8_general_ci");
 
         byte[] testByteArr;
@@ -245,7 +245,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testVarcharTypeLatinCharacterSet() {
-        ColumnSchema schema = new ColumnSchema("name", DataType.VARCHAR, "varchar(30)", true, "", "");
+        ColumnSchema schema = new ColumnSchema("name", DataType.VARCHAR, "varchar(30)", true, "");
         schema.setCollation("latin1_swedish_ci");
 
         byte[] testByteArr;
@@ -295,7 +295,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testVarcharTypeUtf8CharacterSet() {
-        ColumnSchema schema = new ColumnSchema("name", DataType.VARCHAR, "varchar(30)", true, "", "");
+        ColumnSchema schema = new ColumnSchema("name", DataType.VARCHAR, "varchar(30)", true, "");
         schema.setCollation("utf8_general_ci");
 
         byte[] testByteArr;
@@ -353,7 +353,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testTextTypeLatinCharacterSet() {
-        ColumnSchema schema = new ColumnSchema("name", DataType.TEXT, "text", true, "", "");
+        ColumnSchema schema = new ColumnSchema("name", DataType.TEXT, "text", true, "");
         schema.setCollation("latin1_swedish_ci");
 
         byte[] testByteArr;
@@ -403,7 +403,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testTextTypeUtf8CharacterSet() {
-        ColumnSchema schema = new ColumnSchema("name", DataType.TEXT, "text", true, "", "");
+        ColumnSchema schema = new ColumnSchema("name", DataType.TEXT, "text", true, "");
         schema.setCollation("utf8_general_ci");
 
         byte[] testByteArr;
@@ -461,7 +461,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testMediumTextTypeLatinCharacterSet() {
-        ColumnSchema schema = new ColumnSchema("name", DataType.MEDIUMTEXT, "mediumtext", true, "", "");
+        ColumnSchema schema = new ColumnSchema("name", DataType.MEDIUMTEXT, "mediumtext", true, "");
         schema.setCollation("latin1_swedish_ci");
 
         byte[] testByteArr;
@@ -511,7 +511,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testMediumTextTypeUtf8CharacterSet() {
-        ColumnSchema schema = new ColumnSchema("name", DataType.MEDIUMTEXT, "mediumtext", true, "", "");
+        ColumnSchema schema = new ColumnSchema("name", DataType.MEDIUMTEXT, "mediumtext", true, "");
         schema.setCollation("utf8_general_ci");
 
         byte[] testByteArr;
@@ -569,7 +569,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testTinyTextTypeLatinCharacterSet() {
-        ColumnSchema schema = new ColumnSchema("name", DataType.TINYTEXT, "tinytext", true, "", "");
+        ColumnSchema schema = new ColumnSchema("name", DataType.TINYTEXT, "tinytext", true, "");
         schema.setCollation("latin1_swedish_ci");
 
         byte[] testByteArr;
@@ -619,7 +619,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testTinyTextTypeUtf8CharacterSet() {
-        ColumnSchema schema = new ColumnSchema("name", DataType.TINYTEXT, "tinytext", true, "", "");
+        ColumnSchema schema = new ColumnSchema("name", DataType.TINYTEXT, "tinytext", true, "");
         schema.setCollation("utf8_general_ci");
 
         byte[] testByteArr;
@@ -677,7 +677,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testBitType() {
-        ColumnSchema schema = new ColumnSchema("id", DataType.BIT, "bit(5)", true, "", "");
+        ColumnSchema schema = new ColumnSchema("id", DataType.BIT, "bit(5)", true, "");
 
         BitSet testBit;
         String expected;
@@ -748,7 +748,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testDateTimeType() {
-        ColumnSchema schema = new ColumnSchema("ts", DataType.DATETIME, "datetime", true, "", "");
+        ColumnSchema schema = new ColumnSchema("ts", DataType.DATETIME, "datetime", true, "");
         Long epochUTC = 1548982800000L;
 
         TimeZone tz = TimeZone.getDefault();
@@ -767,7 +767,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testTimestampType() {
-        ColumnSchema schema = new ColumnSchema("ts", DataType.TIMESTAMP, "timestamp(3)", true, "", "");
+        ColumnSchema schema = new ColumnSchema("ts", DataType.TIMESTAMP, "timestamp(3)", true, "");
         Long epochUTC = 1548982800000L;
 
         TimeZone tz = TimeZone.getDefault();
@@ -786,7 +786,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testEnumType() {
-        ColumnSchema schema = new ColumnSchema("fruit", DataType.ENUM, "enum('apple','banana','orange')", true, "", "");
+        ColumnSchema schema = new ColumnSchema("fruit", DataType.ENUM, "enum('apple','banana','orange')", true, "");
 
         String[] groupValues = new String[] {"apple", "banana", "orange"};
 
@@ -821,7 +821,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testSetType() {
-        ColumnSchema schema = new ColumnSchema("fruit", DataType.SET, "set('apple','banana','orange')", true, "", "");
+        ColumnSchema schema = new ColumnSchema("fruit", DataType.SET, "set('apple','banana','orange')", true, "");
 
         String[] groupValues = new String[] {"apple", "banana", "orange"};
 
@@ -888,7 +888,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testSignedTinyInt() {
-        ColumnSchema schema = new ColumnSchema("id", DataType.TINYINT, "tinyint(4)", true, "", "");
+        ColumnSchema schema = new ColumnSchema("id", DataType.TINYINT, "tinyint(4)", true, "");
 
         Integer testTinyInteger;
         Long expected;
@@ -921,7 +921,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testUnsignedTinyInt() {
-        ColumnSchema schema = new ColumnSchema("id", DataType.TINYINT, "tinyint(4) unsigned", true, "", "");
+        ColumnSchema schema = new ColumnSchema("id", DataType.TINYINT, "tinyint(4) unsigned", true, "");
 
         Integer testTinyInteger;
         Long expected;
@@ -962,7 +962,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testSignedSmallInt() {
-        ColumnSchema schema = new ColumnSchema("id", DataType.SMALLINT, "smallint(6)", true, "", "");
+        ColumnSchema schema = new ColumnSchema("id", DataType.SMALLINT, "smallint(6)", true, "");
 
         Integer testSmallInteger;
         Long expected;
@@ -995,7 +995,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testUnsignedSmallInt() {
-        ColumnSchema schema = new ColumnSchema("id", DataType.SMALLINT, "smallint(6) unsigned", true, "", "");
+        ColumnSchema schema = new ColumnSchema("id", DataType.SMALLINT, "smallint(6) unsigned", true, "");
 
         Integer testSmallInteger;
         Long expected;
@@ -1036,7 +1036,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testSignedMediumInt() {
-        ColumnSchema schema = new ColumnSchema("id", DataType.MEDIUMINT, "mediumint(9)", true, "", "");
+        ColumnSchema schema = new ColumnSchema("id", DataType.MEDIUMINT, "mediumint(9)", true, "");
 
         Integer testMediumInteger;
         Long expected;
@@ -1069,7 +1069,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testUnsignedMediumInt() {
-        ColumnSchema schema = new ColumnSchema("id", DataType.MEDIUMINT, "mediumint(9) unsigned", true, "", "");
+        ColumnSchema schema = new ColumnSchema("id", DataType.MEDIUMINT, "mediumint(9) unsigned", true, "");
 
         Integer testMediumInteger;
         Long expected;
@@ -1110,7 +1110,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testSignedInt() {
-        ColumnSchema schema = new ColumnSchema("id", DataType.INT, "int(11)", true, "", "");
+        ColumnSchema schema = new ColumnSchema("id", DataType.INT, "int(11)", true, "");
 
         Integer testInteger;
         Long expected;
@@ -1143,7 +1143,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testUnsignedInt() {
-        ColumnSchema schema = new ColumnSchema("id", DataType.INT, "int(10) unsigned", true, "", "");
+        ColumnSchema schema = new ColumnSchema("id", DataType.INT, "int(10) unsigned", true, "");
 
         Integer testInteger;
         Long expected;
@@ -1184,7 +1184,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testSignedBigInt() {
-        ColumnSchema schema = new ColumnSchema("id", DataType.BIGINT, "bigint(20)", true, "", "");
+        ColumnSchema schema = new ColumnSchema("id", DataType.BIGINT, "bigint(20)", true, "");
 
         Long testBigInteger;
         Long expected;
@@ -1217,7 +1217,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testUnsignedBigInt() {
-        ColumnSchema schema = new ColumnSchema("id", DataType.BIGINT, "bigint(20) unsigned", true, "", "");
+        ColumnSchema schema = new ColumnSchema("id", DataType.BIGINT, "bigint(20) unsigned", true, "");
 
         Long testBigInteger;
         BigInteger expected;
@@ -1258,7 +1258,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testBigDecimal() {
-        ColumnSchema schema = new ColumnSchema("currency", DataType.DECIMAL, "decimal(5,3)", true, "", "");
+        ColumnSchema schema = new ColumnSchema("currency", DataType.DECIMAL, "decimal(5,3)", true, "");
 
         BigDecimal testBigDecimal;
         String expected;
@@ -1275,7 +1275,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testFloat() {
-        ColumnSchema schema = new ColumnSchema("currency", DataType.FLOAT, "float(5,3)", true, "", "");
+        ColumnSchema schema = new ColumnSchema("currency", DataType.FLOAT, "float(5,3)", true, "");
 
         Float testFloat;
         Float expected;
@@ -1292,7 +1292,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testDouble() {
-        ColumnSchema schema = new ColumnSchema("currency", DataType.DOUBLE, "double(5,3)", true, "", "");
+        ColumnSchema schema = new ColumnSchema("currency", DataType.DOUBLE, "double(5,3)", true, "");
 
         Double testDouble;
         Double expected;
@@ -1309,7 +1309,7 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testJson() {
-        ColumnSchema schema = new ColumnSchema("jsn", DataType.JSON, "json", true, "", "");
+        ColumnSchema schema = new ColumnSchema("jsn", DataType.JSON, "json", true, "");
 
         byte[] testJson;
         String expected;

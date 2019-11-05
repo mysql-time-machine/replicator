@@ -23,6 +23,8 @@ import javax.sql.DataSource;
 
 public class SchemaHelpers {
 
+    private static final int VARCHAR_MAXIMUM_LENGTH = 65535;
+
     public static TableSchema computeTableSchemaFromBinlogMetadata(String schema, String tableName, TableMapEventData tableMapEventData) {
 
         TableMapEventMetadata tableMapEventMetadata = tableMapEventData.getEventMetadata();
@@ -70,20 +72,29 @@ public class SchemaHelpers {
                                                                              // additional metadata
             );
 
-            // TODO: get charset constants for:
-            //  tableMapEventData.getEventMetadata().getColumnCharsets();
+            // TODO: lookup table for charsetId & collationId (information_schema)
+            Integer columnCollationId;
+            Integer columnCharsetId = tableMapEventMetadata.getColumnCharsets().get(columnIndex);
+            if (columnCharsetId == null) {
+                columnCollationId = tableMapEventMetadata.getDefaultCharset().getDefaultCharsetCollation();
+            } else {
+                columnCollationId = tableMapEventMetadata.getColumnCharsets().get(columnCharsetId);
+            }
 
-            // TODO: get collation constant for:
-            // tableMapEventData.getEventMetadata().getDefaultCharset().getDefaultCharsetCollation();
-
-            // TODO:
-            //      seems there is only default charset in binlog extra metadata
-            //      seems there is no character max length in binlog extra metadata
             columnSchema
-                    .setCollation(resultSet.getString("COLLATION_NAME"))
-                    .setDefaultValue(resultSet.getString("COLUMN_DEFAULT"))
-                    .setCharMaxLength(resultSet.getInt("CHARACTER_MAXIMUM_LENGTH"));
 
+                    // TODO: lookup table && fallback to default charset
+                    .setCollation(String.valueOf(columnCollationId))
+
+                    // TODO: remove this field in future versions
+                    // In extra metadata there is no default value
+                    // but keeping here for compatibility with active schema implementation
+                    .setDefaultValue("NA")
+
+                    // TODO: remove this field in future versions
+                    // In extra metadata there is no max char length,
+                    // but keeping for compatibility with active schema implementation
+                    .setCharMaxLength(VARCHAR_MAXIMUM_LENGTH);
 
             columnSchemaList.add(columnSchema);
 

@@ -5,6 +5,7 @@ import com.booking.replication.augmenter.model.schema.DataType;
 import com.booking.replication.augmenter.model.schema.FullTableName;
 import com.booking.replication.augmenter.model.schema.TableSchema;
 
+import com.booking.replication.supplier.model.TableMapRawEventData;
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.TableMapEventMetadata;
 import com.github.shyiko.mysql.binlog.event.deserialization.ColumnType;
@@ -25,7 +26,10 @@ public class SchemaHelpers {
 
     private static final int VARCHAR_MAXIMUM_LENGTH = 65535;
 
-    public static TableSchema computeTableSchemaFromBinlogMetadata(String schema, String tableName, TableMapEventData tableMapEventData) {
+    public static TableSchema computeTableSchemaFromBinlogMetadata(
+            String schema,
+            String tableName,
+            TableMapRawEventData tableMapEventData) {
 
         TableMapEventMetadata tableMapEventMetadata = tableMapEventData.getEventMetadata();
 
@@ -109,7 +113,7 @@ public class SchemaHelpers {
                 );
     }
 
-    private static DataType getColumnTypeCode(TableMapEventData tableMapEventData, int columnIndex) {
+    private static DataType getColumnTypeCode(TableMapRawEventData tableMapEventData, int columnIndex) {
 
         byte[] columnTypes = tableMapEventData.getColumnTypes();
 

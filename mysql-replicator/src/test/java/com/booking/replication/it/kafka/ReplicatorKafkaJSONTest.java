@@ -23,7 +23,6 @@ import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericDatumWriter;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.*;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -269,18 +268,5 @@ public class ReplicatorKafkaJSONTest {
         ReplicatorKafkaJSONTest.zookeeper.close();
         ReplicatorKafkaJSONTest.kafkaZk.close();
     }
-
-    public static String avroToJson(byte[] avro, Schema schema) throws IOException {
-        boolean pretty = false;
-        GenericDatumReader<Object> reader = new GenericDatumReader<>(schema);
-        DatumWriter<Object> writer = new GenericDatumWriter<>(schema);
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-        JsonEncoder encoder = EncoderFactory.get().jsonEncoder(schema, output, pretty);
-        Decoder decoder = DecoderFactory.get().binaryDecoder(avro, null);
-        Object datum = reader.read(null, decoder);
-        writer.write(datum, encoder);
-        encoder.flush();
-        output.flush();
-        return new String(output.toByteArray(), "UTF-8");
-    }
+    
 }

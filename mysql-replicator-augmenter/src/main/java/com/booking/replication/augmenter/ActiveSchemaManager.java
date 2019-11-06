@@ -4,6 +4,7 @@ import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.SchemaAtPositionCache;
 import com.booking.replication.augmenter.model.schema.TableSchema;
 
+import com.booking.replication.supplier.model.TableMapRawEventData;
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.mysql.jdbc.Driver;
 
@@ -61,7 +62,7 @@ public class ActiveSchemaManager implements SchemaManager {
     private final Function<String, TableSchema> computeTableSchemaLambda;
 
     private final SchemaAtPositionCache schemaAtPositionCache;
-    private final Map<String, TableMapEventData> tableMapEventDataCache = new HashMap<>();
+    private final Map<String, TableMapRawEventData> tableMapEventDataCache = new HashMap<>();
 
     public ActiveSchemaManager(Map<String, Object> configuration) {
         this.dataSource = initDatasource(configuration);
@@ -214,8 +215,8 @@ public class ActiveSchemaManager implements SchemaManager {
     }
 
     @Override
-    public void updateTableMapCache(TableMapEventData tableMapEventData) {
-        this.tableMapEventDataCache.put(tableMapEventData.getTable(), tableMapEventData);
+    public void updateTableMapCache(TableMapRawEventData tableMapRawEventData) {
+        this.tableMapEventDataCache.put(tableMapRawEventData.getTable(), tableMapRawEventData);
     }
 
     @Override

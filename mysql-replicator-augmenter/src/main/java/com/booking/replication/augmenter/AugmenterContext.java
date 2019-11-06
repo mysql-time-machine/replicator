@@ -506,9 +506,7 @@ public class AugmenterContext implements Closeable {
                 tableMapRawEventData.getTable()
         );
 
-        // TODO: replace TableMapEventData with TableMapRawEventData
-        TableMapEventData tableMapEventData = tableMapRawEventData.getEventData();
-        this.schemaManager.updateTableMapCache(tableMapEventData);
+        this.schemaManager.updateTableMapCache(tableMapRawEventData);
 
         this.schemaCache.get()
                 .getTableIdToTableNameMap().put(
@@ -523,12 +521,12 @@ public class AugmenterContext implements Closeable {
         //
         //      - in ActiveSchema model, this is done for QueryEvent of type DDL
         //      - in BinlogMetadata model, the latest schema info is already in TableMap event, so
-        //        we use tableMap event, while the DDL queries are only logged for audit purposes
+        //        we use tableMap event, while DDL queries are only logged for audit purposes
         //
         this.schemaCache.get()
                 .reloadTableSchema(
-                      tableMapEventData.getTable(),
-                      this.schemaManager.getComputeTableSchemaLambda()
+                    tableMapRawEventData.getTable(),
+                    this.schemaManager.getComputeTableSchemaLambda()
                 );
 
     }

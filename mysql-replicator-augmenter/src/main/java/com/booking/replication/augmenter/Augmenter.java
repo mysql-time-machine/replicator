@@ -41,7 +41,7 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
                     }
 
                     @Override
-                    public void updateTableMapCache(TableMapEventData tableMapEventData) {
+                    public void updateTableMapCache(TableMapRawEventData tableMapEventData) {
 
                     }
 
@@ -87,11 +87,11 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
 
                 return new SchemaManager() {
 
-                    private final Map<String, TableMapEventData> tableMapEventDataCache = new HashMap<>();
+                    private final Map<String, TableMapRawEventData> tableMapEventDataCache = new HashMap<>();
 
                     @Override
-                    public void updateTableMapCache(TableMapEventData tableMapEventData) {
-                        this.tableMapEventDataCache.put(tableMapEventData.getTable(), tableMapEventData);
+                    public void updateTableMapCache(TableMapRawEventData tableMapRawEventData) {
+                        this.tableMapEventDataCache.put(tableMapRawEventData.getTable(), tableMapRawEventData);
                     }
 
                     @Override
@@ -123,13 +123,13 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
 
                         Function<String, TableSchema> schemaComputeFn = (tableName) -> {
                             try {
-                                TableMapEventData tableMapEventData = this.tableMapEventDataCache.get(tableName);
-                                Object schema = tableMapEventData.getDatabase();
+                                TableMapRawEventData tableMapRawEventData = this.tableMapEventDataCache.get(tableName);
+                                Object schema = tableMapRawEventData.getDatabase();
                                 TableSchema ts =
                                         SchemaHelpers.computeTableSchemaFromBinlogMetadata(
                                                 schema.toString(),
                                                 tableName,
-                                                tableMapEventData
+                                                tableMapRawEventData
                                         );
                                 return ts;
                             } catch (Exception e) {

@@ -18,6 +18,6 @@ public interface TableMapRawEventData extends TableIdRawEventData {
 
     BitSet getColumnNullability();
 
-    // TODO: replace TableMapEventData with interface TableMapRawEventData
-    TableMapEventData getEventData();
+    // TODO: facade
+    TableMapEventMetadata getEventMetadata();
 }

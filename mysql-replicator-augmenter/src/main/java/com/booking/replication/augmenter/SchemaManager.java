@@ -2,6 +2,7 @@ package com.booking.replication.augmenter;
 
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.TableSchema;
+import com.booking.replication.supplier.model.TableMapRawEventData;
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 
 import java.io.Closeable;
@@ -14,7 +15,7 @@ public interface SchemaManager extends Closeable {
 
     boolean execute(String tableName, String query);
 
-    void updateTableMapCache(TableMapEventData tableMapEventData);
+    void updateTableMapCache(TableMapRawEventData tableMapRawEventData);
 
     List<ColumnSchema> listColumns(String tableName);
 

@@ -12,7 +12,6 @@ import com.booking.replication.commons.metrics.Metrics;
 
 import com.booking.replication.supplier.model.*;
 
-import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -124,6 +123,7 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
                         Function<String, TableSchema> schemaComputeFn = (tableName) -> {
                             try {
                                 TableMapRawEventData tableMapRawEventData = this.tableMapEventDataCache.get(tableName);
+                                System.out.println("===table metadata => schema name: " + tableMapRawEventData.getDatabase());
                                 Object schema = tableMapRawEventData.getDatabase();
                                 TableSchema ts =
                                         SchemaHelpers.computeTableSchemaFromBinlogMetadata(

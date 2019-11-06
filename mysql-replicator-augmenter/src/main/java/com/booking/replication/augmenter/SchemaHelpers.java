@@ -39,6 +39,7 @@ public class SchemaHelpers {
         // TODO: we assume column index is the same for all these lists/sets/arrays - verify
         int columnIndex = 0;
 
+        int charsetIdIndex = 0;
         for (String columnName : columnNameList) {
 
             boolean isNullable = tableMapEventData.getColumnNullability().get(columnIndex);
@@ -71,34 +72,51 @@ public class SchemaHelpers {
                                                                              // available in binlog metadata)
                     isNullable,
 
-                    pkColumnIndexes.isEmpty() ? "" : "PRI"                   // COLUMN_KEY->PRI; other values (UNI/MUL)
+                    pkColumnIndexes.contains(columnIndex) ? "" : "PRI"                   // COLUMN_KEY->PRI; other values (UNI/MUL)
                                                                              // seem to not be supported in binlog
                                                                              // additional metadata
             );
 
-            // TODO: lookup table for charsetId & collationId (information_schema)
-            Integer columnCollationId;
-            Integer columnCharsetId = tableMapEventMetadata.getColumnCharsets().get(columnIndex);
-            if (columnCharsetId == null) {
-                columnCollationId = tableMapEventMetadata.getDefaultCharset().getDefaultCharsetCollation();
-            } else {
-                columnCollationId = tableMapEventMetadata.getColumnCharsets().get(columnCharsetId);
+            // MySQL Charsets & Collations https://dev.mysql.com/doc/internals/en/character-set.html
+            // Common ones:
+            //      33 - utf8_general_ci
+            //      63 - binary
+            // NOTE: in the binlog metadata the charset ids are listed in the order of columns that have them, but
+            //       in case there are non-char/non-text columns in the table, the indexes will be different than
+            //       column indexes, so we need to maintain a separate charsetIdIndex
+            switch (dataType) {
+
+                case VARCHAR:
+                case CHAR:
+                case TINYTEXT:
+                case TEXT:
+                case MEDIUMTEXT:
+                case LONGTEXT:
+                    Integer columnCollationId = tableMapEventMetadata.getColumnCharsets().get(charsetIdIndex);
+                    if (columnCollationId == null) {
+                        // TODO: handle null
+                        columnCollationId = tableMapEventMetadata.getDefaultCharset().getDefaultCharsetCollation();
+                    }
+                    charsetIdIndex++;
+                    columnSchema
+                            // TODO: lookup table && fallback to default charset
+                            .setCollation(String.valueOf(columnCollationId))
+                            // TODO: remove this field in future versions
+                            // In extra metadata there is no max char length,
+                            // but keeping for compatibility with active schema implementation
+                            .setCharMaxLength(VARCHAR_MAXIMUM_LENGTH);
+
+                    break;
+
+                default:
+                    break;
+
             }
 
-            columnSchema
-
-                    // TODO: lookup table && fallback to default charset
-                    .setCollation(String.valueOf(columnCollationId))
-
-                    // TODO: remove this field in future versions
-                    // In extra metadata there is no default value
-                    // but keeping here for compatibility with active schema implementation
-                    .setDefaultValue("NA")
-
-                    // TODO: remove this field in future versions
-                    // In extra metadata there is no max char length,
-                    // but keeping for compatibility with active schema implementation
-                    .setCharMaxLength(VARCHAR_MAXIMUM_LENGTH);
+            // TODO: remove this field in future versions
+            // In extra metadata there is no default value
+            // but keeping here for compatibility with active schema implementation
+            columnSchema.setDefaultValue("NA");
 
             columnSchemaList.add(columnSchema);
 

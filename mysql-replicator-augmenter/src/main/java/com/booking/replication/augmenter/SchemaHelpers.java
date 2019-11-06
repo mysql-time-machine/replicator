@@ -11,6 +11,7 @@ import com.github.shyiko.mysql.binlog.event.TableMapEventMetadata;
 import com.github.shyiko.mysql.binlog.event.deserialization.ColumnType;
 import org.apache.commons.dbcp2.BasicDataSource;
 
+import java.security.acl.LastOwnerException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -34,12 +35,14 @@ public class SchemaHelpers {
         TableMapEventMetadata tableMapEventMetadata = tableMapEventData.getEventMetadata();
 
         List<ColumnSchema> columnSchemaList = new ArrayList<>();
+
         List<String> columnNameList = tableMapEventMetadata.getColumnNames();
 
         // TODO: we assume column index is the same for all these lists/sets/arrays - verify
         int columnIndex = 0;
 
         int charsetIdIndex = 0;
+
         for (String columnName : columnNameList) {
 
             boolean isNullable = tableMapEventData.getColumnNullability().get(columnIndex);
@@ -59,20 +62,20 @@ public class SchemaHelpers {
 
             DataType dataType = getColumnTypeCode(tableMapEventData, columnIndex);
 
+            String IsPrimary = pkColumnIndexes.contains(columnIndex) ? "PRI" : "";
+
             ColumnSchema columnSchema = new ColumnSchema(
 
                     tableMapEventMetadata.getColumnNames().get(columnIndex), // Column Name
 
                     // TODO: include Signedness
-                    dataType,                                                // Data Type
+                    dataType,
 
-                    dataType.getCode(),                                      // this is COLUMN_TYPE in active schema
-                                                                             // implementation: TODO => check if
-                                                                             // additional info (precision, length is
-                                                                             // available in binlog metadata)
+                    dataType.getCode(),
+
                     isNullable,
 
-                    pkColumnIndexes.contains(columnIndex) ? "" : "PRI"                   // COLUMN_KEY->PRI; other values (UNI/MUL)
+                    IsPrimary                                                // COLUMN_KEY->PRI; other values (UNI/MUL)
                                                                              // seem to not be supported in binlog
                                                                              // additional metadata
             );
@@ -92,11 +95,23 @@ public class SchemaHelpers {
                 case TEXT:
                 case MEDIUMTEXT:
                 case LONGTEXT:
-                    Integer columnCollationId = tableMapEventMetadata.getColumnCharsets().get(charsetIdIndex);
-                    if (columnCollationId == null) {
-                        // TODO: handle null
-                        columnCollationId = tableMapEventMetadata.getDefaultCharset().getDefaultCharsetCollation();
+                    System.out.println("==== charsetIndex => " + charsetIdIndex);
+                    List<Integer> charsets = tableMapEventMetadata.getColumnCharsets();
+                    Integer columnCollationId = null;
+                    if (charsets != null) {
+                        System.out.println("==== charsetListSize => " + charsets.size());
+                        columnCollationId = tableMapEventMetadata.getColumnCharsets().get(charsetIdIndex);
+                        if (columnCollationId == null) {
+                            columnCollationId = tableMapEventMetadata.getDefaultCharset().getDefaultCharsetCollation();
+                        }
                     }
+
+                    if (columnCollationId == null) {
+                        // TODO: better default
+                        System.out.println("Cannot determine charset, defaulting to binary for columnIndex #" + columnIndex);
+                        columnCollationId = 63; // 63 - binary
+                    }
+
                     charsetIdIndex++;
                     columnSchema
                             // TODO: lookup table && fallback to default charset
@@ -135,7 +150,8 @@ public class SchemaHelpers {
 
         byte[] columnTypes = tableMapEventData.getColumnTypes();
 
-        ColumnType columnType = ColumnType.byCode(columnTypes[columnIndex]);
+        Integer columnTypeCode = Byte.toUnsignedInt(columnTypes[columnIndex]);
+        ColumnType columnType = ColumnType.byCode(columnTypeCode);
 
         switch (columnType) {
 

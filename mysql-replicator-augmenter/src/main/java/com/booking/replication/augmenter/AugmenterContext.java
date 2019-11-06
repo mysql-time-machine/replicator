@@ -30,10 +30,6 @@ import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 
 import com.codahale.metrics.MetricRegistry;
 
-import com.github.shyiko.mysql.binlog.event.GtidEventData;
-
-import com.github.shyiko.mysql.binlog.event.TableMapEventData;
-import com.github.shyiko.mysql.binlog.event.TableMapEventMetadata;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -133,7 +129,11 @@ public class AugmenterContext implements Closeable {
     private final AtomicBoolean isAtDDL;
     private final AtomicReference<SchemaSnapshot> schemaSnapshot;
 
+    private final Map<String, Object> configuration;
+
     public AugmenterContext(SchemaManager schemaManager, Map<String, Object> configuration) {
+
+        this.configuration = configuration;
 
         this.schemaManager = schemaManager;
 
@@ -276,10 +276,11 @@ public class AugmenterContext implements Closeable {
 
             case UNKNOWN:
                 break;
+
             case START_V3:
                 break;
-            case QUERY:
 
+            case QUERY:
                 QueryRawEventData queryRawEventData = QueryRawEventData.class.cast(eventData);
                 String query = queryRawEventData.getSQL();
                 Matcher matcher;
@@ -300,8 +301,8 @@ public class AugmenterContext implements Closeable {
                         AugmenterContext.LOG.warn("transaction already started");
                     }
 
+                // commit
                 } else if (this.commitPattern.matcher(query).find()) {
-                    // commit
                     this.updateCommons(
                             true,
                             QueryAugmentedEventDataType.COMMIT,
@@ -316,8 +317,9 @@ public class AugmenterContext implements Closeable {
                     if (!this.transaction.commit(eventHeader.getTimestamp(), transactionCounter.get())) {
                         AugmenterContext.LOG.warn("transaction already markedForCommit");
                     }
+
+                // DDL DEFINER
                 } else if ((matcher = this.ddlDefinerPattern.matcher(query)).find()) {
-                    // ddl definer
                     this.metrics.getRegistry()
                             .counter("hbase.augmenter_context.type.ddl_definer").inc(1L);
                     this.updateCommons(
@@ -327,8 +329,9 @@ public class AugmenterContext implements Closeable {
                             queryRawEventData.getDatabase(),
                             null
                     );
+
+                // DDL TABLE
                 } else if ((matcher = this.ddlTablePattern.matcher(query)).find()) {
-                    // ddl table
                     this.metrics.getRegistry()
                             .counter("augmenter_context.type.ddl_table").inc(1L);
                     String tableName = matcher.group(4);
@@ -341,20 +344,36 @@ public class AugmenterContext implements Closeable {
                             tableName
                     );
 
+                    // If running in BinlogMetadata schema mode, then Active Schema is not used
+                    String augmenterType =
+                            this.configuration.getOrDefault(Augmenter.Configuration.SCHEMA_TYPE, Augmenter.SchemaType.NONE.name())
+                                    .toString();
+
+                    if (augmenterType.equals("ACTIVE")) {
+                        // no op
+                    } else if (augmenterType.equals("BINLOG_METADATA")) {
+                        shouldProcess = false;
+                    } else if (augmenterType.equals("NONE")) {
+                        shouldProcess = false;
+                    } else {
+                        LOG.info("Unknown schema manager");
+                    }
+
                     // Because we don't want to create tables for non-replicated schemas
                     if ( shouldProcess ) {
                         this.metrics.getRegistry()
                                 .counter("hbase.augmenter_context.type.ddl_table.should_process.true").inc(1L);
                         isAtDDL.set(true);
                         long schemaChangeTimestamp = eventHeader.getTimestamp();
-                        this.updateSchema(query, schemaChangeTimestamp);
+                        this.updateActiveSchema(query, schemaChangeTimestamp);
                     } else {
                         this.metrics.getRegistry()
                                 .counter("hbase.augmenter_context.type.ddl_table.should_process.false").inc(1L);
                     }
 
+                // ddl temp table
                 } else if ((matcher = this.ddlTemporaryTablePattern.matcher(query)).find()) {
-                    // ddl temp table
+
                     this.metrics.getRegistry()
                             .counter("hbase.augmenter_context.type.ddl_temp_table").inc(1L);
                     this.updateCommons(
@@ -364,8 +383,10 @@ public class AugmenterContext implements Closeable {
                             queryRawEventData.getDatabase(),
                             matcher.group(4)
                     );
+
+                // ddl view
                 } else if ((matcher = this.ddlViewPattern.matcher(query)).find()) {
-                    // ddl view
+
                     this.metrics.getRegistry()
                             .counter("hbase.augmenter_context.type.ddl_view").inc(1L);
                     this.updateCommons(
@@ -375,6 +396,8 @@ public class AugmenterContext implements Closeable {
                             queryRawEventData.getDatabase(),
                             null
                     );
+
+                // ddl analyze
                 } else if ((matcher = this.ddlAnalyzePattern.matcher(query)).find()) {
                     this.metrics.getRegistry()
                             .counter("hbase.augmenter_context.type.ddl_analyse").inc(1L);
@@ -385,6 +408,7 @@ public class AugmenterContext implements Closeable {
                             queryRawEventData.getDatabase(),
                             null
                     );
+
                 } else {
                     this.metrics.getRegistry()
                             .counter("hbase.augmenter_context.type.unknown").inc(1L);
@@ -588,7 +612,12 @@ public class AugmenterContext implements Closeable {
         }
     }
 
-    private void updateSchema(String query, long schemaChangeTimestamp) {
+    private void logSchemaSchange(String query, long schemaChangeTimestamp) {
+        LOG.info(schemaChangeTimestamp + ": schema change query => " + query);
+    }
+
+    // TODO: move to ActiveSchemaManager
+    private void updateActiveSchema(String query, long schemaChangeTimestamp) {
 
         if (query != null) {
 

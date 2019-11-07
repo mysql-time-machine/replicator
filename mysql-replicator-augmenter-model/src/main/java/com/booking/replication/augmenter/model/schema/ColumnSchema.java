@@ -26,7 +26,7 @@ public class ColumnSchema implements Cloneable, Serializable {
     private boolean isNullable;
 
     @JsonIgnore
-    public boolean primary; // temp transition
+    private boolean primary;
 
     public ColumnSchema() { }
 
@@ -35,13 +35,13 @@ public class ColumnSchema implements Cloneable, Serializable {
             DataType dataType,
             String columnType,
             boolean isNullable,
-            String key
+            boolean isPrimary
     ) {
         this.name       = columnName;
         this.dataType   = dataType;
         this.columnType = columnType;
         this.isNullable = isNullable;
-        this.key        = key;
+        this.primary    = isPrimary;
     }
 
     public ColumnSchema setDefaultValue(String defaultValue) {
@@ -109,7 +109,7 @@ public class ColumnSchema implements Cloneable, Serializable {
                     this.dataType,
                     this.columnType,
                     this.isNullable,
-                    this.key
+                    this.isPrimary()
             );
 
             schema.setDefaultValue(this.valueDefault)

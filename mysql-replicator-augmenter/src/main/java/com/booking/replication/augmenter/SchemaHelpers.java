@@ -6,12 +6,10 @@ import com.booking.replication.augmenter.model.schema.FullTableName;
 import com.booking.replication.augmenter.model.schema.TableSchema;
 
 import com.booking.replication.supplier.model.TableMapRawEventData;
-import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.TableMapEventMetadata;
 import com.github.shyiko.mysql.binlog.event.deserialization.ColumnType;
 import org.apache.commons.dbcp2.BasicDataSource;
 
-import java.security.acl.LastOwnerException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -61,7 +59,7 @@ public class SchemaHelpers {
             // A sequence of column indexes that make up primary key
             List<Integer> pkColumnIndexes = tableMapEventMetadata.getSimplePrimaryKeys();
 
-            DataType dataType = getColumnTypeCode(tableMapEventData, columnIndex);
+            DataType dataType = facadeColumnTypeCodeRemap(tableMapEventData, columnIndex);
 
             boolean isPrimary = pkColumnIndexes.contains(columnIndex) ? true : false;
 
@@ -107,9 +105,12 @@ public class SchemaHelpers {
                     if (charsets != null) {
                         if (charsets.size() <= charsetIdIndex) {
                             // column specific collations depleted, use default charset/collation
-                            columnCollationId = tableMapEventMetadata.getDefaultCharset().getDefaultCharsetCollation();
+                            TableMapEventMetadata.DefaultCharset defaultCharset = tableMapEventMetadata.getDefaultCharset();
+                            if (defaultCharset != null) {
+                                columnCollationId = tableMapEventMetadata.getDefaultCharset().getDefaultCharsetCollation();
+                            }
                             if (columnCollationId == null) {
-                                System.out.println("Cannot determine default charset, defaulting to binary for columnIndex #" + columnIndex);
+                                System.out.println("Cannot determine default column charset, defaulting to binary for columnIndex #" + columnIndex);
                                 columnCollationId = 63; // binary
                             }
                         } else {
@@ -143,9 +144,11 @@ public class SchemaHelpers {
                     if (enumAndSetCharsets != null) {
                         if (enumAndSetCharsets.size() <= enumAndSetCharsetIdIndex) {
                             // column specific collations depleted, use default charset/collation
-                            columnCollationId = tableMapEventMetadata.getEnumAndSetDefaultCharset().getDefaultCharsetCollation();
+                            if (tableMapEventMetadata.getEnumAndSetDefaultCharset() != null) {
+                                columnCollationId = tableMapEventMetadata.getEnumAndSetDefaultCharset().getDefaultCharsetCollation();
+                            }
                             if (columnCollationId == null) {
-                                System.out.println("Cannot determine default charset, defaulting to binary for columnIndex #" + columnIndex);
+                                System.out.println("Cannot determine default enum/set charset, defaulting to binary for columnIndex #" + columnIndex);
                                 columnCollationId = 63; // binary
                             }
                         } else {
@@ -162,8 +165,9 @@ public class SchemaHelpers {
                             }
                         }
                     }
-                    columnSchema
-                            .setCollation(String.valueOf(columnCollationId)); // TODO: lookup table for collation name
+
+                    // TODO: lookup table for collation name
+                    columnSchema.setCollation(String.valueOf(columnCollationId));
 
                     enumAndSetCharsetIdIndex++;
 
@@ -192,7 +196,7 @@ public class SchemaHelpers {
                 );
     }
 
-    private static DataType getColumnTypeCode(TableMapRawEventData tableMapEventData, int columnIndex) {
+    private static DataType facadeColumnTypeCodeRemap(TableMapRawEventData tableMapEventData, int columnIndex) {
 
         byte[] columnTypes = tableMapEventData.getColumnTypes();
 
@@ -201,10 +205,12 @@ public class SchemaHelpers {
 
         switch (columnType) {
 
+
             case DECIMAL:
                 return DataType.byCode("DECIMAL");
             case NEWDECIMAL:
                 return DataType.byCode("NEWDECIMAL");
+
 
             case TINY:
                 return DataType.byCode("TINYINT");
@@ -217,13 +223,16 @@ public class SchemaHelpers {
             case LONGLONG:
                 return DataType.byCode("BIGINT");
 
+
             case FLOAT:
                 return DataType.byCode("FLOAT");
             case DOUBLE:
                 return DataType.byCode("DOUBLE");
 
+
             case NULL:
                 return DataType.byCode("UNKNOWN");
+
 
             case TIMESTAMP:
                 return DataType.byCode("TIMESTAMP");
@@ -236,6 +245,7 @@ public class SchemaHelpers {
             case YEAR:
                 return DataType.byCode("YEAR");
 
+
             case NEWDATE:
                 return DataType.byCode("NEWDATE");
             case TIMESTAMP_V2:
@@ -245,15 +255,18 @@ public class SchemaHelpers {
             case TIME_V2:
                 return DataType.byCode("TIME_V2");
 
+
             case BIT:
                 return DataType.byCode("BIT");
             case JSON:
                 return DataType.byCode("JSON");
 
+
             case ENUM:
                 return DataType.byCode("ENUM");
             case SET:
                 return DataType.byCode("SET");
+
 
             case TINY_BLOB:
                 return DataType.byCode("TINYBLOB");
@@ -264,12 +277,15 @@ public class SchemaHelpers {
             case LONG_BLOB:
                 return DataType.byCode("LONGBLOB");
 
+
             case VARCHAR:
                 return DataType.byCode("VARCHAR");
             case VAR_STRING:
                 return DataType.byCode("VARCHAR");
+
+
             case STRING:
-                return DataType.byCode("VARCHAR");
+                return DataType.byCode("BINARY");
 
             case GEOMETRY:
                 return DataType.byCode("GEOMETRY");

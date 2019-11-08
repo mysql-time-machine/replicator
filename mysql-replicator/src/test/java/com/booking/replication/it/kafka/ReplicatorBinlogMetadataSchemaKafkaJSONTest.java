@@ -123,8 +123,8 @@ public class ReplicatorBinlogMetadataSchemaKafkaJSONTest {
 
                     for (ConsumerRecord<byte[], byte[]> record : consumer.poll(1000L)) {
                         System.out.println(record.toString());
-                        System.out.println(new String(record.key()));
-                        System.out.println(new String(record.value()));
+                        System.out.println("key => " + new String(record.key()));
+                        System.out.println("value => " + new String(record.value()));
                         consumed = true;
                     }
                 }

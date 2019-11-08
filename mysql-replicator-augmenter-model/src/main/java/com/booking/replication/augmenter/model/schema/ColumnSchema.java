@@ -15,7 +15,6 @@ public class ColumnSchema implements Cloneable, Serializable {
 
     private String name;
     private String columnType;
-    private String key;
     private String valueDefault;
     private String collation;
 
@@ -82,10 +81,6 @@ public class ColumnSchema implements Cloneable, Serializable {
         return this.isNullable;
     }
 
-    public String getKey() {
-        return this.key;
-    }
-
     public String getValueDefault() {
         return this.valueDefault;
     }
@@ -95,7 +90,7 @@ public class ColumnSchema implements Cloneable, Serializable {
     }
 
     public boolean isPrimary() {
-        return key.equalsIgnoreCase("PRI");
+        return primary;
     }
 
     public ColumnSchema deepCopy() {

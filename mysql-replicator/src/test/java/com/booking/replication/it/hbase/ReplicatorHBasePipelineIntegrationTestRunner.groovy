@@ -163,6 +163,31 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
     void setupSpec() throws Exception {
 
+        // Active SchemaManager
+        LOG.info("Checking ActiveSchemaManager...")
+
+        int counter = 60
+        while (counter > 0) {
+            Thread.sleep(1000)
+            if (activeSchemaIsReady()) {
+                LOG.info("ActiveSchemaManager container is ready.")
+                break
+            }
+            counter--
+        }
+
+        // HBase
+        LOG.info("Checking HBase/BigTable...")
+        counter = 60
+        while (counter > 0) {
+            Thread.sleep(1000)
+            if (hbaseSanityCheck()) {
+                LOG.info("HBase/BigTable is ready.")
+                break
+            }
+            counter--
+        }
+
         LOG.info("env: HBASE_TARGET_NAMESPACE => " + HBASE_TARGET_NAMESPACE)
         LOG.info("env: HBASE_SCHEMA_HISTORY_NAMESPACE => " + HBASE_SCHEMA_HISTORY_NAMESPACE)
         LOG.info("env: STORAGE_TYPE => " + STORAGE_TYPE)
@@ -221,30 +246,6 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     }
 
     private Replicator startReplicator(Map<String,Object> configuration) {
-
-        LOG.info("waiting for containers setSink start...")
-
-        // Active SchemaManager
-        int counter = 60
-        while (counter > 0) {
-            Thread.sleep(1000)
-            if (activeSchemaIsReady()) {
-                LOG.info("ActiveSchemaManager container is ready.")
-                break
-            }
-            counter--
-        }
-
-        // HBase
-        counter = 60
-        while (counter > 0) {
-            Thread.sleep(1000)
-            if (hbaseSanityCheck()) {
-                LOG.info("HBase/BigTable is ready.")
-                break
-            }
-            counter--
-        }
 
         LOG.info("Starting the Replicator...")
         Replicator replicator = new Replicator(configuration)

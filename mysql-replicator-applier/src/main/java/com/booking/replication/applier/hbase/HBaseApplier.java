@@ -197,12 +197,12 @@ public class HBaseApplier implements Applier {
 
         this.metrics
                 .getRegistry()
-                .histogram("hbase.thread_" + threadID + ".applier.events.apply.batchsize")
+                .histogram("replicator.applier.hbase.thread_" + threadID + ".applier.events.apply.batchsize")
                 .update(events.size());
 
         for (AugmentedEvent event : events) {
             this.metrics.getRegistry()
-                    .counter("hbase.thread_" + threadID + ".applier.events.seen").inc(1L);
+                    .counter("replicator.applier.hbase.thread_" + threadID + ".applier.events.seen").inc(1L);
         }
 
         if (dryRun) {
@@ -240,23 +240,23 @@ public class HBaseApplier implements Applier {
             if ((dataEvents.size() >= FLUSH_BUFFER_SIZE) || hbaseApplierWriter.getThreadBufferSize(threadID) >= FLUSH_BUFFER_SIZE) {
                 hbaseApplierWriter.buffer(threadID, transactionUUID, dataEvents);
                 this.metrics.getRegistry()
-                        .counter("hbase.thread_" + threadID + ".applier.buffer.buffered").inc(1L);
+                        .counter("replicator.applier.hbase.thread_" + threadID + ".buffer.buffered").inc(1L);
                 this.metrics.getRegistry()
-                        .counter("hbase.thread_" + threadID + ".applier.buffer.flush.attempt").inc(1L);
+                        .counter("replicator.applier.hbase.thread_" + threadID + ".buffer.flush.attempt").inc(1L);
                 boolean isFlushSuccess = hbaseApplierWriter.flushThreadBuffer(threadID);
 
                 if (isFlushSuccess) {
                     this.metrics.getRegistry()
-                            .counter("thread_" + threadID + ".hbase_applier.buffer.flush.success").inc(1L);
+                            .counter("replicator.applier.hbase.thread_" + threadID + ".buffer.flush.success").inc(1L);
                     return true; // <- committed, will advance safe checkpoint
                 } else {
                     this.metrics.getRegistry()
-                            .counter("thread_" + threadID + ".hbase_applier.buffer.flush.failure").inc(1L);
+                            .counter("replicator.applier.hbase.thread_" + threadID + ".buffer.flush.failure").inc(1L);
                     throw new RuntimeException("Failed to write buffer to HBase");
                 }
             } else {
                 this.metrics.getRegistry()
-                        .counter("thread_" + threadID + ".hbase_applier.buffer.buffered").inc(1L);
+                        .counter("replicator.applier.hbase.thread_" + threadID + ".buffer.buffered").inc(1L);
                 hbaseApplierWriter.buffer(threadID, transactionUUID, dataEvents);
                 return false; // buffered
             }
@@ -266,17 +266,17 @@ public class HBaseApplier implements Applier {
             for (String transactionUUID : transactionUUIDs) {
                 hbaseApplierWriter.buffer(threadID, transactionUUID, dataEvents);
                 this.metrics.getRegistry()
-                        .counter("thread_" + threadID + ".hbase_applier.buffer.buffered").inc(1L);
+                        .counter("replicator.applier.hbase.thread_" + threadID + ".buffer.buffered").inc(1L);
             }
             this.metrics.getRegistry()
-                    .counter("thread_" + threadID + ".hbase_applier.buffer.flush.force.attempt").inc(1L);
+                    .counter("replicator.applier.hbase.thread_" + threadID + ".buffer.flush.force.attempt").inc(1L);
             forceFlush();
             this.metrics.getRegistry()
-                    .counter("thread_" + threadID + ".hbase_applier.buffer.flush.force.success").inc(1L);
+                    .counter("replicator.applier.hbase.thread_" + threadID + ".buffer.flush.force.success").inc(1L);
             return true;
         } else {
             this.metrics.getRegistry()
-                    .counter("thread_" + threadID + ".hbase_applier.events.empty").inc(1L);
+                    .counter("replicator.applier.hbase.thread_" + threadID + ".events.empty").inc(1L);
             return false; // treat empty transaction as buffered
         }
     }

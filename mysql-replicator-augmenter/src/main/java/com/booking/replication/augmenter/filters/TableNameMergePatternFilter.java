@@ -41,7 +41,7 @@ public class TableNameMergePatternFilter implements AugmenterFilter {
     @Override
     public Collection<AugmentedEvent> apply(Collection<AugmentedEvent> augmentedEvents) {
         metrics.getRegistry()
-                .counter("hbase.augmenter.filter.table_name_merge.attempt").inc(1L);
+                .counter("replicator.augmenter.filter.table_name_merge.attempt").inc(1L);
 
         Collection<AugmentedEvent> filtered = augmentedEvents.stream()
                 .map(ev -> {
@@ -78,10 +78,10 @@ public class TableNameMergePatternFilter implements AugmenterFilter {
                 .collect(Collectors.toList());
 
         metrics.getRegistry()
-                .counter("hbase.augmenter.filter.table_name_merge.success").inc(1L);
+                .counter("replicator.augmenter.filter.table_name_merge.success").inc(1L);
 
         metrics.getRegistry()
-                .counter("hbase.augmenter.filter.table_name_merge.filtered_length").inc( filtered.size() );
+                .counter("replicator.augmenter.filter.table_name_merge.filtered_length").inc( filtered.size() );
 
         return filtered;
     }

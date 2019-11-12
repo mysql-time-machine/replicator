@@ -131,8 +131,17 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
                                                 tableName,
                                                 tableMapRawEventData
                                         );
+                                ts.getColumnSchemas().stream().forEach(cs ->
+                                    {
+                                        String message = "columnName: " + cs.getName() +
+                                                        ", columnType: " + cs.getColumnType() +
+                                                        ", collation: " + cs.getCollation();
+                                        System.out.println(message);
+                                    }
+                                );
                                 return ts;
                             } catch (Exception e) {
+                                LOG.info("ERROR: Could not compute table schema for table: " + tableName);
                                 e.printStackTrace();
                                 return null;
                             }

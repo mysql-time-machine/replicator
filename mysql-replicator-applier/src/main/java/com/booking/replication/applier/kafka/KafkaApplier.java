@@ -136,6 +136,15 @@ public class KafkaApplier implements Applier {
     @Override
     public Boolean apply(Collection<AugmentedEvent> events) {
 
+        System.out.println("got events:");
+        events.stream().forEach(e -> {
+            try {
+                System.out.println(e.toJSON());
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            }
+        });
+
         if (Objects.equals(this.dataFormat, MessageFormat.AVRO)) {
 
             try {

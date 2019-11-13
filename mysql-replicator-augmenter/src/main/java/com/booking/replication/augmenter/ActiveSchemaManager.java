@@ -4,8 +4,8 @@ import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.SchemaAtPositionCache;
 import com.booking.replication.augmenter.model.schema.TableSchema;
 
+import com.booking.replication.augmenter.schema.SchemaHelpers;
 import com.booking.replication.supplier.model.TableMapRawEventData;
-import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.mysql.jdbc.Driver;
 
 import org.apache.commons.dbcp2.BasicDataSource;

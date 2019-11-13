@@ -139,7 +139,7 @@ public class KafkaApplier implements Applier {
         System.out.println("got events:");
         events.stream().forEach(e -> {
             try {
-                System.out.println(e.toJSON());
+                System.out.println(e.toJSONPrettyPrint().toString());
             } catch (IOException e1) {
                 e1.printStackTrace();
             }

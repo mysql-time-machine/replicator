@@ -1,5 +1,6 @@
-package com.booking.replication.augmenter;
+package com.booking.replication.augmenter.schema;
 
+import com.booking.replication.augmenter.ActiveSchemaManager;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.DataType;
 import com.booking.replication.augmenter.model.schema.FullTableName;
@@ -198,19 +199,37 @@ public class SchemaHelpers {
 
     private static DataType facadeColumnTypeCodeRemap(TableMapRawEventData tableMapEventData, int columnIndex) {
 
+        // Now, there is some extra logic to figure out the correct type code
+        // === some boiler plate (taken and slighty adapted from shyiko...AbstractRowsEventDataDeserializer
+        // === TODO: move this to some nicer place, or PR for binlog connector
         byte[] columnTypes = tableMapEventData.getColumnTypes();
+        int[] metadata = tableMapEventData.getColumnMetadata();
 
-        Integer columnTypeCode = Byte.toUnsignedInt(columnTypes[columnIndex]);
-        ColumnType columnType = ColumnType.byCode(columnTypeCode);
+        // mysql-5.6.24 sql/log_event.cc log_event_print_value (line 1980)
+        int typeCode = columnTypes[columnIndex] & 0xFF;
+        int meta = metadata[columnIndex];
+        if (typeCode == ColumnType.STRING.getCode()) {
+            if (meta >= 256) {
+                int meta0 = meta >> 8;
+                if ((meta0 & 0x30) != 0x30) {
+                    typeCode = meta0 | 0x30;
+                } else {
+                    // mysql-5.6.24 sql/rpl_utility.h enum_field_types (line 278)
+                    if (meta0 == ColumnType.ENUM.getCode() || meta0 == ColumnType.SET.getCode()) {
+                        typeCode = meta0;
+                    }
+                }
+            }
+        }
+
+        ColumnType columnType = ColumnType.byCode(typeCode);
 
         switch (columnType) {
-
 
             case DECIMAL:
                 return DataType.byCode("DECIMAL");
             case NEWDECIMAL:
                 return DataType.byCode("NEWDECIMAL");
-
 
             case TINY:
                 return DataType.byCode("TINYINT");
@@ -223,16 +242,13 @@ public class SchemaHelpers {
             case LONGLONG:
                 return DataType.byCode("BIGINT");
 
-
             case FLOAT:
                 return DataType.byCode("FLOAT");
             case DOUBLE:
                 return DataType.byCode("DOUBLE");
 
-
             case NULL:
                 return DataType.byCode("UNKNOWN");
-
 
             case TIMESTAMP:
                 return DataType.byCode("TIMESTAMP");
@@ -245,7 +261,6 @@ public class SchemaHelpers {
             case YEAR:
                 return DataType.byCode("YEAR");
 
-
             case NEWDATE:
                 return DataType.byCode("NEWDATE");
             case TIMESTAMP_V2:
@@ -255,12 +270,10 @@ public class SchemaHelpers {
             case TIME_V2:
                 return DataType.byCode("TIME_V2");
 
-
             case BIT:
                 return DataType.byCode("BIT");
             case JSON:
                 return DataType.byCode("JSON");
-
 
             case ENUM:
                 return DataType.byCode("ENUM");

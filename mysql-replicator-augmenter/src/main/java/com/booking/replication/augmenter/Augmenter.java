@@ -5,8 +5,10 @@ import com.booking.replication.augmenter.model.event.AugmentedEventData;
 import com.booking.replication.augmenter.model.event.AugmentedEventHeader;
 import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
+import com.booking.replication.augmenter.model.schema.SchemaAtPositionCache;
 import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
 import com.booking.replication.augmenter.model.schema.TableSchema;
+import com.booking.replication.augmenter.schema.BinlogMetadataSchemaManager;
 import com.booking.replication.commons.checkpoint.ForceRewindException;
 import com.booking.replication.commons.metrics.Metrics;
 
@@ -80,75 +82,9 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
         },
 
         BINLOG_METADATA {
-
             @Override
             protected SchemaManager newInstance(Map<String, Object> configuration) {
-
-                return new SchemaManager() {
-
-                    private final Map<String, TableMapRawEventData> tableMapEventDataCache = new HashMap<>();
-
-                    @Override
-                    public void updateTableMapCache(TableMapRawEventData tableMapRawEventData) {
-                        this.tableMapEventDataCache.put(tableMapRawEventData.getTable(), tableMapRawEventData);
-                    }
-
-                    @Override
-                    public boolean execute(String tableName, String query) {
-                        return false;
-                    }
-
-                    @Override
-                    public List<ColumnSchema> listColumns(String tableName) {
-                        return null;
-                    }
-
-                    @Override
-                    public boolean dropTable(String tableName) throws SQLException {
-                        return false;
-                    }
-
-                    @Override
-                    public String getCreateTable(String tableName) {
-                        return null;
-                    }
-
-                    @Override
-                    public void close() throws IOException {
-                    }
-
-                    @Override
-                    public Function<String, TableSchema> getComputeTableSchemaLambda() {
-
-                        Function<String, TableSchema> schemaComputeFn = (tableName) -> {
-                            try {
-                                TableMapRawEventData tableMapRawEventData = this.tableMapEventDataCache.get(tableName);
-                                System.out.println("===table metadata => schema name: " + tableMapRawEventData.getDatabase());
-                                Object schema = tableMapRawEventData.getDatabase();
-                                TableSchema ts =
-                                        SchemaHelpers.computeTableSchemaFromBinlogMetadata(
-                                                schema.toString(),
-                                                tableName,
-                                                tableMapRawEventData
-                                        );
-                                ts.getColumnSchemas().stream().forEach(cs ->
-                                    {
-                                        String message = "columnName: " + cs.getName() +
-                                                        ", columnType: " + cs.getColumnType() +
-                                                        ", collation: " + cs.getCollation();
-                                        System.out.println(message);
-                                    }
-                                );
-                                return ts;
-                            } catch (Exception e) {
-                                LOG.info("ERROR: Could not compute table schema for table: " + tableName);
-                                e.printStackTrace();
-                                return null;
-                            }
-                        };
-                        return schemaComputeFn;
-                    }
-                };
+                return new BinlogMetadataSchemaManager(configuration);
             }
         };
 

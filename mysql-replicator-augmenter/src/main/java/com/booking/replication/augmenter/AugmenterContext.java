@@ -205,6 +205,14 @@ public class AugmenterContext implements Closeable {
 
     }
 
+    public Pattern getEnumPattern() {
+        return enumPattern;
+    }
+
+    public Pattern getSetPattern() {
+        return setPattern;
+    }
+
     private Pattern getPattern(Map<String, Object> configuration, String configurationPath, String configurationDefault) {
         Object pattern = configuration.getOrDefault(
                 configurationPath,
@@ -530,6 +538,11 @@ public class AugmenterContext implements Closeable {
                 tableMapRawEventData.getTable()
         );
 
+        updateSchemaCache(tableMapRawEventData);
+
+    }
+
+    private void updateSchemaCache(TableMapRawEventData tableMapRawEventData) {
         this.schemaManager.updateTableMapCache(tableMapRawEventData);
 
         this.schemaCache.get()
@@ -552,7 +565,6 @@ public class AugmenterContext implements Closeable {
                     tableMapRawEventData.getTable(),
                     this.schemaManager.getComputeTableSchemaLambda()
                 );
-
     }
 
     private synchronized void updateTransactionCounter() {

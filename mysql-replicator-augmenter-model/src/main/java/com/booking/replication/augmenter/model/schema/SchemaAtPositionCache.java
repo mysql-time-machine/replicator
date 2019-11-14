@@ -1,8 +1,6 @@
 package com.booking.replication.augmenter.model.schema;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -57,38 +55,30 @@ public class SchemaAtPositionCache {
         SchemaAtPositionCache deepCopy = new SchemaAtPositionCache();
 
         for (String tableName : this.getTableSchemaCache().keySet()) {
-
             TableSchema tableSchema = this.getTableSchemaCache().get(tableName);
-
             List<ColumnSchema> clonedColumnSchemaList = new ArrayList<>();
-
             String create = new String(tableSchema.getCreate());
-
             FullTableName fullTableNameCloned = new FullTableName(
                     new String(tableSchema.getFullTableName().getDb()),
                     new String(tableSchema.getFullTableName().getName())
             );
-
             for (ColumnSchema columnSchema : tableSchema.getColumnSchemas()) {
                 ColumnSchema columnSchemaCopy = columnSchema.deepCopy();
                 clonedColumnSchemaList.add(columnSchemaCopy);
             }
-
             TableSchema tableSchemaClone = new TableSchema(fullTableNameCloned, clonedColumnSchemaList, create);
-
             deepCopy.getTableSchemaCache().put(tableName, tableSchemaClone);
         }
 
         for (Long tableId : this.tableIdToTableNameMap.keySet()) {
-
             Long tableIdCopy = new Long(tableId);
             FullTableName fullTableNameCopy = new FullTableName(
                 new String(this.tableIdToTableNameMap.get(tableId).getDb()),
                 new String(this.tableIdToTableNameMap.get(tableId).getName())
             );
-
             deepCopy.getTableIdToTableNameMap().put(tableIdCopy, fullTableNameCopy);
         }
+
         return deepCopy;
     }
 }

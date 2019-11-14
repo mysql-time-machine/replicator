@@ -1,6 +1,7 @@
 package com.booking.replication.augmenter.schema;
 
 import com.booking.replication.augmenter.ActiveSchemaManager;
+import com.booking.replication.augmenter.AugmenterContext;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.DataType;
 import com.booking.replication.augmenter.model.schema.FullTableName;
@@ -19,10 +20,12 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
 
 import javax.sql.DataSource;
 
-public class SchemaHelpers {
+public class SchemaUtil {
 
     private static final int VARCHAR_MAXIMUM_LENGTH = 65535;
 
@@ -308,7 +311,13 @@ public class SchemaHelpers {
         }
     }
 
-    public static TableSchema computeTableSchemaFromActiveSchemaInstance(String schema, String tableName, BasicDataSource dataSource, DataSource binlogDataSource) {
+    public static TableSchema computeTableSchemaFromActiveSchemaInstance(
+            String schema,
+            String tableName,
+            BasicDataSource dataSource,
+            DataSource binlogDataSource,
+            Pattern enumPattern,
+            Pattern setPattern) {
 
         try (Connection connection = dataSource.getConnection()) {
             Statement statementListColumns      = connection.createStatement();
@@ -322,7 +331,7 @@ public class SchemaHelpers {
             List<ColumnSchema> columnList = new ArrayList<>();
 
             ResultSet resultSet;
-            SchemaHelpers.createTableIfNotExists(tableName, connection, binlogDataSource);
+            SchemaUtil.createTableIfNotExists(tableName, connection, binlogDataSource);
 
             resultSet = statementListColumns.executeQuery(
                     String.format(ActiveSchemaManager.LIST_COLUMNS_SQL, schema, tableName)
@@ -336,10 +345,15 @@ public class SchemaHelpers {
 
                 boolean isPrimary = (resultSet.getString("COLUMN_KEY").toLowerCase().contains("pri")) ? true : false;
 
+                String columnTypeDescription = resultSet.getString("COLUMN_TYPE");
+
+                if (dataType.equals(DataType.ENUM)) {
+                    List<String> enumColumnValues = columnTypeDescription.split()
+                }
                 ColumnSchema columnSchema = new ColumnSchema(
                         resultSet.getString("COLUMN_NAME"),
                         dataType,
-                        resultSet.getString("COLUMN_TYPE"),
+                        columnTypeDescription,
                         isNullable,
                         isPrimary
                 );
@@ -356,7 +370,7 @@ public class SchemaHelpers {
                     String.format(ActiveSchemaManager.SHOW_CREATE_TABLE_SQL, tableName)
             );
             ResultSetMetaData showCreateTableResultSetMetadata = showCreateTableResultSet.getMetaData();
-            String tableCreateStatement = SchemaHelpers.getCreateTableStatement(tableName, showCreateTableResultSet, showCreateTableResultSetMetadata);
+            String tableCreateStatement = SchemaUtil.getCreateTableStatement(tableName, showCreateTableResultSet, showCreateTableResultSetMetadata);
 
 
             return new TableSchema(new FullTableName(schemaName, tableName),
@@ -380,7 +394,7 @@ public class SchemaHelpers {
                 PreparedStatement preparedStatement = binlogDbConn.prepareStatement("show create table " + tableName);
                 ResultSet showCreateTableResultSet = preparedStatement.executeQuery();
                 ResultSetMetaData showCreateTableResultSetMetadata = showCreateTableResultSet.getMetaData();
-                String createTableStatement = SchemaHelpers.getCreateTableStatement(tableName, showCreateTableResultSet, showCreateTableResultSetMetadata);
+                String createTableStatement = SchemaUtil.getCreateTableStatement(tableName, showCreateTableResultSet, showCreateTableResultSetMetadata);
                 boolean executed = connection.createStatement().execute(createTableStatement);
             }
         }

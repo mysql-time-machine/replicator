@@ -6,11 +6,16 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.swing.text.html.Option;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 @SuppressWarnings("unused")
 @JsonFilter("column")
 public class ColumnSchema implements Cloneable, Serializable {
+
     private static final Logger LOG = LogManager.getLogger(ColumnSchema.class);
 
     private String name;
@@ -24,6 +29,8 @@ public class ColumnSchema implements Cloneable, Serializable {
 
     private boolean isNullable;
 
+    private Optional<List<String>> enumOrSetValueList;
+
     @JsonIgnore
     private boolean primary;
 
@@ -34,30 +41,38 @@ public class ColumnSchema implements Cloneable, Serializable {
             DataType dataType,
             String columnType,
             boolean isNullable,
-            boolean isPrimary
+            boolean isPrimary,
+            Optional<List<String>> enumOrSetValueList
     ) {
         this.name       = columnName;
         this.dataType   = dataType;
         this.columnType = columnType;
         this.isNullable = isNullable;
         this.primary    = isPrimary;
+
+        if (!enumOrSetValueList.get().isEmpty()) {
+            this.enumOrSetValueList = Optional.of(new ArrayList<>());
+            enumOrSetValueList.get().stream().forEach(val -> {
+                this.enumOrSetValueList.get().add(val);
+            });
+        } else {
+            this.enumOrSetValueList = Optional.empty();
+        }
+
     }
 
     public ColumnSchema setDefaultValue(String defaultValue) {
         this.valueDefault = defaultValue;
-
         return this;
     }
 
     public ColumnSchema setCollation(String collation) {
         this.collation  = collation;
-
         return this;
     }
 
     public ColumnSchema setCharMaxLength(Integer charMaxLength) {
         this.charMaxLength = charMaxLength;
-
         return this;
     }
 
@@ -93,25 +108,26 @@ public class ColumnSchema implements Cloneable, Serializable {
         return primary;
     }
 
-    public ColumnSchema deepCopy() {
-        try {
-            return (ColumnSchema) this.clone();
-        } catch (CloneNotSupportedException ex) {
-            LOG.warn("Not able to clone ColumnSchema", ex);
-
-            ColumnSchema schema = new ColumnSchema(
-                    this.name,
-                    this.dataType,
-                    this.columnType,
-                    this.isNullable,
-                    this.isPrimary()
-            );
-
-            schema.setDefaultValue(this.valueDefault)
-                    .setCharMaxLength(this.charMaxLength)
-                    .setCollation(this.collation);
-
-            return schema;
-        }
+    public Optional<List<String>> getEnumOrSetValueList() {
+        return enumOrSetValueList;
     }
+
+    public ColumnSchema deepCopy() {
+
+        ColumnSchema schema = new ColumnSchema(
+                this.name,
+                this.dataType,
+                this.columnType,
+                this.isNullable,
+                this.isPrimary(),
+                this.enumOrSetValueList
+        );
+
+        schema.setDefaultValue(this.valueDefault)
+                .setCharMaxLength(this.charMaxLength)
+                .setCollation(this.collation);
+
+        return schema;
+    }
+
 }

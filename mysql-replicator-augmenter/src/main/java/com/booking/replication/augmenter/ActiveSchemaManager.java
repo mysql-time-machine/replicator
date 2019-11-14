@@ -4,7 +4,7 @@ import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.SchemaAtPositionCache;
 import com.booking.replication.augmenter.model.schema.TableSchema;
 
-import com.booking.replication.augmenter.schema.SchemaHelpers;
+import com.booking.replication.augmenter.schema.SchemaUtil;
 import com.booking.replication.supplier.model.TableMapRawEventData;
 import com.mysql.jdbc.Driver;
 
@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 
 public class ActiveSchemaManager implements SchemaManager {
 
@@ -62,6 +63,7 @@ public class ActiveSchemaManager implements SchemaManager {
     private final Function<String, TableSchema> computeTableSchemaLambda;
 
     private final SchemaAtPositionCache schemaAtPositionCache;
+
     private final Map<String, TableMapRawEventData> tableMapEventDataCache = new HashMap<>();
 
     public ActiveSchemaManager(Map<String, Object> configuration) {
@@ -73,7 +75,7 @@ public class ActiveSchemaManager implements SchemaManager {
 
         this.computeTableSchemaLambda = (tableName) -> {
             try {
-                TableSchema ts = SchemaHelpers.computeTableSchemaFromActiveSchemaInstance(schema, tableName, ActiveSchemaManager.this.dataSource, ActiveSchemaManager.this.binlogDataSource);
+                TableSchema ts = SchemaUtil.computeTableSchemaFromActiveSchemaInstance(schema, tableName, ActiveSchemaManager.this.dataSource, ActiveSchemaManager.this.binlogDataSource);
                 return ts;
             } catch (Exception e) {
                 ActiveSchemaManager.LOG.warn(
@@ -229,21 +231,6 @@ public class ActiveSchemaManager implements SchemaManager {
 
         return (List<ColumnSchema>) tableSchema.getColumnSchemas();
     }
-
-//    @Override
-//    public List<String> getActiveSchemaTables() throws SQLException {
-//        try (Connection conn = this.dataSource.getConnection()) {
-//            PreparedStatement stmt = conn.prepareStatement("SHOW TABLES");
-//            ArrayList<String> tables = new ArrayList<>();
-//            ResultSet resultSet = stmt.executeQuery();
-//
-//            while (resultSet.next()) {
-//                tables.add(resultSet.getString(1));
-//            }
-//
-//            return tables;
-//        }
-//    }
 
     @Override
     public boolean dropTable(String tableName) throws SQLException {

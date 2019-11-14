@@ -33,7 +33,7 @@ public class BinlogMetadataSchemaManager implements SchemaManager {
                 TableMapRawEventData tableMapRawEventData = this.tableMapEventDataCache.get(tableName);
                 Object schema = tableMapRawEventData.getDatabase();
                 TableSchema ts =
-                        SchemaHelpers.computeTableSchemaFromBinlogMetadata(
+                        SchemaUtil.computeTableSchemaFromBinlogMetadata(
                                 schema.toString(),
                                 tableName,
                                 tableMapRawEventData

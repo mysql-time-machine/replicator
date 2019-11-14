@@ -56,8 +56,6 @@ public class AugmenterContext implements Closeable {
         String DDL_TEMPORARY_TABLE_PATTERN  = "augmenter.context.pattern.ddl.temporary.table";
         String DDL_VIEW_PATTERN             = "augmenter.context.pattern.ddl.view";
         String DDL_ANALYZE_PATTERN          = "augmenter.context.pattern.ddl.analyze";
-        String ENUM_PATTERN                 = "augmenter.context.pattern.enum";
-        String SET_PATTERN                  = "augmenter.context.pattern.set";
         String EXCLUDE_TABLE                = "augmenter.context.exclude.table";
         String EXCLUDE_PATTERN              = "augmenter.context.exclude.pattern";
         String INCLUDE_TABLE                = "augmenter.context.include.table";
@@ -75,8 +73,6 @@ public class AugmenterContext implements Closeable {
     private static final String DEFAULT_DDL_TEMPORARY_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(temporary)\\s+(table)\\s+(\\S+)";
     private static final String DEFAULT_DDL_VIEW_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(view)\\s+(\\S+)";
     private static final String DEFAULT_DDL_ANALYZE_PATTERN = "^(/\\*.*?\\*/\\s*)?(analyze)\\s+(table)\\s+(\\S+)";
-    private static final String DEFAULT_ENUM_PATTERN = "(?<=enum\\()(.*?)(?=\\))";
-    private static final String DEFAULT_SET_PATTERN = "(?<=set\\()(.*?)(?=\\))";
 
     private final SchemaManager schemaManager;
     private final String replicatedSchema;
@@ -89,8 +85,6 @@ public class AugmenterContext implements Closeable {
     private final Pattern ddlTemporaryTablePattern;
     private final Pattern ddlViewPattern;
     private final Pattern ddlAnalyzePattern;
-    private final Pattern enumPattern;
-    private final Pattern setPattern;
     private final Pattern excludePattern;
     private final boolean transactionsEnabled;
     private final Metrics<?> metrics;
@@ -166,8 +160,6 @@ public class AugmenterContext implements Closeable {
         this.ddlTemporaryTablePattern = this.getPattern(configuration, Configuration.DDL_TEMPORARY_TABLE_PATTERN, AugmenterContext.DEFAULT_DDL_TEMPORARY_TABLE_PATTERN);
         this.ddlViewPattern = this.getPattern(configuration, Configuration.DDL_VIEW_PATTERN, AugmenterContext.DEFAULT_DDL_VIEW_PATTERN);
         this.ddlAnalyzePattern = this.getPattern(configuration, Configuration.DDL_ANALYZE_PATTERN, AugmenterContext.DEFAULT_DDL_ANALYZE_PATTERN);
-        this.enumPattern = this.getPattern(configuration, Configuration.ENUM_PATTERN, AugmenterContext.DEFAULT_ENUM_PATTERN);
-        this.setPattern = this.getPattern(configuration, Configuration.SET_PATTERN, AugmenterContext.DEFAULT_SET_PATTERN);
         this.excludePattern = this.getPattern(configuration, Configuration.EXCLUDE_PATTERN,null);
         this.transactionsEnabled = Boolean.parseBoolean(configuration.getOrDefault(Configuration.TRANSACTIONS_ENABLED, "true").toString());
         this.excludeTableList = this.getList(configuration.get(Configuration.EXCLUDE_TABLE));
@@ -203,14 +195,6 @@ public class AugmenterContext implements Closeable {
         this.isAtDDL.set(false);
         replicatedSchema = (String) configuration.get( BinaryLogSupplier.Configuration.MYSQL_SCHEMA );
 
-    }
-
-    public Pattern getEnumPattern() {
-        return enumPattern;
-    }
-
-    public Pattern getSetPattern() {
-        return setPattern;
     }
 
     private Pattern getPattern(Map<String, Object> configuration, String configurationPath, String configurationDefault) {
@@ -871,7 +855,6 @@ public class AugmenterContext implements Closeable {
 
             Collection<AugmentedRow> augmentedRows = new ArrayList<>();
             List<ColumnSchema> columns = this.schemaManager.listColumns(eventTable.getName());
-            Map<String, String[]> cache = this.getCache(columns);
 
             for (RowBeforeAfter row : rows) {
 
@@ -884,7 +867,6 @@ public class AugmenterContext implements Closeable {
                                 columns,
                                 includedColumns,
                                 row,
-                                cache,
                                 eventTable
                         )
                 );
@@ -903,12 +885,11 @@ public class AugmenterContext implements Closeable {
             List<ColumnSchema> columnSchemas,
             BitSet includedColumns,
             RowBeforeAfter row,
-            Map<String, String[]> cache,
             FullTableName eventTable
     ) {
         Map<String, Object> deserializeCellValues ;
         try {
-            deserializeCellValues = EventDeserializer.getDeserializeCellValues(eventType, columnSchemas, includedColumns, row, cache);
+            deserializeCellValues = EventDeserializer.getDeserializeCellValues(eventType, columnSchemas, includedColumns, row);
         } catch (Exception e) {
             LOG.error("Error while deserialize row: EventType: " + eventType + " table: " + this.getEventTable() + ", row: " + row.getAfter().toString(), e);
             throw e;
@@ -926,29 +907,6 @@ public class AugmenterContext implements Closeable {
         );
 
         return augmentedRow;
-    }
-
-    private Map<String, String[]> getCache(List<ColumnSchema> columns) {
-        Matcher matcher;
-        Map<String, String[]> cache = new HashMap<>();
-
-        for (ColumnSchema column : columns) {
-            String columnType = column.getColumnType().toLowerCase();
-
-            if (((matcher = this.enumPattern.matcher(columnType)).find() && matcher.groupCount() > 0) || ((matcher = this.setPattern.matcher(columnType)).find() && matcher.groupCount() > 0)) {
-                String[] members = matcher.group(0).split(",");
-
-                if (members.length > 0) {
-                    for (int index = 0; index < members.length; index++) {
-                        if (members[index].startsWith("'") && members[index].endsWith("'")) {
-                            members[index] = members[index].substring(1, members[index].length() - 1);
-                        }
-                    }
-                    cache.put(columnType, members);
-                }
-            }
-        }
-        return cache;
     }
 
     @Override

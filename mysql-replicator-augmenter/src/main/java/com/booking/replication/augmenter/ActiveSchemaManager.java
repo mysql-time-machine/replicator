@@ -35,12 +35,18 @@ public class ActiveSchemaManager implements SchemaManager {
         String MYSQL_USERNAME       = "augmenter.schema.active.mysql.username";
         String MYSQL_PASSWORD       = "augmenter.schema.active.mysql.password";
 
+        String ENUM_PATTERN         = "augmenter.context.pattern.enum";
+        String SET_PATTERN          = "augmenter.context.pattern.set";
+
         String BINLOG_MYSQL_HOSTNAME    = "mysql.hostname";
         String BINLOG_MYSQL_PORT        = "mysql.port";
         String BINLOG_MYSQL_SCHEMA      = "mysql.schema";
         String BINLOG_MYSQL_USERNAME    = "mysql.username";
         String BINLOG_MYSQL_PASSWORD    = "mysql.password";
     }
+
+    private static final String DEFAULT_ENUM_PATTERN = "(?<=enum\\()(.*?)(?=\\))";
+    private static final String DEFAULT_SET_PATTERN = "(?<=set\\()(.*?)(?=\\))";
 
     private static final Logger LOG = LogManager.getLogger(ActiveSchemaManager.class);
 
@@ -66,7 +72,14 @@ public class ActiveSchemaManager implements SchemaManager {
 
     private final Map<String, TableMapRawEventData> tableMapEventDataCache = new HashMap<>();
 
+    private final Pattern enumPattern;
+    private final Pattern setPattern;
+
     public ActiveSchemaManager(Map<String, Object> configuration) {
+
+        this.enumPattern = this.getPattern(configuration, ActiveSchemaManager.Configuration.ENUM_PATTERN, ActiveSchemaManager.DEFAULT_ENUM_PATTERN);
+        this.setPattern = this.getPattern(configuration, ActiveSchemaManager.Configuration.SET_PATTERN, ActiveSchemaManager.DEFAULT_SET_PATTERN);
+
         this.dataSource = initDatasource(configuration);
         this.binlogDataSource = initBinlogDatasource(configuration);
         this.schemaAtPositionCache = new SchemaAtPositionCache();
@@ -75,7 +88,14 @@ public class ActiveSchemaManager implements SchemaManager {
 
         this.computeTableSchemaLambda = (tableName) -> {
             try {
-                TableSchema ts = SchemaUtil.computeTableSchemaFromActiveSchemaInstance(schema, tableName, ActiveSchemaManager.this.dataSource, ActiveSchemaManager.this.binlogDataSource);
+                TableSchema ts = SchemaUtil.computeTableSchemaFromActiveSchemaInstance(
+                    schema,
+                    tableName,
+                    ActiveSchemaManager.this.dataSource,
+                    ActiveSchemaManager.this.binlogDataSource,
+                    this.enumPattern,
+                    this.setPattern
+                );
                 return ts;
             } catch (Exception e) {
                 ActiveSchemaManager.LOG.warn(
@@ -85,6 +105,19 @@ public class ActiveSchemaManager implements SchemaManager {
                 return null;
             }
         };
+    }
+
+    private Pattern getPattern(Map<String, Object> configuration, String configurationPath, String configurationDefault) {
+        Object pattern = configuration.getOrDefault(
+                configurationPath,
+                configurationDefault
+        );
+
+        if ( pattern != null ) {
+            return Pattern.compile(pattern.toString(),Pattern.CASE_INSENSITIVE);
+        }
+
+        return null;
     }
 
     private String getMysqlSchema(Map<String, Object> configuration) {

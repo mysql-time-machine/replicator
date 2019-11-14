@@ -18,12 +18,12 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.sql.DataSource;
+import javax.swing.text.html.Option;
 
 public class SchemaUtil {
 
@@ -78,9 +78,10 @@ public class SchemaUtil {
 
                     isNullable,
 
-                    isPrimary                                                // COLUMN_KEY->PRI; other values (UNI/MUL)
+                    isPrimary,                                                // COLUMN_KEY->PRI; other values (UNI/MUL)
                                                                              // seem to not be supported in binlog
                                                                              // additional metadata
+                    Optional.empty() // TODO: get enumSetValueList
             );
 
             // MySQL Charsets & Collations https://dev.mysql.com/doc/internals/en/character-set.html
@@ -347,15 +348,47 @@ public class SchemaUtil {
 
                 String columnTypeDescription = resultSet.getString("COLUMN_TYPE");
 
+                Optional<List<String>> enumOrSetValueList = Optional.empty();
+
                 if (dataType.equals(DataType.ENUM)) {
-                    List<String> enumColumnValues = columnTypeDescription.split()
+                    Matcher matcher;
+                    String columnType = columnTypeDescription.toLowerCase();
+                    if ((matcher = enumPattern.matcher(columnType)).find() && matcher.groupCount() > 0) {
+                        String[] members = matcher.group(0).split(",");
+                        if (members.length > 0) {
+                            for (int index = 0; index < members.length; index++) {
+                                if (members[index].startsWith("'") && members[index].endsWith("'")) {
+                                    members[index] = members[index].substring(1, members[index].length() - 1);
+                                }
+                            }
+                            enumOrSetValueList = Optional.of(Arrays.asList(members));
+                        }
+                    }
                 }
+
+                if (dataType.equals(DataType.SET)) {
+                    Matcher matcher;
+                    String columnType = columnTypeDescription.toLowerCase();
+                    if ((matcher = setPattern.matcher(columnType)).find() && matcher.groupCount() > 0) {
+                        String[] members = matcher.group(0).split(",");
+                        if (members.length > 0) {
+                            for (int index = 0; index < members.length; index++) {
+                                if (members[index].startsWith("'") && members[index].endsWith("'")) {
+                                    members[index] = members[index].substring(1, members[index].length() - 1);
+                                }
+                            }
+                            enumOrSetValueList = Optional.of(Arrays.asList(members));
+                        }
+                    }
+                }
+
                 ColumnSchema columnSchema = new ColumnSchema(
                         resultSet.getString("COLUMN_NAME"),
                         dataType,
                         columnTypeDescription,
                         isNullable,
-                        isPrimary
+                        isPrimary,
+                        enumOrSetValueList
                 );
 
                 columnSchema

@@ -50,11 +50,9 @@ public class ColumnSchema implements Cloneable, Serializable {
         this.isNullable = isNullable;
         this.primary    = isPrimary;
 
-        if (!enumOrSetValueList.get().isEmpty()) {
-            this.enumOrSetValueList = Optional.of(new ArrayList<>());
-            enumOrSetValueList.get().stream().forEach(val -> {
-                this.enumOrSetValueList.get().add(val);
-            });
+        if (enumOrSetValueList.isPresent()) {
+            this.enumOrSetValueList = enumOrSetValueList;
+
         } else {
             this.enumOrSetValueList = Optional.empty();
         }

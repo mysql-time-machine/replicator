@@ -45,7 +45,7 @@ public class MysqlTypeDeserializer {
         TIME_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
 
-    public static Object convertToObject(Serializable cellValue, ColumnSchema columnSchema, String[] groupValues) {
+    public static Object convertToObject(Serializable cellValue, ColumnSchema columnSchema) {
 
         if (cellValue == null) {
             return null;
@@ -145,7 +145,8 @@ public class MysqlTypeDeserializer {
                 int index = (Integer) cellValue;
 
                 if (index > 0) {
-                    return String.valueOf(groupValues[index - 1]);
+                    List<String> groupValues = columnSchema.getEnumOrSetValueList().get();
+                    return String.valueOf(groupValues.get(index - 1));
                 } else {
                     return null;
                 }
@@ -157,9 +158,11 @@ public class MysqlTypeDeserializer {
                 if (bits > 0) {
                     List<String> items = new ArrayList<>();
 
-                    for (int index = 0; index < groupValues.length; index++) {
+                    List<String> groupValues = columnSchema.getEnumOrSetValueList().get();
+
+                    for (int index = 0; index < groupValues.size(); index++) {
                         if (((bits >> index) & 1) == 1) {
-                            items.add(groupValues[index]);
+                            items.add(groupValues.get(index));
                         }
                     }
 

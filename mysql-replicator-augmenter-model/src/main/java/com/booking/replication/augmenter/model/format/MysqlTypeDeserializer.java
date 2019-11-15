@@ -129,7 +129,8 @@ public class MysqlTypeDeserializer {
             }
 
             case DATETIME:
-            case TIMESTAMP: {
+            case TIMESTAMP:
+            case TIMESTAMP_V2: {
                 Long timestamp = (Long) cellValue;
 
                 ZoneId zoneId = ZonedDateTime.now().getZone();
@@ -144,7 +145,7 @@ public class MysqlTypeDeserializer {
             case ENUM: {
                 int index = (Integer) cellValue;
 
-                if (index > 0) {
+                if (index > 0 && columnSchema.getEnumOrSetValueList().isPresent()) {
                     List<String> groupValues = columnSchema.getEnumOrSetValueList().get();
                     return String.valueOf(groupValues.get(index - 1));
                 } else {
@@ -215,7 +216,8 @@ public class MysqlTypeDeserializer {
                 return cellValue;
             }
 
-            case DECIMAL: {
+            case DECIMAL:
+            case NEWDECIMAL: {
                 BigDecimal decimal = (BigDecimal) cellValue;
                 return decimal.toPlainString();
             }

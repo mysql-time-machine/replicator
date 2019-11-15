@@ -48,6 +48,18 @@ public class AugmentedEventHeader implements Serializable {
         return databaseName;
     }
 
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
+    }
+
+    public void setCheckpoint(Checkpoint checkpoint) {
+        this.checkpoint = checkpoint;
+    }
+
+    public void setEventType(AugmentedEventType eventType) {
+        this.eventType = eventType;
+    }
+
     public void setDatabaseName(String databaseName) {
         this.databaseName = databaseName;
     }

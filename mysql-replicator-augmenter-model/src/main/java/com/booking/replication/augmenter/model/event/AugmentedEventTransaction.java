@@ -10,6 +10,13 @@ public class AugmentedEventTransaction implements Serializable, Comparable<Augme
     private final long xxid;
     private final long transactionSequenceNumber;
 
+    public  AugmentedEventTransaction() {
+        this.commitTimestamp = 0;
+        this.identifier = null;
+        this.xxid = 0;
+        this.transactionSequenceNumber = 0;
+    }
+
     public AugmentedEventTransaction(long commitTimestamp, String identifier, long xxid, long transactionSequenceNumber) {
         this.commitTimestamp = commitTimestamp;
         this.identifier = identifier;
@@ -54,6 +61,8 @@ public class AugmentedEventTransaction implements Serializable, Comparable<Augme
             return Integer.MAX_VALUE;
         }
     }
+
+
 
     @Override
     public String toString() {

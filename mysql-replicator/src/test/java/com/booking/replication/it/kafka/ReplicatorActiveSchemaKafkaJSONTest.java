@@ -160,7 +160,6 @@ public class ReplicatorActiveSchemaKafkaJSONTest {
 
                                     if (isMarkedRow) {
                                         for (String key : row.getValues().keySet()) {
-                                            System.out.println(key + " => " + row.getValues().get(key).toString());
                                             String colVal = row.getValues().get(key).toString();
 
                                             switch (key) {

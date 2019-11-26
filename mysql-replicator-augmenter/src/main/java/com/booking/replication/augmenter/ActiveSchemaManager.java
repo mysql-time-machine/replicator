@@ -10,12 +10,9 @@ import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.sql.DataSource;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -54,23 +51,27 @@ public class ActiveSchemaManager implements SchemaManager {
             + " FROM INFORMATION_SCHEMA.COLUMNS "
             + " WHERE TABLE_SCHEMA  = '%s' AND TABLE_NAME = '%s'";
 
-    private final BasicDataSource dataSource;
-    private final BasicDataSource binlogDataSource;
+    private final BasicDataSource activeSchemaDataSource;
+    private final BasicDataSource replicantDataSource;
 
     private final Function<String, TableSchema> computeTableSchemaLambda;
 
     private final SchemaAtPositionCache schemaAtPositionCache;
 
+    private final Map<String, Object> configuration;
+
     public ActiveSchemaManager(Map<String, Object> configuration) {
-        this.dataSource = initDatasource(configuration);
-        this.binlogDataSource = initBinlogDatasource(configuration);
+
+        this.configuration = configuration;
+        this.activeSchemaDataSource = initDatasource(configuration);
+        this.replicantDataSource = initBinlogDatasource(configuration);
         this.schemaAtPositionCache = new SchemaAtPositionCache();
 
         String schema = getMysqlSchema(configuration);
 
         this.computeTableSchemaLambda = (tableName) -> {
             try {
-                TableSchema ts = SchemaHelpers.computeTableSchema(schema, tableName, ActiveSchemaManager.this.dataSource, ActiveSchemaManager.this.binlogDataSource);
+                TableSchema ts = ActiveSchemaHelpers.computeTableSchema(schema, tableName, ActiveSchemaManager.this.activeSchemaDataSource);
                 return ts;
             } catch (Exception e) {
                 ActiveSchemaManager.LOG.warn(
@@ -189,14 +190,18 @@ public class ActiveSchemaManager implements SchemaManager {
     @Override
     public boolean execute(String tableName, String query) {
 
-        try (Connection connection = this.dataSource.getConnection();
+        try (Connection connection = this.activeSchemaDataSource.getConnection();
              Statement statement = connection.createStatement()) {
 
             if (tableName != null) {
                 this.schemaAtPositionCache.removeTableFromCache(tableName);
             }
 
-            boolean executed = statement.execute(query);
+            String schemaName = getMysqlSchema(configuration);
+
+            String rewrittenQuery = ActiveSchemaHelpers.rewriteActiveSchemaName(query, schemaName);
+
+            boolean executed = statement.execute(rewrittenQuery);
 
             if (tableName != null) {
                 this.schemaAtPositionCache.reloadTableSchema(
@@ -219,7 +224,9 @@ public class ActiveSchemaManager implements SchemaManager {
     @Override
     public List<ColumnSchema> listColumns(String tableName) {
         TableSchema tableSchema =
-                this.schemaAtPositionCache.getTableColumns(tableName, this.computeTableSchemaLambda);
+                this.schemaAtPositionCache.getTableColumns(
+                        tableName,
+                        this.computeTableSchemaLambda);
         if (tableSchema == null) {
             return null;
         }
@@ -229,7 +236,7 @@ public class ActiveSchemaManager implements SchemaManager {
 
     @Override
     public List<String> getActiveSchemaTables() throws SQLException {
-        try (Connection conn = this.dataSource.getConnection()) {
+        try (Connection conn = this.activeSchemaDataSource.getConnection()) {
             PreparedStatement stmt = conn.prepareStatement("SHOW TABLES");
             ArrayList<String> tables = new ArrayList<>();
             ResultSet resultSet = stmt.executeQuery();
@@ -244,7 +251,7 @@ public class ActiveSchemaManager implements SchemaManager {
 
     @Override
     public boolean dropTable(String tableName) throws SQLException {
-        try (Connection conn = this.dataSource.getConnection()) {
+        try (Connection conn = this.activeSchemaDataSource.getConnection()) {
             PreparedStatement stmt = conn.prepareStatement("DROP TABLE IF EXISTS " + tableName);
             return stmt.execute();
         }
@@ -252,7 +259,7 @@ public class ActiveSchemaManager implements SchemaManager {
 
     @Override
     public String getCreateTable(String tableName) {
-        try (Connection connection = this.dataSource.getConnection();
+        try (Connection connection = this.activeSchemaDataSource.getConnection();
              Statement statement = connection.createStatement();
              ResultSet resultSet = statement.executeQuery(String.format(ActiveSchemaManager.SHOW_CREATE_TABLE_SQL, tableName))) {
             if (resultSet.next()) {
@@ -269,8 +276,8 @@ public class ActiveSchemaManager implements SchemaManager {
     @Override
     public void close() throws IOException {
         try {
-            this.dataSource.close();
-            this.binlogDataSource.close();
+            this.activeSchemaDataSource.close();
+            this.replicantDataSource.close();
         } catch (SQLException exception) {
             throw new IOException("error closing active schema loader", exception);
         }
@@ -281,4 +288,21 @@ public class ActiveSchemaManager implements SchemaManager {
         return this.computeTableSchemaLambda;
     }
 
+    public void copyTableSchemaFromReplicantToActiveSchema(
+            String tableName
+    ) throws SQLException {
+        try (Connection replicantConnection = this.replicantDataSource.getConnection();
+             Connection activeSchemaConnection = this.activeSchemaDataSource.getConnection()) {
+
+            PreparedStatement preparedStatement = replicantConnection.prepareStatement("show create table " + tableName);
+            ResultSet showCreateTableResultSet = preparedStatement.executeQuery();
+            ResultSetMetaData showCreateTableResultSetMetadata = showCreateTableResultSet.getMetaData();
+            String createTableStatement = ActiveSchemaHelpers.getCreateTableStatement(
+                    tableName,
+                    showCreateTableResultSet,
+                    showCreateTableResultSetMetadata
+            );
+            activeSchemaConnection.createStatement().execute(createTableStatement);
+        }
+    }
 }

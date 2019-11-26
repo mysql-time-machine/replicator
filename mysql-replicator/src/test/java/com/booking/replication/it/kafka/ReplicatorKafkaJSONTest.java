@@ -42,6 +42,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.testcontainers.containers.Network;
+import spock.lang.Shared;
 
 import java.io.*;
 import java.sql.Connection;
@@ -67,7 +68,7 @@ public class ReplicatorKafkaJSONTest {
     private static final String MYSQL_INIT_SCRIPT = "mysql.init.sql";
     private static final String MYSQL_TEST_SCRIPT = "mysql.binlog.test.sql";
     private static final String MYSQL_CONF_FILE = "my.cnf";
-    private static final int TRANSACTION_LIMIT = 5;
+    private static final int TRANSACTION_LIMIT = 100;
     private static final String CONNECTION_URL_FORMAT = "jdbc:mysql://%s:%d/%s";
 
     private static final String KAFKA_REPLICATOR_TOPIC_NAME = "replicator";

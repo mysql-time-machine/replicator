@@ -18,6 +18,7 @@ import org.testcontainers.containers.Network;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class BootstrapReplicatorTest {
     private static final String MYSQL_SCHEMA = "replicator";
@@ -91,7 +92,9 @@ public class BootstrapReplicatorTest {
         configuration.put(KafkaApplier.Configuration.FORMAT, "avro");
 
         bootstrapReplicator = new BootstrapReplicator(configuration);
-        bootstrapReplicator.run();
+        
+        AtomicBoolean inProgress = new AtomicBoolean();
+        bootstrapReplicator.run(inProgress);
 
         BCachedSchemaRegistryClient scClient = new BCachedSchemaRegistryClient(schemaRegistryUrl, 100);
         Assert.assertTrue(scClient.getAllSubjects().contains("bigdata-replicator-organisms-value"));

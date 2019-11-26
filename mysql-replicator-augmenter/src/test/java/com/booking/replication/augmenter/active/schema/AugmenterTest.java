@@ -1,5 +1,6 @@
 package com.booking.replication.augmenter.active.schema;
 
+import com.booking.replication.augmenter.ActiveSchemaHelpers;
 import com.booking.replication.augmenter.AugmenterFilter;
 import com.booking.replication.augmenter.filters.TableNameMergePatternFilter;
 import org.junit.Test;
@@ -15,7 +16,7 @@ public class AugmenterTest {
     @Test
     public void testAugmenterFilter()  {
 
-        String TABLE_NAME = "MyTable_201912";
+               String TABLE_NAME = "MyTable_201912";
 
         String AUGMENTER_FILTER_TYPE = "TABLE_MERGE_PATTERN";
         String AUGMENTER_FILTER_CONFIGURATION = "([_][12]\\d{3}(0[1-9]|1[0-2]))";
@@ -31,6 +32,32 @@ public class AugmenterTest {
         String rewritenName = augmenterFilter.getRewrittenName(TABLE_NAME);
 
         assertEquals(rewritenName, "MyTable");
+
+    }
+
+    @Test
+    public void rewriteActiveSchemaNameTest() throws Exception {
+
+        String query_1    = "CREATE TABLE test (i INT, c CHAR(10)) ENGINE = BLACKHOLE;";
+        String expected_1 = "CREATE TABLE test (i INT, c CHAR(10)) ENGINE = BLACKHOLE;";
+
+        String query_2    = "CREATE TABLE test.test (i INT, c CHAR(10)) ENGINE = BLACKHOLE;";
+        String expected_2 = "CREATE TABLE test (i INT, c CHAR(10)) ENGINE = BLACKHOLE;";
+
+        String query_3    = "CREATE TABLE `test`.`test` (i INT, c CHAR(10)) ENGINE = BLACKHOLE;";
+        String expected_3 = "CREATE TABLE `test` (i INT, c CHAR(10)) ENGINE = BLACKHOLE;";
+
+
+        String replicantDbName = "test";
+
+        String rewritten_1 = ActiveSchemaHelpers.rewriteActiveSchemaName(query_1,replicantDbName);
+        String rewritten_2 = ActiveSchemaHelpers.rewriteActiveSchemaName(query_2,replicantDbName);
+        String rewritten_3 = ActiveSchemaHelpers.rewriteActiveSchemaName(query_3,replicantDbName);
+
+
+        assertEquals(expected_1, rewritten_1);
+        assertEquals(expected_2, rewritten_2);
+        assertEquals(expected_3, rewritten_3);
 
     }
 }

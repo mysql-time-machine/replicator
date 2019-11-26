@@ -20,25 +20,31 @@ import java.sql.ResultSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Creates active schema db,tables and publishes schema setSink schema registry if necessary.
  */
 public class BootstrapReplicator {
+
     private static final Logger LOG = LogManager.getLogger(BootstrapReplicator.class);
+
     private final Map<String, Object> configuration;
 
     public BootstrapReplicator(Map<String, Object> configuration) {
         this.configuration = configuration;
     }
 
-    public void run() {
+    public void run(AtomicBoolean bootstrapInProgress) {
 
         if ((boolean) configuration.get(Augmenter.Configuration.BOOTSTRAP) == false) {
             LOG.info("Skipping active schema bootstrapping");
+            bootstrapInProgress.set(false);
             return;
         }
         LOG.info("Running bootstrapping");
+
+        bootstrapInProgress.set(true);
 
         ActiveSchemaManager activeSchemaManager = new ActiveSchemaManager(configuration);
         boolean dbCreated = activeSchemaManager.createDbIfNotExists(configuration);
@@ -66,24 +72,31 @@ public class BootstrapReplicator {
             }
 
             while (binlogTables.next()) {
-                String binlogTableName = binlogTables.getString(1);
+                String replicantTableName = binlogTables.getString(1);
 
-                LOG.info(binlogTableName + " Recreating in active schema.");
-                // TO prevent reading stale columns.
-                activeSchemaManager.dropTable(binlogTableName);
-                // implicitly creates table in active schema if doesnt exist
-                List<ColumnSchema> columnSchemas = activeSchemaManager.listColumns(binlogTableName);
+                LOG.info(replicantTableName + " Recreating in active schema.");
+
+                // Override
+                activeSchemaManager.dropTable(replicantTableName);
+                activeSchemaManager.copyTableSchemaFromReplicantToActiveSchema(replicantTableName);
+
+                // Get schemas
+                List<ColumnSchema> columnSchemas = activeSchemaManager.listColumns(replicantTableName);
 
                 if (schemaRegistryClient == null) {
                     continue;
                 }
 
-                Schema avroSchema = EventDataPresenterAvro.createAvroSchema(true, true, new FullTableName(binlogSchema, binlogTableName), columnSchemas);
-                String schemaKey = String.format("bigdata-%s-%s-value", binlogSchema, binlogTableName);
+                Schema avroSchema = EventDataPresenterAvro.createAvroSchema(true, true, new FullTableName(binlogSchema, replicantTableName), columnSchemas);
+                String schemaKey = String.format("bigdata-%s-%s-value", binlogSchema, replicantTableName);
                 LOG.info("Registering " + schemaKey + " in schemaregistry.");
                 schemaRegistryClient.register(schemaKey, avroSchema);
             }
+
+            bootstrapInProgress.set(false);
+
             LOG.info("Finished bootstrapping.");
+
         } catch (Exception e) {
             LOG.error("Error while bootstrapping", e);
         }

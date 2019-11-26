@@ -18,9 +18,12 @@ import java.util.List;
 
 import javax.sql.DataSource;
 
-public class SchemaHelpers {
+public class ActiveSchemaHelpers {
 
-    public static TableSchema computeTableSchema(String schema, String tableName, BasicDataSource dataSource, DataSource binlogDataSource) {
+    public static TableSchema computeTableSchema(
+            String schema,
+            String tableName,
+            BasicDataSource dataSource) {
 
         try (Connection connection = dataSource.getConnection()) {
             Statement statementListColumns      = connection.createStatement();
@@ -34,7 +37,6 @@ public class SchemaHelpers {
             List<ColumnSchema> columnList = new ArrayList<>();
 
             ResultSet resultSet;
-            SchemaHelpers.createTableIfNotExists(tableName, connection, binlogDataSource);
 
             resultSet = statementListColumns.executeQuery(
                     String.format(ActiveSchemaManager.LIST_COLUMNS_SQL, schema, tableName)
@@ -71,7 +73,7 @@ public class SchemaHelpers {
                     String.format(ActiveSchemaManager.SHOW_CREATE_TABLE_SQL, tableName)
             );
             ResultSetMetaData showCreateTableResultSetMetadata = showCreateTableResultSet.getMetaData();
-            String tableCreateStatement = SchemaHelpers.getCreateTableStatement(tableName, showCreateTableResultSet, showCreateTableResultSetMetadata);
+            String tableCreateStatement = ActiveSchemaHelpers.getCreateTableStatement(tableName, showCreateTableResultSet, showCreateTableResultSetMetadata);
 
 
             return new TableSchema(new FullTableName(schemaName, tableName),
@@ -83,25 +85,8 @@ public class SchemaHelpers {
         }
     }
 
-    private static void createTableIfNotExists(String tableName, Connection connection, DataSource binlogDataSource) throws SQLException {
-        PreparedStatement stmtShowTables = connection.prepareStatement("show tables like ?");
-        stmtShowTables.setString(1, tableName);
-        ResultSet resultSet = stmtShowTables.executeQuery();
-        if (resultSet.next()) {
-            return;
-        } else {
-            //get from orignal table
-            try (Connection binlogDbConn = binlogDataSource.getConnection()) {
-                PreparedStatement preparedStatement = binlogDbConn.prepareStatement("show create table " + tableName);
-                ResultSet showCreateTableResultSet = preparedStatement.executeQuery();
-                ResultSetMetaData showCreateTableResultSetMetadata = showCreateTableResultSet.getMetaData();
-                String createTableStatement = SchemaHelpers.getCreateTableStatement(tableName, showCreateTableResultSet, showCreateTableResultSetMetadata);
-                boolean executed = connection.createStatement().execute(createTableStatement);
-            }
-        }
-    }
 
-    private static String getCreateTableStatement(String tableName, ResultSet showCreateTableResultSet, ResultSetMetaData showCreateTableResultSetMetadata) throws SQLException {
+    public static String getCreateTableStatement(String tableName, ResultSet showCreateTableResultSet, ResultSetMetaData showCreateTableResultSetMetadata) throws SQLException {
         String tableCreateStatement = null;
         while (showCreateTableResultSet.next()) {
             if (showCreateTableResultSetMetadata.getColumnCount() != 2) {
@@ -116,5 +101,21 @@ public class SchemaHelpers {
         return tableCreateStatement;
     }
 
-    ;
+    /**
+     * Mangle name of the active schema before applying DDL statements.
+     *
+     * @param query             Query string
+     * @param replicantDbName   Database name
+     * @return                  Rewritten query
+     */
+    public static String rewriteActiveSchemaName(String query, String replicantDbName) {
+        String dbNamePattern =
+                "( " + replicantDbName + "\\.)" +
+                        "|" +
+                        "( `" + replicantDbName + "`\\.)";
+        query = query.replaceAll(dbNamePattern, " ");
+
+        return query;
+    }
+
 }

@@ -42,6 +42,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
@@ -421,7 +422,7 @@ public class Replicator {
                     configuration.put(Applier.Configuration.TYPE, line.getOptionValue("applier").toUpperCase());
                 }
 
-                new BootstrapReplicator(configuration).run();
+                new BootstrapReplicator(configuration).run(new AtomicBoolean());
 
                 Replicator replicator = new Replicator(configuration);
 

@@ -64,6 +64,13 @@ public class EventDeserializer {
                                                    BitSet includedColumns,
                                                    Map<String, String[]> cache,
                                                    Serializable[] rowByteSlices) {
+        // require binlog_row_image=full at all times
+        // if during replication this config is changed, this condition will
+        // detect this and replicator will exit.
+        if (includedColumns.length() != columns.size()) {
+            throw new RuntimeException("Severe environment error: binlog_row_image variable is not set to FULL. Cannot continue replication.");
+        }
+
         for (int columnIndex = 0, rowIndex = 0; columnIndex < columns.size() && rowIndex < rowByteSlices.length; columnIndex++) {
 
             if (includedColumns.get(columnIndex)) {

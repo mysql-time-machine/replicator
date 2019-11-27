@@ -9,7 +9,6 @@ import com.booking.replication.applier.hbase.StorageConfig
 import com.booking.replication.augmenter.ActiveSchemaManager
 import com.booking.replication.augmenter.Augmenter
 import com.booking.replication.augmenter.AugmenterContext
-import com.booking.replication.augmenter.AugmenterFilter
 import com.booking.replication.checkpoint.CheckpointApplier
 import com.booking.replication.commons.conf.MySQLConfiguration
 import com.booking.replication.commons.services.ServicesControl
@@ -169,6 +168,8 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         LOG.info("env: BIGTABLE_PROJECT => " + BIGTABLE_PROJECT)
         LOG.info("env: BIGTABLE_INSTANCE => " + BIGTABLE_INSTANCE)
 
+        verifyThatEnvIsReady()
+
     }
 
     def cleanupSpec() {
@@ -209,8 +210,8 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
             sleep(15000)
             ( (HBaseApplier) replicator.getApplier() ).forceFlushAll()
             sleep(15000)
-            test.testName()
             stopReplicator(replicator)
+            test.testName()
         })
         expected << TESTS.collect({ test -> test.getExpectedState()})
         received << TESTS.collect({ test -> test.getActualState()})
@@ -220,10 +221,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         replicator.stop()
     }
 
-    private Replicator startReplicator(Map<String,Object> configuration) {
-
-        LOG.info("waiting for containers setSink start...")
-
+    private void verifyThatEnvIsReady() {
         // Active SchemaManager
         int counter = 60
         while (counter > 0) {
@@ -233,6 +231,10 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
                 break
             }
             counter--
+        }
+
+        if (counter <= 0) {
+            throw new RuntimeException("Test environment [Active Schema] not available")
         }
 
         // HBase
@@ -245,6 +247,14 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
             }
             counter--
         }
+
+        if (counter <= 0) {
+            throw new RuntimeException("Test environment [HBase] not available")
+        }
+
+    }
+
+    private Replicator startReplicator(Map<String,Object> configuration) {
 
         LOG.info("Starting the Replicator...")
         Replicator replicator = new Replicator(configuration)
@@ -264,7 +274,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
         Object port = configuration.getOrDefault(ActiveSchemaManager.Configuration.MYSQL_PORT, "3306")
 
-        Object schema = configuration.get(ActiveSchemaManager.Configuration.MYSQL_SCHEMA)
+        Object schema = configuration.get(ActiveSchemaManager.Configuration.MYSQL_ACTIVE_SCHEMA)
         Object username = configuration.get(ActiveSchemaManager.Configuration.MYSQL_USERNAME)
         Object password = configuration.get(ActiveSchemaManager.Configuration.MYSQL_PASSWORD)
 
@@ -308,7 +318,6 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         String sanityCheckTableName = "sanity_check"
 
         try {
-            // instantiate Configuration class
 
             StorageConfig storageConfig = StorageConfig.build(this.getConfiguration())
             Configuration config = storageConfig.getConfig()
@@ -316,22 +325,27 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
             Admin admin = connection.getAdmin()
 
-            if (STORAGE_TYPE.equals("HBASE")) {
+            LOG.info("storage type: " + STORAGE_TYPE)
 
-                LOG.info("storage type => " + STORAGE_TYPE)
+            if (STORAGE_TYPE == "HBASE") {
 
-                if (!HBASE_TARGET_NAMESPACE.empty) {
+                List<String> existingNamespaces = new ArrayList<>();
+                for (NamespaceDescriptor nd : admin.listNamespaceDescriptors()) {
+                    existingNamespaces.add(nd.getName())
+                }
+
+                if (!HBASE_TARGET_NAMESPACE.empty && !existingNamespaces.contains(HBASE_TARGET_NAMESPACE)) {
                     NamespaceDescriptor replicationNamespace =
                             NamespaceDescriptor.create(HBASE_TARGET_NAMESPACE).build()
                     admin.createNamespace(replicationNamespace)
                 }
-                if (!HBASE_SCHEMA_HISTORY_NAMESPACE.empty) {
+                if (!HBASE_SCHEMA_HISTORY_NAMESPACE.empty && !existingNamespaces.contains(HBASE_SCHEMA_HISTORY_NAMESPACE)) {
                     NamespaceDescriptor schemaNamespace =
                             NamespaceDescriptor.create(HBASE_SCHEMA_HISTORY_NAMESPACE).build()
                     admin.createNamespace(schemaNamespace)
                 }
                 String clusterStatus = admin.getClusterStatus().toString()
-                LOG.info("hbase cluster status => " + clusterStatus)
+                LOG.info("HBase cluster status => " + clusterStatus)
 
             }
 
@@ -460,7 +474,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         configuration.put(Augmenter.Configuration.SCHEMA_TYPE, Augmenter.SchemaType.ACTIVE.name())
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, mysqlActiveSchema.getHost())
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(mysqlActiveSchema.getPort()))
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_SCHEMA, MYSQL_ACTIVE_SCHEMA)
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_ACTIVE_SCHEMA, MYSQL_ACTIVE_SCHEMA)
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, MYSQL_ROOT_USERNAME)
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PASSWORD, MYSQL_PASSWORD)
 

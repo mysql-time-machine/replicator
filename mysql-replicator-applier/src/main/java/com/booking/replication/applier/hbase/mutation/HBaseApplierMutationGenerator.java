@@ -134,9 +134,9 @@ public class HBaseApplierMutationGenerator {
                         Bytes.toBytes(columnValue)
                 );
                 this.metrics.getRegistry()
-                        .counter("hbase.applier.columns.mutations.count").inc(1L);
+                        .counter("applier.hbase.columns.mutations.count").inc(1L);
                 this.metrics.getRegistry()
-                        .counter("hbase.applier.columns.mutations.delete.count").inc(1L);
+                        .counter("applier.hbase.columns.mutations.delete.count").inc(1L);
 
                 if (uuid != null) {
                     put.addColumn(
@@ -147,9 +147,9 @@ public class HBaseApplierMutationGenerator {
                     );
 
                     this.metrics.getRegistry()
-                            .counter("hbase.applier.columns.mutations.count").inc(1L);
+                            .counter("applier.hbase.columns.mutations.count").inc(1L);
                     this.metrics.getRegistry()
-                            .counter("hbase.applier.columns.mutations.delete.count").inc(1L);
+                            .counter("applier.hbase.columns.mutations.delete.count").inc(1L);
                 }
                 if (xid != null) {
                     put.addColumn(
@@ -160,9 +160,9 @@ public class HBaseApplierMutationGenerator {
                     );
 
                     this.metrics.getRegistry()
-                            .counter("hbase.applier.columns.mutations.count").inc(1L);
+                            .counter("applier.hbase.columns.mutations.count").inc(1L);
                     this.metrics.getRegistry()
-                            .counter("hbase.applier.columns.mutations.delete.count").inc(1L);
+                            .counter("applier.hbase.columns.mutations.delete.count").inc(1L);
                 }
                 break;
             }
@@ -194,9 +194,9 @@ public class HBaseApplierMutationGenerator {
                         );
 
                         this.metrics.getRegistry()
-                                .counter("hbase.applier.columns.mutations.count").inc(1L);
+                                .counter("applier.hbase.columns.mutations.count").inc(1L);
                         this.metrics.getRegistry()
-                                .counter("hbase.applier.columns.mutations.update.count").inc(1L);
+                                .counter("applier.hbase.columns.mutations.update.count").inc(1L);
 
                     } else {
                         // no change, skip
@@ -210,9 +210,9 @@ public class HBaseApplierMutationGenerator {
                         Bytes.toBytes("U")
                 );
                 this.metrics.getRegistry()
-                        .counter("hbase.applier.columns.mutations.count").inc(1L);
+                        .counter("applier.hbase.columns.mutations.count").inc(1L);
                 this.metrics.getRegistry()
-                        .counter("hbase.applier.columns.mutations.update.count").inc(1L);
+                        .counter("applier.hbase.columns.mutations.update.count").inc(1L);
 
                 if (uuid != null) {
                     put.addColumn(
@@ -222,9 +222,9 @@ public class HBaseApplierMutationGenerator {
                             Bytes.toBytes(uuid)
                     );
                     this.metrics.getRegistry()
-                            .counter("hbase.applier.columns.mutations.count").inc(1L);
+                            .counter("applier.hbase.columns.mutations.count").inc(1L);
                     this.metrics.getRegistry()
-                            .counter("hbase.applier.columns.mutations.update.count").inc(1L);
+                            .counter("applier.hbase.columns.mutations.update.count").inc(1L);
                 }
 
                 if (xid != null) {
@@ -235,9 +235,9 @@ public class HBaseApplierMutationGenerator {
                             Bytes.toBytes(xid.toString())
                     );
                     this.metrics.getRegistry()
-                            .counter("hbase.applier.columns.mutations.count").inc(1L);
+                            .counter("applier.hbase.columns.mutations.count").inc(1L);
                     this.metrics.getRegistry()
-                            .counter("hbase.applier.columns.mutations.update.count").inc(1L);
+                            .counter("applier.hbase.columns.mutations.update.count").inc(1L);
                 }
                 break;
             }
@@ -259,9 +259,9 @@ public class HBaseApplierMutationGenerator {
                     );
 
                     this.metrics.getRegistry()
-                            .counter("hbase.applier.columns.mutations.count").inc(1L);
+                            .counter("applier.hbase.columns.mutations.count").inc(1L);
                     this.metrics.getRegistry()
-                            .counter("hbase.applier.columns.mutations.insert.count").inc(1L);
+                            .counter("applier.hbase.columns.mutations.insert.count").inc(1L);
                 }
 
                 put.addColumn(
@@ -272,9 +272,9 @@ public class HBaseApplierMutationGenerator {
                 );
 
                 this.metrics.getRegistry()
-                        .counter("hbase.applier.columns.mutations.count").inc(1L);
+                        .counter("applier.hbase.columns.mutations.count").inc(1L);
                 this.metrics.getRegistry()
-                        .counter("hbase.applier.columns.mutations.insert.count").inc(1L);
+                        .counter("applier.hbase.columns.mutations.insert.count").inc(1L);
 
                 if (uuid != null) {
                     put.addColumn(
@@ -284,9 +284,9 @@ public class HBaseApplierMutationGenerator {
                             Bytes.toBytes(uuid)
                     );
                     this.metrics.getRegistry()
-                            .counter("hbase.applier.columns.mutations.count").inc(1L);
+                            .counter("applier.hbase.columns.mutations.count").inc(1L);
                     this.metrics.getRegistry()
-                            .counter("hbase.applier.columns.mutations.insert.count").inc(1L);
+                            .counter("applier.hbase.columns.mutations.insert.count").inc(1L);
                 }
 
                 if (xid != null) {
@@ -297,9 +297,9 @@ public class HBaseApplierMutationGenerator {
                             Bytes.toBytes(xid.toString())
                     );
                     this.metrics.getRegistry()
-                            .counter("hbase.applier.columns.mutations.count").inc(1L);
+                            .counter("applier.hbase.columns.mutations.count").inc(1L);
                     this.metrics.getRegistry()
-                            .counter("hbase.applier.columns.mutations.insert.count").inc(1L);
+                            .counter("applier.hbase.columns.mutations.insert.count").inc(1L);
                 }
                 break;
             }

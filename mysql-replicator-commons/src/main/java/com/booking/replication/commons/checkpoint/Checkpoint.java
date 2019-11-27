@@ -4,6 +4,7 @@ import java.io.Serializable;
 
 @SuppressWarnings("unused")
 public class Checkpoint implements Serializable, Comparable<Checkpoint> {
+
     private long timestamp;
     private long serverId;
     private GTID gtid;

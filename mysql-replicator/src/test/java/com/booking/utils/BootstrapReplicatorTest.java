@@ -15,7 +15,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.testcontainers.containers.Network;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -82,7 +81,7 @@ public class BootstrapReplicatorTest {
 
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, BootstrapReplicatorTest.mysqlActiveSchema.getHost());
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(BootstrapReplicatorTest.mysqlActiveSchema.getPort()));
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_SCHEMA, BootstrapReplicatorTest.MYSQL_ACTIVE_SCHEMA);
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_ACTIVE_SCHEMA, BootstrapReplicatorTest.MYSQL_ACTIVE_SCHEMA);
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, BootstrapReplicatorTest.MYSQL_ROOT_USERNAME);
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PASSWORD, BootstrapReplicatorTest.MYSQL_PASSWORD);
         configuration.put(Augmenter.Configuration.BOOTSTRAP, BootstrapReplicatorTest.BOOTSTRAP_ACTIVE);
@@ -92,7 +91,7 @@ public class BootstrapReplicatorTest {
         configuration.put(KafkaApplier.Configuration.FORMAT, "avro");
 
         bootstrapReplicator = new BootstrapReplicator(configuration);
-        
+
         AtomicBoolean inProgress = new AtomicBoolean();
         bootstrapReplicator.run(inProgress);
 

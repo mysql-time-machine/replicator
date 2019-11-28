@@ -168,6 +168,8 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         LOG.info("env: BIGTABLE_PROJECT => " + BIGTABLE_PROJECT)
         LOG.info("env: BIGTABLE_INSTANCE => " + BIGTABLE_INSTANCE)
 
+        verifyThatEnvIsReady()
+
     }
 
     def cleanupSpec() {
@@ -208,8 +210,8 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
             sleep(15000)
             ( (HBaseApplier) replicator.getApplier() ).forceFlushAll()
             sleep(15000)
-            test.testName()
             stopReplicator(replicator)
+            test.testName()
         })
         expected << TESTS.collect({ test -> test.getExpectedState()})
         received << TESTS.collect({ test -> test.getActualState()})
@@ -253,8 +255,6 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     }
 
     private Replicator startReplicator(Map<String,Object> configuration) {
-
-        verifyThatEnvIsReady()
 
         LOG.info("Starting the Replicator...")
         Replicator replicator = new Replicator(configuration)
@@ -318,7 +318,6 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         String sanityCheckTableName = "sanity_check"
 
         try {
-            // instantiate Configuration class
 
             StorageConfig storageConfig = StorageConfig.build(this.getConfiguration())
             Configuration config = storageConfig.getConfig()
@@ -326,22 +325,27 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
             Admin admin = connection.getAdmin()
 
-            if (STORAGE_TYPE.equals("HBASE")) {
+            LOG.info("storage type: " + STORAGE_TYPE)
 
-                LOG.info("storage type => " + STORAGE_TYPE)
+            if (STORAGE_TYPE == "HBASE") {
 
-                if (!HBASE_TARGET_NAMESPACE.empty) {
+                List<String> existingNamespaces = new ArrayList<>();
+                for (NamespaceDescriptor nd : admin.listNamespaceDescriptors()) {
+                    existingNamespaces.add(nd.getName())
+                }
+
+                if (!HBASE_TARGET_NAMESPACE.empty && !existingNamespaces.contains(HBASE_TARGET_NAMESPACE)) {
                     NamespaceDescriptor replicationNamespace =
                             NamespaceDescriptor.create(HBASE_TARGET_NAMESPACE).build()
                     admin.createNamespace(replicationNamespace)
                 }
-                if (!HBASE_SCHEMA_HISTORY_NAMESPACE.empty) {
+                if (!HBASE_SCHEMA_HISTORY_NAMESPACE.empty && !existingNamespaces.contains(HBASE_SCHEMA_HISTORY_NAMESPACE)) {
                     NamespaceDescriptor schemaNamespace =
                             NamespaceDescriptor.create(HBASE_SCHEMA_HISTORY_NAMESPACE).build()
                     admin.createNamespace(schemaNamespace)
                 }
                 String clusterStatus = admin.getClusterStatus().toString()
-                LOG.info("hbase cluster status => " + clusterStatus)
+                LOG.info("HBase cluster status => " + clusterStatus)
 
             }
 

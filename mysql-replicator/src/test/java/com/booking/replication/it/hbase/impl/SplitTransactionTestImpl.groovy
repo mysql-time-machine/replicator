@@ -96,7 +96,6 @@ class SplitTransactionTestImpl implements ReplicatorHBasePipelineIntegrationTest
 
         //  sleep_until_next_second
         long nextSecond = sleepUntilAndGetNextSecond()
-        System.out.println("nextSecond => " + nextSecond);
 
         // commit long transaction
         // UPDATE 2

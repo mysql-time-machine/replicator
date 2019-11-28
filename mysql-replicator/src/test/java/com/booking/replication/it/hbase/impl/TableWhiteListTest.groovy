@@ -31,7 +31,6 @@ class TableWhiteListTest implements ReplicatorHBasePipelineIntegrationTest {
 
     @Override
     Map<String, Object> perTestConfiguration(Map<String,Object> genericConfig) {
-        println "...TableWhiteListTest.getConfiguration() called, setting INCLUDE_TABLE"
         genericConfig.put(AugmenterContext.Configuration.INCLUDE_TABLE, [ TABLE_NAME_INCLUDED ]);
         println genericConfig.entrySet().toArray().join(":")
         return genericConfig;

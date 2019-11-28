@@ -110,6 +110,7 @@ public class KafkaApplier implements Applier {
     }
 
     private void setupColumnsFilter(Map<String, Object> configuration) {
+
         this.includeInColumns.add("name");
         this.includeInColumns.add("columnType");
 
@@ -118,7 +119,9 @@ public class KafkaApplier implements Applier {
         LOG.info("Adding " + this.includeInColumns.toString() + " fields in metadata.columns.");
 
         SimpleFilterProvider filterProvider = new SimpleFilterProvider();
+
         filterProvider.addFilter("column", SimpleBeanPropertyFilter.filterOutAllExcept(this.includeInColumns));
+
         MAPPER.setFilterProvider(filterProvider);
     }
 

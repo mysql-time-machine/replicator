@@ -7,12 +7,7 @@ import com.booking.replication.augmenter.model.schema.TableSchema;
 
 import org.apache.commons.dbcp2.BasicDataSource;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,25 +16,25 @@ import javax.sql.DataSource;
 public class ActiveSchemaHelpers {
 
     public static TableSchema computeTableSchema(
-            String schema,
+            String schemaName,
             String tableName,
-            BasicDataSource dataSource) {
+            BasicDataSource activeSchemaDataSource) {
 
-        try (Connection connection = dataSource.getConnection()) {
-            Statement statementListColumns      = connection.createStatement();
-            Statement statementShowCreateTable  = connection.createStatement();
+        try (Connection activeSchemaConnection = activeSchemaDataSource.getConnection()) {
 
-            //  connection.getSchema() returns null for MySQL, so we do this ugly hack
-            // TODO: find nicer way
-            String[] terms = connection.getMetaData().getURL().split("/");
-            String schemaName = terms[terms.length - 1];
+            Statement statementActiveSchemaListColumns      = activeSchemaConnection.createStatement();
+            Statement statementActiveSchemaShowCreateTable  = activeSchemaConnection.createStatement();
 
             List<ColumnSchema> columnList = new ArrayList<>();
 
             ResultSet resultSet;
 
-            resultSet = statementListColumns.executeQuery(
-                    String.format(ActiveSchemaManager.LIST_COLUMNS_SQL, schema, tableName)
+            resultSet = statementActiveSchemaListColumns.executeQuery(
+                 String.format(
+                         ActiveSchemaManager.LIST_COLUMNS_SQL,
+                         schemaName,
+                         tableName
+                 )
             );
 
             while (resultSet.next()) {
@@ -69,16 +64,27 @@ public class ActiveSchemaHelpers {
                 columnList.add(columnSchema);
             }
 
-            ResultSet showCreateTableResultSet = statementShowCreateTable.executeQuery(
-                    String.format(ActiveSchemaManager.SHOW_CREATE_TABLE_SQL, tableName)
-            );
-            ResultSetMetaData showCreateTableResultSetMetadata = showCreateTableResultSet.getMetaData();
-            String tableCreateStatement = ActiveSchemaHelpers.getCreateTableStatement(tableName, showCreateTableResultSet, showCreateTableResultSetMetadata);
+            DatabaseMetaData dbm = activeSchemaConnection.getMetaData();
+            boolean tableExists = false;
+            ResultSet tables = dbm.getTables(schemaName, null, tableName, null);
+            if (tables.next()) {
+                tableExists = true; // DLL statement was not table DROP
+            }
 
+            String tableCreateStatement = "";
+            if (tableExists) {
+                ResultSet showCreateTableResultSet = statementActiveSchemaShowCreateTable.executeQuery(
+                        String.format(ActiveSchemaManager.SHOW_CREATE_TABLE_SQL, tableName)
+                );
+                ResultSetMetaData showCreateTableResultSetMetadata = showCreateTableResultSet.getMetaData();
+                tableCreateStatement = ActiveSchemaHelpers.getCreateTableStatement(tableName, showCreateTableResultSet, showCreateTableResultSetMetadata);
+            }
 
-            return new TableSchema(new FullTableName(schemaName, tableName),
+            return new TableSchema(
+                    new FullTableName(schemaName, tableName),
                     columnList,
-                    tableCreateStatement);
+                    tableCreateStatement
+            );
 
         } catch (SQLException exception) {
             throw new IllegalStateException("Could not get table schema: ", exception);

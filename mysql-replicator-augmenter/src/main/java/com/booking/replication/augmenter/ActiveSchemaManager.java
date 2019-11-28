@@ -10,7 +10,6 @@ import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.sql.DataSource;
 import java.io.IOException;
 import java.sql.*;
 import java.util.ArrayList;
@@ -25,7 +24,7 @@ public class ActiveSchemaManager implements SchemaManager {
         String MYSQL_DRIVER_CLASS   = "augmenter.schema.active.mysql.driver.class";
         String MYSQL_HOSTNAME       = "augmenter.schema.active.mysql.hostname";
         String MYSQL_PORT           = "augmenter.schema.active.mysql.port";
-        String MYSQL_SCHEMA         = "augmenter.schema.active.mysql.schema";
+        String MYSQL_ACTIVE_SCHEMA = "augmenter.schema.active.mysql.schema";
         String MYSQL_USERNAME       = "augmenter.schema.active.mysql.username";
         String MYSQL_PASSWORD       = "augmenter.schema.active.mysql.password";
 
@@ -52,6 +51,7 @@ public class ActiveSchemaManager implements SchemaManager {
             + " WHERE TABLE_SCHEMA  = '%s' AND TABLE_NAME = '%s'";
 
     private final BasicDataSource activeSchemaDataSource;
+
     private final BasicDataSource replicantDataSource;
 
     private final Function<String, TableSchema> computeTableSchemaLambda;
@@ -67,7 +67,7 @@ public class ActiveSchemaManager implements SchemaManager {
         this.replicantDataSource = initBinlogDatasource(configuration);
         this.schemaAtPositionCache = new SchemaAtPositionCache();
 
-        String schema = getMysqlSchema(configuration);
+        String schema = getMysqlActiveSchema(configuration);
 
         this.computeTableSchemaLambda = (tableName) -> {
             try {
@@ -83,9 +83,9 @@ public class ActiveSchemaManager implements SchemaManager {
         };
     }
 
-    private String getMysqlSchema(Map<String, Object> configuration) {
-        Object schema       = configuration.get(Configuration.MYSQL_SCHEMA);
-        Objects.requireNonNull(schema, String.format("Configuration required: %s", Configuration.MYSQL_SCHEMA));
+    private String getMysqlActiveSchema(Map<String, Object> configuration) {
+        Object schema       = configuration.get(Configuration.MYSQL_ACTIVE_SCHEMA);
+        Objects.requireNonNull(schema, String.format("Configuration required: %s", Configuration.MYSQL_ACTIVE_SCHEMA));
 
         return schema.toString();
     }
@@ -94,12 +94,12 @@ public class ActiveSchemaManager implements SchemaManager {
         Object driverClass  = configuration.getOrDefault(Configuration.MYSQL_DRIVER_CLASS, ActiveSchemaManager.DEFAULT_MYSQL_DRIVER_CLASS);
         Object hostname     = configuration.get(Configuration.MYSQL_HOSTNAME);
         Object port         = configuration.getOrDefault(Configuration.MYSQL_PORT, "3306");
-        Object schema       = configuration.get(Configuration.MYSQL_SCHEMA);
+        Object schema       = configuration.get(Configuration.MYSQL_ACTIVE_SCHEMA);
         Object username     = configuration.get(Configuration.MYSQL_USERNAME);
         Object password     = configuration.get(Configuration.MYSQL_PASSWORD);
 
         Objects.requireNonNull(hostname, String.format("Configuration required: %s", Configuration.MYSQL_HOSTNAME));
-        Objects.requireNonNull(schema, String.format("Configuration required: %s", Configuration.MYSQL_SCHEMA));
+        Objects.requireNonNull(schema, String.format("Configuration required: %s", Configuration.MYSQL_ACTIVE_SCHEMA));
         Objects.requireNonNull(username, String.format("Configuration required: %s", Configuration.MYSQL_USERNAME));
         Objects.requireNonNull(password, String.format("Configuration required: %s", Configuration.MYSQL_PASSWORD));
 
@@ -149,12 +149,12 @@ public class ActiveSchemaManager implements SchemaManager {
         Object driverClass  = configuration.getOrDefault(Configuration.MYSQL_DRIVER_CLASS, ActiveSchemaManager.DEFAULT_MYSQL_DRIVER_CLASS);
         Object hostname     = configuration.get(Configuration.MYSQL_HOSTNAME);
         Object port         = configuration.getOrDefault(Configuration.MYSQL_PORT, "3306");
-        Object schema1      = configuration.get(Configuration.MYSQL_SCHEMA);
+        Object schema1      = configuration.get(Configuration.MYSQL_ACTIVE_SCHEMA);
         Object username     = configuration.get(Configuration.MYSQL_USERNAME);
         Object password     = configuration.get(Configuration.MYSQL_PASSWORD);
 
         Objects.requireNonNull(hostname, String.format("Configuration required: %s", Configuration.MYSQL_HOSTNAME));
-        Objects.requireNonNull(schema1, String.format("Configuration required: %s", Configuration.MYSQL_SCHEMA));
+        Objects.requireNonNull(schema1, String.format("Configuration required: %s", Configuration.MYSQL_ACTIVE_SCHEMA));
         Objects.requireNonNull(username, String.format("Configuration required: %s", Configuration.MYSQL_USERNAME));
         Objects.requireNonNull(password, String.format("Configuration required: %s", Configuration.MYSQL_PASSWORD));
 
@@ -197,7 +197,7 @@ public class ActiveSchemaManager implements SchemaManager {
                 this.schemaAtPositionCache.removeTableFromCache(tableName);
             }
 
-            String schemaName = getMysqlSchema(configuration);
+            String schemaName = getMysqlActiveSchema(configuration);
 
             String rewrittenQuery = ActiveSchemaHelpers.rewriteActiveSchemaName(query, schemaName);
 

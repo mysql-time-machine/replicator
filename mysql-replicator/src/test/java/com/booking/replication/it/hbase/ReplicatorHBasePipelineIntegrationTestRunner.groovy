@@ -274,7 +274,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
         Object port = configuration.getOrDefault(ActiveSchemaManager.Configuration.MYSQL_PORT, "3306")
 
-        Object schema = configuration.get(ActiveSchemaManager.Configuration.MYSQL_SCHEMA)
+        Object schema = configuration.get(ActiveSchemaManager.Configuration.MYSQL_ACTIVE_SCHEMA)
         Object username = configuration.get(ActiveSchemaManager.Configuration.MYSQL_USERNAME)
         Object password = configuration.get(ActiveSchemaManager.Configuration.MYSQL_PASSWORD)
 
@@ -474,7 +474,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         configuration.put(Augmenter.Configuration.SCHEMA_TYPE, Augmenter.SchemaType.ACTIVE.name())
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, mysqlActiveSchema.getHost())
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(mysqlActiveSchema.getPort()))
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_SCHEMA, MYSQL_ACTIVE_SCHEMA)
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_ACTIVE_SCHEMA, MYSQL_ACTIVE_SCHEMA)
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, MYSQL_ROOT_USERNAME)
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PASSWORD, MYSQL_PASSWORD)
 

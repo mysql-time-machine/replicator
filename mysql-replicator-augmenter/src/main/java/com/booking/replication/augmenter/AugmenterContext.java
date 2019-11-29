@@ -37,6 +37,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -842,7 +843,7 @@ public class AugmenterContext implements Closeable {
         try {
             deserializeCellValues = EventDeserializer.getDeserializeCellValues(eventType, columnSchemas, includedColumns, row, cache);
         } catch (Exception e) {
-            LOG.error("Error while deserialize row: EventType: " + eventType + " table: " + this.getEventTable() + ", row: " + row.getAfter().toString(), e);
+            LOG.error("Error while deserialize row: EventType: " + eventType + " table: " + this.getEventTable() + ", row: " + Arrays.toString(row.getAfter().get()), e);
             throw e;
         }
 

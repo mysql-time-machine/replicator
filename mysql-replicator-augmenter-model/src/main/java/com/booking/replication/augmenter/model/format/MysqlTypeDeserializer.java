@@ -191,7 +191,7 @@ public class MysqlTypeDeserializer {
 
             case BIGINT: {
                 if (isUnsigned) {
-                    long longValue = (Long) cellValue;
+                    long longValue = ((Number) cellValue).longValue();
 
                     int upper = (int) (longValue >>> 32);
                     int lower = (int) longValue;

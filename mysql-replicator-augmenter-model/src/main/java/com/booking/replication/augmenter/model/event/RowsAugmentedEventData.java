@@ -9,7 +9,7 @@ import java.util.Collection;
 
 public abstract class RowsAugmentedEventData implements TableAugmentedEventData {
 
-    protected EventMetadata metadata;
+    protected RowEventMetadata metadata;
 
     protected Collection<Boolean> includedColumns;
     protected Collection<AugmentedRow> rows;
@@ -36,7 +36,21 @@ public abstract class RowsAugmentedEventData implements TableAugmentedEventData 
         return this.rows;
     }
 
-    public EventMetadata getMetadata() {
+    public RowEventMetadata getMetadata() {
         return this.metadata;
     }
+
+    public void setMetadata(RowEventMetadata metadata) {
+        this.metadata = metadata;
+    }
+
+    public void setIncludedColumns(Collection<Boolean> includedColumns) {
+        this.includedColumns = includedColumns;
+    }
+
+    public void setRows(Collection<AugmentedRow> rows) {
+        this.rows = rows;
+    }
+
+
 }

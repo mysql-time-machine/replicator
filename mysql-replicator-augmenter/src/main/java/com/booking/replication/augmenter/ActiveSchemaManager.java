@@ -211,8 +211,7 @@ public class ActiveSchemaManager implements SchemaManager {
             }
             return executed;
         } catch (SQLException exception) {
-            ActiveSchemaManager.LOG.warn(String.format("error executing query \"%s\": %s", query, exception.getMessage()));
-            return false;
+            throw new RuntimeException(String.format("Cannot sync ActiveSchema! Error executing query \"%s\": %s", query, exception.getMessage()));
         }
     }
 

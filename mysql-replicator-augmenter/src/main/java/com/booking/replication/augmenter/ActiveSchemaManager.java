@@ -67,11 +67,11 @@ public class ActiveSchemaManager implements SchemaManager {
         this.replicantDataSource = initBinlogDatasource(configuration);
         this.schemaAtPositionCache = new SchemaAtPositionCache();
 
-        String schema = getMysqlActiveSchema(configuration);
+        String activeSchemaName = getMysqlActiveSchema(configuration);
 
         this.computeTableSchemaLambda = (tableName) -> {
             try {
-                TableSchema ts = ActiveSchemaHelpers.computeTableSchema(schema, tableName, ActiveSchemaManager.this.activeSchemaDataSource);
+                TableSchema ts = ActiveSchemaHelpers.computeTableSchema(activeSchemaName, tableName, ActiveSchemaManager.this.activeSchemaDataSource);
                 return ts;
             } catch (Exception e) {
                 ActiveSchemaManager.LOG.warn(
@@ -86,6 +86,13 @@ public class ActiveSchemaManager implements SchemaManager {
     private String getMysqlActiveSchema(Map<String, Object> configuration) {
         Object schema       = configuration.get(Configuration.MYSQL_ACTIVE_SCHEMA);
         Objects.requireNonNull(schema, String.format("Configuration required: %s", Configuration.MYSQL_ACTIVE_SCHEMA));
+
+        return schema.toString();
+    }
+
+    private String getReplicantSchema(Map<String, Object> configuration) {
+        Object schema       = configuration.get(Configuration.BINLOG_MYSQL_SCHEMA);
+        Objects.requireNonNull(schema, String.format("Configuration required: %s", Configuration.BINLOG_MYSQL_SCHEMA));
 
         return schema.toString();
     }
@@ -190,6 +197,10 @@ public class ActiveSchemaManager implements SchemaManager {
     @Override
     public boolean execute(String tableName, String query) {
 
+        LOG.info("Schema change => { tableName => " + tableName + ", query => " +  query + " }");
+
+        String rewrittenQuery = query;
+
         try (Connection connection = this.activeSchemaDataSource.getConnection();
              Statement statement = connection.createStatement()) {
 
@@ -197,9 +208,9 @@ public class ActiveSchemaManager implements SchemaManager {
                 this.schemaAtPositionCache.removeTableFromCache(tableName);
             }
 
-            String schemaName = getMysqlActiveSchema(configuration);
+            String replicantSchemaName = getReplicantSchema(configuration);
 
-            String rewrittenQuery = ActiveSchemaHelpers.rewriteActiveSchemaName(query, schemaName);
+            rewrittenQuery = ActiveSchemaHelpers.rewriteActiveSchemaName(query, replicantSchemaName);
 
             boolean executed = statement.execute(rewrittenQuery);
 
@@ -211,7 +222,7 @@ public class ActiveSchemaManager implements SchemaManager {
             }
             return executed;
         } catch (SQLException exception) {
-            throw new RuntimeException(String.format("Cannot sync ActiveSchema! Error executing query \"%s\": %s", query, exception.getMessage()));
+            throw new RuntimeException(String.format("Cannot sync ActiveSchema! Error executing query \"%s\": %s", rewrittenQuery, exception.getMessage()));
         }
     }
 

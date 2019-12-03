@@ -26,7 +26,7 @@ public class SchemaTransitionSequence {
 
         this.schemaTransitionTimestamp = new Long(schemaTransitionTimestamp);
 
-        if (columnsBefore.get() != null) { // <- null if table was just created
+        if (columnsBefore.get() != null && createTableBefore.get() != null) { // <- null if table was just created
             this.tableSchemaBefore = new TableSchema(
                     this.tableName,
                     columnsBefore.get().stream().map(c -> c.deepCopy()).collect(Collectors.toList()),
@@ -36,7 +36,7 @@ public class SchemaTransitionSequence {
             this.tableSchemaBefore = null;
         }
 
-        if (columnsAfter.get() != null) { // <- null if table was dropped
+        if (columnsAfter.get() != null && createTableAfter.get() != null) { // <- null if table was dropped
             this.tableSchemaAfter = new TableSchema(
                     this.tableName,
                     columnsAfter.get().stream().map(c -> c.deepCopy()).collect(Collectors.toList()),

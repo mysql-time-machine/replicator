@@ -47,6 +47,7 @@ public class AugmenterTest {
         String query_3    = "CREATE TABLE `test`.`test` (i INT, c CHAR(10)) ENGINE = BLACKHOLE;";
         String expected_3 = "CREATE TABLE `test` (i INT, c CHAR(10)) ENGINE = BLACKHOLE;";
 
+        // table swap case
         String query_4 = "RENAME TABLE `test`.`SomeTable` TO `test`.`SomeTable_old`, `test`.`SomeTable_new` TO `test`.`SomeTable`";
         String expected_4 = "RENAME TABLE `SomeTable` TO `SomeTable_old`, `SomeTable_new` TO `SomeTable`";
 

@@ -53,26 +53,25 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
 
             List<Checkpoint> checkpointsSeenWithGtidSet = new ArrayList<>();
             for (Checkpoint c: checkpointsSeenSoFar) {
-                if ((c.getGtidSet() != null) && !c.getGtidSet().equals("")) {
+                if ((c.getGtidSet() != null) && !c.getGtidSet().equals("") && c.getTimestamp() > 0) {
                     checkpointsSeenWithGtidSet.add(c);
                 }
             }
 
-//            List<Checkpoint> checkpointsSeenWithGtidSet = checkpointsSeenSoFar
-//                    .stream()
-//                    .filter(c -> (c.getGtidSet() != null && !c.getGtidSet().equals(""))).collect(Collectors.toList());
-
             int currentSize = checkpointsSeenWithGtidSet.size();
 
-            LOG.info("Checkpoints seen in last " + period + "ms, [total/withGTIDSet]: " + checkpointsSeenSoFar.size() + "/" + checkpointsSeenWithGtidSet.size());
+            LOG.info("Checkpoints seen in last " + period + "ms, [total/valid]: " + checkpointsSeenSoFar.size() + "/" + checkpointsSeenWithGtidSet.size());
 
             if (currentSize > 0) {
 
-                Checkpoint safeCheckpoint = gtidSetAlgebra.getSafeCheckpoint(checkpointsSeenSoFar);
+                Checkpoint safeCheckpoint = gtidSetAlgebra.getSafeCheckpoint(checkpointsSeenWithGtidSet);
+
+                LOG.info("CheckpointApplier, calculated safe checkpoint from checkpointsSeenSoFar.");
 
                 if (safeCheckpoint != null && !safeCheckpoint.getGtidSet().equals("")) {
 
                     LOG.info("CheckpointApplier, storing safe checkpoint: " + safeCheckpoint.getGtidSet());
+
                     try {
 
                         this.storage.saveCheckpoint(this.path, safeCheckpoint);
@@ -121,6 +120,5 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
             this.executor.shutdownNow();
         }
     }
-
 
 }

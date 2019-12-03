@@ -6,6 +6,8 @@ import com.booking.replication.augmenter.model.schema.FullTableName;
 import com.booking.replication.augmenter.model.schema.TableSchema;
 
 import org.apache.commons.dbcp2.BasicDataSource;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -14,6 +16,8 @@ import java.util.List;
 import javax.sql.DataSource;
 
 public class ActiveSchemaHelpers {
+
+    private static final Logger LOG = LogManager.getLogger(ActiveSchemaHelpers.class);
 
     public static TableSchema computeTableSchema(
             String schemaName,
@@ -115,13 +119,18 @@ public class ActiveSchemaHelpers {
      * @return                  Rewritten query
      */
     public static String rewriteActiveSchemaName(String query, String replicantDbName) {
+
+        LOG.info("Rewriting active schema name");
+
         String dbNamePattern =
                 "( " + replicantDbName + "\\.)" +
                         "|" +
                         "( `" + replicantDbName + "`\\.)";
-        query = query.replaceAll(dbNamePattern, " ");
+        String rewritenQuery = query.replaceAll(dbNamePattern, " ");
 
-        return query;
+        LOG.info("Rewritten => { in => " + query + ", out => " + rewritenQuery + " }");
+
+        return rewritenQuery;
     }
 
 }

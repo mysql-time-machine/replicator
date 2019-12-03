@@ -51,9 +51,16 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
                 checkpointsSeenSoFar.addAll(checkpointBuffer.getBufferedSoFar());
             }
 
-            List<Checkpoint> checkpointsSeenWithGtidSet = checkpointsSeenSoFar
-                    .stream()
-                    .filter(c -> (c.getGtidSet() != null && !c.getGtidSet().equals(""))).collect(Collectors.toList());
+            List<Checkpoint> checkpointsSeenWithGtidSet = new ArrayList<>();
+            for (Checkpoint c: checkpointsSeenSoFar) {
+                if ((c.getGtidSet() != null) && !c.getGtidSet().equals("")) {
+                    checkpointsSeenWithGtidSet.add(c);
+                }
+            }
+
+//            List<Checkpoint> checkpointsSeenWithGtidSet = checkpointsSeenSoFar
+//                    .stream()
+//                    .filter(c -> (c.getGtidSet() != null && !c.getGtidSet().equals(""))).collect(Collectors.toList());
 
             int currentSize = checkpointsSeenWithGtidSet.size();
 
@@ -67,10 +74,14 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
 
                     LOG.info("CheckpointApplier, storing safe checkpoint: " + safeCheckpoint.getGtidSet());
                     try {
+
                         this.storage.saveCheckpoint(this.path, safeCheckpoint);
                         CoordinatorCheckpointApplier.LOG.info("CheckpointApplier, stored checkpoint: " + safeCheckpoint.toString());
+
                         this.lastExecution.set(System.currentTimeMillis());
+
                         safeCheckpointCallback.accept(safeCheckpoint);
+
                     } catch (IOException exception) {
                         CoordinatorCheckpointApplier.LOG.info( "error saving checkpoint", exception);
                     }
@@ -78,6 +89,8 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
                     throw new RuntimeException("Could not find safe checkpoint. Not safe to continue running!");
                 }
 
+            } else {
+                LOG.info("CheckpointApplier: No checkpoints observed since last checkpointStore");
             }
         }, period, period, TimeUnit.MILLISECONDS);
     }

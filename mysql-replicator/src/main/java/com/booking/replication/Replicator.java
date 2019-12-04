@@ -122,7 +122,7 @@ public class Replicator {
         this.partitioner        = Partitioner.build(configuration);
         this.applier            = Applier.build(configuration);
         
-	this.lastSafeCheckpoint = new AtomicLong(0L);
+	    this.lastSafeCheckpoint = new AtomicLong(0L);
 
         this.checkpointApplier = CheckpointApplier.build(configuration,
                 this.coordinator,
@@ -155,10 +155,10 @@ public class Replicator {
                 .tasks(tasks)
                 .partitioner((events, totalPartitions) -> {
                     this.metrics.getRegistry()
-                            .counter("hbase.streams.destination.partitioner.event.apply.attempt").inc(1L);
+                            .counter("streams.destination.partitioner.event.apply.attempt").inc(1L);
                     Integer partitionNumber = this.partitioner.apply(events.iterator().next(), totalPartitions);
                     this.metrics.getRegistry()
-                            .counter("hbase.streams.destination.partitioner.event.apply.success").inc(1L);
+                            .counter("streams.destination.partitioner.event.apply.success").inc(1L);
                     return partitionNumber;
                 })
                 .useDefaultQueueType()

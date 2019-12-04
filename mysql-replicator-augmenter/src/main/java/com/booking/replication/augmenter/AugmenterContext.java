@@ -140,7 +140,7 @@ public class AugmenterContext implements Closeable {
 
         this.schemaSnapshot = new AtomicReference<>();
         this.metrics = Metrics.getInstance(configuration);
-        this.binlogsBasePath = MetricRegistry.name(this.metrics.basePath(), "binlogs");
+        this.binlogsBasePath = MetricRegistry.name(this.metrics.basePath(), "augmenter", "context", "events");
 
         transactionCounter = new AtomicLong();
         transactionCounter.set(0L);

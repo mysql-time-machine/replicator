@@ -99,7 +99,7 @@ public class AugmentedRow {
     }
 
     @JsonIgnore
-    public Long getMicrosecondTransactionOffset() {
+    public Long getTransactionSequenceNumber() {
         return transactionSequenceNumber * 100;
     }
 

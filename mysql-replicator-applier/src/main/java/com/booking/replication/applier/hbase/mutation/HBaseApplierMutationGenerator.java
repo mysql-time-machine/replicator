@@ -83,8 +83,7 @@ public class HBaseApplierMutationGenerator {
     private final Map<String, Object> configuration;
 
     // Constructor
-    public HBaseApplierMutationGenerator(Map<String, Object> configuration, Metrics<?> metrics)
-            throws NoSuchAlgorithmException {
+    public HBaseApplierMutationGenerator(Map<String, Object> configuration, Metrics<?> metrics) {
         this.configuration = configuration;
         this.metrics = metrics;
     }

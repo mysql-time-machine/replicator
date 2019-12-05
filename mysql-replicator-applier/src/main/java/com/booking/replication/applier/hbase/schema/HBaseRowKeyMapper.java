@@ -59,7 +59,8 @@ public class HBaseRowKeyMapper {
 
     public static String getPayloadTableHBaseRowKey(AugmentedRow row) {
         if (row.getTransactionUUID() != null) {
-            return row.getTransactionUUID().toString();
+            // payload table is special log table where the row key is transactionUUID
+            return row.getTransactionUUID();
         } else {
             throw new RuntimeException("Transaction ID missing in Augmented Row");
         }

@@ -98,7 +98,7 @@ public class AugmentedEventRowExtractor {
             ar.setCommitTimestamp(commitTimestamp);
             ar.setTransactionSequenceNumber(transactionSequenceNumber);
 
-            Long microsOverride = commitTimestamp * 1000 + ar.getMicrosecondTransactionOffset();
+            Long microsOverride = commitTimestamp * 1000 + ar.getTransactionSequenceNumber();
 
             LOG.debug(String.format("table : %s, UUID: %s, commit-ts: %d, seq-no: %d, micro-ts: %d",ar.getTableName(),
                     ar.getTransactionUUID(), commitTimestamp, transactionSequenceNumber, microsOverride));

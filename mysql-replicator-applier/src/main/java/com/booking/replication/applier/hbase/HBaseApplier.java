@@ -214,7 +214,7 @@ public class HBaseApplier implements Applier {
                             + "\ttable => " + row.getTableName()
                             + "\tkey => " + HBaseRowKeyMapper.getSaltedHBaseRowKey(row)
                             + "\tcommitTimestamp => " + row.getCommitTimestamp()
-                            + "\ttransactionCounter => " + row.getMicrosecondTransactionOffset() / 100
+                            + "\ttransactionCounter => " + row.getTransactionSequenceNumber() / 100
                             + "\tmicrosecondTimestamp => " + row.getRowMicrosecondTimestamp())
                 );
             }

@@ -47,17 +47,22 @@ public class AugmenterTest {
         String query_3    = "CREATE TABLE `test`.`test` (i INT, c CHAR(10)) ENGINE = BLACKHOLE;";
         String expected_3 = "CREATE TABLE `test` (i INT, c CHAR(10)) ENGINE = BLACKHOLE;";
 
+        // table swap case
+        String query_4 = "RENAME TABLE `test`.`SomeTable` TO `test`.`SomeTable_old`, `test`.`SomeTable_new` TO `test`.`SomeTable`";
+        String expected_4 = "RENAME TABLE `SomeTable` TO `SomeTable_old`, `SomeTable_new` TO `SomeTable`";
 
         String replicantDbName = "test";
 
         String rewritten_1 = ActiveSchemaHelpers.rewriteActiveSchemaName(query_1,replicantDbName);
         String rewritten_2 = ActiveSchemaHelpers.rewriteActiveSchemaName(query_2,replicantDbName);
         String rewritten_3 = ActiveSchemaHelpers.rewriteActiveSchemaName(query_3,replicantDbName);
+        String rewritten_4 = ActiveSchemaHelpers.rewriteActiveSchemaName(query_4,replicantDbName);
 
 
         assertEquals(expected_1, rewritten_1);
         assertEquals(expected_2, rewritten_2);
         assertEquals(expected_3, rewritten_3);
+        assertEquals(expected_4, rewritten_4);
 
     }
 }

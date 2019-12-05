@@ -72,6 +72,18 @@ public class AugmentedEventHeader implements Serializable {
         return String.format("%s-%s-%s", this.databaseName, this.tableName, timestamp);
     }
 
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
+    }
+
+    public void setCheckpoint(Checkpoint checkpoint) {
+        this.checkpoint = checkpoint;
+    }
+
+    public void setEventType(AugmentedEventType eventType) {
+        this.eventType = eventType;
+    }
+
     @Override
     public String toString() {
         return String.format("timestamp: %s | checkpoint: %s | eventType: %s | db: %s | table: %s", timestamp, checkpoint.toString(), eventType, databaseName, tableName);

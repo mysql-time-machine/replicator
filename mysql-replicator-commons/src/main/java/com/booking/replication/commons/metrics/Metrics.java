@@ -79,8 +79,8 @@ public abstract class Metrics<CloseableReporter extends Closeable & Reporter> im
     public Metrics(Map<String, Object> configuration) {
         this.registry = new MetricRegistry();
         this.reporter = this.getReporter(configuration, this.registry);
-        String base = String.valueOf(configuration.getOrDefault(Configuration.BASE_PATH, "replicator"));
-        this.basePath = MetricRegistry.name(base, String.valueOf(configuration.getOrDefault(Configuration.MYSQL_SCHEMA, "db")));
+        String base = String.valueOf(configuration.getOrDefault(Configuration.BASE_PATH, ""));
+        this.basePath = MetricRegistry.name(base);
     }
 
     public MetricRegistry getRegistry() {

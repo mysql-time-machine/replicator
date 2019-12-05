@@ -5,10 +5,14 @@ import java.io.Serializable;
 @SuppressWarnings("unused")
 public class AugmentedEventTransaction implements Serializable, Comparable<AugmentedEventTransaction> {
 
-    private final long commitTimestamp;
-    private final String identifier;
-    private final long xxid;
-    private final long transactionSequenceNumber;
+    private long commitTimestamp;
+    private String identifier;
+    private long xxid;
+    private long transactionSequenceNumber;
+
+    public AugmentedEventTransaction() {
+
+    }
 
     public AugmentedEventTransaction(long commitTimestamp, String identifier, long xxid, long transactionSequenceNumber) {
         this.commitTimestamp = commitTimestamp;
@@ -53,6 +57,22 @@ public class AugmentedEventTransaction implements Serializable, Comparable<Augme
         } else {
             return Integer.MAX_VALUE;
         }
+    }
+
+    public void setCommitTimestamp(long commitTimestamp) {
+        this.commitTimestamp = commitTimestamp;
+    }
+
+    public void setIdentifier(String identifier) {
+        this.identifier = identifier;
+    }
+
+    public void setXxid(long xxid) {
+        this.xxid = xxid;
+    }
+
+    public void setTransactionSequenceNumber(long transactionSequenceNumber) {
+        this.transactionSequenceNumber = transactionSequenceNumber;
     }
 
     @Override

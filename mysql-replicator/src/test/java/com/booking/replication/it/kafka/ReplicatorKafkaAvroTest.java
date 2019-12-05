@@ -74,7 +74,7 @@ public class ReplicatorKafkaAvroTest {
     private static final String MYSQL_INIT_SCRIPT = "mysql.init.sql";
     private static final String MYSQL_TEST_SCRIPT = "mysql.binlog.test.sql";
     private static final String MYSQL_CONF_FILE = "my.cnf";
-    private static final int TRANSACTION_LIMIT = 5;
+    private static final int TRANSACTION_LIMIT = 100;
     private static final String CONNECTION_URL_FORMAT = "jdbc:mysql://%s:%d/%s";
 
     private static final String KAFKA_REPLICATOR_TOPIC_NAME = "replicator";
@@ -243,7 +243,7 @@ public class ReplicatorKafkaAvroTest {
 
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, ReplicatorKafkaAvroTest.mysqlActiveSchema.getHost());
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(ReplicatorKafkaAvroTest.mysqlActiveSchema.getPort()));
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_SCHEMA, ReplicatorKafkaAvroTest.MYSQL_ACTIVE_SCHEMA);
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_ACTIVE_SCHEMA, ReplicatorKafkaAvroTest.MYSQL_ACTIVE_SCHEMA);
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, ReplicatorKafkaAvroTest.MYSQL_ROOT_USERNAME);
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PASSWORD, ReplicatorKafkaAvroTest.MYSQL_PASSWORD);
 

@@ -20,4 +20,6 @@ public class WriteRowsAugmentedEventData extends RowsAugmentedEventData {
     ) {
         super(eventType, eventTable, includedColumns, columns, augmentedRows);
     }
+
+
 }

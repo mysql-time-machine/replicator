@@ -3,11 +3,11 @@ package com.booking.replication.applier.kafka;
 import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.Partitioner;
 import com.booking.replication.applier.schema.registry.BCachedSchemaRegistryClient;
-import com.booking.replication.augmenter.model.event.AugmentedEvent;
-import com.booking.replication.augmenter.model.event.QueryAugmentedEventData;
+import com.booking.replication.augmenter.model.event.*;
 import com.booking.replication.commons.map.MapFilter;
 import com.booking.replication.commons.metrics.Metrics;
 
+import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class KafkaApplier implements Applier {
     private static final Logger LOG = LogManager.getLogger(KafkaApplier.class);
@@ -65,6 +66,8 @@ public class KafkaApplier implements Applier {
         String JSON = "json";
     }
 
+    private final String METRIC_APPLIER_DELAY;
+
     private final Map<Integer, Producer<byte[], byte[]>> producers;
     private final Map<String, Object> configuration;
 
@@ -72,11 +75,13 @@ public class KafkaApplier implements Applier {
     private final Partitioner partitioner;
 
     private final String topic;
-    private final String delayName;
 
     private final int totalPartitions;
 
+    private final AtomicReference<AugmentedEvent> lastEventSent = new AtomicReference<>(null);
+
     public KafkaApplier(Map<String, Object> configuration) {
+
         Object topic = configuration.get(Configuration.TOPIC);
 
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
@@ -99,17 +104,27 @@ public class KafkaApplier implements Applier {
 
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
 
-        this.delayName = MetricRegistry.name(
-                String.valueOf(configuration.getOrDefault(Metrics.Configuration.BASE_PATH, "events")),
-                "delay"
-        );
-
-        this.metricBase = MetricRegistry.name(this.metrics.basePath(), "kafka");
+        this.metricBase = MetricRegistry.name(this.metrics.basePath());
 
         this.setupColumnsFilter(configuration);
+
+        METRIC_APPLIER_DELAY = MetricRegistry.name(
+                String.valueOf(configuration.getOrDefault(Metrics.Configuration.BASE_PATH, "")),
+                "applier","kafka","delay"
+        );
+
+        this.metrics.register(METRIC_APPLIER_DELAY, (Gauge<Long>) () -> {
+            if (lastEventSent.get() != null) {
+                return System.currentTimeMillis() - lastEventSent.get().getHeader().getTimestamp();
+            } else {
+                return 0L;
+            }
+        });
+
     }
 
     private void setupColumnsFilter(Map<String, Object> configuration) {
+
         this.includeInColumns.add("name");
         this.includeInColumns.add("columnType");
 
@@ -118,7 +133,9 @@ public class KafkaApplier implements Applier {
         LOG.info("Adding " + this.includeInColumns.toString() + " fields in metadata.columns.");
 
         SimpleFilterProvider filterProvider = new SimpleFilterProvider();
+
         filterProvider.addFilter("column", SimpleBeanPropertyFilter.filterOutAllExcept(this.includeInColumns));
+
         MAPPER.setFilterProvider(filterProvider);
     }
 
@@ -179,6 +196,8 @@ public class KafkaApplier implements Applier {
                         });
                     }
 
+                    this.lastEventSent.set(event);
+
                     writeMetrics(event, numRows);
                 }
 
@@ -203,7 +222,11 @@ public class KafkaApplier implements Applier {
                             data
                     ));
 
-                    writeMetrics(event, 1);
+                    this.lastEventSent.set(event);
+
+                    int numRows = getNumberOfRowsInAugmentedEvent(event);
+
+                    writeMetrics(event, numRows);
                 }
 
                 return true;
@@ -213,10 +236,24 @@ public class KafkaApplier implements Applier {
         }
     }
 
+    private int getNumberOfRowsInAugmentedEvent(AugmentedEvent event) {
+        if (event.getHeader().getEventType().equals(AugmentedEventType.INSERT)) {
+            return ((RowsAugmentedEventData) event.getData()).getRows().size();
+        }
+
+        if (event.getHeader().getEventType().equals(AugmentedEventType.UPDATE)) {
+            return ((UpdateRowsAugmentedEventData) event.getData()).getRows().size();
+        }
+
+        if (event.getHeader().getEventType().equals(AugmentedEventType.DELETE)) {
+            return ((DeleteRowsAugmentedEventData) event.getData()).getRows().size();
+        }
+        return 0;
+    }
+
     private void writeMetrics(AugmentedEvent event, int numRows) {
-        this.metrics.updateMeter(this.delayName, System.currentTimeMillis() - event.getHeader().getTimestamp());
         String tblName = String.valueOf(event.getHeader().getTableName()); //convert null to "null"
-        String rowCounter = MetricRegistry.name(this.metricBase, tblName, event.getHeader().getEventType().name());
+        String rowCounter = MetricRegistry.name(this.metricBase, "applier", "kafka", "rows", tblName, event.getHeader().getEventType().name());
         this.metrics.incrementCounter(rowCounter, numRows);
     }
 

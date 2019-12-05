@@ -9,6 +9,10 @@ import com.booking.replication.applier.kafka.KafkaSeeker;
 import com.booking.replication.augmenter.ActiveSchemaManager;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.AugmenterContext;
+import com.booking.replication.augmenter.model.event.AugmentedEventHeader;
+import com.booking.replication.augmenter.model.event.AugmentedEventType;
+import com.booking.replication.augmenter.model.event.WriteRowsAugmentedEventData;
+import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.checkpoint.CheckpointApplier;
 import com.booking.replication.commons.conf.MySQLConfiguration;
 import com.booking.replication.commons.services.ServicesControl;
@@ -18,16 +22,9 @@ import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.coordinator.ZookeeperCoordinator;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mysql.jdbc.Driver;
-import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
-import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
-import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
-import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericDatumReader;
-import org.apache.avro.generic.GenericDatumWriter;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.io.*;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -39,10 +36,10 @@ import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.testcontainers.containers.Network;
-import spock.lang.Shared;
 
 import java.io.*;
 import java.sql.Connection;
@@ -50,7 +47,7 @@ import java.sql.Statement;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-
+// ReplicatorActiveSchemaKafkaJSONTest
 public class ReplicatorKafkaJSONTest {
 
     private static final Logger LOG = LogManager.getLogger(ReplicatorKafkaJSONTest.class);
@@ -68,7 +65,7 @@ public class ReplicatorKafkaJSONTest {
     private static final String MYSQL_INIT_SCRIPT = "mysql.init.sql";
     private static final String MYSQL_TEST_SCRIPT = "mysql.binlog.test.sql";
     private static final String MYSQL_CONF_FILE = "my.cnf";
-    private static final int TRANSACTION_LIMIT = 100;
+    private static final int TRANSACTION_LIMIT = 1000;
     private static final String CONNECTION_URL_FORMAT = "jdbc:mysql://%s:%d/%s";
 
     private static final String KAFKA_REPLICATOR_TOPIC_NAME = "replicator";
@@ -81,7 +78,6 @@ public class ReplicatorKafkaJSONTest {
     private static ServicesControl mysqlBinaryLog;
     private static ServicesControl mysqlActiveSchema;
     private static ServicesControl kafka;
-    private static ServicesControl schemaRegistry;
     private static ServicesControl kafkaZk;
 
     @BeforeClass
@@ -115,7 +111,6 @@ public class ReplicatorKafkaJSONTest {
         Network network = Network.newNetwork();
         ReplicatorKafkaJSONTest.kafkaZk = servicesProvider.startZookeeper(network, "kafkaZk");
         ReplicatorKafkaJSONTest.kafka = servicesProvider.startKafka(network, ReplicatorKafkaJSONTest.KAFKA_REPLICATOR_TOPIC_NAME, ReplicatorKafkaJSONTest.KAFKA_TOPIC_PARTITIONS, ReplicatorKafkaJSONTest.KAFKA_TOPIC_REPLICAS, "kafka");
-        ReplicatorKafkaJSONTest.schemaRegistry = servicesProvider.startSchemaRegistry(network);
     }
 
     @Test
@@ -136,24 +131,80 @@ public class ReplicatorKafkaJSONTest {
         kafkaConfiguration.put(ConsumerConfig.GROUP_ID_CONFIG, ReplicatorKafkaJSONTest.KAFKA_REPLICATOR_IT_GROUP_ID);
         kafkaConfiguration.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
-        String schemaRegistryUrl = (String) this.getConfiguration().get(KafkaApplier.Configuration.SCHEMA_REGISTRY_URL);
-        kafkaConfiguration.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl);
-        CachedSchemaRegistryClient client = new CachedSchemaRegistryClient(schemaRegistryUrl, 1000);
-        KafkaAvroDeserializer kafkaAvroDeserializer = new KafkaAvroDeserializer(client);
+        ObjectMapper MAPPER = new ObjectMapper();
 
         try (Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(kafkaConfiguration, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
             consumer.subscribe(Collections.singleton(ReplicatorKafkaJSONTest.KAFKA_REPLICATOR_TOPIC_NAME));
 
             boolean consumed = false;
-
+            boolean isMarkedRow = false;
             while (!consumed) {
-
                 for (ConsumerRecord<byte[], byte[]> record : consumer.poll(1000L)) {
-                    GenericRecord deserialize = (GenericRecord) kafkaAvroDeserializer.deserialize("", record.value());
-                    System.out.println(deserialize.toString());
-                    System.out.println(new String(record.key()));
-                    consumed = true;
+                    AugmentedEventHeader h = MAPPER.readValue(record.key(), AugmentedEventHeader.class);
+
+                    if (h.getTableName().equals("organisms")) {
+
+                        if (h.getEventType().equals(AugmentedEventType.INSERT)) {
+
+                            WriteRowsAugmentedEventData augmentedEventData = MAPPER.readValue(record.value(), WriteRowsAugmentedEventData.class);
+
+                            for (AugmentedRow row : augmentedEventData.getRows()) {
+
+                                for (String key : row.getValues().keySet()) {
+                                    if (key.equals("id")) {
+                                        if (row.getValues().get(key).toString().equals("2")) {
+                                            isMarkedRow = true;
+                                        }
+                                    }
+                                }
+
+                                if (isMarkedRow) {
+                                    for (String key : row.getValues().keySet()) {
+                                        System.out.println(key + " => " + row.getValues().get(key).toString());
+                                        String colVal = row.getValues().get(key).toString();
+
+                                        switch (key) {
+                                            case "name":
+                                                Assert.assertEquals("name", "Ñandú", colVal);
+                                                break;
+                                            case "lifespan":
+                                                Assert.assertEquals("lifespan", "240", colVal);
+                                                break;
+                                            case "lifespan_small":
+                                                Assert.assertEquals("lifespan_small", "65500", colVal);
+                                                break;
+                                            case "lifespan_medium":
+                                                Assert.assertEquals("lifespan_medium", "16770215", colVal);
+                                                break;
+                                            case "lifespan_int":
+                                                Assert.assertEquals("lifespan_int", "4294897295", colVal);
+                                                break;
+                                            case "lifespan_bigint":
+                                                Assert.assertEquals("lifespan_bigint", "18446744071615", colVal);
+                                                break;
+                                            case "bits":
+                                                Assert.assertEquals("bits", "10101010", colVal);
+                                                break;
+                                            case "soylent_dummy_id":
+                                                Assert.assertEquals("soylent_dummy_id", "000001348BB470A5129E6C8D332D89CC", colVal);
+                                                break;
+                                            case "mydecimal":
+                                                Assert.assertEquals("mydecimal", "100.000000000", colVal);
+                                                break;
+                                            case "kingdom":
+                                                Assert.assertEquals("kingdom", "animalia", colVal);
+                                                break;
+                                            default:
+                                                break;
+                                        }
+                                    }
+                                    isMarkedRow = false;
+                                }
+                            }
+                        }
+                    }
                 }
+                consumed = true;
             }
         }
 
@@ -237,7 +288,7 @@ public class ReplicatorKafkaJSONTest {
 
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, ReplicatorKafkaJSONTest.mysqlActiveSchema.getHost());
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(ReplicatorKafkaJSONTest.mysqlActiveSchema.getPort()));
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_SCHEMA, ReplicatorKafkaJSONTest.MYSQL_ACTIVE_SCHEMA);
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_ACTIVE_SCHEMA, ReplicatorKafkaJSONTest.MYSQL_ACTIVE_SCHEMA);
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, ReplicatorKafkaJSONTest.MYSQL_ROOT_USERNAME);
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PASSWORD, ReplicatorKafkaJSONTest.MYSQL_PASSWORD);
 
@@ -247,8 +298,7 @@ public class ReplicatorKafkaJSONTest {
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorKafkaJSONTest.kafka.getURL());
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG), ByteArraySerializer.class);
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG), KafkaAvroSerializer.class);
-        configuration.put(KafkaApplier.Configuration.SCHEMA_REGISTRY_URL, String.format("http://%s:%d", ReplicatorKafkaJSONTest.schemaRegistry.getHost(), ReplicatorKafkaJSONTest.schemaRegistry.getPort()));
-        configuration.put(KafkaApplier.Configuration.FORMAT, "avro");
+        configuration.put(KafkaApplier.Configuration.FORMAT, "json");
 
         configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorKafkaJSONTest.kafka.getURL());
         configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.GROUP_ID_CONFIG), ReplicatorKafkaJSONTest.KAFKA_REPLICATOR_GROUP_ID);
@@ -280,22 +330,8 @@ public class ReplicatorKafkaJSONTest {
         ReplicatorKafkaJSONTest.kafka.close();
         ReplicatorKafkaJSONTest.mysqlBinaryLog.close();
         ReplicatorKafkaJSONTest.mysqlActiveSchema.close();
-        ReplicatorKafkaJSONTest.schemaRegistry.close();
         ReplicatorKafkaJSONTest.zookeeper.close();
         ReplicatorKafkaJSONTest.kafkaZk.close();
     }
 
-    public static String avroToJson(byte[] avro, Schema schema) throws IOException {
-        boolean pretty = false;
-        GenericDatumReader<Object> reader = new GenericDatumReader<>(schema);
-        DatumWriter<Object> writer = new GenericDatumWriter<>(schema);
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-        JsonEncoder encoder = EncoderFactory.get().jsonEncoder(schema, output, pretty);
-        Decoder decoder = DecoderFactory.get().binaryDecoder(avro, null);
-        Object datum = reader.read(null, decoder);
-        writer.write(datum, encoder);
-        encoder.flush();
-        output.flush();
-        return new String(output.toByteArray(), "UTF-8");
-    }
 }

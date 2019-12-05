@@ -61,10 +61,10 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
         this.hbaseSchemaManager = hbaseSchemaManager;
 
         this.metrics.getRegistry()
-                .counter("hbase.applier.connection.attempt").inc(1L);
+                .counter("applier.hbase.connection.attempt").inc(1L);
         connection = ConnectionFactory.createConnection(hbaseConfig);
         this.metrics.getRegistry()
-                .counter("hbase.applier.connection.success").inc(1L);
+                .counter("applier.hbase.connection.success").inc(1L);
 
         admin = connection.getAdmin();
 
@@ -192,7 +192,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
     private void writeToHBase(Long threadID) throws IOException {
 
         this.metrics.getRegistry()
-                .histogram("hbase.thread_" + threadID + "_applier.writer.buffer.thread_" + threadID + ".nr_transactions_buffered")
+                .histogram("applier.hbase.writer.buffer.thread_" + threadID + ".nr_transactions_buffered")
                 .update( buffered.get(threadID).size() );
 
         List<HBaseApplierMutationGenerator.PutMutation> mutations = new ArrayList<>();
@@ -206,7 +206,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                 hbaseSchemaManager.createHBaseTableIfNotExists(augmentedRowsTableName);
 
                 this.metrics.getRegistry()
-                        .counter("hbase.thread_" + threadID + ".applier.writer.rows.received").inc(augmentedRows.size());
+                        .counter("applier.hbase.writer.thread_" + threadID + ".rows.received").inc(augmentedRows.size());
 
                 if (timestampOrganizer != null) {
                     timestampOrganizer.organizeTimestamps(augmentedRows, augmentedRowsTableName, threadID, transactionUUID);
@@ -218,7 +218,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                 mutations.addAll(eventMutations);
 
                 this.metrics.getRegistry()
-                        .counter("hbase.thread_" + threadID + ".applier.writer.mutations_generated").inc(eventMutations.size());
+                        .counter("applier.hbase.writer.thread_" + threadID + ".mutations_generated").inc(eventMutations.size());
 
             }
         }
@@ -255,12 +255,12 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
 
             this.metrics
                     .getRegistry()
-                    .histogram("hbase.thread_" + threadID + ".applier.writer.put.latency")
+                    .histogram("applier.writer.hbase.thread_" + threadID + ".put.latency")
                     .update(latency);
 
             this.metrics
                     .getRegistry()
-                    .histogram("hbase.thread_" + threadID + ".applier.writer.put.nr-mutations")
+                    .histogram("applier.writer.hbase.thread_" + threadID + ".put.nr-mutations")
                     .update(nrMutations);
 
             // TODO: send sample to validator

@@ -4,7 +4,7 @@
     <groupId>com.booking.replication</groupId>
     <artifactId>replicator</artifactId>
     <packaging>pom</packaging>
-    <version>0.16.0-rc1-SNAPSHOT</version>
+    <version>0.16.0-rc2-SNAPSHOT</version>
     <name>replicator</name>
     <description>MySQL Replicator</description>
     <url>https://github.com/mysql-time-machine/replicator</url>

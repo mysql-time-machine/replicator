@@ -63,7 +63,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     @Shared private static final String CHECKPOINT_DEFAULT = "{\"timestamp\": 0, " +
             "\"serverId\": 1,\"gtidSet\": \"\", \"gtid\": null, " +
             "\"binlog\": {\"filename\": \"\", \"position\": \"\"}}"
-    ;
+
 
     @Shared private static final String MYSQL_SCHEMA = "replicator"
     @Shared private static final String MYSQL_ROOT_USERNAME = "root"

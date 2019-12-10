@@ -8,6 +8,7 @@
     <name>replicator</name>
     <description>MySQL Replicator</description>
     <url>https://github.com/mysql-time-machine/replicator</url>
+
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -21,7 +22,6 @@
         <metrics.version>3.1.0</metrics.version>
         <mockito.version>2.18.3</mockito.version>
         <sparkWebServer.version>2.7.2</sparkWebServer.version>
-
         <junit.version>4.12</junit.version>
         <testcontainers.version>1.8.0</testcontainers.version>
         <log4j1.version>1.2.17</log4j1.version>
@@ -38,14 +38,13 @@
         <dropwizard.metrics.version>4.0.2</dropwizard.metrics.version>
         <avro.version>1.8.2</avro.version>
         <confluent.version>0.1.0</confluent.version>
+
+
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.tests>src/test/java</sonar.tests>
-
         <build.profile.id>dev</build.profile.id>
-
         <jacoco.it.execution.data.file>${project.build.directory}/coverage-reports/jacoco-it.exec</jacoco.it.execution.data.file>
         <jacoco.ut.execution.data.file>${project.build.directory}/coverage-reports/jacoco-ut.exec</jacoco.ut.execution.data.file>
-
         <!-- Only unit tests are run by default. -->
         <skip.integration.tests>true</skip.integration.tests>
         <skip.unit.tests>false</skip.unit.tests>
@@ -263,46 +262,46 @@
     </dependencyManagement>
 
     <dependencies>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>testcontainers</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-jul</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-1.2-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-slf4j-impl</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/org.codehaus.sonar/sonar-maven3-plugin -->
-        <dependency>
-            <groupId>org.codehaus.sonar</groupId>
-            <artifactId>sonar-maven3-plugin</artifactId>
-            <version>5.1</version>
-            <type>pom</type>
-        </dependency>
-    </dependencies>
+    <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>testcontainers</artifactId>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-core</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-jul</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-1.2-api</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-slf4j-impl</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-api</artifactId>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/org.codehaus.sonar/sonar-maven3-plugin -->
+    <dependency>
+        <groupId>org.codehaus.sonar</groupId>
+        <artifactId>sonar-maven3-plugin</artifactId>
+        <version>5.1</version>
+        <type>pom</type>
+    </dependency>
+</dependencies>
 
-    <scm>
+<scm>
         <connection>scm:git:ssh://github.com/mysql-time-machine/replicator.git</connection>
         <url>https://github.com/mysql-time-machine/replicator.git</url>
     </scm>
@@ -401,6 +400,14 @@
         </repository>
     </repositories>
 
+    <!-- - -->
+    <!-- - -->
+    <!-- - -->
+    <!-- - -->
+    <!-- - -->
+    <!-- - -->
+    <!-- - -->
+
     <profiles>
         <profile>
             <id>dev</id>
@@ -480,12 +487,21 @@
         </profile>
     </profiles>
 
+    <!-- - -->
+    <!-- - -->
+    <!-- - -->
+    <!-- - -->
+    <!-- - -->
+    <!-- - -->
+    <!-- - -->
+    <!-- - -->
+
     <build>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.7.0</version>
+                <version>3.8.1</version>
                 <configuration>
                     <source>1.8</source>
                     <target>1.8</target>
@@ -613,7 +629,7 @@
                 <configuration>
                     <!-- Sets the VM argument line used when unit tests are run. -->
                     <argLine>${tests.arguments}</argLine>
-                    <argLine>${surefireArgLine}</argLine>
+                    <argLine>@{surefireArgLine}</argLine>
                     <excludes>
                         <exclude>**/IT*.java</exclude>
                     </excludes>
@@ -624,29 +640,27 @@
                 </configuration>
             </plugin>
 
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
-                <version>2.22.2</version>
+                <version>3.0.0-M2</version>
                 <executions>
-                    <!-- Ensures that both integration-test and verify goals of the Failsafe Maven plugin are executed. -->
                     <execution>
-                        <id>integration-tests</id>
+                        <id>integration-test</id>
                         <goals>
                             <goal>integration-test</goal>
                             <goal>verify</goal>
                         </goals>
                         <configuration>
                             <includes>
-                                <include>**/IT*.java</include>
+                                <include>**/*IT.java</include>
                             </includes>
                             <excludes>
                                 <exclude>**/*Test.java</exclude>
                                 <exclude>**/*Test*.java</exclude>
                             </excludes>
                             <!-- Sets the VM argument line used when integration tests are run. -->
-                            <!--<argLine>${failsafeArgLine}</argLine>-->
+                            <argLine>@{failsafeArgLine}</argLine>
                             <!-- Skips integration tests if the value of skip.integration.tests property is true -->
                             <skipTests>${skip.integration.tests}</skipTests>
                             <systemProperties>
@@ -668,11 +682,16 @@
                 </executions>
             </plugin>
 
-
         </plugins>
-
-
     </build>
+
+
+    <!-- - -->
+    <!-- - -->
+    <!-- - -->
+    <!-- - -->
+    <!-- - -->
+    <!-- - -->
 
 
     <reporting>

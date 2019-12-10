@@ -52,6 +52,16 @@ public class FileCoordinatorTest {
         FileCoordinatorTest.coordinator2.start();
     }
 
+    @AfterClass
+    public static void after() throws InterruptedException {
+        FileCoordinatorTest.coordinator1.stop();
+        FileCoordinatorTest.coordinator2.stop();
+
+        Thread.sleep(2000L);
+
+        assertEquals(0, FileCoordinatorTest.count.get());
+    }
+
     @Test
     public void testLeadership() throws InterruptedException {
         Thread.sleep(2000L);
@@ -82,15 +92,5 @@ public class FileCoordinatorTest {
         Checkpoint checkpoint2 = FileCoordinatorTest.coordinator1.loadCheckpoint("/tmp/checkpoint");
 
         assertEquals(checkpoint1, checkpoint2);
-    }
-
-    @AfterClass
-    public static void after() throws InterruptedException {
-        FileCoordinatorTest.coordinator1.stop();
-        FileCoordinatorTest.coordinator2.stop();
-
-        Thread.sleep(2000L);
-
-        assertEquals(0, FileCoordinatorTest.count.get());
     }
 }

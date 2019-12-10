@@ -27,7 +27,7 @@ public class StreamsTest {
                 }).build();
 
         streams.start()
-               .wait(1L, TimeUnit.SECONDS)
+               .wait(100, TimeUnit.MILLISECONDS)
                .stop();
 
         assertEquals(count1.get(), count2.get());
@@ -51,7 +51,7 @@ public class StreamsTest {
                 .start();
 
         streams.push(number);
-        streams.wait(1L, TimeUnit.SECONDS).stop();
+        streams.wait(100, TimeUnit.MILLISECONDS).stop();
 
         assertEquals(1, count1.get());
     }
@@ -80,7 +80,7 @@ public class StreamsTest {
                 })
                 .build()
                 .start()
-                .wait(1L, TimeUnit.SECONDS)
+                .wait(100, TimeUnit.MILLISECONDS)
                 .stop();
 
         assertEquals(count1.get(), count2.get());
@@ -105,7 +105,7 @@ public class StreamsTest {
                 })
                 .build()
                 .start()
-                .wait(1L, TimeUnit.SECONDS)
+                .wait(100, TimeUnit.MILLISECONDS)
                 .stop();
 
         assertEquals(count1.get(), count2.get());
@@ -131,7 +131,7 @@ public class StreamsTest {
                 })
                 .build()
                 .start()
-                .wait(1L, TimeUnit.SECONDS)
+                .wait(100, TimeUnit.MILLISECONDS)
                 .stop();
 
         assertEquals(count1.get(), count2.get());
@@ -160,7 +160,7 @@ public class StreamsTest {
                 .start();
 
         while (count2.get() < count1.get()) {
-            streams.wait(1L, TimeUnit.SECONDS);
+            streams.wait(100, TimeUnit.MILLISECONDS);
         }
 
         streams.stop();
@@ -199,7 +199,7 @@ public class StreamsTest {
                 })
                 .build()
                 .start()
-                .wait(1L, TimeUnit.SECONDS)
+                .wait(100, TimeUnit.MILLISECONDS)
                 .stop();
 
         assertEquals(count1.get(), count2.get());
@@ -236,7 +236,7 @@ public class StreamsTest {
                 })
                 .build()
                 .start()
-                .wait(1L, TimeUnit.SECONDS)
+                .wait(100, TimeUnit.MILLISECONDS)
                 .stop();
 
         assertEquals(count1.get(), count2.get());
@@ -258,7 +258,7 @@ public class StreamsTest {
 
         streams.onException((exception) -> assertTrue(NullPointerException.class.isInstance(exception)));
         streams.push(number);
-        streams.wait(1L, TimeUnit.SECONDS).stop();
+        streams.wait(100, TimeUnit.MILLISECONDS).stop();
     }
 
     @Test
@@ -302,7 +302,7 @@ public class StreamsTest {
         }
 
         while (count4.get() < count1.get()) {
-            streamsSource.wait(1L, TimeUnit.SECONDS);
+            streamsSource.wait(100, TimeUnit.MILLISECONDS);
         }
 
         streamsDestination.stop();

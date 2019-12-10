@@ -124,13 +124,6 @@
             <artifactId>groovy-all</artifactId>
             <version>2.4.15</version>
         </dependency>
-
-        <!-- https://mvnrepository.com/artifact/org.codehaus.groovy/groovy-json -->
-        <dependency>
-            <groupId>org.codehaus.groovy</groupId>
-            <artifactId>groovy-all</artifactId>
-            <version>2.4.15</version>
-        </dependency>
         <dependency>
             <groupId>org.codehaus.groovy</groupId>
             <artifactId>groovy-json</artifactId>
@@ -176,6 +169,10 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+            </plugin>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.7.0</version><!-- 3.1 is the minimum -->

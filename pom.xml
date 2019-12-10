@@ -39,15 +39,15 @@
         <avro.version>1.8.2</avro.version>
         <confluent.version>0.1.0</confluent.version>
 
-
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.tests>src/test/java</sonar.tests>
+
         <build.profile.id>dev</build.profile.id>
+
         <jacoco.it.execution.data.file>${project.build.directory}/coverage-reports/jacoco-it.exec</jacoco.it.execution.data.file>
         <jacoco.ut.execution.data.file>${project.build.directory}/coverage-reports/jacoco-ut.exec</jacoco.ut.execution.data.file>
-        <!-- Only unit tests are run by default. -->
-        <skip.integration.tests>true</skip.integration.tests>
-        <skip.unit.tests>false</skip.unit.tests>
+
+
 
     </properties>
 
@@ -190,7 +190,6 @@
                 <artifactId>kafka-avro-serializer</artifactId>
                 <version>5.0.1</version>
             </dependency>
-
             <dependency>
                 <groupId>io.dropwizard.metrics</groupId>
                 <artifactId>metrics-core</artifactId>
@@ -262,46 +261,45 @@
     </dependencyManagement>
 
     <dependencies>
-    <dependency>
-        <groupId>junit</groupId>
-        <artifactId>junit</artifactId>
-        <scope>test</scope>
-    </dependency>
-    <dependency>
-        <groupId>org.testcontainers</groupId>
-        <artifactId>testcontainers</artifactId>
-        <scope>test</scope>
-    </dependency>
-    <dependency>
-        <groupId>org.apache.logging.log4j</groupId>
-        <artifactId>log4j-core</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>org.apache.logging.log4j</groupId>
-        <artifactId>log4j-jul</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>org.apache.logging.log4j</groupId>
-        <artifactId>log4j-1.2-api</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>org.apache.logging.log4j</groupId>
-        <artifactId>log4j-slf4j-impl</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>org.slf4j</groupId>
-        <artifactId>slf4j-api</artifactId>
-    </dependency>
-    <!-- https://mvnrepository.com/artifact/org.codehaus.sonar/sonar-maven3-plugin -->
-    <dependency>
-        <groupId>org.codehaus.sonar</groupId>
-        <artifactId>sonar-maven3-plugin</artifactId>
-        <version>5.1</version>
-        <type>pom</type>
-    </dependency>
-</dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-jul</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-1.2-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j-impl</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.sonar</groupId>
+            <artifactId>sonar-maven-plugin</artifactId>
+            <version>5.1</version>
+            <type>pom</type>
+        </dependency>
+    </dependencies>
 
-<scm>
+    <scm>
         <connection>scm:git:ssh://github.com/mysql-time-machine/replicator.git</connection>
         <url>https://github.com/mysql-time-machine/replicator.git</url>
     </scm>
@@ -400,32 +398,30 @@
         </repository>
     </repositories>
 
-    <!-- - -->
-    <!-- - -->
-    <!-- - -->
-    <!-- - -->
-    <!-- - -->
-    <!-- - -->
-    <!-- - -->
-
     <profiles>
+
         <profile>
             <id>dev</id>
+            <properties>
+                <build.profile.id>dev</build.profile.id>
+                <skip.integration.tests>true</skip.integration.tests>
+                <skip.unit.tests>false</skip.unit.tests>
+            </properties>
         </profile>
+
         <profile>
             <id>integration-test</id>
             <properties>
-                <!-- Used to locate the profile specific configuration file. -->
                 <build.profile.id>integration-test</build.profile.id>
-                <!-- Only integration tests are run. -->
                 <skip.integration.tests>false</skip.integration.tests>
                 <skip.unit.tests>true</skip.unit.tests>
             </properties>
         </profile>
+
         <profile>
             <id>release</id>
             <properties>
-                <build.profile.id>all-tests</build.profile.id>
+                <build.profile.id>release</build.profile.id>
                 <skip.integration.tests>false</skip.integration.tests>
                 <skip.unit.tests>false</skip.unit.tests>
             </properties>
@@ -485,16 +481,9 @@
                 </plugins>
             </build>
         </profile>
+
     </profiles>
 
-    <!-- - -->
-    <!-- - -->
-    <!-- - -->
-    <!-- - -->
-    <!-- - -->
-    <!-- - -->
-    <!-- - -->
-    <!-- - -->
 
     <build>
         <plugins>
@@ -566,15 +555,16 @@
                             <goal>report</goal>
                         </goals>
                         <configuration>
-                            <!-- Sets the path to the file which contains the execution data. -->
                             <dataFile>${jacoco.it.execution.data.file}</dataFile>
-                            <!-- Sets the output directory for the code coverage report. -->
                             <outputDirectory>${project.reporting.outputDirectory}/jacoco-it</outputDirectory>
                         </configuration>
                     </execution>
 
                 </executions>
+
             </plugin>
+
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
@@ -605,7 +595,7 @@
             <plugin>
                 <groupId>org.sonarsource.scanner.maven</groupId>
                 <artifactId>sonar-maven-plugin</artifactId>
-                <version>3.4.0.905</version>
+                <version>3.6.0.1398</version>
                 <executions>
                     <execution>
                         <goals>
@@ -616,18 +606,10 @@
             </plugin>
 
             <plugin>
-                <groupId>org.sonarsource.scanner.maven</groupId>
-                <artifactId>sonar-maven-plugin</artifactId>
-                <version>3.6.0.1398</version>
-            </plugin>
-
-
-            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.0.0-M2</version>
+                <version>3.0.0-M3</version>
                 <configuration>
-                    <!-- Sets the VM argument line used when unit tests are run. -->
                     <argLine>${tests.arguments}</argLine>
                     <argLine>@{surefireArgLine}</argLine>
                     <excludes>
@@ -643,7 +625,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
-                <version>3.0.0-M2</version>
+                <version>3.0.0-M4</version>
                 <executions>
                     <execution>
                         <id>integration-test</id>
@@ -652,17 +634,8 @@
                             <goal>verify</goal>
                         </goals>
                         <configuration>
-                            <includes>
-                                <include>**/*IT.java</include>
-                            </includes>
-                            <excludes>
-                                <exclude>**/*Test.java</exclude>
-                                <exclude>**/*Test*.java</exclude>
-                            </excludes>
-                            <!-- Sets the VM argument line used when integration tests are run. -->
                             <argLine>@{failsafeArgLine}</argLine>
-                            <!-- Skips integration tests if the value of skip.integration.tests property is true -->
-                            <skipTests>${skip.integration.tests}</skipTests>
+                            <skipTests>@{skip.integration.tests}</skipTests>
                             <systemProperties>
                                 <property>
                                     <name>docker.image.zookeeper</name>
@@ -684,14 +657,6 @@
 
         </plugins>
     </build>
-
-
-    <!-- - -->
-    <!-- - -->
-    <!-- - -->
-    <!-- - -->
-    <!-- - -->
-    <!-- - -->
 
 
     <reporting>

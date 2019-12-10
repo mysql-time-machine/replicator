@@ -19,7 +19,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class BootstrapReplicatorTest {
+public class BootstrapReplicatorIT {
     private static final String MYSQL_SCHEMA = "replicator";
     private static final String MYSQL_USERNAME = "replicator";
     private static final String MYSQL_PASSWORD = "replicator";
@@ -41,31 +41,31 @@ public class BootstrapReplicatorTest {
         ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS);
 
         MySQLConfiguration mySQLConfiguration = new MySQLConfiguration(
-                BootstrapReplicatorTest.MYSQL_SCHEMA,
-                BootstrapReplicatorTest.MYSQL_USERNAME,
-                BootstrapReplicatorTest.MYSQL_PASSWORD,
-                BootstrapReplicatorTest.MYSQL_CONF_FILE,
-                Collections.singletonList(BootstrapReplicatorTest.MYSQL_INIT_SCRIPT),
+                BootstrapReplicatorIT.MYSQL_SCHEMA,
+                BootstrapReplicatorIT.MYSQL_USERNAME,
+                BootstrapReplicatorIT.MYSQL_PASSWORD,
+                BootstrapReplicatorIT.MYSQL_CONF_FILE,
+                Collections.singletonList(BootstrapReplicatorIT.MYSQL_INIT_SCRIPT),
                 null,
                 null
         );
 
         MySQLConfiguration mySQLActiveSchemaConfiguration = new MySQLConfiguration(
-                BootstrapReplicatorTest.MYSQL_ACTIVE_SCHEMA,
-                BootstrapReplicatorTest.MYSQL_USERNAME,
-                BootstrapReplicatorTest.MYSQL_PASSWORD,
-                BootstrapReplicatorTest.MYSQL_CONF_FILE,
+                BootstrapReplicatorIT.MYSQL_ACTIVE_SCHEMA,
+                BootstrapReplicatorIT.MYSQL_USERNAME,
+                BootstrapReplicatorIT.MYSQL_PASSWORD,
+                BootstrapReplicatorIT.MYSQL_CONF_FILE,
                 Collections.emptyList(),
                 null,
                 null
         );
 
-        BootstrapReplicatorTest.mysqlBinaryLog = servicesProvider.startMySQL(mySQLConfiguration);
-        BootstrapReplicatorTest.mysqlActiveSchema = servicesProvider.startMySQL(mySQLActiveSchemaConfiguration);
+        BootstrapReplicatorIT.mysqlBinaryLog = servicesProvider.startMySQL(mySQLConfiguration);
+        BootstrapReplicatorIT.mysqlActiveSchema = servicesProvider.startMySQL(mySQLActiveSchemaConfiguration);
         Network network = Network.newNetwork();
-        BootstrapReplicatorTest.kafkaZk = servicesProvider.startZookeeper(network, "kafkaZk");
-        BootstrapReplicatorTest.kafka = servicesProvider.startKafka(network, BootstrapReplicatorTest.KAFKA_REPLICATOR_TOPIC_NAME, 3, 1, "kafka");
-        BootstrapReplicatorTest.schemaRegistry = servicesProvider.startSchemaRegistry(network);
+        BootstrapReplicatorIT.kafkaZk = servicesProvider.startZookeeper(network, "kafkaZk");
+        BootstrapReplicatorIT.kafka = servicesProvider.startKafka(network, BootstrapReplicatorIT.KAFKA_REPLICATOR_TOPIC_NAME, 3, 1, "kafka");
+        BootstrapReplicatorIT.schemaRegistry = servicesProvider.startSchemaRegistry(network);
 
     }
 
@@ -73,20 +73,20 @@ public class BootstrapReplicatorTest {
     public void testBootstrap() throws Exception {
         HashMap<String, Object> configuration = new HashMap<>();
 
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_HOSTNAME, Collections.singletonList(BootstrapReplicatorTest.mysqlBinaryLog.getHost()));
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_PORT, String.valueOf(BootstrapReplicatorTest.mysqlBinaryLog.getPort()));
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_SCHEMA, BootstrapReplicatorTest.MYSQL_SCHEMA);
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_USERNAME, BootstrapReplicatorTest.MYSQL_ROOT_USERNAME);
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_PASSWORD, BootstrapReplicatorTest.MYSQL_PASSWORD);
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_HOSTNAME, Collections.singletonList(BootstrapReplicatorIT.mysqlBinaryLog.getHost()));
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_PORT, String.valueOf(BootstrapReplicatorIT.mysqlBinaryLog.getPort()));
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_SCHEMA, BootstrapReplicatorIT.MYSQL_SCHEMA);
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_USERNAME, BootstrapReplicatorIT.MYSQL_ROOT_USERNAME);
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_PASSWORD, BootstrapReplicatorIT.MYSQL_PASSWORD);
 
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, BootstrapReplicatorTest.mysqlActiveSchema.getHost());
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(BootstrapReplicatorTest.mysqlActiveSchema.getPort()));
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_ACTIVE_SCHEMA, BootstrapReplicatorTest.MYSQL_ACTIVE_SCHEMA);
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, BootstrapReplicatorTest.MYSQL_ROOT_USERNAME);
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PASSWORD, BootstrapReplicatorTest.MYSQL_PASSWORD);
-        configuration.put(Augmenter.Configuration.BOOTSTRAP, BootstrapReplicatorTest.BOOTSTRAP_ACTIVE);
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, BootstrapReplicatorIT.mysqlActiveSchema.getHost());
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(BootstrapReplicatorIT.mysqlActiveSchema.getPort()));
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_ACTIVE_SCHEMA, BootstrapReplicatorIT.MYSQL_ACTIVE_SCHEMA);
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, BootstrapReplicatorIT.MYSQL_ROOT_USERNAME);
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PASSWORD, BootstrapReplicatorIT.MYSQL_PASSWORD);
+        configuration.put(Augmenter.Configuration.BOOTSTRAP, BootstrapReplicatorIT.BOOTSTRAP_ACTIVE);
 
-        String schemaRegistryUrl = String.format("http://%s:%d", BootstrapReplicatorTest.schemaRegistry.getHost(), BootstrapReplicatorTest.schemaRegistry.getPort());
+        String schemaRegistryUrl = String.format("http://%s:%d", BootstrapReplicatorIT.schemaRegistry.getHost(), BootstrapReplicatorIT.schemaRegistry.getPort());
         configuration.put(KafkaApplier.Configuration.SCHEMA_REGISTRY_URL, schemaRegistryUrl);
         configuration.put(KafkaApplier.Configuration.FORMAT, "avro");
 
@@ -101,11 +101,11 @@ public class BootstrapReplicatorTest {
 
     @AfterClass
     public static void after() {
-        BootstrapReplicatorTest.kafka.close();
-        BootstrapReplicatorTest.mysqlBinaryLog.close();
-        BootstrapReplicatorTest.mysqlActiveSchema.close();
-        BootstrapReplicatorTest.kafkaZk.close();
-        BootstrapReplicatorTest.schemaRegistry.close();
+        BootstrapReplicatorIT.kafka.close();
+        BootstrapReplicatorIT.mysqlBinaryLog.close();
+        BootstrapReplicatorIT.mysqlActiveSchema.close();
+        BootstrapReplicatorIT.kafkaZk.close();
+        BootstrapReplicatorIT.schemaRegistry.close();
     }
 
 

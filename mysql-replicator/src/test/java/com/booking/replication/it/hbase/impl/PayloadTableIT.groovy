@@ -3,7 +3,7 @@ package com.booking.replication.it.hbase.impl
 import com.booking.replication.augmenter.model.AugmenterModel
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
 import com.booking.replication.commons.services.ServicesControl
-import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTestRunner
+import com.booking.replication.it.hbase.ReplicatorHBasePipelineIT
 import com.booking.replication.it.util.HBase
 import com.booking.replication.it.util.MySQL
 import groovy.sql.Sql
@@ -14,11 +14,11 @@ import groovy.sql.Sql
  * that we get them in the same order (when sorted by timestamp) in which
  * transactions were made
  * */
-class PayloadTableTestImpl implements ReplicatorHBasePipelineIntegrationTest {
+class PayloadTableIT implements ReplicatorHBasePipelineIntegrationTest {
 
     private tableName = "tbl_payload_data"
     private payloadTableName =
-            ReplicatorHBasePipelineIntegrationTestRunner.HBASE_TEST_PAYLOAD_TABLE_NAME
+            ReplicatorHBasePipelineIT.HBASE_TEST_PAYLOAD_TABLE_NAME
 
     private String SCHEMA_NAME = "replicator"
 

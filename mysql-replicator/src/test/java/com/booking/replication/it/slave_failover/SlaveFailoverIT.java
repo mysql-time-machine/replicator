@@ -39,8 +39,8 @@ import java.util.stream.Collectors;
 
 import static org.junit.Assume.assumeTrue;
 
-public class SlaveFailoverTest {
-    private static final Logger LOG = LogManager.getLogger(SlaveFailoverTest.class);
+public class SlaveFailoverIT {
+    private static final Logger LOG = LogManager.getLogger(SlaveFailoverIT.class);
 
     private static String FILE_CHECKPOINT_PATH;
 
@@ -96,40 +96,40 @@ public class SlaveFailoverTest {
         LOG.info("Iniitializing mysql replication chain with 1 master and 2 slaves");
 
         mySQLMasterConfiguration = new MySQLConfiguration(
-                SlaveFailoverTest.MYSQL_SCHEMA,
-                SlaveFailoverTest.MYSQL_USERNAME,
-                SlaveFailoverTest.MYSQL_PASSWORD,
-                SlaveFailoverTest.MYSQL_CONF_FILE,
-                Collections.singletonList(SlaveFailoverTest.MYSQL_MASTER_INIT_SCRIPT),
+                SlaveFailoverIT.MYSQL_SCHEMA,
+                SlaveFailoverIT.MYSQL_USERNAME,
+                SlaveFailoverIT.MYSQL_PASSWORD,
+                SlaveFailoverIT.MYSQL_CONF_FILE,
+                Collections.singletonList(SlaveFailoverIT.MYSQL_MASTER_INIT_SCRIPT),
                 network,
                 "mysql-chain"
         );
 
         mySQLSlave1Configuration = new MySQLConfiguration(
-                SlaveFailoverTest.MYSQL_SCHEMA,
+                SlaveFailoverIT.MYSQL_SCHEMA,
                 null,
-                SlaveFailoverTest.MYSQL_PASSWORD,
-                SlaveFailoverTest.MYSQL_SLAVE_CONF_FILE,
+                SlaveFailoverIT.MYSQL_PASSWORD,
+                SlaveFailoverIT.MYSQL_SLAVE_CONF_FILE,
                 Collections.emptyList(),
                 network,
                 "mysql-chain"
         );
 
         mySQLSlave2Configuration = new MySQLConfiguration(
-                SlaveFailoverTest.MYSQL_SCHEMA,
+                SlaveFailoverIT.MYSQL_SCHEMA,
                 null,
-                SlaveFailoverTest.MYSQL_PASSWORD,
-                SlaveFailoverTest.MYSQL_SLAVE_CONF_FILE,
+                SlaveFailoverIT.MYSQL_PASSWORD,
+                SlaveFailoverIT.MYSQL_SLAVE_CONF_FILE,
                 Collections.emptyList(),
                 network,
                 "mysql-chain"
         );
 
         mySQLActiveSchemaConfiguration = new MySQLConfiguration(
-                SlaveFailoverTest.MYSQL_ACTIVE_SCHEMA,
-                SlaveFailoverTest.MYSQL_USERNAME,
-                SlaveFailoverTest.MYSQL_PASSWORD,
-                SlaveFailoverTest.MYSQL_CONF_FILE,
+                SlaveFailoverIT.MYSQL_ACTIVE_SCHEMA,
+                SlaveFailoverIT.MYSQL_USERNAME,
+                SlaveFailoverIT.MYSQL_PASSWORD,
+                SlaveFailoverIT.MYSQL_CONF_FILE,
                 Collections.emptyList(),
                 network,
                 "mysql-chain"
@@ -166,7 +166,7 @@ public class SlaveFailoverTest {
                                             MySQLConfiguration configuration) {
         return MYSQL_RUNNER.runMysqlScript(mysqlSlave,
                 configuration,
-                new File("src/test/resources/" + SlaveFailoverTest.MYSQL_SLAVE_INIT_SCRIPT).getAbsolutePath(),
+                new File("src/test/resources/" + SlaveFailoverIT.MYSQL_SLAVE_INIT_SCRIPT).getAbsolutePath(),
                 ImmutableMap.of("MASTER_HOSTNAME", mysqlMaster.getContainer().getContainerInfo().getConfig().getHostName(),
                         "MASTER_USER", MYSQL_USERNAME,
                         "MASTER_PASSWORD", MYSQL_PASSWORD),
@@ -211,7 +211,7 @@ public class SlaveFailoverTest {
         boolean execBinLog = MYSQL_RUNNER.runMysqlScript(
                 mysqlMaster,
                 mySQLMasterConfiguration,
-                new File("src/test/resources/" + SlaveFailoverTest.MYSQL_TEST_SCRIPT).getAbsolutePath(),
+                new File("src/test/resources/" + SlaveFailoverIT.MYSQL_TEST_SCRIPT).getAbsolutePath(),
                 Collections.emptyMap(),
                 false
         );
@@ -233,7 +233,7 @@ public class SlaveFailoverTest {
         boolean execBinLog2 = MYSQL_RUNNER.runMysqlScript(
                 mysqlMaster,
                 mySQLMasterConfiguration,
-                new File("src/test/resources/" + SlaveFailoverTest.MYSQL_SLAVE2_TEST_SCRIPT).getAbsolutePath(),
+                new File("src/test/resources/" + SlaveFailoverIT.MYSQL_SLAVE2_TEST_SCRIPT).getAbsolutePath(),
                 Collections.emptyMap(),
                 false
         );

@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 
-public class ZookeeperCoordinatorTest {
+public class ZookeeperCoordinatorIT {
     private static ServicesControl servicesControl;
     private static AtomicInteger count;
     private static Coordinator coordinator1;
@@ -27,34 +27,34 @@ public class ZookeeperCoordinatorTest {
 
     @BeforeClass
     public static void before() {
-        ZookeeperCoordinatorTest.servicesControl = ServicesProvider.build(ServicesProvider.Type.CONTAINERS).startZookeeper();
-        ZookeeperCoordinatorTest.count = new AtomicInteger();
+        ZookeeperCoordinatorIT.servicesControl = ServicesProvider.build(ServicesProvider.Type.CONTAINERS).startZookeeper();
+        ZookeeperCoordinatorIT.count = new AtomicInteger();
 
         Runnable leadershipTake = () -> {
-            ZookeeperCoordinatorTest.count.getAndIncrement();
+            ZookeeperCoordinatorIT.count.getAndIncrement();
         };
 
         Runnable leaderShipLoss = () -> {
-            assertEquals(1, ZookeeperCoordinatorTest.count.get());
+            assertEquals(1, ZookeeperCoordinatorIT.count.get());
 
-            ZookeeperCoordinatorTest.count.getAndDecrement();
+            ZookeeperCoordinatorIT.count.getAndDecrement();
         };
 
         Map<String, Object> configuration = new HashMap<>();
 
         configuration.put(Coordinator.Configuration.TYPE, Coordinator.Type.ZOOKEEPER.name());
-        configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, ZookeeperCoordinatorTest.servicesControl.getURL());
+        configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, ZookeeperCoordinatorIT.servicesControl.getURL());
         configuration.put(ZookeeperCoordinator.Configuration.LEADERSHIP_PATH, "/leadership.coordinator");
 
-        ZookeeperCoordinatorTest.coordinator1 = Coordinator.build(configuration);
-        ZookeeperCoordinatorTest.coordinator1.onLeadershipTake(leadershipTake);
-        ZookeeperCoordinatorTest.coordinator1.onLeadershipLose(leaderShipLoss);
-        ZookeeperCoordinatorTest.coordinator1.start();
+        ZookeeperCoordinatorIT.coordinator1 = Coordinator.build(configuration);
+        ZookeeperCoordinatorIT.coordinator1.onLeadershipTake(leadershipTake);
+        ZookeeperCoordinatorIT.coordinator1.onLeadershipLose(leaderShipLoss);
+        ZookeeperCoordinatorIT.coordinator1.start();
 
-        ZookeeperCoordinatorTest.coordinator2 = Coordinator.build(configuration);
-        ZookeeperCoordinatorTest.coordinator2.onLeadershipTake(leadershipTake);
-        ZookeeperCoordinatorTest.coordinator2.onLeadershipLose(leaderShipLoss);
-        ZookeeperCoordinatorTest.coordinator2.start();
+        ZookeeperCoordinatorIT.coordinator2 = Coordinator.build(configuration);
+        ZookeeperCoordinatorIT.coordinator2.onLeadershipTake(leadershipTake);
+        ZookeeperCoordinatorIT.coordinator2.onLeadershipLose(leaderShipLoss);
+        ZookeeperCoordinatorIT.coordinator2.start();
     }
 
     @Test
@@ -80,22 +80,22 @@ public class ZookeeperCoordinatorTest {
                 )
         );
 
-        ZookeeperCoordinatorTest.coordinator1.saveCheckpoint("/checkpoint.coordinator", checkpoint1);
+        ZookeeperCoordinatorIT.coordinator1.saveCheckpoint("/checkpoint.coordinator", checkpoint1);
 
-        Checkpoint checkpoint2 = ZookeeperCoordinatorTest.coordinator2.loadCheckpoint("/checkpoint.coordinator");
+        Checkpoint checkpoint2 = ZookeeperCoordinatorIT.coordinator2.loadCheckpoint("/checkpoint.coordinator");
 
         assertEquals(checkpoint1, checkpoint2);
     }
 
     @AfterClass
     public static void after() throws Exception {
-        ZookeeperCoordinatorTest.coordinator1.stop();
-        ZookeeperCoordinatorTest.coordinator2.stop();
-        ZookeeperCoordinatorTest.servicesControl.close();
+        ZookeeperCoordinatorIT.coordinator1.stop();
+        ZookeeperCoordinatorIT.coordinator2.stop();
+        ZookeeperCoordinatorIT.servicesControl.close();
 
         Thread.sleep(2000L);
 
-        assertEquals(0, ZookeeperCoordinatorTest.count.get());
+        assertEquals(0, ZookeeperCoordinatorIT.count.get());
     }
 }
 

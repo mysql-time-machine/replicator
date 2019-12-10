@@ -48,9 +48,9 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 // ReplicatorActiveSchemaKafkaJSONTest
-public class ReplicatorKafkaJSONTest {
+public class ReplicatorKafkaJsonIT {
 
-    private static final Logger LOG = LogManager.getLogger(ReplicatorKafkaJSONTest.class);
+    private static final Logger LOG = LogManager.getLogger(ReplicatorKafkaJsonIT.class);
 
     private static final String ZOOKEEPER_LEADERSHIP_PATH = "/replicator/leadership";
     private static final String ZOOKEEPER_CHECKPOINT_PATH = "/replicator/checkpoint";
@@ -84,33 +84,33 @@ public class ReplicatorKafkaJSONTest {
     public static void before() {
         ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS);
 
-        ReplicatorKafkaJSONTest.zookeeper = servicesProvider.startZookeeper();
+        ReplicatorKafkaJsonIT.zookeeper = servicesProvider.startZookeeper();
 
         MySQLConfiguration mySQLConfiguration = new MySQLConfiguration(
-                ReplicatorKafkaJSONTest.MYSQL_SCHEMA,
-                ReplicatorKafkaJSONTest.MYSQL_USERNAME,
-                ReplicatorKafkaJSONTest.MYSQL_PASSWORD,
-                ReplicatorKafkaJSONTest.MYSQL_CONF_FILE,
-                Collections.singletonList(ReplicatorKafkaJSONTest.MYSQL_INIT_SCRIPT),
+                ReplicatorKafkaJsonIT.MYSQL_SCHEMA,
+                ReplicatorKafkaJsonIT.MYSQL_USERNAME,
+                ReplicatorKafkaJsonIT.MYSQL_PASSWORD,
+                ReplicatorKafkaJsonIT.MYSQL_CONF_FILE,
+                Collections.singletonList(ReplicatorKafkaJsonIT.MYSQL_INIT_SCRIPT),
                 null,
                 null
         );
 
         MySQLConfiguration mySQLActiveSchemaConfiguration = new MySQLConfiguration(
-                ReplicatorKafkaJSONTest.MYSQL_ACTIVE_SCHEMA,
-                ReplicatorKafkaJSONTest.MYSQL_USERNAME,
-                ReplicatorKafkaJSONTest.MYSQL_PASSWORD,
-                ReplicatorKafkaJSONTest.MYSQL_CONF_FILE,
+                ReplicatorKafkaJsonIT.MYSQL_ACTIVE_SCHEMA,
+                ReplicatorKafkaJsonIT.MYSQL_USERNAME,
+                ReplicatorKafkaJsonIT.MYSQL_PASSWORD,
+                ReplicatorKafkaJsonIT.MYSQL_CONF_FILE,
                 Collections.emptyList(),
                 null,
                 null
         );
 
-        ReplicatorKafkaJSONTest.mysqlBinaryLog = servicesProvider.startMySQL(mySQLConfiguration);
-        ReplicatorKafkaJSONTest.mysqlActiveSchema = servicesProvider.startMySQL(mySQLActiveSchemaConfiguration);
+        ReplicatorKafkaJsonIT.mysqlBinaryLog = servicesProvider.startMySQL(mySQLConfiguration);
+        ReplicatorKafkaJsonIT.mysqlActiveSchema = servicesProvider.startMySQL(mySQLActiveSchemaConfiguration);
         Network network = Network.newNetwork();
-        ReplicatorKafkaJSONTest.kafkaZk = servicesProvider.startZookeeper(network, "kafkaZk");
-        ReplicatorKafkaJSONTest.kafka = servicesProvider.startKafka(network, ReplicatorKafkaJSONTest.KAFKA_REPLICATOR_TOPIC_NAME, ReplicatorKafkaJSONTest.KAFKA_TOPIC_PARTITIONS, ReplicatorKafkaJSONTest.KAFKA_TOPIC_REPLICAS, "kafka");
+        ReplicatorKafkaJsonIT.kafkaZk = servicesProvider.startZookeeper(network, "kafkaZk");
+        ReplicatorKafkaJsonIT.kafka = servicesProvider.startKafka(network, ReplicatorKafkaJsonIT.KAFKA_REPLICATOR_TOPIC_NAME, ReplicatorKafkaJsonIT.KAFKA_TOPIC_PARTITIONS, ReplicatorKafkaJsonIT.KAFKA_TOPIC_REPLICAS, "kafka");
     }
 
     @Test
@@ -119,7 +119,7 @@ public class ReplicatorKafkaJSONTest {
 
         replicator.start();
 
-        File file = new File("src/test/resources/" + ReplicatorKafkaJSONTest.MYSQL_TEST_SCRIPT);
+        File file = new File("src/test/resources/" + ReplicatorKafkaJsonIT.MYSQL_TEST_SCRIPT);
 
         runMysqlScripts(this.getConfiguration(), file.getAbsolutePath());
 
@@ -127,14 +127,14 @@ public class ReplicatorKafkaJSONTest {
 
         Map<String, Object> kafkaConfiguration = new HashMap<>();
 
-        kafkaConfiguration.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, ReplicatorKafkaJSONTest.kafka.getURL());
-        kafkaConfiguration.put(ConsumerConfig.GROUP_ID_CONFIG, ReplicatorKafkaJSONTest.KAFKA_REPLICATOR_IT_GROUP_ID);
+        kafkaConfiguration.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, ReplicatorKafkaJsonIT.kafka.getURL());
+        kafkaConfiguration.put(ConsumerConfig.GROUP_ID_CONFIG, ReplicatorKafkaJsonIT.KAFKA_REPLICATOR_IT_GROUP_ID);
         kafkaConfiguration.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         ObjectMapper MAPPER = new ObjectMapper();
 
         try (Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(kafkaConfiguration, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
-            consumer.subscribe(Collections.singleton(ReplicatorKafkaJSONTest.KAFKA_REPLICATOR_TOPIC_NAME));
+            consumer.subscribe(Collections.singleton(ReplicatorKafkaJsonIT.KAFKA_REPLICATOR_TOPIC_NAME));
 
             boolean consumed = false;
             boolean isMarkedRow = false;
@@ -220,7 +220,7 @@ public class ReplicatorKafkaJSONTest {
             reader = new BufferedReader(new FileReader(scriptFilePath));
             String line;
             // read script line by line
-            ReplicatorKafkaJSONTest.LOG.info("Executing query from " + scriptFilePath);
+            ReplicatorKafkaJsonIT.LOG.info("Executing query from " + scriptFilePath);
             String s;
             StringBuilder sb = new StringBuilder();
 
@@ -235,12 +235,12 @@ public class ReplicatorKafkaJSONTest {
             for (String query : inst) {
                 if (!query.trim().equals("")) {
                     statement.execute(query);
-                    ReplicatorKafkaJSONTest.LOG.info(query);
+                    ReplicatorKafkaJsonIT.LOG.info(query);
                 }
             }
             return true;
         } catch (Exception exception) {
-            ReplicatorKafkaJSONTest.LOG.warn(String.format("error executing query \"%s\": %s", scriptFilePath, exception.getMessage()));
+            ReplicatorKafkaJsonIT.LOG.warn(String.format("error executing query \"%s\": %s", scriptFilePath, exception.getMessage()));
             return false;
         }
 
@@ -275,35 +275,35 @@ public class ReplicatorKafkaJSONTest {
     private Map<String, Object> getConfiguration() {
         Map<String, Object> configuration = new HashMap<>();
 
-        configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, ReplicatorKafkaJSONTest.zookeeper.getURL());
-        configuration.put(ZookeeperCoordinator.Configuration.LEADERSHIP_PATH, ReplicatorKafkaJSONTest.ZOOKEEPER_LEADERSHIP_PATH);
+        configuration.put(ZookeeperCoordinator.Configuration.CONNECTION_STRING, ReplicatorKafkaJsonIT.zookeeper.getURL());
+        configuration.put(ZookeeperCoordinator.Configuration.LEADERSHIP_PATH, ReplicatorKafkaJsonIT.ZOOKEEPER_LEADERSHIP_PATH);
 
         configuration.put(WebServer.Configuration.TYPE, WebServer.ServerType.JETTY.name());
 
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_HOSTNAME, Collections.singletonList(ReplicatorKafkaJSONTest.mysqlBinaryLog.getHost()));
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_PORT, String.valueOf(ReplicatorKafkaJSONTest.mysqlBinaryLog.getPort()));
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_SCHEMA, ReplicatorKafkaJSONTest.MYSQL_SCHEMA);
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_USERNAME, ReplicatorKafkaJSONTest.MYSQL_ROOT_USERNAME);
-        configuration.put(BinaryLogSupplier.Configuration.MYSQL_PASSWORD, ReplicatorKafkaJSONTest.MYSQL_PASSWORD);
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_HOSTNAME, Collections.singletonList(ReplicatorKafkaJsonIT.mysqlBinaryLog.getHost()));
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_PORT, String.valueOf(ReplicatorKafkaJsonIT.mysqlBinaryLog.getPort()));
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_SCHEMA, ReplicatorKafkaJsonIT.MYSQL_SCHEMA);
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_USERNAME, ReplicatorKafkaJsonIT.MYSQL_ROOT_USERNAME);
+        configuration.put(BinaryLogSupplier.Configuration.MYSQL_PASSWORD, ReplicatorKafkaJsonIT.MYSQL_PASSWORD);
 
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, ReplicatorKafkaJSONTest.mysqlActiveSchema.getHost());
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(ReplicatorKafkaJSONTest.mysqlActiveSchema.getPort()));
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_ACTIVE_SCHEMA, ReplicatorKafkaJSONTest.MYSQL_ACTIVE_SCHEMA);
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, ReplicatorKafkaJSONTest.MYSQL_ROOT_USERNAME);
-        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PASSWORD, ReplicatorKafkaJSONTest.MYSQL_PASSWORD);
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, ReplicatorKafkaJsonIT.mysqlActiveSchema.getHost());
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(ReplicatorKafkaJsonIT.mysqlActiveSchema.getPort()));
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_ACTIVE_SCHEMA, ReplicatorKafkaJsonIT.MYSQL_ACTIVE_SCHEMA);
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_USERNAME, ReplicatorKafkaJsonIT.MYSQL_ROOT_USERNAME);
+        configuration.put(ActiveSchemaManager.Configuration.MYSQL_PASSWORD, ReplicatorKafkaJsonIT.MYSQL_PASSWORD);
 
-        configuration.put(AugmenterContext.Configuration.TRANSACTION_BUFFER_LIMIT, String.valueOf(ReplicatorKafkaJSONTest.TRANSACTION_LIMIT));
+        configuration.put(AugmenterContext.Configuration.TRANSACTION_BUFFER_LIMIT, String.valueOf(ReplicatorKafkaJsonIT.TRANSACTION_LIMIT));
         configuration.put(AugmenterContext.Configuration.TRANSACTIONS_ENABLED, true);
 
-        configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorKafkaJSONTest.kafka.getURL());
+        configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorKafkaJsonIT.kafka.getURL());
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG), ByteArraySerializer.class);
         configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG), KafkaAvroSerializer.class);
         configuration.put(KafkaApplier.Configuration.FORMAT, "json");
 
-        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorKafkaJSONTest.kafka.getURL());
-        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.GROUP_ID_CONFIG), ReplicatorKafkaJSONTest.KAFKA_REPLICATOR_GROUP_ID);
+        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG), ReplicatorKafkaJsonIT.kafka.getURL());
+        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.GROUP_ID_CONFIG), ReplicatorKafkaJsonIT.KAFKA_REPLICATOR_GROUP_ID);
         configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.AUTO_OFFSET_RESET_CONFIG), "earliest");
-        configuration.put(KafkaApplier.Configuration.TOPIC, ReplicatorKafkaJSONTest.KAFKA_REPLICATOR_TOPIC_NAME);
+        configuration.put(KafkaApplier.Configuration.TOPIC, ReplicatorKafkaJsonIT.KAFKA_REPLICATOR_TOPIC_NAME);
 
         configuration.put(Coordinator.Configuration.TYPE, Coordinator.Type.ZOOKEEPER.name());
 
@@ -317,21 +317,21 @@ public class ReplicatorKafkaJSONTest {
 
         configuration.put(Applier.Configuration.TYPE, Applier.Type.KAFKA.name());
         configuration.put(CheckpointApplier.Configuration.TYPE, CheckpointApplier.Type.COORDINATOR.name());
-        configuration.put(Replicator.Configuration.CHECKPOINT_PATH, ReplicatorKafkaJSONTest.ZOOKEEPER_CHECKPOINT_PATH);
-        configuration.put(Replicator.Configuration.CHECKPOINT_DEFAULT, ReplicatorKafkaJSONTest.CHECKPOINT_DEFAULT);
-        configuration.put(Replicator.Configuration.REPLICATOR_THREADS, String.valueOf(ReplicatorKafkaJSONTest.KAFKA_TOPIC_PARTITIONS));
-        configuration.put(Replicator.Configuration.REPLICATOR_TASKS, String.valueOf(ReplicatorKafkaJSONTest.KAFKA_TOPIC_PARTITIONS));
+        configuration.put(Replicator.Configuration.CHECKPOINT_PATH, ReplicatorKafkaJsonIT.ZOOKEEPER_CHECKPOINT_PATH);
+        configuration.put(Replicator.Configuration.CHECKPOINT_DEFAULT, ReplicatorKafkaJsonIT.CHECKPOINT_DEFAULT);
+        configuration.put(Replicator.Configuration.REPLICATOR_THREADS, String.valueOf(ReplicatorKafkaJsonIT.KAFKA_TOPIC_PARTITIONS));
+        configuration.put(Replicator.Configuration.REPLICATOR_TASKS, String.valueOf(ReplicatorKafkaJsonIT.KAFKA_TOPIC_PARTITIONS));
 
         return configuration;
     }
 
     @AfterClass
     public static void after() {
-        ReplicatorKafkaJSONTest.kafka.close();
-        ReplicatorKafkaJSONTest.mysqlBinaryLog.close();
-        ReplicatorKafkaJSONTest.mysqlActiveSchema.close();
-        ReplicatorKafkaJSONTest.zookeeper.close();
-        ReplicatorKafkaJSONTest.kafkaZk.close();
+        ReplicatorKafkaJsonIT.kafka.close();
+        ReplicatorKafkaJsonIT.mysqlBinaryLog.close();
+        ReplicatorKafkaJsonIT.mysqlActiveSchema.close();
+        ReplicatorKafkaJsonIT.zookeeper.close();
+        ReplicatorKafkaJsonIT.kafkaZk.close();
     }
 
 }

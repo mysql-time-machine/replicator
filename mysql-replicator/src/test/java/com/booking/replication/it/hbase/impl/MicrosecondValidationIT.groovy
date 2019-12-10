@@ -5,7 +5,7 @@ import com.booking.replication.augmenter.model.AugmenterModel;
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
 import com.booking.replication.applier.hbase.time.RowTimestampOrganizer
 import com.booking.replication.commons.services.ServicesControl
-import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTestRunner
+import com.booking.replication.it.hbase.ReplicatorHBasePipelineIT
 import com.booking.replication.it.util.HBase
 import com.booking.replication.it.util.MySQL
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -20,7 +20,7 @@ import org.apache.hadoop.hbase.util.Bytes
  * microsecond timestamps in HBase is the same as
  * the order in which the rows were inserted
  */
-class MicrosecondValidationTestImpl implements ReplicatorHBasePipelineIntegrationTest {
+class MicrosecondValidationIT implements ReplicatorHBasePipelineIntegrationTest {
 
     private String HBASE_COLUMN_FAMILY_NAME = "d"
 
@@ -140,7 +140,7 @@ class MicrosecondValidationTestImpl implements ReplicatorHBasePipelineIntegratio
             Connection connection = ConnectionFactory.createConnection(config)
 
             Table table = connection.getTable(TableName.valueOf(
-                    Bytes.toBytes(ReplicatorHBasePipelineIntegrationTestRunner.HBASE_TARGET_NAMESPACE),
+                    Bytes.toBytes(ReplicatorHBasePipelineIT.HBASE_TARGET_NAMESPACE),
                     Bytes.toBytes(tableName))
             )
 

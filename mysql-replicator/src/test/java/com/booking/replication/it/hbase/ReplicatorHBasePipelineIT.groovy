@@ -15,17 +15,17 @@ import com.booking.replication.commons.services.ServicesControl
 import com.booking.replication.commons.services.ServicesProvider
 import com.booking.replication.coordinator.Coordinator
 import com.booking.replication.coordinator.ZookeeperCoordinator
-import com.booking.replication.it.hbase.impl.MicrosecondValidationTestImpl
-import com.booking.replication.it.hbase.impl.LongTransactionTestImpl
-import com.booking.replication.it.hbase.impl.PayloadTableTestImpl
-import com.booking.replication.it.hbase.impl.SplitTransactionTestImpl
-import com.booking.replication.it.hbase.impl.TableNameMergeFilterTestImpl
-import com.booking.replication.it.hbase.impl.TableWhiteListTest
+import com.booking.replication.it.hbase.impl.MicrosecondValidationIT
+import com.booking.replication.it.hbase.impl.LongTransactionIT
+import com.booking.replication.it.hbase.impl.PayloadTableIT
+import com.booking.replication.it.hbase.impl.SplitTransactionIT
+import com.booking.replication.it.hbase.impl.TableNameMergeFilterIT
+import com.booking.replication.it.hbase.impl.TableWhiteListIT
 import com.booking.replication.it.util.HBase
 import com.booking.replication.it.util.MySQL
 import com.booking.replication.supplier.Supplier
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier
-import com.booking.replication.it.hbase.impl.TransmitInsertsTestImpl
+import com.booking.replication.it.hbase.impl.TransmitInsertsIT
 import com.mysql.jdbc.Driver
 import groovy.sql.Sql
 import org.apache.commons.dbcp2.BasicDataSource
@@ -47,9 +47,9 @@ import spock.lang.Shared
 import spock.lang.Specification
 import spock.lang.Unroll
 
-class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
+class ReplicatorHBasePipelineIT extends Specification {
 
-    @Shared private static final Logger LOG = LogManager.getLogger(ReplicatorHBasePipelineIntegrationTestRunner.class)
+    @Shared private static final Logger LOG = LogManager.getLogger(ReplicatorHBasePipelineIT.class)
 
     // TODO: add integration test for buffer size limit exceeded (rewind mode)
     @Shared private static final int AUGMENTER_TRANSACTION_BUFFER_SIZE_LIMIT = 100
@@ -86,13 +86,13 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     @Shared public static final String  BIGTABLE_INSTANCE = getBigTableInstance()
 
     @Shared private TESTS = [
-            new TableWhiteListTest(),
-            new TableNameMergeFilterTestImpl(),
-            new TransmitInsertsTestImpl(),
-            new MicrosecondValidationTestImpl(),
-            new LongTransactionTestImpl(),
-            new PayloadTableTestImpl(),
-            new SplitTransactionTestImpl()
+            new TableWhiteListIT(),
+            new TableNameMergeFilterIT(),
+            new TransmitInsertsIT(),
+            new MicrosecondValidationIT(),
+            new LongTransactionIT(),
+            new PayloadTableIT(),
+            new SplitTransactionIT()
     ]
 
     @Shared ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS)

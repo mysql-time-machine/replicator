@@ -1,9 +1,9 @@
 package com.booking.replication.it.hbase.impl
 
 import com.booking.replication.applier.hbase.StorageConfig
-import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
+import com.booking.replication.it.hbase.ReplicatorHBasePipeline
 import com.booking.replication.commons.services.ServicesControl
-import com.booking.replication.it.hbase.ReplicatorHBasePipelineIT
+import com.booking.replication.it.hbase.ReplicatorHBasePipelineSpec
 import com.booking.replication.it.util.HBase
 import com.booking.replication.it.util.MySQL
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -25,7 +25,7 @@ import org.apache.hadoop.hbase.util.Bytes
  * 'split' transaction which begins in one second and commits
  * during the next second
  */
-class SplitTransactionIT implements ReplicatorHBasePipelineIntegrationTest  {
+class SplitTransactionIT implements ReplicatorHBasePipeline  {
 
     private static final ObjectMapper MAPPER = new ObjectMapper()
 
@@ -150,7 +150,7 @@ class SplitTransactionIT implements ReplicatorHBasePipelineIntegrationTest  {
 
             Connection connection = ConnectionFactory.createConnection(config)
             Table table = connection.getTable(TableName.valueOf(
-                    Bytes.toBytes(ReplicatorHBasePipelineIT.HBASE_TARGET_NAMESPACE),
+                    Bytes.toBytes(ReplicatorHBasePipelineSpec.HBASE_TARGET_NAMESPACE),
                     Bytes.toBytes(tableName)))
 
             // read

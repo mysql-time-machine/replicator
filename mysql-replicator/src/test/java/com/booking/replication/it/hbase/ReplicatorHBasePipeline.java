@@ -5,7 +5,7 @@ import com.booking.replication.commons.services.ServicesControl;
 import java.io.IOException;
 import java.util.Map;
 
-public interface ReplicatorHBasePipelineIntegrationTest {
+public interface ReplicatorHBasePipeline {
 
     String testName();
 

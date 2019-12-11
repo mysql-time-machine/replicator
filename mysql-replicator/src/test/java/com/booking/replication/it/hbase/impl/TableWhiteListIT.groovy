@@ -2,9 +2,9 @@ package com.booking.replication.it.hbase.impl
 
 import com.booking.replication.applier.hbase.StorageConfig
 import com.booking.replication.augmenter.AugmenterContext
-import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
+import com.booking.replication.it.hbase.ReplicatorHBasePipeline
 import com.booking.replication.commons.services.ServicesControl
-import com.booking.replication.it.hbase.ReplicatorHBasePipelineIT
+import com.booking.replication.it.hbase.ReplicatorHBasePipelineSpec
 import com.booking.replication.it.util.HBase
 import com.booking.replication.it.util.MySQL
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -20,7 +20,7 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 
-class TableWhiteListIT implements ReplicatorHBasePipelineIntegrationTest {
+class TableWhiteListIT implements ReplicatorHBasePipeline {
 
     private String HBASE_COLUMN_FAMILY_NAME = "d"
 
@@ -232,7 +232,7 @@ class TableWhiteListIT implements ReplicatorHBasePipelineIntegrationTest {
     @Override
     Object getActualState() throws IOException {
 
-        String NAMESPACE = ReplicatorHBasePipelineIT.HBASE_TARGET_NAMESPACE
+        String NAMESPACE = ReplicatorHBasePipelineSpec.HBASE_TARGET_NAMESPACE
 
         def data = []
 

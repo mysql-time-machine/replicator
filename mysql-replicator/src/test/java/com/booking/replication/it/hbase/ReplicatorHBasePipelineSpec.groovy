@@ -47,9 +47,9 @@ import spock.lang.Shared
 import spock.lang.Specification
 import spock.lang.Unroll
 
-class ReplicatorHBasePipelineIT extends Specification {
+class ReplicatorHBasePipelineSpec extends Specification {
 
-    @Shared private static final Logger LOG = LogManager.getLogger(ReplicatorHBasePipelineIT.class)
+    @Shared private static final Logger LOG = LogManager.getLogger(ReplicatorHBasePipelineSpec.class)
 
     // TODO: add integration test for buffer size limit exceeded (rewind mode)
     @Shared private static final int AUGMENTER_TRANSACTION_BUFFER_SIZE_LIMIT = 100

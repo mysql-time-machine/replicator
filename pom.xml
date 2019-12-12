@@ -511,7 +511,7 @@
                         </goals>
                         <configuration>
                             <destFile>${project.build.directory}/coverage-reports/jacoco-it.exec</destFile>
-                            <propertyName>testArgLine</propertyName>
+                            <propertyName>failsafeArgLine</propertyName>
                         </configuration>
                     </execution>
                     <execution>
@@ -611,13 +611,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.0.0-M</version>
+                <version>3.0.0-M3</version>
                 <configuration>
                     <argLine>${tests.arguments}</argLine>
                     <argLine>@{surefireArgLine}</argLine>
-                    <forkCount>10</forkCount>
-                    <reuseForks>false</reuseForks>
-                    <argLine>-Xmx2048m -XX:MaxPermSize=512m</argLine>
                     <excludes>
                         <exclude>**/*IT.java</exclude>
                         <exclude>**/*Spec.groovy</exclude>
@@ -688,4 +685,5 @@
             </plugin>
         </plugins>
     </reporting>
+
 </project>

@@ -108,5 +108,4 @@ public class BootstrapReplicatorIT {
         BootstrapReplicatorIT.schemaRegistry.close();
     }
 
-
 }

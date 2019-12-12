@@ -80,7 +80,6 @@
             <artifactId>kafka_2.12</artifactId>
         </dependency>
         <dependency>
-
             <groupId>com.booking.replication</groupId>
             <artifactId>mysql-replicator-commons</artifactId>
             <type>test-jar</type>

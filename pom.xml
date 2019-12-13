@@ -74,7 +74,6 @@
 
     <dependencyManagement>
         <dependencies>
-
             <!-- Test Dependencies -->
             <dependency>
                 <groupId>junit</groupId>
@@ -446,8 +445,8 @@
             <id>dev</id>
             <properties>
                 <build.profile.id>dev</build.profile.id>
-                <skipITs>true</skipITs>
                 <skipTests>false</skipTests>
+                <skipITs>true</skipITs>
             </properties>
         </profile>
 
@@ -455,7 +454,7 @@
             <id>it</id>
             <properties>
                 <build.profile.id>it</build.profile.id>
-                <skipTests>true</skipTests>
+                <skipTests>false</skipTests>
                 <skipITs>false</skipITs>
             </properties>
             <build>
@@ -883,10 +882,13 @@
                     <argLine>@{failsafeArgLine}</argLine>
                     <includes>
                         <include>**/*IT.java</include>
+                        <include>**/*IT*.java</include>
                         <include>**/*Spec.groovy</include>
+                        <include>**/*Spec*.groovy</include>
                     </includes>
                     <excludes>
                         <exclude>**/*Test.java</exclude>
+                        <exclude>**/*Test*.java</exclude>
                     </excludes>
                     <systemProperties>
                         <property>

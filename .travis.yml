@@ -19,7 +19,7 @@ cache:
     - '$HOME/.sonar/cache'
 
 script:
-  - mvn clean install -V -U -B org.jacoco:jacoco-maven-plugin:prepare-agent sonar:sonar
+  - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent verify -V -U -B  sonar:sonar
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)

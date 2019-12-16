@@ -5,7 +5,7 @@ import com.booking.replication.augmenter.AugmenterFilter
 import com.booking.replication.augmenter.model.AugmenterModel
 import com.booking.replication.it.hbase.ReplicatorHBasePipeline
 import com.booking.replication.commons.services.ServicesControl
-import com.booking.replication.it.hbase.ReplicatorHBasePipelineSpec
+import com.booking.replication.it.hbase.ReplicatorHBasePipelineIT
 import com.booking.replication.it.util.HBase
 import com.booking.replication.it.util.MySQL
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -132,7 +132,7 @@ class TableNameMergeFilterIT implements ReplicatorHBasePipeline  {
                 Connection connection = ConnectionFactory.createConnection(config)
 
                 Table table = connection.getTable(TableName.valueOf(
-                        Bytes.toBytes(ReplicatorHBasePipelineSpec.HBASE_TARGET_NAMESPACE),
+                        Bytes.toBytes(ReplicatorHBasePipelineIT.HBASE_TARGET_NAMESPACE),
                         Bytes.toBytes(tableNameMerged)))
 
                 // read

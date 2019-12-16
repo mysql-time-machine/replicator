@@ -118,27 +118,27 @@
             <artifactId>metrics-core</artifactId>
         </dependency>
 
-        <!--&lt;!&ndash; Test Dependencies &ndash;&gt;-->
-        <!--<dependency>-->
-            <!--<groupId>org.codehaus.groovy</groupId>-->
-            <!--<artifactId>groovy-all</artifactId>-->
-            <!--<version>${groovy.version}</version>-->
-        <!--</dependency>-->
-        <!--<dependency>-->
-            <!--<groupId>org.codehaus.groovy</groupId>-->
-            <!--<artifactId>groovy-json</artifactId>-->
-            <!--<version>${groovy.version}</version>-->
-        <!--</dependency>-->
-        <!--<dependency>-->
-            <!--<groupId>org.codehaus.groovy</groupId>-->
-            <!--<artifactId>groovy-sql</artifactId>-->
-            <!--<version>${groovy.version}</version>-->
-        <!--</dependency>-->
-        <!--<dependency>-->
-            <!--<groupId>org.spockframework</groupId>-->
-            <!--<artifactId>spock-core</artifactId>-->
-            <!--<version>${spock.version}</version>-->
-        <!--</dependency>-->
+        <!-- Test Dependencies -->
+        <dependency>
+            <groupId>org.codehaus.groovy</groupId>
+            <artifactId>groovy-all</artifactId>
+            <version>${groovy.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.groovy</groupId>
+            <artifactId>groovy-json</artifactId>
+            <version>${groovy.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.groovy</groupId>
+            <artifactId>groovy-sql</artifactId>
+            <version>${groovy.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.spockframework</groupId>
+            <artifactId>spock-core</artifactId>
+            <version>${spock.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka_2.12</artifactId>
@@ -165,4 +165,69 @@
             <version>9.4.14.v20181114</version>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.7.0</version><!-- 3.1 is the minimum -->
+                <configuration>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                    <compilerId>groovy-eclipse-compiler</compilerId>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.codehaus.groovy</groupId>
+                        <artifactId>groovy-eclipse-compiler</artifactId>
+                        <version>2.9.2-01</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.codehaus.groovy</groupId>
+                        <artifactId>groovy-eclipse-batch</artifactId>
+                        <version>2.4.3-01</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>junit</groupId>
+                        <artifactId>junit</artifactId>
+                        <version>4.12</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.0.2</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <classpathPrefix>lib${file.separator}</classpathPrefix>
+                            <mainClass>com.booking.replication.Replicator</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <descriptors>
+                        <descriptor>assembly.xml</descriptor>
+                    </descriptors>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>

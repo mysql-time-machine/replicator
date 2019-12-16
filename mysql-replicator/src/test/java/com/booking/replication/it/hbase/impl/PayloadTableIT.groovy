@@ -3,7 +3,7 @@ package com.booking.replication.it.hbase.impl
 import com.booking.replication.augmenter.model.AugmenterModel
 import com.booking.replication.it.hbase.ReplicatorHBasePipeline
 import com.booking.replication.commons.services.ServicesControl
-import com.booking.replication.it.hbase.ReplicatorHBasePipelineSpec
+import com.booking.replication.it.hbase.ReplicatorHBasePipelineIT
 import com.booking.replication.it.util.HBase
 import com.booking.replication.it.util.MySQL
 import groovy.sql.Sql
@@ -18,7 +18,7 @@ class PayloadTableIT implements ReplicatorHBasePipeline {
 
     private tableName = "tbl_payload_data"
     private payloadTableName =
-            ReplicatorHBasePipelineSpec.HBASE_TEST_PAYLOAD_TABLE_NAME
+            ReplicatorHBasePipelineIT.HBASE_TEST_PAYLOAD_TABLE_NAME
 
     private String SCHEMA_NAME = "replicator"
 

@@ -4,7 +4,7 @@ import com.booking.replication.applier.hbase.StorageConfig
 import com.booking.replication.augmenter.model.AugmenterModel
 import com.booking.replication.it.hbase.ReplicatorHBasePipeline
 import com.booking.replication.commons.services.ServicesControl
-import com.booking.replication.it.hbase.ReplicatorHBasePipelineSpec
+import com.booking.replication.it.hbase.ReplicatorHBasePipelineIT
 import com.booking.replication.it.util.HBase
 import com.booking.replication.it.util.MySQL
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -196,7 +196,7 @@ class TransmitInsertsIT implements ReplicatorHBasePipeline {
     @Override
     Object getActualState() throws IOException {
 
-        String NAMESPACE = ReplicatorHBasePipelineSpec.HBASE_TARGET_NAMESPACE
+        String NAMESPACE = ReplicatorHBasePipelineIT.HBASE_TARGET_NAMESPACE
         String tableName = TABLE_NAME
 
         def data = new TreeMap<>()

@@ -76,7 +76,8 @@ public class ValidationService {
     public static ValidationService getInstance(Map<String, Object> configuration){
 
         // Validator is only available for HBase / BigTable
-        if (!((String)configuration.getOrDefault(Applier.Configuration.TYPE, "console")).toLowerCase().equals("hbase")) {
+        if (!((String)configuration.getOrDefault(Applier.Configuration.TYPE, "console")).toLowerCase().equals("hbase")
+            || configuration.getOrDefault(Configuration.VALIDATION_BROKER,null) == null) {
             return null;
         }
 

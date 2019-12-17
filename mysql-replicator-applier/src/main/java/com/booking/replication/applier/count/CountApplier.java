@@ -1,6 +1,7 @@
 package com.booking.replication.applier.count;
 
 import com.booking.replication.applier.Applier;
+import com.booking.replication.applier.validation.ValidationService;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.event.AugmentedEventType;
 
@@ -25,6 +26,11 @@ public class CountApplier implements Applier {
     @Override
     public boolean forceFlush() {
         return false;
+    }
+
+    @Override
+    public ValidationService buildValidationService(Map<String, Object> configuration) {
+        return null;
     }
 
     @Override

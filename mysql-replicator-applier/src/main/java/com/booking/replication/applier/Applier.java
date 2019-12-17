@@ -4,6 +4,7 @@ import com.booking.replication.applier.console.ConsoleApplier;
 import com.booking.replication.applier.count.CountApplier;
 import com.booking.replication.applier.hbase.HBaseApplier;
 import com.booking.replication.applier.kafka.KafkaApplier;
+import com.booking.replication.applier.validation.ValidationService;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 
 import org.apache.logging.log4j.LogManager;
@@ -57,6 +58,8 @@ public interface Applier extends Function<Collection<AugmentedEvent>, Boolean>, 
     @Override
     default void close() throws IOException {
     }
+
+    ValidationService buildValidationService(Map<String, Object> configuration);
 
     static Applier build(Map<String, Object> configuration) {
         try {

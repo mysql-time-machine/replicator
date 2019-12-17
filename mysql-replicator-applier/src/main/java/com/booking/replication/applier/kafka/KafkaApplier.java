@@ -3,6 +3,7 @@ package com.booking.replication.applier.kafka;
 import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.Partitioner;
 import com.booking.replication.applier.schema.registry.BCachedSchemaRegistryClient;
+import com.booking.replication.applier.validation.ValidationService;
 import com.booking.replication.augmenter.model.event.*;
 import com.booking.replication.commons.map.MapFilter;
 import com.booking.replication.commons.metrics.Metrics;
@@ -295,6 +296,12 @@ public class KafkaApplier implements Applier {
         this.partitioner.close();
         this.producers.values().forEach(Producer::close);
         this.producers.clear();
+    }
+
+    // Validation service not ready for Kafka yet
+    @Override
+    public ValidationService buildValidationService(Map<String, Object> configuration) {
+        return null;
     }
 
     private Set<String> getAsSet(Object object) {

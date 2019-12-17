@@ -2,6 +2,7 @@ package com.booking.replication.applier.console;
 
 import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.kafka.KafkaApplier;
+import com.booking.replication.applier.validation.ValidationService;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -61,6 +62,11 @@ public class ConsoleApplier implements Applier {
     @Override
     public boolean forceFlush() {
         return false;
+    }
+
+    @Override
+    public ValidationService buildValidationService(Map<String, Object> configuration) {
+        return null;
     }
 
     private Set<String> getAsSet(Object object) {

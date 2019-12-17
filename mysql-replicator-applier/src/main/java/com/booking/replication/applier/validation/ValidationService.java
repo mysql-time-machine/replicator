@@ -116,15 +116,12 @@ public class ValidationService {
     }
 
     public void registerValidationTask(String id, String sourceUri, String targetUri){
-
         if (throttlingInterval <= 0 || updateLastRegistrationTime()) submitValidationTask(id,sourceUri,targetUri);
-
     }
 
     private boolean updateLastRegistrationTime(){
 
         long currentTime = System.currentTimeMillis();
-
         boolean result = false;
 
         // Double-checked locking WITHOUT volatile:
@@ -132,48 +129,28 @@ public class ValidationService {
         // First read may not be consistent (is racy) cause java does not guarantee atomicity for writing longs. But taking,
         // into account the nature of the value it is not a problem
         if (isTimeWindowEmpty(currentTime)){
-
             if (registrationWeakLock.compareAndSet(false,true)){
-
                 if (isTimeWindowEmpty(currentTime)){
-
                     lastRegistrationTime = currentTime;
-
                     result = true;
-
                 }
-
                 registrationWeakLock.set(false);
             }
-
         }
-
         return result;
     }
 
     private boolean isTimeWindowEmpty(long currentTime){
-
         return currentTime - lastRegistrationTime > throttlingInterval;
-
     }
 
     public void submitValidationTask(String id, String sourceUri, String targetUri){
-
         try {
-
             String task = mapper.writeValueAsString( new ValidationTask(tag, sourceUri, targetUri) );
-
             producer.send(new ProducerRecord<>(topic, id, task ));
-
             LOGGER.info("Validation task {} {} submitted", id, task);
-
         } catch (JsonProcessingException e) {
-
             LOGGER.error("Failure serializing validation task {} {} {} {}", id, tag, sourceUri, targetUri, e);
-
         }
-
     }
-
-
 }

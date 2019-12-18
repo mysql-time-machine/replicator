@@ -60,13 +60,11 @@ public class ConsoleApplier implements Applier {
     }
 
     @Override
-    public boolean forceFlush() {
-        return false;
-    }
+    public ValidationService buildValidationService(Map<String, Object> configuration) { return null; }
 
     @Override
-    public ValidationService buildValidationService(Map<String, Object> configuration) {
-        return null;
+    public boolean forceFlush() {
+        return false;
     }
 
     private Set<String> getAsSet(Object object) {

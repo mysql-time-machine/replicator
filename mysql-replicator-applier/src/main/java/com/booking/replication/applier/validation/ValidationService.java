@@ -17,17 +17,19 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ValidationService {
 
+    private static final long VALIDATOR_THROTTLING_DEFAULT = TimeUnit.SECONDS.toMillis(5);
+
     private static final class ValidationTask {
 
         private static final Map<String,Object> TARGET_TRANSFORMATION;
         static {
             Map<String,Object> map = new HashMap<>();
             map.put("row_status_column","row_status");
-            List<String> ignore_columns = new ArrayList<>();
-            ignore_columns.add("_replicator_uuid");
-            ignore_columns.add("_replicator_xid");
-            ignore_columns.add("_transaction_uuid");
-            map.put("ignore_columns", ignore_columns);
+            List<String> ignoreColumns = new ArrayList<>();
+            ignoreColumns.add("_replicator_uuid");
+            ignoreColumns.add("_replicator_xid");
+            ignoreColumns.add("_transaction_uuid");
+            map.put("ignore_columns", ignoreColumns);
             TARGET_TRANSFORMATION = Collections.unmodifiableMap(map);
         }
 
@@ -64,7 +66,6 @@ public class ValidationService {
     private static final Logger LOGGER = LoggerFactory.getLogger(ValidationService.class);
 
     public interface Configuration {
-        long VALIDATOR_THROTTLING_DEFAULT = TimeUnit.SECONDS.toMillis(5);
         String VALIDATION_BROKER = "validation.broker";
         String VALIDATION_TOPIC = "validation.topic";
         String VALIDATION_TAG = "validation.tag";
@@ -76,11 +77,10 @@ public class ValidationService {
     public static ValidationService getInstance(Map<String, Object> configuration){
 
         // Validator is only available for HBase / BigTable
-        if (!((String)configuration.getOrDefault(Applier.Configuration.TYPE, "console")).toLowerCase().equals("hbase")
+        if (!((String)configuration.getOrDefault(Applier.Configuration.TYPE, "console")).equalsIgnoreCase("hbase")
             || configuration.getOrDefault(Configuration.VALIDATION_BROKER,null) == null) {
             return null;
         }
-
         if ( configuration.getOrDefault(Configuration.VALIDATION_BROKER,null) == null
              || configuration.getOrDefault(Configuration.VALIDATION_SOURCE_DOMAIN,null) == null
              || configuration.getOrDefault(Configuration.VALIDATION_TARGET_DOMAIN,null) == null
@@ -94,7 +94,7 @@ public class ValidationService {
         return new ValidationService(producer,
                                      (String)configuration.get(Configuration.VALIDATION_TOPIC),
                                      (String)configuration.get(Configuration.VALIDATION_TAG),
-                                     (long)configuration.getOrDefault(Configuration.VALIDATION_THROTTLING, Configuration.VALIDATOR_THROTTLING_DEFAULT));
+                                     (long)configuration.getOrDefault(Configuration.VALIDATION_THROTTLING, VALIDATOR_THROTTLING_DEFAULT));
     }
 
     private final long throttlingInterval;
@@ -108,12 +108,10 @@ public class ValidationService {
     private final ObjectMapper mapper = new ObjectMapper();
 
     public ValidationService(Producer<String, String> producer, String topic,String tag, long throttlingInterval) {
-
         this.throttlingInterval = throttlingInterval;
         this.producer = producer;
         this.topic = topic;
         this.tag = tag;
-
     }
 
     public void registerValidationTask(String id, String sourceUri, String targetUri){
@@ -121,7 +119,6 @@ public class ValidationService {
     }
 
     private boolean updateLastRegistrationTime(){
-
         long currentTime = System.currentTimeMillis();
         boolean result = false;
 
@@ -129,14 +126,12 @@ public class ValidationService {
         // Write to lastRegistrationTime happens-before its second read cause AtomicBoolean write-read sequence is in between.
         // First read may not be consistent (is racy) cause java does not guarantee atomicity for writing longs. But taking,
         // into account the nature of the value it is not a problem
-        if (isTimeWindowEmpty(currentTime)){
-            if (registrationWeakLock.compareAndSet(false,true)){
-                if (isTimeWindowEmpty(currentTime)){
-                    lastRegistrationTime = currentTime;
-                    result = true;
-                }
-                registrationWeakLock.set(false);
+        if (isTimeWindowEmpty(currentTime) && registrationWeakLock.compareAndSet(false,true)){
+            if (isTimeWindowEmpty(currentTime)){
+                lastRegistrationTime = currentTime;
+                result = true;
             }
+            registrationWeakLock.set(false);
         }
         return result;
     }

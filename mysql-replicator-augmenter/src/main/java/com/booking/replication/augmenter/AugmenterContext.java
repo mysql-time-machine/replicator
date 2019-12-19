@@ -306,10 +306,11 @@ public class AugmenterContext implements Closeable {
             dbName = eventTable.getDb();
             tblName = eventTable.getName();
         } else {
-            LOG.warn("table id #" + tableIdRawEventData.getTableId() + " missing from schema cache.");
+            throw new RuntimeException("ERROR PROCESSING ROW EVENT: Unable to extract eventTable for QUERY event. GTID: " + this.transaction.getIdentifier().toString() );
         }
+
         this.updateCommons(
-                ( (eventTable == null) || this.shouldAugmentTable(tblName) ),
+                ( dbName == replicatedSchema && this.shouldAugmentTable(tblName) ),
                 null,
                 null,
                 dbName,

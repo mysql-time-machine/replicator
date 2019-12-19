@@ -30,14 +30,11 @@ import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 
 import com.codahale.metrics.MetricRegistry;
 
-import com.github.shyiko.mysql.binlog.event.GtidEventData;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -110,7 +107,7 @@ public class AugmenterContext implements Closeable {
     private final AtomicLong serverId;
     private final AtomicLong nextPosition;
 
-    private final AtomicBoolean continueFlag;
+    private final AtomicBoolean shouldAugmentFlag;
     private final AtomicReference<QueryAugmentedEventDataType> queryType;
     private final AtomicReference<QueryAugmentedEventDataOperationType> queryOperationType;
     private final AtomicReference<FullTableName> eventTable;
@@ -180,7 +177,7 @@ public class AugmenterContext implements Closeable {
         this.serverId = new AtomicLong();
         this.nextPosition = new AtomicLong();
 
-        this.continueFlag = new AtomicBoolean();
+        this.shouldAugmentFlag = new AtomicBoolean();
         this.queryType = new AtomicReference<>();
         this.queryOperationType = new AtomicReference<>();
         this.eventTable = new AtomicReference<>();
@@ -236,8 +233,7 @@ public class AugmenterContext implements Closeable {
 
     public synchronized void updateContext(RawEventHeaderV4 eventHeader, RawEventData eventData, String lastGTIDSet) {
 
-        this.metrics.getRegistry()
-                .counter("augmenter.context.update_header.attempt").inc(1L);
+        this.metrics.getRegistry().counter("augmenter.context.update_header.attempt").inc(1L);
 
         this.updateHeader(
                 eventHeader.getTimestamp(),
@@ -245,229 +241,30 @@ public class AugmenterContext implements Closeable {
                 eventHeader.getNextPosition()
         );
 
-        this.metrics.getRegistry()
-                .counter("augmenter.context.update_header.succeeded").inc(1L);
+        this.metrics.getRegistry().counter("augmenter.context.update_header.succeeded").inc(1L);
+
         isAtDDL.set(false);
 
         switch (eventHeader.getEventType()) {
 
             case ROTATE:
-                this.updateCommons(
-                        false,
-                        null,
-                        null,
-                        null,
-                        null
-                );
-
-                this.metrics.getRegistry()
-                        .counter("augmenter.context.type.rotate").inc(1L);
-
-                RotateRawEventData rotateRawEventData = RotateRawEventData.class.cast(eventData);
-
-                this.updateBinlog(
-                        rotateRawEventData.getBinlogFilename(),
-                        rotateRawEventData.getBinlogPosition()
-                );
-
-                LOG.info(" File ROTATE : " + rotateRawEventData.getBinlogFilename());
+                processRotateEvent(eventData);
                 break;
 
-            case UNKNOWN:
-                break;
-            case START_V3:
-                break;
             case QUERY:
-
-                QueryRawEventData queryRawEventData = QueryRawEventData.class.cast(eventData);
-                String query = queryRawEventData.getSQL();
-                Matcher matcher;
-
-                this.metrics.getRegistry()
-                        .counter("augmenter.context.type.query").inc(1L);
-
-                // begin
-                if (this.beginPattern.matcher(query).find()) {
-                    this.updateCommons(
-                            false,
-                            QueryAugmentedEventDataType.BEGIN,
-                            null,
-                            queryRawEventData.getDatabase(),
-                            null
-                    );
-                    if (!this.transaction.begin()) {
-                        AugmenterContext.LOG.warn("transaction already started");
-                    }
-
-                } else if (this.commitPattern.matcher(query).find()) {
-                    // commit
-                    this.updateCommons(
-                            true,
-                            QueryAugmentedEventDataType.COMMIT,
-                            null,
-                            queryRawEventData.getDatabase(),
-                            null
-                    );
-
-                    this.metrics.getRegistry()
-                            .counter("augmenter.context.type.commit").inc(1L);
-
-                    if (!this.transaction.commit(eventHeader.getTimestamp(), transactionCounter.get())) {
-                        AugmenterContext.LOG.warn("transaction already markedForCommit");
-                    }
-                } else if ((matcher = this.ddlDefinerPattern.matcher(query)).find()) {
-                    // ddl definer
-                    this.metrics.getRegistry()
-                            .counter("augmenter.context.type.ddl_definer").inc(1L);
-                    this.updateCommons(
-                            true,
-                            QueryAugmentedEventDataType.DDL_DEFINER,
-                            QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
-                            queryRawEventData.getDatabase(),
-                            null
-                    );
-                } else if ((matcher = this.ddlTablePattern.matcher(query)).find()) {
-                    // ddl table
-                    this.metrics.getRegistry()
-                            .counter("augmenter.context.type.ddl_table").inc(1L);
-                    String tableName = matcher.group(4);
-                    Boolean shouldProcess = ( this.shouldProcessTable(tableName) && queryRawEventData.getDatabase().equals(replicatedSchema) );
-                    this.updateCommons(
-                            shouldProcess,
-                            QueryAugmentedEventDataType.DDL_TABLE,
-                            QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
-                            queryRawEventData.getDatabase(),
-                            tableName
-                    );
-
-                    // Because we don't want to create tables for non-replicated schemas
-                    if ( shouldProcess ) {
-
-                        this.metrics.getRegistry()
-                                .counter("augmenter.context.type.ddl_table.should_process.true").inc(1L);
-
-                        isAtDDL.set(true);
-
-                        long schemaChangeTimestamp = eventHeader.getTimestamp();
-                        this.updateSchema(query, schemaChangeTimestamp);
-
-                    } else {
-                        this.metrics.getRegistry()
-                                .counter("augmenter.context.type.ddl_table.should_process.false").inc(1L);
-                    }
-
-                } else if ((matcher = this.ddlTemporaryTablePattern.matcher(query)).find()) {
-                    // ddl temp table
-                    this.metrics.getRegistry()
-                            .counter("augmenter.context.type.ddl_temp_table").inc(1L);
-                    this.updateCommons(
-                            ( queryRawEventData.getDatabase().equals(replicatedSchema) ),
-                            QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE,
-                            QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
-                            queryRawEventData.getDatabase(),
-                            matcher.group(4)
-                    );
-                } else if ((matcher = this.ddlViewPattern.matcher(query)).find()) {
-                    // ddl view
-                    this.metrics.getRegistry()
-                            .counter("augmenter.context.type.ddl_view").inc(1L);
-                    this.updateCommons(
-                            ( queryRawEventData.getDatabase().equals(replicatedSchema) ),
-                            QueryAugmentedEventDataType.DDL_VIEW,
-                            QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
-                            queryRawEventData.getDatabase(),
-                            null
-                    );
-                } else if ((matcher = this.ddlAnalyzePattern.matcher(query)).find()) {
-                    this.metrics.getRegistry()
-                            .counter("augmenter.context.type.ddl_analyse").inc(1L);
-                    this.updateCommons(
-                            false,
-                            QueryAugmentedEventDataType.DDL_ANALYZE,
-                            QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
-                            queryRawEventData.getDatabase(),
-                            null
-                    );
-                } else {
-                    this.metrics.getRegistry()
-                            .counter("augmenter.context.type.unknown").inc(1L);
-                    this.updateCommons(
-                            false,
-                            null,
-                            null,
-                            queryRawEventData.getDatabase(),
-                            null
-                    );
-                }
-
+                processQueryEvent(eventHeader, eventData);
                 break;
 
             case XID:
-                this.metrics.getRegistry()
-                        .counter("augmenter.context.type.xid").inc(1L);
-
-                XIDRawEventData xidRawEventData = XIDRawEventData.class.cast(eventData);
-
-                this.updateCommons(
-                        true,
-                        QueryAugmentedEventDataType.COMMIT,
-                        null,
-                        null,
-                        null
-                );
-
-                if (!this.transaction.commit(xidRawEventData.getXID(), eventHeader.getTimestamp(), transactionCounter.get())) {
-                    AugmenterContext.LOG.warn("transaction already markedForCommit");
-                }
+                processXidEvent(eventHeader, eventData);
                 break;
 
             case GTID:
-
-                this.metrics.getRegistry()
-                        .counter("augmenter_context.type.gtid").inc(1L);
-
-                GTIDRawEventData gtidRawEventData = GTIDRawEventData.class.cast(eventData);
-                this.gtidSet.set(lastGTIDSet);
-
-                this.updateCommons(
-                        false,
-                        QueryAugmentedEventDataType.GTID,
-                        null,
-                        null,
-                        null
-                );
-
-                this.updateGTID(
-                        GTIDType.REAL,
-                        gtidRawEventData.getGTID(),
-                        gtidRawEventData.getFlags(),
-                        0
-                );
-
-                this.getTransaction().setIdentifier( this.getGTID() );
-
+                processGTIDEvent(eventData, lastGTIDSet);
                 break;
 
             case TABLE_MAP:
-                this.metrics.getRegistry()
-                        .counter("augmenter.context.type.table_map").inc(1L);
-                TableMapRawEventData tableMapRawEventData = TableMapRawEventData.class.cast(eventData);
-                this.updateCommons(
-                        false,
-                        null,
-                        null,
-                        null,
-                        tableMapRawEventData.getTable()
-                );
-
-
-                this.schemaCache.get().getTableIdToTableNameMap().put(
-                        tableMapRawEventData.getTableId(),
-                        new FullTableName(
-                                tableMapRawEventData.getDatabase(),
-                                tableMapRawEventData.getTable()
-                        )
-                );
+                processTableMapEvent(eventData);
                 break;
 
             case WRITE_ROWS:
@@ -476,37 +273,259 @@ public class AugmenterContext implements Closeable {
             case EXT_UPDATE_ROWS:
             case DELETE_ROWS:
             case EXT_DELETE_ROWS:
-                this.metrics.getRegistry()
-                        .counter("augmenter.context.type.insert_update_delete").inc(1L);
-
-                TableIdRawEventData tableIdRawEventData = TableIdRawEventData.class.cast(eventData);
-                FullTableName eventTable = this.getEventTable(tableIdRawEventData.getTableId());
-                String dbName = null;
-                String tblName = null;
-                if (eventTable != null) {
-                    dbName = eventTable.getDb();
-                    tblName = eventTable.getName();
-                }
-                this.updateCommons(
-                        ( (eventTable == null) || this.shouldProcessTable(tblName) ),
-                        null,
-                        null,
-                        dbName,
-                        tblName
-                );
+                processRowsEvent(eventData);
                 break;
 
             default:
-                this.metrics.getRegistry()
-                        .counter("augmenter.context.type.default").inc(1L);
-                this.updateCommons(
-                        false,
-                        null,
-                        null,
-                        null,
-                        null
-                );
+                setDefaultCommons();
                 break;
+        }
+    }
+
+    private void setDefaultCommons() {
+        this.metrics.getRegistry().counter("augmenter.context.type.default").inc(1L);
+        this.updateCommons(
+                false,
+                null,
+                null,
+                null,
+                null
+        );
+    }
+
+    private void processRowsEvent(RawEventData eventData) {
+        this.metrics.getRegistry()
+                .counter("augmenter.context.type.insert_update_delete").inc(1L);
+
+        TableIdRawEventData tableIdRawEventData = TableIdRawEventData.class.cast(eventData);
+
+        FullTableName eventTable = this.getEventTableFromSchemaCache(tableIdRawEventData.getTableId());
+        String dbName = null;
+        String tblName = null;
+        if (eventTable != null) {
+            dbName = eventTable.getDb();
+            tblName = eventTable.getName();
+        } else {
+            LOG.warn("table id #" + tableIdRawEventData.getTableId() + " missing from schema cache.");
+        }
+        this.updateCommons(
+                ( (eventTable == null) || this.shouldAugmentTable(tblName) ),
+                null,
+                null,
+                dbName,
+                tblName
+        );
+    }
+
+    private void processRotateEvent(RawEventData eventData) {
+        this.updateCommons(
+                false,
+                null,
+                null,
+                null,
+                null
+        );
+
+        this.metrics.getRegistry()
+                .counter("augmenter.context.type.rotate").inc(1L);
+
+        RotateRawEventData rotateRawEventData = RotateRawEventData.class.cast(eventData);
+
+        this.updateBinlog(
+                rotateRawEventData.getBinlogFilename(),
+                rotateRawEventData.getBinlogPosition()
+        );
+
+        LOG.info(" File ROTATE : " + rotateRawEventData.getBinlogFilename());
+    }
+
+    private void processTableMapEvent(RawEventData eventData) {
+        this.metrics.getRegistry().counter("augmenter.context.type.table_map").inc(1L);
+
+        TableMapRawEventData tableMapRawEventData = TableMapRawEventData.class.cast(eventData);
+
+        this.updateCommons(
+                false,
+                null,
+                null,
+                null,
+                tableMapRawEventData.getTable()
+        );
+
+        // update cache
+        this.schemaCache.get().getTableIdToTableNameMap().put(
+                tableMapRawEventData.getTableId(),
+                new FullTableName(
+                        tableMapRawEventData.getDatabase(),
+                        tableMapRawEventData.getTable()
+                )
+        );
+    }
+
+    private void processGTIDEvent(RawEventData eventData, String lastGTIDSet) {
+        this.metrics.getRegistry()
+                .counter("augmenter_context.type.gtid").inc(1L);
+
+        GTIDRawEventData gtidRawEventData = GTIDRawEventData.class.cast(eventData);
+        this.gtidSet.set(lastGTIDSet);
+
+        this.updateCommons(
+                false,
+                QueryAugmentedEventDataType.GTID,
+                null,
+                null,
+                null
+        );
+
+        this.updateGTID(
+                GTIDType.REAL,
+                gtidRawEventData.getGTID(),
+                gtidRawEventData.getFlags(),
+                0
+        );
+
+        this.getTransaction().setIdentifier( this.getGTID() );
+    }
+
+    private void processXidEvent(RawEventHeaderV4 eventHeader, RawEventData eventData) {
+        this.metrics.getRegistry()
+                .counter("augmenter.context.type.xid").inc(1L);
+
+        XIDRawEventData xidRawEventData = XIDRawEventData.class.cast(eventData);
+
+        this.updateCommons(
+                true,
+                QueryAugmentedEventDataType.COMMIT,
+                null,
+                null,
+                null
+        );
+
+        if (!this.transaction.commit(xidRawEventData.getXID(), eventHeader.getTimestamp(), transactionCounter.get())) {
+            AugmenterContext.LOG.warn("transaction already markedForCommit");
+        }
+    }
+
+    private void processQueryEvent(RawEventHeaderV4 eventHeader, RawEventData eventData) {
+        QueryRawEventData queryRawEventData = QueryRawEventData.class.cast(eventData);
+        String query = queryRawEventData.getSQL();
+        Matcher matcher;
+
+        this.metrics.getRegistry()
+                .counter("augmenter.context.type.query").inc(1L);
+
+        // begin
+        if (this.beginPattern.matcher(query).find()) {
+            this.updateCommons(
+                    false,
+                    QueryAugmentedEventDataType.BEGIN,
+                    null,
+                    queryRawEventData.getDatabase(),
+                    null
+            );
+            if (!this.transaction.begin()) {
+                AugmenterContext.LOG.warn("transaction already started");
+            }
+
+        } else if (this.commitPattern.matcher(query).find()) {
+            // commit
+            this.updateCommons(
+                    true,
+                    QueryAugmentedEventDataType.COMMIT,
+                    null,
+                    queryRawEventData.getDatabase(),
+                    null
+            );
+
+            this.metrics.getRegistry()
+                    .counter("augmenter.context.type.commit").inc(1L);
+
+            if (!this.transaction.commit(eventHeader.getTimestamp(), transactionCounter.get())) {
+                AugmenterContext.LOG.warn("transaction already markedForCommit");
+            }
+        } else if ((matcher = this.ddlDefinerPattern.matcher(query)).find()) {
+            // ddl definer
+            this.metrics.getRegistry()
+                    .counter("augmenter.context.type.ddl_definer").inc(1L);
+            this.updateCommons(
+                    true,
+                    QueryAugmentedEventDataType.DDL_DEFINER,
+                    QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
+                    queryRawEventData.getDatabase(),
+                    null
+            );
+        } else if ((matcher = this.ddlTablePattern.matcher(query)).find()) {
+            // ddl table
+            this.metrics.getRegistry()
+                    .counter("augmenter.context.type.ddl_table").inc(1L);
+            String tableName = matcher.group(4);
+            Boolean shouldProcess = ( this.shouldAugmentTable(tableName) && queryRawEventData.getDatabase().equals(replicatedSchema) );
+            this.updateCommons(
+                    shouldProcess,
+                    QueryAugmentedEventDataType.DDL_TABLE,
+                    QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
+                    queryRawEventData.getDatabase(),
+                    tableName
+            );
+
+            // Because we don't want to create tables for non-replicated schemas
+            if ( shouldProcess ) {
+
+                this.metrics.getRegistry()
+                        .counter("augmenter.context.type.ddl_table.should_process.true").inc(1L);
+
+                isAtDDL.set(true);
+
+                long schemaChangeTimestamp = eventHeader.getTimestamp();
+                this.updateSchema(query, schemaChangeTimestamp);
+
+            } else {
+                this.metrics.getRegistry()
+                        .counter("augmenter.context.type.ddl_table.should_process.false").inc(1L);
+            }
+
+        } else if ((matcher = this.ddlTemporaryTablePattern.matcher(query)).find()) {
+            // ddl temp table
+            this.metrics.getRegistry()
+                    .counter("augmenter.context.type.ddl_temp_table").inc(1L);
+            this.updateCommons(
+                    ( queryRawEventData.getDatabase().equals(replicatedSchema) ),
+                    QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE,
+                    QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
+                    queryRawEventData.getDatabase(),
+                    matcher.group(4)
+            );
+        } else if ((matcher = this.ddlViewPattern.matcher(query)).find()) {
+            // ddl view
+            this.metrics.getRegistry()
+                    .counter("augmenter.context.type.ddl_view").inc(1L);
+            this.updateCommons(
+                    ( queryRawEventData.getDatabase().equals(replicatedSchema) ),
+                    QueryAugmentedEventDataType.DDL_VIEW,
+                    QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
+                    queryRawEventData.getDatabase(),
+                    null
+            );
+        } else if ((matcher = this.ddlAnalyzePattern.matcher(query)).find()) {
+            this.metrics.getRegistry()
+                    .counter("augmenter.context.type.ddl_analyse").inc(1L);
+            this.updateCommons(
+                    false,
+                    QueryAugmentedEventDataType.DDL_ANALYZE,
+                    QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
+                    queryRawEventData.getDatabase(),
+                    null
+            );
+        } else {
+            this.metrics.getRegistry()
+                    .counter("augmenter.context.type.unknown").inc(1L);
+            this.updateCommons(
+                    false,
+                    null,
+                    null,
+                    queryRawEventData.getDatabase(),
+                    null
+            );
         }
     }
 
@@ -532,13 +551,13 @@ public class AugmenterContext implements Closeable {
     }
 
     private void updateCommons(
-            boolean continueFlag,
+            boolean shouldAugmentFlag,
             QueryAugmentedEventDataType queryType,
             QueryAugmentedEventDataOperationType queryOperationType,
             String database,
             String table
     ) {
-        this.continueFlag.set(continueFlag);
+        this.shouldAugmentFlag.set(shouldAugmentFlag);
         this.queryType.set(queryType);
         this.queryOperationType.set(queryOperationType);
 
@@ -642,7 +661,7 @@ public class AugmenterContext implements Closeable {
                 && this.getQueryOperationType() != ddlOpType);
     }
 
-    private boolean shouldProcessTable(String tableName) {
+    private boolean shouldAugmentTable(String tableName) {
         return !this.excludeTable(tableName) && this.includeTable(tableName);
     }
 
@@ -674,8 +693,8 @@ public class AugmenterContext implements Closeable {
     }
 
 
-    public boolean shouldProcess() {
-        return this.continueFlag.get();
+    public boolean shouldAugment() {
+        return this.shouldAugmentFlag.get();
     }
 
     public QueryAugmentedEventDataType getQueryType() {
@@ -686,11 +705,11 @@ public class AugmenterContext implements Closeable {
         return this.queryOperationType.get();
     }
 
-    public FullTableName getEventTable() {
+    public FullTableName getEventTableFromSchemaCache() {
         return this.eventTable.get();
     }
 
-    public FullTableName getEventTable(long tableId) {
+    public FullTableName getEventTableFromSchemaCache(long tableId) {
         return this.schemaCache.get().getTableIdToTableNameMap().get(tableId);
     }
 
@@ -777,14 +796,14 @@ public class AugmenterContext implements Closeable {
     }
 
     public void incrementRowCounterMetrics(RawEventType eventType, int rows) {
-        FullTableName eventTable = this.getEventTable();
+        FullTableName eventTable = this.getEventTableFromSchemaCache();
         String tblName = eventTable == null ? "null" : eventTable.getName();
         String name = MetricRegistry.name(binlogsBasePath, tblName, eventType.name());
         this.metrics.incrementCounter(name, rows);
     }
 
     public Collection<ColumnSchema> getColumns(long tableId) {
-        FullTableName eventTable = this.getEventTable(tableId);
+        FullTableName eventTable = this.getEventTableFromSchemaCache(tableId);
 
         if (eventTable != null) {
             return this.schemaManager.listColumns(eventTable.getName());
@@ -802,7 +821,7 @@ public class AugmenterContext implements Closeable {
             BitSet includedColumns,
             List<RowBeforeAfter> rows ) {
 
-        FullTableName eventTable = this.getEventTable(tableId);
+        FullTableName eventTable = this.getEventTableFromSchemaCache(tableId);
 
         if (eventTable != null) {
 
@@ -847,7 +866,7 @@ public class AugmenterContext implements Closeable {
         try {
             deserializeCellValues = EventDeserializer.getDeserializeCellValues(eventType, columnSchemas, includedColumns, row, cache);
         } catch (Exception e) {
-            LOG.error("Error while deserialize row: EventType: " + eventType + " table: " + this.getEventTable() + ", row: " + Arrays.toString(row.getAfter().get()), e);
+            LOG.error("Error while deserialize row: EventType: " + eventType + " table: " + this.getEventTableFromSchemaCache() + ", row: " + Arrays.toString(row.getAfter().get()), e);
             throw e;
         }
 

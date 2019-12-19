@@ -310,7 +310,7 @@ public class AugmenterContext implements Closeable {
         }
 
         this.updateCommons(
-                ( dbName == replicatedSchema && this.shouldAugmentTable(tblName) ),
+                ( replicatedSchema.equals(dbName)  && this.shouldAugmentTable(tblName) ),
                 null,
                 null,
                 dbName,

@@ -6,6 +6,7 @@ import com.booking.replication.applier.Partitioner
 import com.booking.replication.applier.Seeker
 import com.booking.replication.applier.hbase.HBaseApplier
 import com.booking.replication.applier.hbase.StorageConfig
+import com.booking.replication.applier.validation.ValidationService
 import com.booking.replication.augmenter.ActiveSchemaManager
 import com.booking.replication.augmenter.Augmenter
 import com.booking.replication.augmenter.AugmenterContext
@@ -21,6 +22,7 @@ import com.booking.replication.it.hbase.impl.PayloadTableTestImpl
 import com.booking.replication.it.hbase.impl.SplitTransactionTestImpl
 import com.booking.replication.it.hbase.impl.TableNameMergeFilterTestImpl
 import com.booking.replication.it.hbase.impl.TableWhiteListTest
+import com.booking.replication.it.hbase.impl.ValidationTestImpl
 import com.booking.replication.it.util.HBase
 import com.booking.replication.it.util.MySQL
 import com.booking.replication.supplier.Supplier
@@ -85,7 +87,16 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     @Shared public static final String BIGTABLE_PROJECT = getBigTableProject()
     @Shared public static final String  BIGTABLE_INSTANCE = getBigTableInstance()
 
+    // Validator specific config
+    @Shared public static final String VALIDATION_BROKER = getPropertyOrDefault("validation.broker", "localhost:9092")
+    @Shared public static final String VALIDATION_TOPIC = getPropertyOrDefault("validation.topic", "replicator_validation")
+    @Shared public static final String VALIDATION_TAG  = getPropertyOrDefault("validation.tag", "test_hbase")
+    @Shared public static final String VALIDATION_THROTTLE_ONE_EVERY = getPropertyOrDefault("validation.throttle_one_every", "100")
+    @Shared public static final String VALIDATION_SOURCE_DOMAIN = getPropertyOrDefault("validation.source_domain", "mysql-schema")
+    @Shared public static final String VALIDATION_TARGET_DOMAIN = getPropertyOrDefault("validation.target_domain", "hbase-cluster")
+
     @Shared private TESTS = [
+            new ValidationTestImpl(),
             new TableWhiteListTest(),
             new TableNameMergeFilterTestImpl(),
             new TransmitInsertsTestImpl(),
@@ -126,6 +137,10 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
             )
     )
     @Shared ServicesControl hbase = servicesProvider.startHbase()
+    @Shared ServicesControl kafkaZk = servicesProvider.startZookeeper(network, "kafkaZk");
+    @Shared
+    public ServicesControl kafka = servicesProvider.startKafka(network, VALIDATION_TOPIC, 1, 1, "kafka");
+
 
     @Shared  Replicator replicator
 
@@ -158,6 +173,12 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         String instanceID = System.getProperty("bigtable.instanceID")
         if (instanceID != null && !instanceID.equals("")) { return instanceID }
         else { return ""}
+    }
+
+    static String getPropertyOrDefault(String property, String defaultValue) {
+        String instanceID = System.getProperty(property)
+        if (instanceID != null && !instanceID.equals("")) { return instanceID }
+        else { return defaultValue}
     }
 
     void setupSpec() throws Exception {
@@ -506,6 +527,15 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         configuration.put(StorageConfig.Configuration.TYPE, STORAGE_TYPE)
         configuration.put(StorageConfig.Configuration.BIGTABLE_INSTANCE_ID, BIGTABLE_INSTANCE)
         configuration.put(StorageConfig.Configuration.BIGTABLE_PROJECT_ID, BIGTABLE_PROJECT)
+
+        // Validator Specifics
+        configuration.put(ValidationService.Configuration.VALIDATION_BROKER, "localhost:9092")
+        configuration.put(ValidationService.Configuration.VALIDATION_THROTTLE_ONE_EVERY, "100")
+        configuration.put(ValidationService.Configuration.VALIDATION_TOPIC, "replicator_validation")
+        configuration.put(ValidationService.Configuration.VALIDATION_TAG, "test_hbase")
+        configuration.put(ValidationService.Configuration.VALIDATION_SOURCE_DOMAIN, "mysql-schema")
+        configuration.put(ValidationService.Configuration.VALIDATION_TARGET_DOMAIN, "hbase-cluster")
+
 
         return configuration
     }

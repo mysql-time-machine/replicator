@@ -14,10 +14,12 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class ValidationService {
 
-    private static final long VALIDATOR_THROTTLING_DEFAULT = TimeUnit.SECONDS.toMillis(5);
+    private static final long VALIDATOR_THROTTLING_DEFAULT = 100;
+    private static final long TASK_COUNTER_MAX_RESET = 10000000;
 
     private static final class ValidationTask {
 
@@ -69,7 +71,7 @@ public class ValidationService {
         String VALIDATION_BROKER = "validation.broker";
         String VALIDATION_TOPIC = "validation.topic";
         String VALIDATION_TAG = "validation.tag";
-        String VALIDATION_THROTTLING = "validation.throttling";
+        String VALIDATION_THROTTLE_ONE_EVERY = "validation.throttle_one_every";
         String VALIDATION_SOURCE_DOMAIN = "validation.source_domain";
         String VALIDATION_TARGET_DOMAIN = "validation.target_domain";
     }
@@ -90,54 +92,43 @@ public class ValidationService {
         Properties properties = new Properties();
         properties.put("bootstrap.servers", (String)configuration.get(Configuration.VALIDATION_BROKER));
         Producer<String,String> producer = new KafkaProducer(properties, new StringSerializer(), new StringSerializer());
-
+        long throttleOneEvery = Long.parseLong(configuration.getOrDefault(Configuration.VALIDATION_THROTTLE_ONE_EVERY, String.valueOf(VALIDATOR_THROTTLING_DEFAULT)).toString());
         return new ValidationService(producer,
                                      (String)configuration.get(Configuration.VALIDATION_TOPIC),
                                      (String)configuration.get(Configuration.VALIDATION_TAG),
-                                     (long)configuration.getOrDefault(Configuration.VALIDATION_THROTTLING, VALIDATOR_THROTTLING_DEFAULT));
+                                     throttleOneEvery);
     }
 
-    private final long throttlingInterval;
-    private long lastRegistrationTime;
-
-    private final AtomicBoolean registrationWeakLock = new AtomicBoolean();
+    private final double throttleOnePerEvery;
+    private final AtomicLong validationTaskCounter = new AtomicLong(0);
 
     private final Producer<String, String> producer;
     private final String topic;
     private final String tag;
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public ValidationService(Producer<String, String> producer, String topic,String tag, long throttlingInterval) {
-        this.throttlingInterval = throttlingInterval;
+    public ValidationService(Producer<String, String> producer, String topic,String tag, long throttleOnePerEvery) {
+        this.throttleOnePerEvery = throttleOnePerEvery;
         this.producer = producer;
         this.topic = topic;
         this.tag = tag;
     }
 
     public void registerValidationTask(String id, String sourceUri, String targetUri){
-        if (throttlingInterval <= 0 || updateLastRegistrationTime()) submitValidationTask(id,sourceUri,targetUri);
+        long taskCounter = validationTaskCounter.incrementAndGet();
+        if (canSubmitTask(taskCounter)) submitValidationTask(id,sourceUri,targetUri);
+        // else drop task
     }
 
-    private boolean updateLastRegistrationTime(){
-        long currentTime = System.currentTimeMillis();
-        boolean result = false;
-
-        // Double-checked locking WITHOUT volatile:
-        // Write to lastRegistrationTime happens-before its second read cause AtomicBoolean write-read sequence is in between.
-        // First read may not be consistent (is racy) cause java does not guarantee atomicity for writing longs. But taking,
-        // into account the nature of the value it is not a problem
-        if (isTimeWindowEmpty(currentTime) && registrationWeakLock.compareAndSet(false,true)){
-            if (isTimeWindowEmpty(currentTime)){
-                lastRegistrationTime = currentTime;
-                result = true;
-            }
-            registrationWeakLock.set(false);
+    private synchronized boolean canSubmitTask(long taskCounter){
+        if (taskCounter >= TASK_COUNTER_MAX_RESET){
+            taskCounter = taskCounter % TASK_COUNTER_MAX_RESET;
+            validationTaskCounter.set(taskCounter);
         }
-        return result;
-    }
-
-    private boolean isTimeWindowEmpty(long currentTime){
-        return currentTime - lastRegistrationTime > throttlingInterval;
+        if (taskCounter % throttleOnePerEvery == 0) {
+            return true;
+        }
+        return false;
     }
 
     public void submitValidationTask(String id, String sourceUri, String targetUri){

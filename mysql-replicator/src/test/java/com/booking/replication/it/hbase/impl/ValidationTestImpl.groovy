@@ -1,22 +1,19 @@
 package com.booking.replication.it.hbase.impl
 
-import com.booking.replication.augmenter.model.event.AugmentedEventHeader
-import com.booking.replication.augmenter.model.event.AugmentedEventType
 import com.booking.replication.commons.services.ServicesControl
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTestRunner
-import com.booking.replication.it.kafka.ReplicatorKafkaJSONTest
 import com.booking.replication.it.util.MySQL
-import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.kafka.clients.consumer.Consumer
 import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 
+/**
+ * Created by dbatheja on 20/12/2019.
+ */
 class ValidationTestImpl implements ReplicatorHBasePipelineIntegrationTest {
-    static String HBASE_COLUMN_FAMILY_NAME = "d"
     static String SCHEMA_NAME = "replicator"
     static String VALIDATION_CONSUMER_GROUP = "validation-group"
     static String TABLE_NAME = "sometable"

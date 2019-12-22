@@ -16,7 +16,7 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer
 class ValidationTestImpl implements ReplicatorHBasePipelineIntegrationTest {
     static String SCHEMA_NAME = "replicator"
     static String VALIDATION_CONSUMER_GROUP = "validation-group"
-    static String TABLE_NAME = "sometable"
+    static String TABLE_NAME = "tablevalidator"
     static int TOTAL_DMLS = 1000
 
     @Override
@@ -74,10 +74,13 @@ class ValidationTestImpl implements ReplicatorHBasePipelineIntegrationTest {
         kafkaConfiguration.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, ReplicatorHBasePipelineIntegrationTestRunner.VALIDATION_BROKER);
         kafkaConfiguration.put(ConsumerConfig.GROUP_ID_CONFIG, VALIDATION_CONSUMER_GROUP);
         kafkaConfiguration.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        kafkaConfiguration.put("enable.auto.commit", "false");
+        kafkaConfiguration.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+        kafkaConfiguration.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         // println(sprintf("---------[Getting actual state from Kafka Topic %s]---------", ReplicatorHBasePipelineIntegrationTestRunner.VALIDATION_TOPIC))
         int messagesToValidate = 0
         try {
-            Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(kafkaConfiguration, new ByteArrayDeserializer(), new ByteArrayDeserializer())
+            Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(kafkaConfiguration)
             consumer.subscribe(Collections.singleton(ReplicatorHBasePipelineIntegrationTestRunner.VALIDATION_TOPIC));
 
             final int stopTryingAfter = 10; int zeroRecordsFound = 0;
@@ -91,7 +94,7 @@ class ValidationTestImpl implements ReplicatorHBasePipelineIntegrationTest {
                 consumerPollResult.forEach({ record ->
                     messagesToValidate ++
                 });
-                consumer.commitAsync();
+                consumer.commitSync();
             }
             consumer.close();
             System.out.println("Total records found in " + ReplicatorHBasePipelineIntegrationTestRunner.VALIDATION_TOPIC + " = " + messagesToValidate.toString());

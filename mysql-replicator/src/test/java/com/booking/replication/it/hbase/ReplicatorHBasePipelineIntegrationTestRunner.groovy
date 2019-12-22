@@ -103,7 +103,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
             new MicrosecondValidationTestImpl(),
             new LongTransactionTestImpl(),
             new PayloadTableTestImpl(),
-            new SplitTransactionTestImpl()
+            new SplitTransactionTestImpl(),
     ]
 
     @Shared ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS)
@@ -201,6 +201,8 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         mysqlBinaryLog.close()
         mysqlActiveSchema.close()
         zookeeper.close()
+        kafka.close()
+        kafkaZk.close()
 
         LOG.info("pipeline stopped")
 

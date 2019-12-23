@@ -68,13 +68,13 @@ public class ValidationService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ValidationService.class);
 
-    public interface Configuration {
-        String VALIDATION_BROKER = "validation.broker";
-        String VALIDATION_TOPIC = "validation.topic";
-        String VALIDATION_TAG = "validation.tag";
-        String VALIDATION_THROTTLE_ONE_EVERY = "validation.throttle_one_every";
-        String VALIDATION_SOURCE_DOMAIN = "validation.source_domain";
-        String VALIDATION_TARGET_DOMAIN = "validation.target_domain";
+    public static class Configuration {
+        static String VALIDATION_BROKER = "validation.broker";
+        static String VALIDATION_TOPIC = "validation.topic";
+        static String VALIDATION_TAG = "validation.tag";
+        static String VALIDATION_THROTTLE_ONE_EVERY = "validation.throttle_one_every";
+        static String VALIDATION_SOURCE_DOMAIN = "validation.source_domain";
+        static String VALIDATION_TARGET_DOMAIN = "validation.target_domain";
     }
 
     public static ValidationService getInstance(Map<String, Object> configuration){
@@ -126,10 +126,7 @@ public class ValidationService {
             taskCounter = taskCounter % TASK_COUNTER_MAX_RESET;
             validationTaskCounter.set(taskCounter);
         }
-        if (taskCounter % throttleOnePerEvery == 0) {
-            return true;
-        }
-        return false;
+        return taskCounter % throttleOnePerEvery == 0 ? true : false;
     }
 
     public void submitValidationTask(String id, String sourceUri, String targetUri){

@@ -22,6 +22,11 @@ public class ValidationServiceTest {
     @BeforeClass
     public static void Before() {
         configuration = new HashMap<>();
+        initConfig();
+        ValidationServiceTest.servicesControl = ServicesProvider.build(ServicesProvider.Type.CONTAINERS).startKafka(ValidationServiceTest.TOPIC_NAME, 1, 1);
+    }
+
+    public static void initConfig() {
         configuration.put(Applier.Configuration.TYPE, "hbase");
         configuration.put(ValidationService.Configuration.VALIDATION_BROKER, "localhost:9092");
         configuration.put(ValidationService.Configuration.VALIDATION_THROTTLE_ONE_EVERY, "1");
@@ -29,12 +34,12 @@ public class ValidationServiceTest {
         configuration.put(ValidationService.Configuration.VALIDATION_TAG, "test_hbase");
         configuration.put(ValidationService.Configuration.VALIDATION_SOURCE_DOMAIN, "mysql-schema");
         configuration.put(ValidationService.Configuration.VALIDATION_TARGET_DOMAIN, "hbase-cluster");
-        ValidationServiceTest.servicesControl = ServicesProvider.build(ServicesProvider.Type.CONTAINERS).startKafka(ValidationServiceTest.TOPIC_NAME, 1, 1);
     }
 
     @Test
     public void testValidationServiceCounter() {
         LOG.info("ValidationServiceTest.testValidationServiceCounter() called");
+        initConfig();
         configuration.put(Applier.Configuration.TYPE, "hbase");
         ValidationService validationService = ValidationService.getInstance(configuration);
         Assert.assertNotNull(validationService);
@@ -44,11 +49,23 @@ public class ValidationServiceTest {
     }
 
     @Test
-    public void testValidationServiceNull() {
+    public void testValidationServiceNull() throws IllegalArgumentException {
         LOG.info("ValidationServiceTest.testValidationServiceNull() called");
+        initConfig();
         configuration.put(Applier.Configuration.TYPE, "console");
         ValidationService validationService = ValidationService.getInstance(configuration);
         Assert.assertNull(validationService);
+
+        initConfig();
+        configuration.put(Applier.Configuration.TYPE, "hbase");
+        configuration.remove(ValidationService.Configuration.VALIDATION_TOPIC);
+        try {
+            validationService = ValidationService.getInstance(configuration);
+        } catch(IllegalArgumentException e) {
+            Assert.assertNotNull(e);
+        } finally {
+            Assert.assertNull(validationService);
+        }
     }
 
     @AfterClass

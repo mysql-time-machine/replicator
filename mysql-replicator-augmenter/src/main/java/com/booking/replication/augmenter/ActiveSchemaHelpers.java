@@ -22,12 +22,15 @@ public class ActiveSchemaHelpers {
     public static TableSchema computeTableSchema(
             String schemaName,
             String tableName,
-            BasicDataSource activeSchemaDataSource) {
+            BasicDataSource activeSchemaDataSource,
+            BasicDataSource replicantDataSource,
+            Boolean fallbackToReplicant) {
 
         try (Connection activeSchemaConnection = activeSchemaDataSource.getConnection()) {
 
             Statement statementActiveSchemaListColumns      = activeSchemaConnection.createStatement();
             Statement statementActiveSchemaShowCreateTable  = activeSchemaConnection.createStatement();
+            Boolean fallbackUsed = false;
 
             List<ColumnSchema> columnList = new ArrayList<>();
 
@@ -40,6 +43,30 @@ public class ActiveSchemaHelpers {
                          tableName
                  )
             );
+
+            Statement statementReplicantListColumns     = null;
+            Statement statementReplicantShowCreateTable = null;
+            Connection replicantConnection = null;
+
+            if ( !resultSet.next() ) {
+                if ( fallbackToReplicant ) {
+                    try {
+                        resultSet.close();
+                        replicantConnection = replicantDataSource.getConnection();
+                        statementReplicantListColumns = replicantConnection.createStatement();
+                        statementReplicantShowCreateTable = replicantConnection.createStatement();
+
+                        resultSet = statementReplicantListColumns.executeQuery( String.format(ActiveSchemaManager.LIST_COLUMNS_SQL, schemaName, tableName) );
+                        fallbackUsed = true;
+                    } catch (Exception e) {
+                        throw new RuntimeException("Error initiating connection to replicantDataSource: " + e.getMessage());
+                    }
+                } else {
+                    throw new RuntimeException("Unable to retrieve column list from ActiveSchema for table " + tableName );
+                }
+            } else {
+                resultSet.previous();
+            }
 
             while (resultSet.next()) {
 
@@ -68,7 +95,7 @@ public class ActiveSchemaHelpers {
                 columnList.add(columnSchema);
             }
 
-            DatabaseMetaData dbm = activeSchemaConnection.getMetaData();
+            DatabaseMetaData dbm = fallbackUsed ? replicantConnection.getMetaData() : activeSchemaConnection.getMetaData();
             boolean tableExists = false;
             ResultSet tables = dbm.getTables(schemaName, null, tableName, null);
             if (tables.next()) {
@@ -77,7 +104,8 @@ public class ActiveSchemaHelpers {
 
             String tableCreateStatement = "";
             if (tableExists) {
-                ResultSet showCreateTableResultSet = statementActiveSchemaShowCreateTable.executeQuery(
+                Statement createTableStatement = fallbackUsed ? statementReplicantShowCreateTable : statementActiveSchemaShowCreateTable;
+                ResultSet showCreateTableResultSet = createTableStatement.executeQuery(
                         String.format(ActiveSchemaManager.SHOW_CREATE_TABLE_SQL, tableName)
                 );
                 ResultSetMetaData showCreateTableResultSetMetadata = showCreateTableResultSet.getMetaData();

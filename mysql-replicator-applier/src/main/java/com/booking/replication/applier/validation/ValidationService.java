@@ -77,7 +77,7 @@ public class ValidationService {
         static String VALIDATION_TARGET_DOMAIN = "validation.target_domain";
     }
 
-    public static ValidationService getInstance(Map<String, Object> configuration){
+    public static ValidationService getInstance(Map<String, Object> configuration) {
 
         // Validator is only available for HBase / BigTable
         if (!((String)configuration.getOrDefault(Applier.Configuration.TYPE, "console")).equalsIgnoreCase("hbase")
@@ -115,13 +115,13 @@ public class ValidationService {
         this.tag = tag;
     }
 
-    public void registerValidationTask(String id, String sourceUri, String targetUri){
+    public void registerValidationTask(String id, String sourceUri, String targetUri) {
         long taskCounter = validationTaskCounter.incrementAndGet();
         if (canSubmitTask(taskCounter)) submitValidationTask(id,sourceUri,targetUri);
         // else drop task
     }
 
-    private synchronized boolean canSubmitTask(long taskCounter){
+    private synchronized boolean canSubmitTask(long taskCounter) {
         if (taskCounter >= TASK_COUNTER_MAX_RESET){
             taskCounter = taskCounter % TASK_COUNTER_MAX_RESET;
             validationTaskCounter.set(taskCounter);
@@ -129,7 +129,7 @@ public class ValidationService {
         return taskCounter % throttleOnePerEvery == 0 ? true : false;
     }
 
-    public void submitValidationTask(String id, String sourceUri, String targetUri){
+    public void submitValidationTask(String id, String sourceUri, String targetUri) {
         try {
             String task = mapper.writeValueAsString( new ValidationTask(tag, sourceUri, targetUri) );
             producer.send(new ProducerRecord<>(topic, id, task ));
@@ -137,5 +137,9 @@ public class ValidationService {
         } catch (JsonProcessingException e) {
             LOGGER.error("Failure serializing validation task {} {} {} {}", id, tag, sourceUri, targetUri, e);
         }
+    }
+
+    public long getValidationTaskCounter() {
+        return this.validationTaskCounter.get();
     }
 }

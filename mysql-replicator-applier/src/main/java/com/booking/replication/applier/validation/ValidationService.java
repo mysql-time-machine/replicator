@@ -123,10 +123,7 @@ public class ValidationService {
     }
 
     private synchronized boolean canSubmitTask(long taskCounter) {
-        if (taskCounter >= TASK_COUNTER_MAX_RESET){
-            taskCounter = taskCounter % TASK_COUNTER_MAX_RESET;
-            validationTaskCounter.set(taskCounter);
-        }
+        if (taskCounter >= TASK_COUNTER_MAX_RESET) validationTaskCounter.set(taskCounter % TASK_COUNTER_MAX_RESET);
         return taskCounter % throttleOnePerEvery == 0;
     }
 

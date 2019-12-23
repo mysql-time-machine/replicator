@@ -43,9 +43,10 @@ public class ValidationServiceTest {
         configuration.put(Applier.Configuration.TYPE, "hbase");
         ValidationService validationService = ValidationService.getInstance(configuration);
         Assert.assertNotNull(validationService);
-        validationService.registerValidationTask("sample-id", "mysql://","hbase://");
-        validationService.registerValidationTask("sample-id 2", "mysql://","hbase://");
-        Assert.assertEquals(2L, validationService.getValidationTaskCounter());
+        for (int i=0; i<10; i++){
+            validationService.registerValidationTask("sample-id-"+ i, "mysql://","hbase://");
+        }
+        Assert.assertEquals(10L, validationService.getValidationTaskCounter());
     }
 
     @Test

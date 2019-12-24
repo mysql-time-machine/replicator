@@ -103,7 +103,8 @@ public class ActiveSchemaHelpers {
     }
 
     private static void createTableIfNotExists(String tableName, Connection activeSchemaConnection, DataSource replicantDataSource) throws SQLException {
-        PreparedStatement stmtShowTables = activeSchemaConnection.prepareStatement(String.format(ActiveSchemaManager.SHOW_CREATE_TABLE_SQL,tableName));
+        PreparedStatement stmtShowTables = activeSchemaConnection.prepareStatement("SHOW TABLES LIKE ?");
+        stmtShowTables.setString(1,tableName);
         ResultSet resultSet = stmtShowTables.executeQuery();
         if (resultSet.next()) {
             return;

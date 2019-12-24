@@ -56,7 +56,7 @@ public class ActiveSchemaManager implements SchemaManager {
 
     private final BasicDataSource replicantDataSource;
 
-    private final Boolean fallbackToReplicant;
+    private final boolean fallbackToReplicant;
 
     private final Function<String, TableSchema> computeTableSchemaLambda;
 
@@ -71,7 +71,9 @@ public class ActiveSchemaManager implements SchemaManager {
         this.replicantDataSource = initBinlogDatasource(configuration);
         this.schemaAtPositionCache = new SchemaAtPositionCache();
 
-        this.fallbackToReplicant = (Boolean) configuration.getOrDefault( Configuration.FALLBACK_TO_RELPICANT, false );
+        this.fallbackToReplicant = (boolean) configuration.get(Configuration.FALLBACK_TO_RELPICANT);
+
+        LOG.warn("fallbackToReplicant set as " + (this.fallbackToReplicant ? "true" : "false") );
 
         String activeSchemaName = getMysqlActiveSchema(configuration);
 
@@ -80,11 +82,7 @@ public class ActiveSchemaManager implements SchemaManager {
                 TableSchema ts = ActiveSchemaHelpers.computeTableSchema(activeSchemaName, tableName, ActiveSchemaManager.this.activeSchemaDataSource, ActiveSchemaManager.this.replicantDataSource, this.fallbackToReplicant);
                 return ts;
             } catch (Exception e) {
-                ActiveSchemaManager.LOG.warn(
-                        String.format("error listing columns from table \"%s\" : %s", tableName, e.getMessage()),
-                        e
-                );
-                return null;
+                throw new RuntimeException( String.format("error listing columns from table \"%s\" : %s", tableName, e.getMessage()) );
             }
         };
     }

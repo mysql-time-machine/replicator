@@ -28,9 +28,12 @@ public class ActiveSchemaHelpers {
 
         try (Connection activeSchemaConnection = activeSchemaDataSource.getConnection()) {
 
+            if ( fallbackToReplicant ) {
+                createTableIfNotExists(tableName, activeSchemaConnection, replicantDataSource);
+            }
+
             Statement statementActiveSchemaListColumns      = activeSchemaConnection.createStatement();
             Statement statementActiveSchemaShowCreateTable  = activeSchemaConnection.createStatement();
-            Boolean fallbackUsed = false;
 
             List<ColumnSchema> columnList = new ArrayList<>();
 
@@ -43,30 +46,6 @@ public class ActiveSchemaHelpers {
                          tableName
                  )
             );
-
-            Statement statementReplicantListColumns     = null;
-            Statement statementReplicantShowCreateTable = null;
-            Connection replicantConnection = null;
-
-            if ( !resultSet.next() ) {
-                if ( fallbackToReplicant ) {
-                    try {
-                        resultSet.close();
-                        replicantConnection = replicantDataSource.getConnection();
-                        statementReplicantListColumns = replicantConnection.createStatement();
-                        statementReplicantShowCreateTable = replicantConnection.createStatement();
-
-                        resultSet = statementReplicantListColumns.executeQuery( String.format(ActiveSchemaManager.LIST_COLUMNS_SQL, schemaName, tableName) );
-                        fallbackUsed = true;
-                    } catch (Exception e) {
-                        throw new RuntimeException("Error initiating connection to replicantDataSource: " + e.getMessage());
-                    }
-                } else {
-                    throw new RuntimeException("Unable to retrieve column list from ActiveSchema for table " + tableName );
-                }
-            } else {
-                resultSet.previous();
-            }
 
             while (resultSet.next()) {
 
@@ -95,7 +74,7 @@ public class ActiveSchemaHelpers {
                 columnList.add(columnSchema);
             }
 
-            DatabaseMetaData dbm = fallbackUsed ? replicantConnection.getMetaData() : activeSchemaConnection.getMetaData();
+            DatabaseMetaData dbm = activeSchemaConnection.getMetaData();
             boolean tableExists = false;
             ResultSet tables = dbm.getTables(schemaName, null, tableName, null);
             if (tables.next()) {
@@ -104,7 +83,7 @@ public class ActiveSchemaHelpers {
 
             String tableCreateStatement = "";
             if (tableExists) {
-                Statement createTableStatement = fallbackUsed ? statementReplicantShowCreateTable : statementActiveSchemaShowCreateTable;
+                Statement createTableStatement = statementActiveSchemaShowCreateTable;
                 ResultSet showCreateTableResultSet = createTableStatement.executeQuery(
                         String.format(ActiveSchemaManager.SHOW_CREATE_TABLE_SQL, tableName)
                 );
@@ -120,6 +99,25 @@ public class ActiveSchemaHelpers {
 
         } catch (SQLException exception) {
             throw new IllegalStateException("Could not get table schema: ", exception);
+        }
+    }
+
+    private static void createTableIfNotExists(String tableName, Connection activeSchemaConnection, DataSource replicantDataSource) throws SQLException {
+        PreparedStatement stmtShowTables = activeSchemaConnection.prepareStatement(String.format(ActiveSchemaManager.SHOW_CREATE_TABLE_SQL,tableName));
+        ResultSet resultSet = stmtShowTables.executeQuery();
+        if (resultSet.next()) {
+            return;
+        } else {
+            //get from orignal table
+            try (Connection replicantDbConnection = replicantDataSource.getConnection()) {
+                PreparedStatement preparedStatement = replicantDbConnection.prepareStatement(String.format(ActiveSchemaManager.SHOW_CREATE_TABLE_SQL,tableName) );
+                ResultSet showCreateTableResultSet = preparedStatement.executeQuery();
+                ResultSetMetaData showCreateTableResultSetMetadata = showCreateTableResultSet.getMetaData();
+                String createTableStatement = ActiveSchemaHelpers.getCreateTableStatement(tableName, showCreateTableResultSet, showCreateTableResultSetMetadata);
+                boolean executed = activeSchemaConnection.createStatement().execute(createTableStatement);
+            } catch ( Exception ex ) {
+                throw new RuntimeException("Error creating table on ActiveSchema from Replicant: " + ex.getMessage());
+            }
         }
     }
 

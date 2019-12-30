@@ -71,7 +71,7 @@ public class ActiveSchemaManager implements SchemaManager {
         this.replicantDataSource = initBinlogDatasource(configuration);
         this.schemaAtPositionCache = new SchemaAtPositionCache();
 
-        this.fallbackToReplicant = (boolean) configuration.get(Configuration.FALLBACK_TO_RELPICANT);
+        this.fallbackToReplicant = (boolean) configuration.getOrDefault(Configuration.FALLBACK_TO_RELPICANT, false );
 
         LOG.warn("fallbackToReplicant set as " + (this.fallbackToReplicant ? "true" : "false") );
 

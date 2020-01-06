@@ -8,6 +8,7 @@ import com.booking.replication.applier.hbase.schema.HBaseSchemaManager;
 import com.booking.replication.applier.hbase.schema.SchemaTransitionException;
 import com.booking.replication.applier.hbase.writer.HBaseApplierWriter;
 import com.booking.replication.applier.hbase.writer.HBaseTimeMachineWriter;
+import com.booking.replication.applier.validation.ValidationService;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
@@ -65,6 +66,7 @@ public class HBaseApplier implements Applier {
 
     private Map<String, Object> configuration;
     private final StorageConfig storageConfig;
+    private final ValidationService validationService;
 
     org.apache.hadoop.conf.Configuration hbaseConfig;
 
@@ -90,6 +92,7 @@ public class HBaseApplier implements Applier {
     public HBaseApplier(Map<String, Object> configuration) {
 
         this.configuration = configuration;
+        this.validationService = buildValidationService(configuration);
 
         this.dryRun = (boolean) configuration.get(Configuration.DRYRUN);
 
@@ -144,7 +147,7 @@ public class HBaseApplier implements Applier {
             hbaseSchemaManager = new HBaseSchemaManager(configuration);
             LOG.info("Created HBaseSchemaManager.");
 
-            hbaseApplierWriter = new HBaseTimeMachineWriter(hbaseConfig, hbaseSchemaManager,configuration);
+            hbaseApplierWriter = new HBaseTimeMachineWriter(hbaseConfig, hbaseSchemaManager,configuration, this.validationService);
             LOG.info("Created HBaseApplierWriter.");
         } catch (IOException | NoSuchAlgorithmException e) {
             LOG.error(e.getMessage(), e);
@@ -345,6 +348,11 @@ public class HBaseApplier implements Applier {
             throw new RuntimeException("forceFlushThreadBuffer() failed");
         }
         return isForceFlushSuccess;
+    }
+
+    @Override
+    public ValidationService buildValidationService(Map<String, Object> configuration) {
+        return ValidationService.getInstance(configuration);
     }
 
     public boolean forceFlushAll() {

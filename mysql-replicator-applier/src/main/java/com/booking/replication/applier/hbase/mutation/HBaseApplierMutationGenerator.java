@@ -34,11 +34,13 @@ public class HBaseApplierMutationGenerator {
         private final Put put;
         private final String table;
         private final String sourceRowUri;
+        private final String transactionUUID;
 
-        public PutMutation(Put put, String table, String sourceRowUri) {
+        public PutMutation(Put put, String table, String sourceRowUri, String transactionUUID) {
             this.put = put;
             this.sourceRowUri = sourceRowUri;
             this.table = table;
+            this.transactionUUID = transactionUUID;
         }
 
         public Put getPut() {
@@ -51,6 +53,10 @@ public class HBaseApplierMutationGenerator {
 
         public String getTable() {
             return table;
+        }
+
+        public String getTransactionUUID() {
+            return transactionUUID;
         }
 
         public String getTargetRowUri() {
@@ -308,20 +314,13 @@ public class HBaseApplierMutationGenerator {
         return new PutMutation(
                 put,
                 hbaseTableName,
-                null  // TODO: validator <- getRowUri(augmentedRow),
+                getRowUri(augmentedRow),
+                augmentedRow.getTransactionUUID()
         );
     }
 
     private String getRowUri(AugmentedRow row) {
 
-        // TODO: add validator config options
-        //        validation:
-        //          broker: "localhost:9092,localhost:9093"
-        //          topic: replicator_validation
-        //          tag: test_hbase
-        //          source_domain: mysql-schema
-        //          target_domain: hbase-cluster
-        // if (configuration.validationConfig == null) return null;
         String sourceDomain = row.getTableSchema().toString().toLowerCase();
 
         AugmentedEventType eventType = row.getEventType();

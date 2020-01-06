@@ -4,6 +4,7 @@ import com.booking.replication.applier.hbase.HBaseApplier;
 import com.booking.replication.applier.hbase.mutation.HBaseApplierMutationGenerator;
 import com.booking.replication.applier.hbase.schema.HBaseSchemaManager;
 import com.booking.replication.applier.hbase.time.RowTimestampOrganizer;
+import com.booking.replication.applier.validation.ValidationService;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.augmenter.util.AugmentedEventRowExtractor;
@@ -45,6 +46,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
     private RowTimestampOrganizer timestampOrganizer;
     HBaseApplierMutationGenerator mutationGenerator;
     private final boolean dryRun;
+    private final ValidationService validationService;
 
     Connection connection;
     Admin admin;
@@ -53,8 +55,11 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
 
     public HBaseTimeMachineWriter(Configuration hbaseConfig,
                                   HBaseSchemaManager hbaseSchemaManager,
-                                  Map<String, Object> configuration)
+                                  Map<String, Object> configuration,
+                                  ValidationService validationService)
             throws IOException, NoSuchAlgorithmException {
+
+        this.validationService = validationService;
 
         this.metrics = Metrics.getInstance(configuration);
 
@@ -250,6 +255,10 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
             table.put(putList);
             table.close();
 
+            for (HBaseApplierMutationGenerator.PutMutation mutation : tableMutations){
+                if (validationService != null) validationService.registerValidationTask(mutation.getTransactionUUID(), mutation.getSourceRowUri(), mutation.getTargetRowUri());
+            }
+
             long timeEnd = System.currentTimeMillis();
             long latency = timeEnd - timeBegin;
 
@@ -263,7 +272,6 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
                     .histogram("applier.writer.hbase.thread_" + threadID + ".put.nr-mutations")
                     .update(nrMutations);
 
-            // TODO: send sample to validator
         }
     }
 }

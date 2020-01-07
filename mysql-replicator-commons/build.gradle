@@ -34,7 +34,7 @@ dependencies {
     implementation 'com.google.guava:guava:15.0'
 
     // Test dependencies
-    testCompile 'org.testcontainers:testcontainers:1.8.0'
+    testImplementation 'org.testcontainers:testcontainers:1.8.0'
 
     implementation 'org.testcontainers:testcontainers:1.8.0'
     testImplementation 'junit:junit:4.12'

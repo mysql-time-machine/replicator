@@ -18,10 +18,8 @@ cache:
     - '$HOME/.m2/repository'
     - '$HOME/.sonar/cache'
 
-script:
-  - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent verify -V -U -B  sonar:sonar
-
 after_success:
+  - gradle clean build sonarqube
   - bash <(curl -s https://codecov.io/bash)
 
 services:

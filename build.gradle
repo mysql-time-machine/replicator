@@ -1,0 +1,67 @@
+allprojects {
+    group = 'com.booking.replication'
+    version = '0.16.0-rc2-SNAPSHOT'
+}
+
+ext {
+    log4j2Version = '2.11.0'
+    slf4jVersion  = '1.7.25'
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'maven-publish'
+
+    test {
+        testLogging.showStandardStreams = true
+    }
+
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        maven {
+            url = 'https://repository.cloudera.com/artifactory/cloudera-repos/'
+        }
+        maven {
+            url = 'http://packages.confluent.io/maven/'
+        }
+        maven {
+            url = 'https://repo1.maven.org/maven2'
+        }
+        maven {
+            url = 'https://oss.sonatype.org/content/repositories/snapshots'
+        }
+    }
+
+    dependencies {
+        implementation "org.apache.logging.log4j:log4j-core:$log4j2Version"
+        implementation "org.apache.logging.log4j:log4j-1.2-api:$log4j2Version"
+        implementation "org.apache.logging.log4j:log4j-slf4j-impl:$log4j2Version"
+        implementation "org.apache.logging.log4j:log4j-jul:$log4j2Version"
+        implementation "org.slf4j:slf4j-api:$slf4jVersion"
+
+        implementation 'org.codehaus.sonar:sonar-maven-plugin:5.1'
+    }
+
+    test {
+        testLogging.showStandardStreams = true
+    }
+
+    sourceCompatibility = '1.8'
+
+    java {
+        withSourcesJar()
+    }
+
+    publishing {
+        publications {
+            maven(MavenPublication) {
+                from(components.java)
+            }
+        }
+    }
+
+    tasks.withType(JavaCompile) {
+        options.encoding = 'UTF-8'
+    }
+}

@@ -4,7 +4,7 @@ import com.booking.replication.applier.hbase.StorageConfig
 import com.booking.replication.augmenter.model.AugmenterModel
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
 import com.booking.replication.commons.services.ServicesControl
-import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTestRunner
+import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationSpec
 import com.booking.replication.it.util.HBase
 import com.booking.replication.it.util.MySQL
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -196,7 +196,7 @@ class TransmitInsertsTestImpl implements ReplicatorHBasePipelineIntegrationTest 
     @Override
     Object getActualState() throws IOException {
 
-        String NAMESPACE = ReplicatorHBasePipelineIntegrationTestRunner.HBASE_TARGET_NAMESPACE
+        String NAMESPACE = ReplicatorHBasePipelineIntegrationSpec.HBASE_TARGET_NAMESPACE
         String tableName = TABLE_NAME
 
         def data = new TreeMap<>()

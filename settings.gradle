@@ -1,0 +1,19 @@
+rootProject.name = 'replicator'
+include(':mysql-replicator-commons')
+include(':mysql-replicator-streams')
+include(':mysql-replicator-coordinator')
+include(':mysql-replicator-supplier-model')
+include(':mysql-replicator-supplier')
+include(':mysql-replicator-augmenter-model')
+include(':mysql-replicator-augmenter')
+include(':mysql-replicator-applier')
+include(':mysql-replicator')
+
+logging.captureStandardOutput LogLevel.INFO
+
+rootProject.children.each { project ->
+    String projectDirName = sprintf( project.name)
+    project.projectDir = new File(settingsDir, projectDirName)
+    assert project.projectDir.isDirectory()
+    assert project.buildFile.isFile()
+}

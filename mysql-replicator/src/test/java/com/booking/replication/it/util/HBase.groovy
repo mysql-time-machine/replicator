@@ -1,7 +1,7 @@
 package com.booking.replication.it.util
 
 import com.booking.replication.applier.hbase.StorageConfig
-import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTestRunner;
+import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationSpec;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellScanner;
@@ -32,7 +32,7 @@ class HBase {
 
             Connection connection = ConnectionFactory.createConnection(config)
             Table table = connection.getTable(TableName.valueOf(
-                    Bytes.toBytes(ReplicatorHBasePipelineIntegrationTestRunner.HBASE_TARGET_NAMESPACE),
+                    Bytes.toBytes(ReplicatorHBasePipelineIntegrationSpec.HBASE_TARGET_NAMESPACE),
                     Bytes.toBytes(tableName)))
 
             // read

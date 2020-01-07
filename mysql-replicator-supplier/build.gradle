@@ -12,7 +12,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-core:2.9.8'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.9.8'
     implementation 'com.fasterxml.jackson.core:jackson-annotations:2.9.8'
-    implementation 'com.github.shyiko:mysql-binlog-connector-java:0.16.1'
+    implementation 'com.github.shyiko:mysql-binlog-connector-java:0.19.0'
 
     // Test dependencies
     testImplementation project(':mysql-replicator-commons')

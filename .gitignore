@@ -1,6 +1,9 @@
 *.iml
 *.log
+*.class
+*.jar
 .idea/
+.gradle/
 dependency-reduced-pom.xml
 target
 

@@ -1,0 +1,81 @@
+plugins {
+    id 'java'
+    id 'groovy'
+}
+
+ext {
+    hbaseDependencies = [
+            'org.apache.hbase:hbase-client:1.2.0',
+            'org.apache.hbase:hbase-common:1.2.0',
+            'org.apache.hbase:hbase-server:1.2.0',
+            'com.google.protobuf:protobuf-java:2.5.0',
+            'com.google.guava:guava:15.0'
+    ]
+    bigTableDependencies = [
+            'com.google.protobuf:protobuf-java:3.6.0',
+            'com.google.guava:guava:26.0-jre',
+            'com.google.cloud.bigtable:bigtable-hbase-1.x:1.8.0'
+    ]
+    isHBase = System.properties['sink'] == 'hbase'
+    isBigTable = System.properties['sink'] == 'bigtable'
+}
+
+logging.captureStandardOutput LogLevel.INFO
+
+dependencies {
+
+    // Project dependencies
+    implementation project(':mysql-replicator-streams')
+    implementation project(':mysql-replicator-commons')
+    implementation project(':mysql-replicator-coordinator')
+    implementation project(':mysql-replicator-supplier')
+    implementation project(':mysql-replicator-supplier-model')
+    implementation project(':mysql-replicator-augmenter')
+    implementation project(':mysql-replicator-augmenter-model')
+    implementation project(':mysql-replicator-applier')
+
+    testImplementation project(':mysql-replicator-streams')
+    testImplementation project(':mysql-replicator-commons')
+    testImplementation project(':mysql-replicator-coordinator')
+    testImplementation project(':mysql-replicator-supplier')
+    testImplementation project(':mysql-replicator-supplier-model')
+    testImplementation project(':mysql-replicator-augmenter')
+    testImplementation project(':mysql-replicator-augmenter-model')
+    testImplementation project(':mysql-replicator-applier')
+
+    // Profile dependencies
+    if (isHBase) {
+        implementation hbaseDependencies
+    }
+    if (isBigTable) {
+        implementation bigTableDependencies
+    }
+
+    // Common dependencies
+    implementation 'commons-cli:commons-cli:1.4'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.9.8'
+    implementation 'mysql:mysql-connector-java:5.1.47'
+    implementation 'org.apache.commons:commons-dbcp2:2.7.0'
+    implementation 'io.dropwizard.metrics:metrics-core:4.0.2'
+    implementation 'org.apache.kafka:kafka_2.12:1.1.0'
+    implementation 'io.prometheus:simpleclient_dropwizard:0.0.23'
+    implementation 'io.prometheus:simpleclient:0.0.23'
+    implementation 'org.eclipse.jetty:jetty-server:9.4.14.v20181114'
+    implementation 'org.eclipse.jetty:jetty-servlet:9.4.14.v20181114'
+    implementation 'org.apache.avro:avro:1.8.2'
+    implementation 'io.confluent:kafka-avro-serializer:5.0.1'
+
+    // Test dependencies
+    testImplementation 'junit:junit:4.12'
+    testImplementation 'org.testcontainers:testcontainers:1.8.0'
+    testImplementation 'org.codehaus.groovy:groovy-all:2.4.15'
+    testImplementation 'org.codehaus.groovy:groovy-json:2.4.15'
+    testImplementation 'org.codehaus.groovy:groovy-sql:2.4.15'
+    testImplementation 'org.spockframework:spock-core:1.0-groovy-2.4'
+
+    testImplementation files(sprintf("%s/src/test/resources",
+            project(':mysql-replicator-commons').projectDir.toString())
+    )
+}
+
+description = 'mysql-replicator'

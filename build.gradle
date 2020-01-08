@@ -23,12 +23,18 @@ ext {
     isBigTable = System.properties['sink'] == 'bigtable'
 }
 
+task printProps {
+    doLast {
+        println dockerImageZookeeper
+        println dockerImageKafka
+        println System.properties['system']
+    }
+}
+
 subprojects {
+
     apply plugin: 'java'
     apply plugin: 'maven-publish'
-    allprojects {
-
-    }
 
     //sonarqube {
     //    properties {
@@ -38,6 +44,8 @@ subprojects {
 
     test {
         testLogging.showStandardStreams = true
+            systemProperty "dockerImageZookeeper", project.getProperty("dockerImageZookeeper")
+            systemProperty "dockerImageKafka", project.getProperty("dockerImageKafka")
     }
 
     repositories {
@@ -87,4 +95,5 @@ subprojects {
     tasks.withType(JavaCompile) {
         options.encoding = 'UTF-8'
     }
+
 }

@@ -26,12 +26,12 @@ public final class ContainersProvider implements ServicesProvider {
 //    private static final String ZOOKEEPER_DOCKER_IMAGE_DEFAULT = "zookeeper:latest";
 //    private static final String HBASE_DOCKER_IMAGE_DEFAULT = "harisekhon/hbase-dev:1.3";
 
-    private static final String ZOOKEEPER_DOCKER_IMAGE_KEY = "docker.image.zookeeper";
+    private static final String ZOOKEEPER_DOCKER_IMAGE_KEY = "dockerImageZookeeper";
     private static final String ZOOKEEPER_STARTUP_WAIT_REGEX = ".*binding to port.*\\n";
     private static final int ZOOKEEPER_STARTUP_WAIT_TIMES = 1;
     private static final int ZOOKEEPER_PORT = 2181;
 
-    private static final String MYSQL_DOCKER_IMAGE_KEY = "docker.image.mysql";
+    private static final String MYSQL_DOCKER_IMAGE_KEY = "dockerImageMysql";
     private static final String MYSQL_ROOT_PASSWORD_KEY = "MYSQL_ROOT_PASSWORD";
     private static final String MYSQL_DATABASE_KEY = "MYSQL_DATABASE";
     private static final String MYSQL_USER_KEY = "MYSQL_USER";
@@ -44,7 +44,7 @@ public final class ContainersProvider implements ServicesProvider {
     private static final int MYSQL_STARTUP_WAIT_TIMES = 1;
     private static final int MYSQL_PORT = 3306;
 
-    private static final String KAFKA_DOCKER_IMAGE_KEY = "docker.image.kafka";
+    private static final String KAFKA_DOCKER_IMAGE_KEY = "dockerImageKafka";
     private static final String KAFKA_STARTUP_WAIT_REGEX = ".*starts at Leader Epoch.*\\n";
     private static final String KAFKA_ZOOKEEPER_CONNECT_KEY = "KAFKA_ZOOKEEPER_CONNECT";
     private static final String KAFKA_CREATE_TOPICS_KEY = "KAFKA_CREATE_TOPICS";
@@ -56,7 +56,7 @@ public final class ContainersProvider implements ServicesProvider {
     private static final String KAFKA_INTER_BROKER_LISTENER_NAME_KEY = "KAFKA_INTER_BROKER_LISTENER_NAME";
     private static final int KAFKA_PORT = 9092;
 
-    private static final String SCHEMA_REGISTRY_IMAGE_KEY = "docker.image.schema_registry";
+    private static final String SCHEMA_REGISTRY_IMAGE_KEY = "dockerImageSchemaRegistry";
     private static final int SCHEMA_REGISTRY_PORT = 8081;
     private static final String SCHEMA_REGISTRY_WAIT_REGEX = ".*Server started.*\\n";
     public static final String SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL_KEY = "SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL";
@@ -65,7 +65,7 @@ public final class ContainersProvider implements ServicesProvider {
     public static final String SCHEMA_REGISTRY_LISTENERS_KEY = "SCHEMA_REGISTRY_LISTENERS";
     public static final String KAFKASTORE_TOPIC_KEY = "KAFKASTORE_TOPIC";
 
-    private static final String HBASE_DOCKER_IMAGE_KEY = "docker.image.hbase";
+    private static final String HBASE_DOCKER_IMAGE_KEY = "dockerImageHbase";
     private static final String HBASE_CREATE_NAMESPACES = "test,schema_history";
 
     // this name needs to be manually added to /etc/hosts. For example if testing
@@ -135,6 +135,11 @@ public final class ContainersProvider implements ServicesProvider {
     }
 
     private GenericContainer<?> getZookeeper(Network network, String zkImageTag) {
+
+        String x = System.getProperty(
+                ContainersProvider.ZOOKEEPER_DOCKER_IMAGE_KEY,
+                zkImageTag
+        );
 
         return this.getContainer(
                 System.getProperty(

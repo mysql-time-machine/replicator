@@ -1,5 +1,5 @@
 sudo: false
-language: java
+language: groovy
 install: true
 
 jdk:
@@ -13,14 +13,16 @@ addons:
   hosts:
     - HBASE_HOST
 
+before_cache:
+  - rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
+
 cache:
   directories:
-    - '$HOME/.m2/repository'
-    - '$HOME/.sonar/cache'
+    - $HOME/.gradle/caches/
+    - $HOME/.gradle/wrapper/
 
-after_success:
-  - gradle clean build sonarqube
-  - bash <(curl -s https://codecov.io/bash)
+script:
+  - gradle clean assemble
 
 services:
   - docker

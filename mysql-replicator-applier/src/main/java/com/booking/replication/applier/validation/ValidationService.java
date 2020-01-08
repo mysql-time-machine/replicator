@@ -131,7 +131,7 @@ public class ValidationService {
         try {
             String task = mapper.writeValueAsString( new ValidationTask(tag, sourceUri, targetUri) );
             producer.send(new ProducerRecord<>(topic, id, task ));
-            LOGGER.info("Validation task {} {} submitted", id, task);
+            LOGGER.debug("Validation task {} {} submitted", id, task);
         } catch (JsonProcessingException e) {
             LOGGER.error("Failure serializing validation task {} {} {} {}", id, tag, sourceUri, targetUri, e);
         }

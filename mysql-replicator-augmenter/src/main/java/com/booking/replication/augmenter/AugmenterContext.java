@@ -30,14 +30,11 @@ import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 
 import com.codahale.metrics.MetricRegistry;
 
-import com.github.shyiko.mysql.binlog.event.GtidEventData;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;

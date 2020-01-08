@@ -3,23 +3,6 @@ plugins {
     id 'groovy'
 }
 
-ext {
-    hbaseDependencies = [
-            'org.apache.hbase:hbase-client:1.2.0',
-            'org.apache.hbase:hbase-common:1.2.0',
-            'org.apache.hbase:hbase-server:1.2.0',
-            'com.google.protobuf:protobuf-java:2.5.0',
-            'com.google.guava:guava:15.0'
-    ]
-    bigTableDependencies = [
-            'com.google.protobuf:protobuf-java:3.6.0',
-            'com.google.guava:guava:26.0-jre',
-            'com.google.cloud.bigtable:bigtable-hbase-1.x:1.8.0'
-    ]
-    isHBase = System.properties['sink'] == 'hbase'
-    isBigTable = System.properties['sink'] == 'bigtable'
-}
-
 logging.captureStandardOutput LogLevel.INFO
 
 dependencies {
@@ -51,7 +34,7 @@ dependencies {
         implementation bigTableDependencies
     }
 
-    // Common dependencies
+    // External dependencies
     implementation 'commons-cli:commons-cli:1.4'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.9.8'
     implementation 'mysql:mysql-connector-java:5.1.47'

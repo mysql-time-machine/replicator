@@ -1,8 +1,7 @@
-package com.booking.replication.commons.util;
+package com.booking.replication.commons;
 
+import com.booking.replication.commons.util.ReplicatorConfig;
 import org.junit.Test;
-
-import java.util.HashMap;
 
 import static org.junit.Assert.*;
 

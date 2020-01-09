@@ -32,6 +32,7 @@ public class ValidationService {
             ignoreColumns.add("_replicator_uuid");
             ignoreColumns.add("_replicator_xid");
             ignoreColumns.add("_transaction_uuid");
+            ignoreColumns.add("_transaction_xid");
             map.put("ignore_columns", ignoreColumns);
             TARGET_TRANSFORMATION = Collections.unmodifiableMap(map);
         }

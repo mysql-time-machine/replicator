@@ -18,7 +18,7 @@
         <profile>
             <id>hbase</id>
             <activation>
-                <activeByDefault>true</activeByDefault>
+                <activeByDefault>false</activeByDefault>
             </activation>
             <dependencies>
                 <dependency>
@@ -51,6 +51,7 @@
         <profile>
             <id>bigtable</id>
             <activation>
+                <activeByDefault>true</activeByDefault>
                 <property>
                     <name>sink</name>
                     <value>bigtable</value>

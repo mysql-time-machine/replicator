@@ -80,10 +80,6 @@ subprojects {
 
     sourceCompatibility = '1.8'
 
-    java {
-        withSourcesJar()
-    }
-
     publishing {
         publications {
             maven(MavenPublication) {

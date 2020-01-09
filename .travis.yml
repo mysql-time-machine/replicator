@@ -1,3 +1,5 @@
+dist: bionic
+
 sudo: false
 language: groovy
 install: true

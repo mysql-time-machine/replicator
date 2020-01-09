@@ -21,6 +21,11 @@ ext {
     ]
     isHBase = System.properties['sink'] == 'hbase'
     isBigTable = System.properties['sink'] == 'bigtable'
+
+    if (!isHBase && !isBigTable) {
+        isHBase = true
+    }
+
 }
 
 task printProps {
@@ -28,6 +33,8 @@ task printProps {
         println dockerImageZookeeper
         println dockerImageKafka
         println System.properties['system']
+        println(isHBase)
+        println(isBigTable)
     }
 }
 
@@ -36,16 +43,10 @@ subprojects {
     apply plugin: 'java'
     apply plugin: 'maven-publish'
 
-    //sonarqube {
-    //    properties {
-    //        property "sonar.jacoco.reportPath", "${project.buildDir}/jacoco/test.exec"
-    //    }
-    //}
-
     test {
         testLogging.showStandardStreams = true
-            systemProperty "dockerImageZookeeper", project.getProperty("dockerImageZookeeper")
-            systemProperty "dockerImageKafka", project.getProperty("dockerImageKafka")
+        systemProperty "dockerImageZookeeper", project.getProperty("dockerImageZookeeper")
+        systemProperty "dockerImageKafka", project.getProperty("dockerImageKafka")
     }
 
     repositories {
@@ -72,10 +73,6 @@ subprojects {
         implementation "org.slf4j:slf4j-api:$slf4jVersion"
 
         implementation 'org.codehaus.sonar:sonar-maven-plugin:5.1'
-    }
-
-    test {
-        testLogging.showStandardStreams = true
     }
 
     sourceCompatibility = '1.8'

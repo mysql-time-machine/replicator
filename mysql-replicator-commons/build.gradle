@@ -26,6 +26,8 @@ dependencies {
     implementation 'io.prometheus:simpleclient_servlet:0.6.0'
     implementation 'io.prometheus:simpleclient_dropwizard:0.6.0'
 
+    implementation 'org.testcontainers:testcontainers:1.8.0'
+
     // HBase
     implementation 'org.apache.hbase:hbase-client:1.2.0'
     implementation 'org.apache.hbase:hbase-common:1.2.0'
@@ -34,9 +36,7 @@ dependencies {
     implementation 'com.google.guava:guava:15.0'
 
     // Test dependencies
-    testCompile 'org.testcontainers:testcontainers:1.8.0'
-
-    implementation 'org.testcontainers:testcontainers:1.8.0'
+    testImplementation 'org.testcontainers:testcontainers:1.8.0'
     testImplementation 'junit:junit:4.12'
 }
 

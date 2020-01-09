@@ -426,6 +426,9 @@ public class AugmenterContext implements Closeable {
                 GTIDRawEventData gtidRawEventData = GTIDRawEventData.class.cast(eventData);
                 this.gtidSet.set(lastGTIDSet);
 
+                System.out.println("====GTIDSet => " + lastGTIDSet);
+                System.out.println("====GTID    => " + gtidRawEventData.getGTID());
+
                 this.updateCommons(
                         false,
                         QueryAugmentedEventDataType.GTID,

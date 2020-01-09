@@ -11,13 +11,16 @@ dependencies {
     implementation group: 'org.eclipse.jetty', name: 'jetty-server', version: '9.4.25.v20191220'
     implementation 'org.apache.kafka:kafka_2.12:1.1.0'
     implementation 'io.dropwizard.metrics:metrics-core:4.0.2'
-    implementation 'org.apache.hbase:hbase-client:1.2.0'
-    implementation 'org.apache.hbase:hbase-common:1.2.0'
-    implementation 'org.apache.hbase:hbase-server:1.2.0'
-    implementation 'com.google.protobuf:protobuf-java:2.5.0'
-    implementation 'com.google.guava:guava:15.0'
     implementation 'org.apache.avro:avro:1.8.2'
     implementation 'io.confluent:kafka-avro-serializer:5.0.1'
+
+    // Profile dependencies
+    if (isHBase) {
+        implementation hbaseDependencies
+    }
+    if (isBigTable) {
+        implementation bigTableDependencies
+    }
 
     testImplementation project(':mysql-replicator-commons')
 }

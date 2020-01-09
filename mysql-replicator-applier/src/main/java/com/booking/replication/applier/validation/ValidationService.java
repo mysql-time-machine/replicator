@@ -93,7 +93,7 @@ public class ValidationService {
             throw new IllegalArgumentException("Bad validation configuration");
         }
         Properties properties = new Properties();
-        properties.put("bootstrap.servers", (String)configuration.get(Configuration.VALIDATION_BROKER));
+        properties.put("bootstrap.servers", configuration.get(Configuration.VALIDATION_BROKER));
         Producer<String,String> producer = new KafkaProducer(properties, new StringSerializer(), new StringSerializer());
         long throttleOneEvery = Long.parseLong(configuration.getOrDefault(Configuration.VALIDATION_THROTTLE_ONE_EVERY, String.valueOf(VALIDATOR_THROTTLING_DEFAULT)).toString());
         return new ValidationService(producer,

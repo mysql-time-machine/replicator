@@ -59,7 +59,7 @@ ALTER table organisms ADD COLUMN lifespan_float FLOAT(7,4);
 COMMIT;
 
 BEGIN;
-
+--13
 INSERT INTO organisms (name, lifespan, bits, kingdom, lifespan_float) VALUES ('tree', 100, b'10101010','plantae', 1.23);
 INSERT INTO organisms (name, lifespan, bits, kingdom, lifespan_float) VALUES ('grass', 1, b'10101010', 'plantae', 2.45);
 

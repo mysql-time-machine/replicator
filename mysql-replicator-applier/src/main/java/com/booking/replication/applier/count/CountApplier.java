@@ -5,6 +5,7 @@ import com.booking.replication.applier.validation.ValidationService;
 import com.booking.replication.augmenter.model.event.AugmentedEvent;
 import com.booking.replication.augmenter.model.event.AugmentedEventType;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -36,9 +37,34 @@ public class CountApplier implements Applier {
     @Override
     public Boolean apply(Collection<AugmentedEvent> events) {
         events.forEach(
-            event -> eventCounts.put(event.getHeader().getEventType(),
-                    eventCounts.get(event.getHeader().getEventType()) == null ? 1 :
-                    eventCounts.get(event.getHeader().getEventType()) + 1)
+            event -> {
+                System.out.println("Count Applier got " + event.getHeader().getEventType());
+
+                System.out.println("Count Applier got " + event.getData().toString());
+
+                if (event.getHeader().getEventType().equals(AugmentedEventType.INSERT)) {
+                    ((WriteRowsAugmentedEventData) event.getData()).getRows().stream().forEach(row -> {
+                        System.out.println(row);
+                        System.out.println(row.getTransactionUUID());
+                    });
+                }
+                if (event.getHeader().getEventType().equals(AugmentedEventType.UPDATE)) {
+                    ((UpdateRowsAugmentedEventData) event.getData()).getRows().stream().forEach(row -> {
+                        System.out.println(row.getTransactionUUID());
+                    });
+                }
+                if (event.getHeader().getEventType().equals(AugmentedEventType.DELETE)) {
+                    ((DeleteRowsAugmentedEventData) event.getData()).getRows().stream().forEach(row -> {
+                        System.out.println(row.getTransactionUUID());
+                    });
+                }
+
+                eventCounts.put(
+                        event.getHeader().getEventType(),
+                        eventCounts.get(event.getHeader().getEventType()) == null ? 1 :
+                        eventCounts.get(event.getHeader().getEventType()) + 1
+                );
+            }
         );
 
         return true;

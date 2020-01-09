@@ -31,10 +31,6 @@ task printProps {
     }
 }
 
-task wrapper(type: Wrapper) {
-    gradleVersion = '6.0.1'
-}
-
 subprojects {
 
     apply plugin: 'java'

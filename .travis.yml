@@ -1,3 +1,5 @@
+dist: bionic
+
 sudo: false
 language: groovy
 install: true
@@ -21,6 +23,4 @@ script:
 
 services:
   - docker
-
-dist: xenial
 

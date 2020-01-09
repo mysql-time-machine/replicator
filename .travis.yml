@@ -13,8 +13,11 @@ addons:
   hosts:
     - HBASE_HOST
 
+before_install:
+  gradle wrapper
+
 script:
-  - gradle clean build
+  - ./gradlew clean build
 
 services:
   - docker

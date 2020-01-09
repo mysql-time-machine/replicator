@@ -1,5 +1,5 @@
 sudo: false
-language: java
+language: groovy
 install: true
 
 jdk:
@@ -14,7 +14,7 @@ addons:
     - HBASE_HOST
 
 script:
-  - gradle build
+  - gradle clean build
 
 services:
   - docker

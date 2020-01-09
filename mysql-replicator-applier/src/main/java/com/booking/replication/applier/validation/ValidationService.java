@@ -32,6 +32,7 @@ public class ValidationService {
             ignoreColumns.add("_replicator_uuid");
             ignoreColumns.add("_replicator_xid");
             ignoreColumns.add("_transaction_uuid");
+            ignoreColumns.add("_transaction_xid");
             map.put("ignore_columns", ignoreColumns);
             TARGET_TRANSFORMATION = Collections.unmodifiableMap(map);
         }
@@ -92,7 +93,7 @@ public class ValidationService {
             throw new IllegalArgumentException("Bad validation configuration");
         }
         Properties properties = new Properties();
-        properties.put("bootstrap.servers", (String)configuration.get(Configuration.VALIDATION_BROKER));
+        properties.put("bootstrap.servers", configuration.get(Configuration.VALIDATION_BROKER));
         Producer<String,String> producer = new KafkaProducer(properties, new StringSerializer(), new StringSerializer());
         long throttleOneEvery = Long.parseLong(configuration.getOrDefault(Configuration.VALIDATION_THROTTLE_ONE_EVERY, String.valueOf(VALIDATOR_THROTTLING_DEFAULT)).toString());
         return new ValidationService(producer,
@@ -131,7 +132,7 @@ public class ValidationService {
         try {
             String task = mapper.writeValueAsString( new ValidationTask(tag, sourceUri, targetUri) );
             producer.send(new ProducerRecord<>(topic, id, task ));
-            LOGGER.info("Validation task {} {} submitted", id, task);
+            LOGGER.debug("Validation task {} {} submitted", id, task);
         } catch (JsonProcessingException e) {
             LOGGER.error("Failure serializing validation task {} {} {} {}", id, tag, sourceUri, targetUri, e);
         }

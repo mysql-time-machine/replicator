@@ -48,6 +48,10 @@ subprojects {
             systemProperty "dockerImageKafka", project.getProperty("dockerImageKafka")
     }
 
+    task wrapper(type: Wrapper) {
+        gradleVersion = '5.1.1'
+    }
+
     repositories {
         mavenLocal()
         maven {

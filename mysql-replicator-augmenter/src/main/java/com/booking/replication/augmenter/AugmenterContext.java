@@ -460,7 +460,7 @@ public class AugmenterContext implements Closeable {
             this.metrics.getRegistry()
                     .counter("augmenter.context.type.ddl_table").inc(1L);
             String tableName = matcher.group(4);
-            Boolean shouldProcess = ( this.shouldAugmentTable(tableName) && queryRawEventData.getDatabase().equals(replicatedSchema) );
+            Boolean shouldProcess = queryRawEventData.getDatabase().equals(replicatedSchema);
             this.updateCommons(
                     shouldProcess,
                     QueryAugmentedEventDataType.DDL_TABLE,

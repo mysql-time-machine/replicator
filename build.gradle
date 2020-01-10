@@ -6,7 +6,7 @@ allprojects {
 ext {
     log4j2Version = '2.11.0'
     slf4jVersion  = '1.7.25'
-    binlogConnectorVersion = '0.20.1'
+    binlogConnectorVersion = '0.16.1'
     hbaseDependencies = [
             'org.apache.hbase:hbase-client:1.2.0',
             'org.apache.hbase:hbase-common:1.2.0',

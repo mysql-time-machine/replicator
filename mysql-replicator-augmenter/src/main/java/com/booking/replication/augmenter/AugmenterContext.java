@@ -41,6 +41,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class AugmenterContext implements Closeable {
@@ -425,9 +426,6 @@ public class AugmenterContext implements Closeable {
 
                 GTIDRawEventData gtidRawEventData = GTIDRawEventData.class.cast(eventData);
                 this.gtidSet.set(lastGTIDSet);
-
-                System.out.println("====GTIDSet => " + lastGTIDSet);
-                System.out.println("====GTID    => " + gtidRawEventData.getGTID());
 
                 this.updateCommons(
                         false,

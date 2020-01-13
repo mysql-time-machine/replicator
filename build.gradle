@@ -4,9 +4,46 @@ allprojects {
 }
 
 ext {
+
+    // Dependencies Versions
     log4j2Version = '2.11.0'
+
     slf4jVersion  = '1.7.25'
+
     binlogConnectorVersion = '0.16.1'
+
+    commonsCliVersion = '1.4'
+
+    kafkaAvroSerializerVersion = '5.0.1'
+
+    dropwizardMetricsVersion = '4.0.2'
+
+    prometheusSimpleClientVersion = '0.0.23'
+
+    mysqlConnectorJavaVersion = '5.1.47'
+
+    apacheAvroVersion = '1.8.2'
+
+    apacheCommonsDBCP2Version = '2.7.0'
+
+    apacheCuratorVersion = '4.0.1'
+
+    apacheKafka_2_12Version = '1.1.0'
+
+    groovyVersion = '2.4.15'
+
+    jacksonVersion = '2.9.8'
+
+    jettyVersion = '9.4.14.v20181114'
+
+    junitVersion = '4.12'
+
+    spockVersion = '1.0-groovy-2.4'
+
+    testcontainersVersion = '1.8.0'
+
+
+    // Profiles Dependencies Versions
     hbaseDependencies = [
             'org.apache.hbase:hbase-client:1.2.0',
             'org.apache.hbase:hbase-common:1.2.0',

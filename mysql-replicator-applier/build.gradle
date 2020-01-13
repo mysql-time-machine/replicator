@@ -9,10 +9,10 @@ dependencies {
     implementation project(':mysql-replicator-augmenter')
 
     implementation group: 'org.eclipse.jetty', name: 'jetty-server', version: '9.4.25.v20191220'
-    implementation 'org.apache.kafka:kafka_2.12:1.1.0'
-    implementation 'io.dropwizard.metrics:metrics-core:4.0.2'
-    implementation 'org.apache.avro:avro:1.8.2'
-    implementation 'io.confluent:kafka-avro-serializer:5.0.1'
+    implementation "org.apache.kafka:kafka_2.12:$apacheKafka_2_12Version"
+    implementation "io.dropwizard.metrics:metrics-core:$dropwizardMetricsVersion"
+    implementation "org.apache.avro:avro:$apacheAvroVersion"
+    implementation "io.confluent:kafka-avro-serializer:$kafkaAvroSerializerVersion"
 
     // Profile dependencies
     if (isHBase) {

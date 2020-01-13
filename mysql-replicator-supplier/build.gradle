@@ -9,9 +9,9 @@ dependencies {
     implementation project(':mysql-replicator-supplier-model')
 
     // External dependencies
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.9.8'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.9.8'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.9.8'
+    implementation "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
+    implementation "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
+    implementation "com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion"
     implementation "com.github.shyiko:mysql-binlog-connector-java:$binlogConnectorVersion"
 
     // Test dependencies

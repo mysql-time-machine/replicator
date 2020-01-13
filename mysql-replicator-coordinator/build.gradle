@@ -4,13 +4,13 @@ dependencies {
     implementation project(':mysql-replicator-commons')
 
     // External dependencies
-    implementation 'org.apache.curator:curator-client:4.0.1'
-    implementation 'org.apache.curator:curator-framework:4.0.1'
-    implementation 'org.apache.curator:curator-recipes:4.0.1'
+    implementation "org.apache.curator:curator-client:$apacheCuratorVersion"
+    implementation "org.apache.curator:curator-framework:$apacheCuratorVersion"
+    implementation "org.apache.curator:curator-recipes:$apacheCuratorVersion"
 
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.9.8'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.9.8'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.9.8'
+    implementation "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
+    implementation "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
+    implementation "com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion"
 
     // Test dependencies
     testImplementation project(':mysql-replicator-commons')

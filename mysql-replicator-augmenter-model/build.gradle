@@ -3,11 +3,11 @@ dependencies {
     implementation project(':mysql-replicator-commons')
 
     implementation "com.github.shyiko:mysql-binlog-connector-java:$binlogConnectorVersion"
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.9.8'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.9.8'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.9.8'
-    implementation 'org.apache.avro:avro:1.8.2'
-    implementation 'io.confluent:kafka-avro-serializer:5.0.1'
+    implementation "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
+    implementation "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
+    implementation "com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion"
+    implementation "org.apache.avro:avro:$apacheAvroVersion"
+    implementation "io.confluent:kafka-avro-serializer:$kafkaAvroSerializerVersion"
 
     testImplementation "junit:junit:$junitVersion"
 }

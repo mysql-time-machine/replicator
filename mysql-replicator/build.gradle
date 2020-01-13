@@ -49,7 +49,7 @@ dependencies {
     implementation 'io.confluent:kafka-avro-serializer:5.0.1'
 
     // Test dependencies
-    testImplementation 'junit:junit:4.12'
+    testImplementation "junit:junit:$junitVersion"
     testImplementation 'org.testcontainers:testcontainers:1.8.0'
     testImplementation 'org.codehaus.groovy:groovy-all:2.4.15'
     testImplementation 'org.codehaus.groovy:groovy-json:2.4.15'

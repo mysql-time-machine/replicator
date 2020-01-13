@@ -37,7 +37,7 @@ dependencies {
     implementation project(':mysql-replicator-augmenter-model')
     implementation project(':mysql-replicator-supplier')
 
-    testImplementation 'junit:junit:4.12'
+    testImplementation "junit:junit:$junitVersion"
     testImplementation project(':mysql-replicator-commons')
 
 }

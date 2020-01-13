@@ -37,7 +37,7 @@ dependencies {
 
     // Test dependencies
     testImplementation 'org.testcontainers:testcontainers:1.8.0'
-    testImplementation 'junit:junit:4.12'
+    testImplementation "junit:junit:$junitVersion"
 }
 
 description = 'mysql-replicator-commons'

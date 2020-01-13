@@ -14,7 +14,7 @@ dependencies {
 
     // Test dependencies
     testImplementation project(':mysql-replicator-commons')
-    testImplementation 'junit:junit:4.12'
+    testImplementation "junit:junit:$junitVersion"
 }
 
 description = 'mysql-replicator-coordinator'

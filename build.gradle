@@ -56,8 +56,9 @@ ext {
             'com.google.guava:guava:26.0-jre',
             'com.google.cloud.bigtable:bigtable-hbase-1.x:1.8.0'
     ]
-    isHBase = System.properties['sink'] == 'hbase'
-    isBigTable = System.properties['sink'] == 'bigtable'
+
+    isHBase =  project.getProperty('sink') == 'hbase'
+    isBigTable =  project.getProperty('sink') == 'bigtable'
 
     if (!isHBase && !isBigTable) {
         isHBase = true
@@ -67,11 +68,11 @@ ext {
 
 task printProps {
     doLast {
-        println dockerImageZookeeper
-        println dockerImageKafka
-        println System.properties['system']
-        println(isHBase)
-        println(isBigTable)
+        println "dockerImageZookeeper => " + dockerImageZookeeper
+        println "dockerImageZookeeper => " + dockerImageKafka
+        println "sink => " + project.getProperty('sink')
+        println "isHBase => " + isHBase
+        println "isBigTable => " + isBigTable
     }
 }
 

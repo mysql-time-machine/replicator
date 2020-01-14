@@ -28,12 +28,13 @@ dependencies {
 
     implementation "org.testcontainers:testcontainers:$testcontainersVersion"
 
-    // HBase
-    implementation 'org.apache.hbase:hbase-client:1.2.0'
-    implementation 'org.apache.hbase:hbase-common:1.2.0'
-    implementation 'org.apache.hbase:hbase-server:1.2.0'
-    implementation 'com.google.protobuf:protobuf-java:2.5.0'
-    implementation 'com.google.guava:guava:15.0'
+    if (isHBase) {
+        implementation(hbaseDependencies)
+    }
+
+    if (isBigTable) {
+        implementation(bigTableDependencies)
+    }
 
     // Test dependencies
     testImplementation "org.testcontainers:testcontainers:$testcontainersVersion"

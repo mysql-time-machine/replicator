@@ -26,12 +26,15 @@ dependencies {
 
     implementation "io.dropwizard.metrics:metrics-core:$dropwizardMetricsVersion"
 
-    implementation 'org.apache.hbase:hbase-client:1.2.0'
-    implementation 'org.apache.hbase:hbase-common:1.2.0'
-    implementation 'org.apache.hbase:hbase-server:1.2.0'
-    implementation 'com.google.protobuf:protobuf-java:2.5.0'
-    implementation 'com.google.guava:guava:15.0'
+    // Profile Deps
+    if (isHBase) {
+        implementation( hbaseDependencies)
+    }
 
+    if (isBigTable) {
+        implementation(bigTableDependencies)
+    }
+    
     implementation project(':mysql-replicator-commons')
     implementation project(':mysql-replicator-supplier-model')
     implementation project(':mysql-replicator-augmenter-model')

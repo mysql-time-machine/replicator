@@ -78,6 +78,7 @@ subprojects {
 
     apply plugin: 'java'
     apply plugin: 'maven-publish'
+    apply plugin: 'jacoco'
 
     test {
         testLogging.showStandardStreams = true
@@ -85,6 +86,15 @@ subprojects {
         systemProperty "dockerImageKafka", project.getProperty("dockerImageKafka")
     }
 
+    test.finalizedBy jacocoTestReport
+
+    jacocoTestReport {
+        reports {
+            xml.enabled false
+            html.enabled false
+            html.destination file("${buildDir}/jacocoHtml")
+        }
+    }
     repositories {
         mavenLocal()
         maven {
@@ -124,5 +134,7 @@ subprojects {
     tasks.withType(JavaCompile) {
         options.encoding = 'UTF-8'
     }
+
+    check.dependsOn jacocoTestReport
 
 }

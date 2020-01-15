@@ -1,9 +1,14 @@
 plugins {
     id 'java'
     id 'groovy'
+    id 'application'
 }
 
 logging.captureStandardOutput LogLevel.INFO
+
+application {
+    mainClassName = 'com.booking.replication.Replicator'
+}
 
 dependencies {
 

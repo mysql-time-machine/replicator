@@ -54,7 +54,7 @@ public class DataAugmenter {
 
                 return new WriteRowsAugmentedEventData(
                         AugmentedEventType.INSERT,
-                        this.context.getEventTable(writeRowsRawEventData.getTableId()),
+                        this.context.getEventTableFromSchemaCache(writeRowsRawEventData.getTableId()),
                         this.context.getIncludedColumns(writeRowsRawEventData.getIncludedColumns()),
                         columns,
 
@@ -90,7 +90,7 @@ public class DataAugmenter {
 
                 return new UpdateRowsAugmentedEventData(
                         AugmentedEventType.UPDATE,
-                        this.context.getEventTable(updateRowsRawEventData.getTableId()),
+                        this.context.getEventTableFromSchemaCache(updateRowsRawEventData.getTableId()),
                         this.context.getIncludedColumns(updateRowsRawEventData.getIncludedColumnsBeforeUpdate()),
                         this.context.getIncludedColumns(updateRowsRawEventData.getIncludedColumns()),
                         columns1,
@@ -128,7 +128,7 @@ public class DataAugmenter {
 
                 return new DeleteRowsAugmentedEventData(
                         AugmentedEventType.DELETE,
-                        this.context.getEventTable(deleteRowsRawEventData.getTableId()),
+                        this.context.getEventTableFromSchemaCache(deleteRowsRawEventData.getTableId()),
                         this.context.getIncludedColumns(deleteRowsRawEventData.getIncludedColumns()),
                         columns2,
                         this.context.computeAugmentedEventRows(
@@ -151,7 +151,7 @@ public class DataAugmenter {
                         AugmentedEventType.QUERY,
                         this.context.getQueryType(),
                         this.context.getQueryOperationType(),
-                        this.context.getEventTable(),
+                        this.context.getEventTableFromSchemaCache(),
                         queryRawEventData.getThreadId(),
                         queryRawEventData.getExecutionTime(),
                         queryRawEventData.getErrorCode(),
@@ -164,7 +164,7 @@ public class DataAugmenter {
                         AugmentedEventType.QUERY,
                         this.context.getQueryType(),
                         this.context.getQueryOperationType(),
-                        this.context.getEventTable(),
+                        this.context.getEventTableFromSchemaCache(),
                         0L,
                         0L,
                         0,

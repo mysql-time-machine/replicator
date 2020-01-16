@@ -112,7 +112,7 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
 
         try {
 
-            this.metrics.getRegistry().counter("augmenter.apply.attempt").inc(1L);
+            this.metrics.getRegistry().counter("augmenter.apply.call").inc(1L);
 
             RawEventHeaderV4 eventHeader = rawEvent.getHeader();
             RawEventData eventData = rawEvent.getData();
@@ -120,26 +120,26 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
 
             this.context.updateContext(eventHeader, eventData, lastGTIDSet);
 
-            if (this.context.shouldProcess()) {
+            if (this.context.shouldAugment()) {
 
-                this.metrics.getRegistry().counter("augmenter.apply.should_process.true").inc(1L);
+                this.metrics.getRegistry().counter("augmenter.apply.call.should_augment.true").inc(1L);
 
                 if (this.context.isTransactionsEnabled()) {
                     return processTransactionFlow(eventHeader, eventData);
                 }
 
-                AugmentedEvent augmentedEvent = getAugmentedEvent(eventHeader, eventData);
+                AugmentedEvent augmentedEvent = augmentEvent(eventHeader, eventData);
 
                 if (augmentedEvent == null) {
                     return null;
                 }
 
                 return Collections.singletonList(augmentedEvent);
+
+            } else {
+                this.metrics.getRegistry().counter("augmenter.apply.call.should_augment.false").inc(1L);
+                return null;
             }
-
-            this.metrics.getRegistry().counter("augmenter.apply.should_process.false").inc(1L);
-
-            return null;
 
         } finally {
             this.context.updatePosition();
@@ -170,7 +170,7 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
                 }
             }
         } else { // commit not reached
-            AugmentedEvent augmentedEvent = getAugmentedEvent(eventHeader, eventData);
+            AugmentedEvent augmentedEvent = augmentEvent(eventHeader, eventData);
             if (augmentedEvent == null) {
                 return null;
             }
@@ -190,7 +190,7 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
         }
     }
 
-    private synchronized AugmentedEvent getAugmentedEvent(RawEventHeaderV4 eventHeader, RawEventData eventData) {
+    private synchronized AugmentedEvent augmentEvent(RawEventHeaderV4 eventHeader, RawEventData eventData) {
 
         // Augment the event
         AugmentedEventHeader augmentedEventHeader = this.headerAugmenter.apply(eventHeader, eventData);

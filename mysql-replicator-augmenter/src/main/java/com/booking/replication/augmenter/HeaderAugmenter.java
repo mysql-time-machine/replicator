@@ -19,7 +19,7 @@ public class HeaderAugmenter {
         if (type == null) {
             return null;
         }
-        FullTableName eventTable = this.context.getEventTable();
+        FullTableName eventTable = this.context.getEventTableFromSchemaCache();
         String dbName = null;
         String tableName = null;
         if (eventTable != null) {

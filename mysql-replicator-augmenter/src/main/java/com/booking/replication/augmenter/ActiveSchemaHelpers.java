@@ -22,9 +22,15 @@ public class ActiveSchemaHelpers {
     public static TableSchema computeTableSchema(
             String schemaName,
             String tableName,
-            BasicDataSource activeSchemaDataSource) {
+            BasicDataSource activeSchemaDataSource,
+            BasicDataSource replicantDataSource,
+            Boolean fallbackToReplicant) {
 
         try (Connection activeSchemaConnection = activeSchemaDataSource.getConnection()) {
+
+            if ( fallbackToReplicant ) {
+                createTableIfNotExists(tableName, activeSchemaConnection, replicantDataSource);
+            }
 
             Statement statementActiveSchemaListColumns      = activeSchemaConnection.createStatement();
             Statement statementActiveSchemaShowCreateTable  = activeSchemaConnection.createStatement();
@@ -77,7 +83,8 @@ public class ActiveSchemaHelpers {
 
             String tableCreateStatement = "";
             if (tableExists) {
-                ResultSet showCreateTableResultSet = statementActiveSchemaShowCreateTable.executeQuery(
+                Statement createTableStatement = statementActiveSchemaShowCreateTable;
+                ResultSet showCreateTableResultSet = createTableStatement.executeQuery(
                         String.format(ActiveSchemaManager.SHOW_CREATE_TABLE_SQL, tableName)
                 );
                 ResultSetMetaData showCreateTableResultSetMetadata = showCreateTableResultSet.getMetaData();
@@ -92,6 +99,26 @@ public class ActiveSchemaHelpers {
 
         } catch (SQLException exception) {
             throw new IllegalStateException("Could not get table schema: ", exception);
+        }
+    }
+
+    private static void createTableIfNotExists(String tableName, Connection activeSchemaConnection, DataSource replicantDataSource) throws SQLException {
+        PreparedStatement stmtShowTables = activeSchemaConnection.prepareStatement("SHOW TABLES LIKE ?");
+        stmtShowTables.setString(1,tableName);
+        ResultSet resultSet = stmtShowTables.executeQuery();
+        if (resultSet.next()) {
+            return;
+        } else {
+            //get from orignal table
+            try (Connection replicantDbConnection = replicantDataSource.getConnection()) {
+                PreparedStatement preparedStatement = replicantDbConnection.prepareStatement(String.format(ActiveSchemaManager.SHOW_CREATE_TABLE_SQL,tableName) );
+                ResultSet showCreateTableResultSet = preparedStatement.executeQuery();
+                ResultSetMetaData showCreateTableResultSetMetadata = showCreateTableResultSet.getMetaData();
+                String createTableStatement = ActiveSchemaHelpers.getCreateTableStatement(tableName, showCreateTableResultSet, showCreateTableResultSetMetadata);
+                boolean executed = activeSchemaConnection.createStatement().execute(createTableStatement);
+            } catch ( Exception ex ) {
+                throw new RuntimeException("Error creating table on ActiveSchema from Replicant: " + ex.getMessage());
+            }
         }
     }
 

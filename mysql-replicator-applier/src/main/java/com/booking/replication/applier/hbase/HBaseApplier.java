@@ -352,7 +352,7 @@ public class HBaseApplier implements Applier {
 
     @Override
     public ValidationService buildValidationService(Map<String, Object> configuration) {
-        return ValidationService.getInstance(configuration);
+        return ValidationService.getInstance(configuration, this.metrics);
     }
 
     public boolean forceFlushAll() {

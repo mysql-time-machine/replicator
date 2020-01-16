@@ -3,6 +3,7 @@ package com.booking.replication.applier.hbase.mutation;
 import com.booking.replication.applier.hbase.HBaseApplier;
 
 import com.booking.replication.applier.hbase.schema.HBaseRowKeyMapper;
+import com.booking.replication.applier.validation.ValidationService;
 import com.booking.replication.augmenter.model.AugmenterModel;
 import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.augmenter.model.format.EventDeserializer;
@@ -28,6 +29,8 @@ public class HBaseApplierMutationGenerator {
     private static final Logger LOGGER = LogManager.getLogger(HBaseApplierMutationGenerator.class);
 
     private final Metrics<?> metrics;
+
+    private String shardName;
 
     public class PutMutation {
 
@@ -92,6 +95,15 @@ public class HBaseApplierMutationGenerator {
     public HBaseApplierMutationGenerator(Map<String, Object> configuration, Metrics<?> metrics) {
         this.configuration = configuration;
         this.metrics = metrics;
+        setShardName(this.configuration);
+    }
+
+    private void setShardName(Map<String, Object> configuration) {
+        this.shardName = (String) configuration.getOrDefault(ValidationService.Configuration.VALIDATION_DATA_SOURCE_NAME, null);
+    }
+
+    public String getShardName() {
+        return this.shardName;
     }
 
     /**
@@ -322,10 +334,16 @@ public class HBaseApplierMutationGenerator {
     private String getRowUri(AugmentedRow row) {
 
         String sourceDomain = row.getTableSchema().toString().toLowerCase();
-
+        String shardName = this.getShardName();
+        if (shardName != null && !shardName.isEmpty()) {
+            sourceDomain = shardName;
+        }
         AugmentedEventType eventType = row.getEventType();
 
-        String table = row.getTableName();
+        String table = row.getOriginalTableName();
+        if ( table == null || table.isEmpty() ) {
+            table = row.getTableName();
+        }
 
         String keys  = row.getPrimaryKeyColumns().stream()
                 .map( column -> {

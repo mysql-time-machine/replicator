@@ -15,8 +15,17 @@ addons:
   hosts:
     - HBASE_HOST
 
+before_cache:
+  - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
+  - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+
+cache:
+  directories:
+    - $HOME/.gradle/caches/
+    - $HOME/.gradle/wrapper/
+
 before_install:
-  - wget http://services.gradle.org/distributions/gradle-6.0-bin.zip
+  - wget https://services.gradle.org/distributions/gradle-6.0-bin.zip
   - unzip -qq gradle-6.0-bin.zip
   - export GRADLE_HOME=$PWD/gradle-6.0
   - export PATH=$GRADLE_HOME/bin:$PATH

@@ -21,6 +21,8 @@ import java.util.function.Function;
 public class ActiveSchemaManager implements SchemaManager {
 
     public interface Configuration {
+        String FALLBACK_TO_RELPICANT = "augmenter.schema.active.fallback_to_replicant";
+
         String MYSQL_DRIVER_CLASS   = "augmenter.schema.active.mysql.driver.class";
         String MYSQL_HOSTNAME       = "augmenter.schema.active.mysql.hostname";
         String MYSQL_PORT           = "augmenter.schema.active.mysql.port";
@@ -54,6 +56,8 @@ public class ActiveSchemaManager implements SchemaManager {
 
     private final BasicDataSource replicantDataSource;
 
+    private final boolean fallbackToReplicant;
+
     private final Function<String, TableSchema> computeTableSchemaLambda;
 
     private final SchemaAtPositionCache schemaAtPositionCache;
@@ -67,18 +71,18 @@ public class ActiveSchemaManager implements SchemaManager {
         this.replicantDataSource = initBinlogDatasource(configuration);
         this.schemaAtPositionCache = new SchemaAtPositionCache();
 
+        this.fallbackToReplicant = (boolean) configuration.getOrDefault(Configuration.FALLBACK_TO_RELPICANT, false );
+
+        LOG.warn("fallbackToReplicant set as " + (this.fallbackToReplicant ? "true" : "false") );
+
         String activeSchemaName = getMysqlActiveSchema(configuration);
 
         this.computeTableSchemaLambda = (tableName) -> {
             try {
-                TableSchema ts = ActiveSchemaHelpers.computeTableSchema(activeSchemaName, tableName, ActiveSchemaManager.this.activeSchemaDataSource);
+                TableSchema ts = ActiveSchemaHelpers.computeTableSchema(activeSchemaName, tableName, ActiveSchemaManager.this.activeSchemaDataSource, ActiveSchemaManager.this.replicantDataSource, this.fallbackToReplicant);
                 return ts;
             } catch (Exception e) {
-                ActiveSchemaManager.LOG.warn(
-                        String.format("error listing columns from table \"%s\" : %s", tableName, e.getMessage()),
-                        e
-                );
-                return null;
+                throw new RuntimeException( String.format("error listing columns from table \"%s\" : %s", tableName, e.getMessage()) );
             }
         };
     }

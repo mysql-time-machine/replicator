@@ -99,7 +99,7 @@ public class HBaseApplierMutationGenerator {
     }
 
     private void setShardName(Map<String, Object> configuration) {
-        this.shardName = (String) configuration.getOrDefault(ValidationService.Configuration.VALIDATION_DATA_SOURCE_NAME, null);
+        this.shardName = (String) configuration.getOrDefault(ValidationService.Configuration.VALIDATION_DATA_SOURCE_NAME, "");
     }
 
     public String getShardName() {
@@ -340,9 +340,10 @@ public class HBaseApplierMutationGenerator {
         }
         AugmentedEventType eventType = row.getEventType();
 
-        String table = row.getOriginalTableName();
-        if ( table == null || table.isEmpty() ) {
-            table = row.getTableName();
+        String table = row.getTableName();
+        String originalTableName = row.getOriginalTableName();
+        if (originalTableName != null && !originalTableName.isEmpty()) {
+            table = originalTableName;
         }
 
         String keys  = row.getPrimaryKeyColumns().stream()

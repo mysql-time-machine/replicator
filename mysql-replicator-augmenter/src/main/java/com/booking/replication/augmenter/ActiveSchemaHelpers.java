@@ -128,7 +128,7 @@ public class ActiveSchemaHelpers {
                         "( `" + replicantDbName + "`\\.)";
         String rewritenQuery = query.replaceAll(dbNamePattern, " ");
 
-        LOG.info("Rewritten => { in => " + query + ", out => " + rewritenQuery + " }");
+        LOG.info("Rewritten active schema statement => {\nin => {\n" + query + "}\n, out => \n\t" + rewritenQuery + "}");
 
         return rewritenQuery;
     }

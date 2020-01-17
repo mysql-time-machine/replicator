@@ -13,7 +13,6 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.eclipse.jetty.server.Server;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -49,11 +48,9 @@ public class ValidationServiceTest {
     @Test
     public void testValidationServiceCounter() {
         LOG.info("ValidationServiceTest.testValidationServiceCounter() called");
-        Metrics<?> metrics = Metrics.build(configuration, new Server());
-
         initConfig();
         configuration.put(Applier.Configuration.TYPE, "HBASE");
-        ValidationService validationService = ValidationService.getInstance(configuration, metrics);
+        ValidationService validationService = ValidationService.getInstance(configuration);
         Assert.assertNotNull(validationService);
         for (int i=0; i<10; i++){
             validationService.registerValidationTask("sample-id-"+ i, "mysql://","hbase://");
@@ -64,18 +61,16 @@ public class ValidationServiceTest {
     @Test
     public void testValidationServiceNull() throws IllegalArgumentException {
         LOG.info("ValidationServiceTest.testValidationServiceNull() called");
-        Metrics<?> metrics = Metrics.build(configuration, new Server());
-
         initConfig();
         configuration.put(Applier.Configuration.TYPE, "CONSOLE");
-        ValidationService validationService = ValidationService.getInstance(configuration, metrics);
+        ValidationService validationService = ValidationService.getInstance(configuration);
         Assert.assertNull(validationService);
 
         initConfig();
         configuration.put(Applier.Configuration.TYPE, "HBASE");
         configuration.remove(ValidationService.Configuration.VALIDATION_TOPIC);
         try {
-            validationService = ValidationService.getInstance(configuration, metrics);
+            validationService = ValidationService.getInstance(configuration);
         } catch(IllegalArgumentException e) {
             Assert.assertNotNull(e);
         } finally {
@@ -86,7 +81,7 @@ public class ValidationServiceTest {
         configuration.put(Applier.Configuration.TYPE, "HBASE");
         configuration.remove(ValidationService.Configuration.VALIDATION_BROKER);
         try {
-            validationService = ValidationService.getInstance(configuration, metrics);
+            validationService = ValidationService.getInstance(configuration);
         } catch(IllegalArgumentException e) {
             Assert.assertNotNull(e);
         } finally {
@@ -97,7 +92,7 @@ public class ValidationServiceTest {
         configuration.put(Applier.Configuration.TYPE, "HBASE");
         configuration.remove(ValidationService.Configuration.VALIDATION_SOURCE_DOMAIN);
         try {
-            validationService = ValidationService.getInstance(configuration, metrics);
+            validationService = ValidationService.getInstance(configuration);
         } catch(IllegalArgumentException e) {
             Assert.assertNotNull(e);
         } finally {
@@ -108,7 +103,7 @@ public class ValidationServiceTest {
         configuration.put(Applier.Configuration.TYPE, "HBASE");
         configuration.remove(ValidationService.Configuration.VALIDATION_TARGET_DOMAIN);
         try {
-            validationService = ValidationService.getInstance(configuration, metrics);
+            validationService = ValidationService.getInstance(configuration);
         } catch(IllegalArgumentException e) {
             Assert.assertNotNull(e);
         } finally {

@@ -81,7 +81,7 @@ public class ValidationService {
         static final String VALIDATION_TARGET_DOMAIN = "validation.target_domain";
     }
 
-    public static ValidationService getInstance(Map<String, Object> configuration, Metrics<?> metrics) {
+    public static ValidationService getInstance(Map<String, Object> configuration) {
 
         // Validator is only available for HBase / BigTable
         if (!((String)configuration.getOrDefault(Applier.Configuration.TYPE, "console")).equalsIgnoreCase("hbase")
@@ -100,6 +100,7 @@ public class ValidationService {
         properties.put("bootstrap.servers", configuration.get(Configuration.VALIDATION_BROKER));
         Producer<String,String> producer = new KafkaProducer(properties, new StringSerializer(), new StringSerializer());
         long throttleOneEvery = Long.parseLong(configuration.getOrDefault(Configuration.VALIDATION_THROTTLE_ONE_EVERY, String.valueOf(VALIDATOR_THROTTLING_DEFAULT)).toString());
+        Metrics metrics = Metrics.getInstance(configuration);
         return new ValidationService(producer,
                                      (String)configuration.get(Configuration.VALIDATION_TOPIC),
                                      (String)configuration.get(Configuration.VALIDATION_TAG),

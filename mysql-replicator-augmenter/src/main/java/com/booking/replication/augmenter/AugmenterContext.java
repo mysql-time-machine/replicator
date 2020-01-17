@@ -408,6 +408,7 @@ public class AugmenterContext implements Closeable {
     }
 
     private void processQueryEvent(RawEventHeaderV4 eventHeader, RawEventData eventData) {
+
         QueryRawEventData queryRawEventData = QueryRawEventData.class.cast(eventData);
         String query = queryRawEventData.getSQL();
         Matcher matcher;

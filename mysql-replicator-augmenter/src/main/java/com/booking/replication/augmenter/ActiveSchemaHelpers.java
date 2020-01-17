@@ -155,6 +155,14 @@ public class ActiveSchemaHelpers {
                         "( `" + replicantDbName + "`\\.)";
         String rewritenQuery = query.replaceAll(dbNamePattern, " ");
 
+        String useDbPattern =
+                "(use\\s+`" + replicantDbName + "`;\\s+)" +
+                "|" +
+                "(use\\s+" + replicantDbName + ";\\s+)";;
+
+
+        rewritenQuery = rewritenQuery.replaceAll(useDbPattern, "");
+
         LOG.info("Rewritten => { in => " + query + ", out => " + rewritenQuery + " }");
 
         return rewritenQuery;

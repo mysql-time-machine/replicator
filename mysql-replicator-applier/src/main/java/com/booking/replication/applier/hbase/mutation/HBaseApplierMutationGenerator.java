@@ -17,7 +17,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -334,9 +333,9 @@ public class HBaseApplierMutationGenerator {
     private String getRowUri(AugmentedRow row) {
 
         String sourceDomain = row.getTableSchema().toString().toLowerCase();
-        String shardName = this.getShardName();
-        if (shardName != null && !shardName.isEmpty()) {
-            sourceDomain = shardName;
+        String configShardName = this.getShardName();
+        if (configShardName != null && !configShardName.isEmpty()) {
+            sourceDomain = configShardName;
         }
         AugmentedEventType eventType = row.getEventType();
 

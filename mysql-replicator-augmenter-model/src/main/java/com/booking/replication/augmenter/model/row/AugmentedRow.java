@@ -24,6 +24,7 @@ public class AugmentedRow {
     private AugmentedEventType eventType;
 
     private String       tableName;
+    private String       originalTableName;
     private String       tableSchema;
 
     private Map<String, Object> values = new CaseInsensitiveMap<>();
@@ -53,10 +54,10 @@ public class AugmentedRow {
         // is altered multiple times in the same event.
         // this.microsecondTransactionOffset = null; // transactionCounter * 100; // one inc <=> 0.1ms
 
-        this.eventType      = eventType;
-        this.values         = values;
-        this.tableSchema    = schemaName;
-        this.tableName      = tableName;
+        this.eventType          = eventType;
+        this.values             = values;
+        this.tableSchema        = schemaName;
+        this.tableName          = tableName;
     }
 
     public void setTransactionSequenceNumber(Long transactionSequenceNumber) {
@@ -79,6 +80,11 @@ public class AugmentedRow {
     @JsonIgnore
     public String getTableName() {
         return this.tableName;
+    }
+
+    @JsonIgnore
+    public String getOriginalTableName() {
+        return this.originalTableName;
     }
 
     @JsonIgnore
@@ -114,6 +120,10 @@ public class AugmentedRow {
 
     public void setTableName(String tableName) {
         this.tableName = tableName;
+    }
+
+    public void setOriginalTableName(String originalTableName) {
+        this.originalTableName = originalTableName;
     }
 
     public Long getRowMicrosecondTimestamp() {

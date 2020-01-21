@@ -1,6 +1,7 @@
 package com.booking.replication.applier.validation;
 
 import com.booking.replication.applier.Applier;
+import com.booking.replication.commons.metrics.Metrics;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -75,6 +76,7 @@ public class ValidationService {
         static final String VALIDATION_TOPIC = "validation.topic";
         static final String VALIDATION_TAG = "validation.tag";
         static final String VALIDATION_THROTTLE_ONE_EVERY = "validation.throttle_one_every";
+        public static final String VALIDATION_DATA_SOURCE_NAME = "validation.data_source_name";
         static final String VALIDATION_SOURCE_DOMAIN = "validation.source_domain";
         static final String VALIDATION_TARGET_DOMAIN = "validation.target_domain";
     }
@@ -89,17 +91,21 @@ public class ValidationService {
         if ( configuration.getOrDefault(Configuration.VALIDATION_BROKER,null) == null
              || configuration.getOrDefault(Configuration.VALIDATION_SOURCE_DOMAIN,null) == null
              || configuration.getOrDefault(Configuration.VALIDATION_TARGET_DOMAIN,null) == null
-             || configuration.getOrDefault(Configuration.VALIDATION_TOPIC, null) == null ) {
+             || configuration.getOrDefault(Configuration.VALIDATION_TOPIC, null) == null
+             || configuration.getOrDefault(Configuration.VALIDATION_DATA_SOURCE_NAME, null) == null) {
             throw new IllegalArgumentException("Bad validation configuration");
         }
+
         Properties properties = new Properties();
         properties.put("bootstrap.servers", configuration.get(Configuration.VALIDATION_BROKER));
         Producer<String,String> producer = new KafkaProducer(properties, new StringSerializer(), new StringSerializer());
         long throttleOneEvery = Long.parseLong(configuration.getOrDefault(Configuration.VALIDATION_THROTTLE_ONE_EVERY, String.valueOf(VALIDATOR_THROTTLING_DEFAULT)).toString());
+        Metrics metrics = Metrics.getInstance(configuration);
         return new ValidationService(producer,
                                      (String)configuration.get(Configuration.VALIDATION_TOPIC),
                                      (String)configuration.get(Configuration.VALIDATION_TAG),
-                                     throttleOneEvery);
+                                     throttleOneEvery,
+                                     metrics);
     }
 
     private final double throttleOnePerEvery;
@@ -109,12 +115,14 @@ public class ValidationService {
     private final String topic;
     private final String tag;
     private final ObjectMapper mapper = new ObjectMapper();
+    private final Metrics<?> metrics;
 
-    public ValidationService(Producer<String, String> producer, String topic,String tag, long throttleOnePerEvery) {
+    public ValidationService(Producer<String, String> producer, String topic, String tag, long throttleOnePerEvery, Metrics<?> metrics) {
         this.throttleOnePerEvery = throttleOnePerEvery;
         this.producer = producer;
         this.topic = topic;
         this.tag = tag;
+        this.metrics = metrics;
     }
 
     public void registerValidationTask(String id, String sourceUri, String targetUri) {
@@ -133,6 +141,7 @@ public class ValidationService {
             String task = mapper.writeValueAsString( new ValidationTask(tag, sourceUri, targetUri) );
             producer.send(new ProducerRecord<>(topic, id, task ));
             LOGGER.debug("Validation task {} {} submitted", id, task);
+            if (metrics != null) metrics.getRegistry().counter("applier.validation.task.submit").inc(1L);
         } catch (JsonProcessingException e) {
             LOGGER.error("Failure serializing validation task {} {} {} {}", id, tag, sourceUri, targetUri, e);
         }

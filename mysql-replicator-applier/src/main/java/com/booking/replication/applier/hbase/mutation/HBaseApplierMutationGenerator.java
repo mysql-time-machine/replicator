@@ -3,6 +3,7 @@ package com.booking.replication.applier.hbase.mutation;
 import com.booking.replication.applier.hbase.HBaseApplier;
 
 import com.booking.replication.applier.hbase.schema.HBaseRowKeyMapper;
+import com.booking.replication.applier.validation.ValidationService;
 import com.booking.replication.augmenter.model.AugmenterModel;
 import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.augmenter.model.format.EventDeserializer;
@@ -16,7 +17,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -28,6 +28,8 @@ public class HBaseApplierMutationGenerator {
     private static final Logger LOGGER = LogManager.getLogger(HBaseApplierMutationGenerator.class);
 
     private final Metrics<?> metrics;
+
+    private String shardName;
 
     public class PutMutation {
 
@@ -92,6 +94,15 @@ public class HBaseApplierMutationGenerator {
     public HBaseApplierMutationGenerator(Map<String, Object> configuration, Metrics<?> metrics) {
         this.configuration = configuration;
         this.metrics = metrics;
+        setShardName(this.configuration);
+    }
+
+    private void setShardName(Map<String, Object> configuration) {
+        this.shardName = (String) configuration.getOrDefault(ValidationService.Configuration.VALIDATION_DATA_SOURCE_NAME, "");
+    }
+
+    public String getShardName() {
+        return this.shardName;
     }
 
     /**
@@ -322,10 +333,17 @@ public class HBaseApplierMutationGenerator {
     private String getRowUri(AugmentedRow row) {
 
         String sourceDomain = row.getTableSchema().toString().toLowerCase();
-
+        String configShardName = this.getShardName();
+        if (configShardName != null && !configShardName.isEmpty()) {
+            sourceDomain = configShardName;
+        }
         AugmentedEventType eventType = row.getEventType();
 
         String table = row.getTableName();
+        String originalTableName = row.getOriginalTableName();
+        if (originalTableName != null && !originalTableName.isEmpty()) {
+            table = originalTableName;
+        }
 
         String keys  = row.getPrimaryKeyColumns().stream()
                 .map( column -> {

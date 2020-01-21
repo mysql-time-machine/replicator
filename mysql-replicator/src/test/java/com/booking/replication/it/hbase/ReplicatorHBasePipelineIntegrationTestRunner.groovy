@@ -89,6 +89,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
     // Validator specific config
     @Shared public static final String VALIDATION_BROKER = getPropertyOrDefault("validation.broker", "localhost:9092")
+    @Shared public static final String VALIDATION_DATA_SOURCE_NAME = getPropertyOrDefault("validation.data_source_name", "shard1")
     @Shared public static final String VALIDATION_TOPIC = getPropertyOrDefault("validation.topic", "replicator_validation")
     @Shared public static final String VALIDATION_TAG  = getPropertyOrDefault("validation.tag", "test_hbase")
     @Shared public static final String VALIDATION_THROTTLE_ONE_EVERY = getPropertyOrDefault("validation.throttle_one_every", "100")
@@ -533,6 +534,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         // Validator Specifics
         configuration.put(ValidationService.Configuration.VALIDATION_BROKER, "localhost:9092")
         configuration.put(ValidationService.Configuration.VALIDATION_THROTTLE_ONE_EVERY, "100")
+        configuration.put(ValidationService.Configuration.VALIDATION_DATA_SOURCE_NAME, "shard1")
         configuration.put(ValidationService.Configuration.VALIDATION_TOPIC, "replicator_validation")
         configuration.put(ValidationService.Configuration.VALIDATION_TAG, "test_hbase")
         configuration.put(ValidationService.Configuration.VALIDATION_SOURCE_DOMAIN, "mysql-schema")

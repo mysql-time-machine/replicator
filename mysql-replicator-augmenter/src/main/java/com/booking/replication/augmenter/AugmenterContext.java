@@ -416,7 +416,7 @@ public class AugmenterContext implements Closeable {
         this.metrics.getRegistry()
                 .counter("augmenter.context.type.query").inc(1L);
 
-        // begin
+        // BEGIN
         if (this.beginPattern.matcher(query).find()) {
             this.updateCommons(
                     false,
@@ -429,6 +429,7 @@ public class AugmenterContext implements Closeable {
                 AugmenterContext.LOG.warn("transaction already started");
             }
 
+        // COMMIT
         } else if (this.commitPattern.matcher(query).find()) {
             // commit
             this.updateCommons(
@@ -438,30 +439,33 @@ public class AugmenterContext implements Closeable {
                     queryRawEventData.getDatabase(),
                     null
             );
-
             this.metrics.getRegistry()
                     .counter("augmenter.context.type.commit").inc(1L);
-
             if (!this.transaction.commit(eventHeader.getTimestamp(), transactionCounter.get())) {
                 AugmenterContext.LOG.warn("transaction already markedForCommit");
             }
+
+        // Definer
         } else if ((matcher = this.ddlDefinerPattern.matcher(query)).find()) {
             // ddl definer
             this.metrics.getRegistry()
                     .counter("augmenter.context.type.ddl_definer").inc(1L);
             this.updateCommons(
-                    true,
+                    false,
                     QueryAugmentedEventDataType.DDL_DEFINER,
                     QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
                     queryRawEventData.getDatabase(),
                     null
             );
+
+        // Table DDL
         } else if ((matcher = this.ddlTablePattern.matcher(query)).find()) {
             // ddl table
             this.metrics.getRegistry()
                     .counter("augmenter.context.type.ddl_table").inc(1L);
             String tableName = matcher.group(4);
-            Boolean shouldProcess = ( this.shouldAugmentTable(tableName) && queryRawEventData.getDatabase().equals(replicatedSchema) );
+            LOG.info("Table DDL Encountered: { db => " + queryRawEventData.getDatabase() + ", sql => " + queryRawEventData.getSQL());
+            Boolean shouldProcess = ( queryRawEventData.getDatabase().equals(replicatedSchema) );
             this.updateCommons(
                     shouldProcess,
                     QueryAugmentedEventDataType.DDL_TABLE,

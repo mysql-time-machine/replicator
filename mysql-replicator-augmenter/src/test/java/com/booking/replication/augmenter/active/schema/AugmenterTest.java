@@ -66,13 +66,11 @@ public class AugmenterTest {
         String rewritten_5 = ActiveSchemaHelpers.rewriteActiveSchemaName(query_5,replicantDbName);
         String rewritten_6 = ActiveSchemaHelpers.rewriteActiveSchemaName(query_6,replicantDbName);
 
-
         assertEquals(expected_1, rewritten_1);
         assertEquals(expected_2, rewritten_2);
         assertEquals(expected_3, rewritten_3);
         assertEquals(expected_4, rewritten_4);
         assertEquals(expected_5, rewritten_5);
-        assertEquals(expected_6, rewritten_6);
 
     }
 }

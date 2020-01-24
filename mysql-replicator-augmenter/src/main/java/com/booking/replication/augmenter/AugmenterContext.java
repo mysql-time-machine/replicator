@@ -71,12 +71,14 @@ public class AugmenterContext implements Closeable {
     private static final String DEFAULT_BEGIN_PATTERN = "^(/\\*.*?\\*/\\s*)?(begin)";
     private static final String DEFAULT_COMMIT_PATTERN = "^(/\\*.*?\\*/\\s*)?(commit)";
     private static final String DEFAULT_DDL_DEFINER_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(definer)\\s*=";
-    private static final String DEFAULT_DDL_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|modify)\\s+(table)\\s+(?:if not exists\\s+|if exists\\s+)?(\\S+)";
+    private static final String DEFAULT_DDL_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|modify)\\s+(table)\\s+(?:if (?:not )?exists\\s+)?(\\S+)";
     private static final String DEFAULT_DDL_TEMPORARY_TABLE_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(temporary)\\s+(table)\\s+(\\S+)";
     private static final String DEFAULT_DDL_VIEW_PATTERN = "^(/\\*.*?\\*/\\s*)?(alter|drop|create|rename|truncate|modify)\\s+(view)\\s+(\\S+)";
     private static final String DEFAULT_DDL_ANALYZE_PATTERN = "^(/\\*.*?\\*/\\s*)?(analyze)\\s+(table)\\s+(\\S+)";
     private static final String DEFAULT_ENUM_PATTERN = "(?<=enum\\()(.*?)(?=\\))";
     private static final String DEFAULT_SET_PATTERN = "(?<=set\\()(.*?)(?=\\))";
+
+    public static final String RENAME_MULTISCHEMA_PATTERN = "(`?\\S+`?\\.)?(`?\\S+`?)\\s+TO\\s+(`?\\S+`?\\.)?(`?\\S+`?)\\s*,?";
 
     private final SchemaManager schemaManager;
     private final String replicatedSchema;
@@ -92,6 +94,7 @@ public class AugmenterContext implements Closeable {
     private final Pattern enumPattern;
     private final Pattern setPattern;
     private final Pattern excludePattern;
+    private final Pattern renameMultiSchemaPattern;
     private final boolean transactionsEnabled;
     private final Metrics<?> metrics;
     private final String binlogsBasePath;
@@ -168,6 +171,8 @@ public class AugmenterContext implements Closeable {
         this.transactionsEnabled = Boolean.parseBoolean(configuration.getOrDefault(Configuration.TRANSACTIONS_ENABLED, "true").toString());
         this.excludeTableList = this.getList(configuration.get(Configuration.EXCLUDE_TABLE));
         this.includeTableList = this.getList(configuration.get(Configuration.INCLUDE_TABLE));
+        this.renameMultiSchemaPattern = Pattern.compile(this.RENAME_MULTISCHEMA_PATTERN,Pattern.CASE_INSENSITIVE);
+
 
         this.timestamp = new AtomicLong();
 
@@ -430,7 +435,7 @@ public class AugmenterContext implements Closeable {
             }
 
         // COMMIT
-        } else if (this.commitPattern.matcher(query).find()) {
+        } else if (commitPattern.matcher(query).find()) {
             // commit
             this.updateCommons(
                     true,
@@ -446,7 +451,7 @@ public class AugmenterContext implements Closeable {
             }
 
         // Definer
-        } else if ((matcher = this.ddlDefinerPattern.matcher(query)).find()) {
+        } else if ((matcher = ddlDefinerPattern.matcher(query)).find()) {
             // ddl definer
             this.metrics.getRegistry()
                     .counter("augmenter.context.type.ddl_definer").inc(1L);
@@ -459,17 +464,30 @@ public class AugmenterContext implements Closeable {
             );
 
         // Table DDL
-        } else if ((matcher = this.ddlTablePattern.matcher(query)).find()) {
+        } else if ((matcher = ddlTablePattern.matcher(query)).find()) {
             // ddl table
             this.metrics.getRegistry()
                     .counter("augmenter.context.type.ddl_table").inc(1L);
-            String tableName = matcher.group(4);
+
+            Boolean shouldProcess = true;
+
+            if ( matcher.group(2).toLowerCase().equals("rename") ) {
+                // Now skip if we are renaming TO a different schema
+                shouldProcess = ActiveSchemaHelpers.getShouldProcess(query, renameMultiSchemaPattern, replicatedSchema);
+            }
+
+            if ( !shouldProcess ) {
+                LOG.info("Skipping DDL TABLE event due to mismatching schemas. Next LOG.info line contains the relevant query");
+            }
+
             LOG.info("Table DDL Encountered: { db => " + queryRawEventData.getDatabase() + ", sql => " + queryRawEventData.getSQL());
-            Boolean shouldProcess = ( queryRawEventData.getDatabase().equals(replicatedSchema) );
+            shouldProcess = shouldProcess && ( queryRawEventData.getDatabase().equals(replicatedSchema) );
+            String eventType = matcher.group(2).toUpperCase();
+            String tableName = matcher.group(4);
             this.updateCommons(
                     shouldProcess,
                     QueryAugmentedEventDataType.DDL_TABLE,
-                    QueryAugmentedEventDataOperationType.valueOf(matcher.group(2).toUpperCase()),
+                    QueryAugmentedEventDataOperationType.valueOf(eventType),
                     queryRawEventData.getDatabase(),
                     tableName
             );

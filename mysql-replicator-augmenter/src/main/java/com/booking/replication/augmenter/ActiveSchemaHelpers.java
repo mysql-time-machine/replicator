@@ -12,6 +12,8 @@ import org.apache.logging.log4j.Logger;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.sql.DataSource;
 
@@ -168,4 +170,30 @@ public class ActiveSchemaHelpers {
         return rewritenQuery;
     }
 
+    public static Boolean getShouldProcess(String query, Pattern renameMultiSchemaPattern, String replicatedSchema) {
+        Matcher renameMatcher = renameMultiSchemaPattern.matcher(query);
+        while ( renameMatcher.find() ){
+            try {
+                String fromSchema       = renameMatcher.group(1);
+                String fromTablename    = renameMatcher.group(2);
+                String toSchema         = renameMatcher.group(3);
+                String toTablename      = renameMatcher.group(4);
+
+                if ( fromSchema != null ) { fromSchema = fromSchema.replaceAll("`","").replace(".",""); }
+                if ( toSchema != null ) { toSchema = toSchema.replaceAll("`","").replace(".",""); }
+                if ( fromTablename != null ) { fromTablename = fromTablename.replaceAll("`",""); }
+                if ( toTablename != null ) { toTablename = toTablename.replaceAll("`",""); }
+
+                if ( ( fromSchema != null && !fromSchema.equals(replicatedSchema) ) ||
+                     ( toSchema   != null && !toSchema.equals(replicatedSchema) ) ||
+                     ( fromSchema != null && toSchema != null && !fromSchema.equals(toSchema) )
+                ) {
+                    return false;
+                }
+            }catch(Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return true;
+    }
 }

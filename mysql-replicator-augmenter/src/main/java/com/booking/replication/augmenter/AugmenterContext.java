@@ -78,7 +78,7 @@ public class AugmenterContext implements Closeable {
     private static final String DEFAULT_ENUM_PATTERN = "(?<=enum\\()(.*?)(?=\\))";
     private static final String DEFAULT_SET_PATTERN = "(?<=set\\()(.*?)(?=\\))";
 
-    private static final String RENAME_MULTISCHEMA_PATTERN = "(`?\\S+`?\\.)?(`?\\S+`?)\\s+TO\\s+(`?\\S+`?\\.)?(`?\\S+`?)\\s*,?";
+    public static final String RENAME_MULTISCHEMA_PATTERN = "(`?\\S+`?\\.)?(`?\\S+`?)\\s+TO\\s+(`?\\S+`?\\.)?(`?\\S+`?)\\s*,?";
 
     private final SchemaManager schemaManager;
     private final String replicatedSchema;
@@ -435,7 +435,7 @@ public class AugmenterContext implements Closeable {
             }
 
         // COMMIT
-        } else if (this.commitPattern.matcher(query).find()) {
+        } else if (commitPattern.matcher(query).find()) {
             // commit
             this.updateCommons(
                     true,
@@ -451,7 +451,7 @@ public class AugmenterContext implements Closeable {
             }
 
         // Definer
-        } else if ((matcher = this.ddlDefinerPattern.matcher(query)).find()) {
+        } else if ((matcher = ddlDefinerPattern.matcher(query)).find()) {
             // ddl definer
             this.metrics.getRegistry()
                     .counter("augmenter.context.type.ddl_definer").inc(1L);
@@ -464,7 +464,7 @@ public class AugmenterContext implements Closeable {
             );
 
         // Table DDL
-        } else if ((matcher = this.ddlTablePattern.matcher(query)).find()) {
+        } else if ((matcher = ddlTablePattern.matcher(query)).find()) {
             // ddl table
             this.metrics.getRegistry()
                     .counter("augmenter.context.type.ddl_table").inc(1L);
@@ -473,30 +473,7 @@ public class AugmenterContext implements Closeable {
 
             if ( matcher.group(2).toLowerCase().equals("rename") ) {
                 // Now skip if we are renaming TO a different schema
-                Matcher renameMatcher = this.renameMultiSchemaPattern.matcher(query);
-
-                while ( renameMatcher.find() && shouldProcess ){
-                    try {
-                        String fromSchema       = renameMatcher.group(1);
-                        String fromTablename    = renameMatcher.group(2);
-                        String toSchema         = renameMatcher.group(3);
-                        String toTablename      = renameMatcher.group(4);
-
-                        if ( fromSchema != null ) { fromSchema = fromSchema.replaceAll("`","").replace(".",""); }
-                        if ( toSchema != null ) { toSchema = toSchema.replaceAll("`","").replace(".",""); }
-                        if ( fromTablename != null ) { fromTablename = fromTablename.replaceAll("`",""); }
-                        if ( toTablename != null ) { toTablename = toTablename.replaceAll("`",""); }
-
-                        if ( ( fromSchema != null && !fromSchema.equals(replicatedSchema) ) ||
-                             ( toSchema   != null && !toSchema.equals(replicatedSchema) ) ||
-                             ( fromSchema != null && toSchema != null && !fromSchema.equals(toSchema) )
-                        ) {
-                            shouldProcess = false;
-                        }
-                    }catch(Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                }
+                shouldProcess = ActiveSchemaHelpers.getShouldProcess(query, renameMultiSchemaPattern, replicatedSchema);
             }
 
             if ( !shouldProcess ) {

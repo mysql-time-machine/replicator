@@ -482,10 +482,10 @@ public class AugmenterContext implements Closeable {
                         String toSchema         = renameMatcher.group(3);
                         String toTablename      = renameMatcher.group(4);
 
-                        if ( fromSchema != null ) { fromSchema.replaceAll("`",""); fromSchema.replace(".",""); }
-                        if ( toSchema != null ) { toSchema.replaceAll("`",""); toSchema.replace(".",""); }
-                        if ( fromTablename != null ) { fromTablename.replaceAll("`",""); }
-                        if ( toTablename != null ) { toTablename.replaceAll("`",""); }
+                        if ( fromSchema != null ) { fromSchema = fromSchema.replaceAll("`","").replace(".",""); }
+                        if ( toSchema != null ) { toSchema = toSchema.replaceAll("`","").replace(".",""); }
+                        if ( fromTablename != null ) { fromTablename = fromTablename.replaceAll("`",""); }
+                        if ( toTablename != null ) { toTablename = toTablename.replaceAll("`",""); }
 
                         if ( ( fromSchema != null && !fromSchema.equals(replicatedSchema) ) ||
                              ( toSchema   != null && !toSchema.equals(replicatedSchema) ) ||

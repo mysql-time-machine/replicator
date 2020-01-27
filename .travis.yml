@@ -22,4 +22,4 @@ script:
 services:
   - docker
 
-dist: trusty
+dist: xenial

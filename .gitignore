@@ -8,5 +8,3 @@ dependency-reduced-pom.xml
 target
 .DS_Store
 
-# Avoid including generated definitions in git
-mysql-replicator-augmenter-model/src/main/java/com/booking/replication/augmenter/model/definitions/

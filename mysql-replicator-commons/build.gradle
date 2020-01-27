@@ -44,7 +44,7 @@ description = 'mysql-replicator-commons'
 
 task testsJar(type: Jar) {
     from(sourceSets.test.output)
-    archiveClassifier = 'tests'
+    archiveClassifier.set('tests')
 }
 
 publishing.publications.maven.artifact(testsJar)

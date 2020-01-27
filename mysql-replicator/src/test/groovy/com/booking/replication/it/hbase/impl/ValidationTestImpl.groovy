@@ -2,7 +2,7 @@ package com.booking.replication.it.hbase.impl
 
 import com.booking.replication.commons.services.ServicesControl
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
-import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTestRunner
+import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationSpec
 import com.booking.replication.it.util.MySQL
 import org.apache.kafka.clients.consumer.Consumer
 import org.apache.kafka.clients.consumer.ConsumerConfig

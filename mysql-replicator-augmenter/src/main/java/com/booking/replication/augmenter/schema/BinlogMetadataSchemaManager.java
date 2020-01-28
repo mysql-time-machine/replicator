@@ -32,20 +32,17 @@ public class BinlogMetadataSchemaManager implements SchemaManager {
             try {
                 TableMapRawEventData tableMapRawEventData = this.tableMapEventDataCache.get(tableName);
                 Object schema = tableMapRawEventData.getDatabase();
-                TableSchema ts =
-                        SchemaUtil.computeTableSchemaFromBinlogMetadata(
-                                schema.toString(),
-                                tableName,
-                                tableMapRawEventData
-                        );
-                ts.getColumnSchemas().stream().forEach(cs ->
-                        {
-                            String message = "columnName: " + cs.getName() +
-                                    ", columnType: " + cs.getColumnType() +
-                                    ", collation: " + cs.getCollation();
-                            System.out.println(message);
-                        }
+                TableSchema ts = SchemaUtil.computeTableSchemaFromBinlogMetadata(
+                        schema.toString(),
+                        tableName,
+                        tableMapRawEventData
                 );
+                ts.getColumnSchemas().stream().forEach(cs -> {
+                        String message = "computed schema for { columnName: " + cs.getName() +
+                                ", columnType: " + cs.getColumnType() +
+                                ", collation: " + cs.getCollation() + " }";
+                        System.out.println(message);
+                });
                 return ts;
             } catch (Exception e) {
                 LOG.info("ERROR: Could not compute table schema for table: " + tableName);

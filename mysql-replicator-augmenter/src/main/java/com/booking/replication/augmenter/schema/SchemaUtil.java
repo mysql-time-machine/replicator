@@ -1,7 +1,6 @@
 package com.booking.replication.augmenter.schema;
 
 import com.booking.replication.augmenter.ActiveSchemaManager;
-import com.booking.replication.augmenter.AugmenterContext;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.DataType;
 import com.booking.replication.augmenter.model.schema.FullTableName;
@@ -23,7 +22,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.sql.DataSource;
-import javax.swing.text.html.Option;
 
 public class SchemaUtil {
 
@@ -40,10 +38,14 @@ public class SchemaUtil {
 
         List<String> columnNameList = tableMapEventMetadata.getColumnNames();
 
+        BitSet signedBits = tableMapEventData.getEventMetadata().getSignedness();
+
         // TODO: we assume column index is the same for all these lists/sets/arrays - verify
         int columnIndex = 0;
 
         int charsetIdIndex = 0;
+        int signedColumnIndex = 0;
+
         int enumAndSetCharsetIdIndex = 0;
 
         for (String columnName : columnNameList) {
@@ -65,23 +67,29 @@ public class SchemaUtil {
 
             DataType dataType = facadeColumnTypeCodeRemap(tableMapEventData, columnIndex);
 
+            boolean isUnsigned = isColumnUnsigned(tableMapEventData, columnIndex, signedBits);
+
             boolean isPrimary = pkColumnIndexes.contains(columnIndex) ? true : false;
 
             ColumnSchema columnSchema = new ColumnSchema(
 
-                    tableMapEventMetadata.getColumnNames().get(columnIndex), // Column Name
+                    // Column Name
+                    tableMapEventMetadata.getColumnNames().get(columnIndex),
 
-                    // TODO: include Signedness
+                    // Data Type
                     dataType,
 
-                    dataType.getCode(),
+                    // Column Type
+                    (isUnsigned == true) ? "unsigned" : "",
 
                     isNullable,
 
-                    isPrimary,                                                // COLUMN_KEY->PRI; other values (UNI/MUL)
-                                                                             // seem to not be supported in binlog
-                                                                             // additional metadata
-                    Optional.empty() // TODO: get enumSetValueList
+                    // COLUMN_KEY->PRI; other values (UNI/MUL) seem to not be
+                    // supported in binlog additional metadata
+                    isPrimary,
+
+                    // TODO: get enumSetValueList
+                    Optional.empty()
             );
 
             // MySQL Charsets & Collations https://dev.mysql.com/doc/internals/en/character-set.html
@@ -201,10 +209,15 @@ public class SchemaUtil {
                 );
     }
 
+    private static boolean isColumnUnsigned(TableMapRawEventData tableMapEventData, int columnIndex, BitSet signedBits) {
+        // TODO: implement logic
+        return true;
+    }
+
     private static DataType facadeColumnTypeCodeRemap(TableMapRawEventData tableMapEventData, int columnIndex) {
 
         // Now, there is some extra logic to figure out the correct type code
-        // === some boiler plate (taken and slighty adapted from shyiko...AbstractRowsEventDataDeserializer
+        // === some boiler plate (taken and slightly adapted from shyiko...AbstractRowsEventDataDeserializer)
         // === TODO: move this to some nicer place, or PR for binlog connector
         byte[] columnTypes = tableMapEventData.getColumnTypes();
         int[] metadata = tableMapEventData.getColumnMetadata();
@@ -294,12 +307,10 @@ public class SchemaUtil {
             case LONG_BLOB:
                 return DataType.byCode("LONGBLOB");
 
-
             case VARCHAR:
                 return DataType.byCode("VARCHAR");
             case VAR_STRING:
                 return DataType.byCode("VARCHAR");
-
 
             case STRING:
                 return DataType.byCode("BINARY");

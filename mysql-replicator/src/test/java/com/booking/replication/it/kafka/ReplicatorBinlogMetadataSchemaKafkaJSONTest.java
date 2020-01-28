@@ -8,6 +8,10 @@ import com.booking.replication.applier.kafka.KafkaApplier;
 import com.booking.replication.applier.kafka.KafkaSeeker;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.AugmenterContext;
+import com.booking.replication.augmenter.model.event.AugmentedEventHeader;
+import com.booking.replication.augmenter.model.event.AugmentedEventType;
+import com.booking.replication.augmenter.model.event.WriteRowsAugmentedEventData;
+import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.checkpoint.CheckpointApplier;
 import com.booking.replication.commons.conf.MySQLConfiguration;
 import com.booking.replication.commons.services.ServicesControl;
@@ -17,6 +21,7 @@ import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.coordinator.ZookeeperCoordinator;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mysql.jdbc.Driver;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import org.apache.commons.dbcp2.BasicDataSource;
@@ -30,6 +35,7 @@ import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.testcontainers.containers.Network;
@@ -114,22 +120,86 @@ public class ReplicatorBinlogMetadataSchemaKafkaJSONTest {
             kafkaConfiguration.put(ConsumerConfig.GROUP_ID_CONFIG, com.booking.replication.it.kafka.ReplicatorBinlogMetadataSchemaKafkaJSONTest.KAFKA_REPLICATOR_IT_GROUP_ID);
             kafkaConfiguration.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
+            ObjectMapper MAPPER = new ObjectMapper();
+
             try (Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(kafkaConfiguration, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
                 consumer.subscribe(Collections.singleton(com.booking.replication.it.kafka.ReplicatorBinlogMetadataSchemaKafkaJSONTest.KAFKA_REPLICATOR_TOPIC_NAME));
 
                 boolean consumed = false;
+                boolean isMarkedRow = false;
 
                 while (!consumed) {
-
                     for (ConsumerRecord<byte[], byte[]> record : consumer.poll(1000L)) {
+
                         System.out.println(record.toString());
                         System.out.println("key => " + new String(record.key()));
                         System.out.println("value => " + new String(record.value()));
-                        consumed = true;
+
+                        AugmentedEventHeader h = MAPPER.readValue(record.key(), AugmentedEventHeader.class);
+
+                        if (h.getTableName().equals("organisms")) {
+
+                            if (h.getEventType().equals(AugmentedEventType.INSERT)) {
+
+                                WriteRowsAugmentedEventData augmentedEventData = MAPPER.readValue(record.value(), WriteRowsAugmentedEventData.class);
+
+                                for (AugmentedRow row : augmentedEventData.getRows()) {
+
+                                    for (String key : row.getValues().keySet()) {
+                                        if (key.equals("id")) {
+                                            if (row.getValues().get(key).toString().equals("2")) {
+                                                isMarkedRow = true;
+                                            }
+                                        }
+                                    }
+
+                                    if (isMarkedRow) {
+                                        for (String key : row.getValues().keySet()) {
+                                            String colVal = row.getValues().get(key).toString();
+
+                                            switch (key) {
+                                                case "name":
+                                                    Assert.assertEquals("name", "Ñandú", colVal);
+                                                    break;
+                                                case "lifespan":
+                                                    Assert.assertEquals("lifespan", "240", colVal);
+                                                    break;
+                                                case "lifespan_small":
+                                                    Assert.assertEquals("lifespan_small", "65500", colVal);
+                                                    break;
+                                                case "lifespan_medium":
+                                                    Assert.assertEquals("lifespan_medium", "16770215", colVal);
+                                                    break;
+                                                case "lifespan_int":
+                                                    Assert.assertEquals("lifespan_int", "4294897295", colVal);
+                                                    break;
+                                                case "lifespan_bigint":
+                                                    Assert.assertEquals("lifespan_bigint", "18446744071615", colVal);
+                                                    break;
+                                                case "bits":
+                                                    Assert.assertEquals("bits", "10101010", colVal);
+                                                    break;
+                                                case "soylent_dummy_id":
+                                                    Assert.assertEquals("soylent_dummy_id", "000001348BB470A5129E6C8D332D89CC", colVal);
+                                                    break;
+                                                case "mydecimal":
+                                                    Assert.assertEquals("mydecimal", "100.000000000", colVal);
+                                                    break;
+                                                case "kingdom":
+                                                    Assert.assertEquals("kingdom", "animalia", colVal);
+                                                    break;
+                                                default:
+                                                    break;
+                                            }
+                                        }
+                                        isMarkedRow = false;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
-
             replicator.stop();
         }
 

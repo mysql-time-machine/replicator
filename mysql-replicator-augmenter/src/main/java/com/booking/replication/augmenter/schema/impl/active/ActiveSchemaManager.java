@@ -1,10 +1,11 @@
-package com.booking.replication.augmenter;
+package com.booking.replication.augmenter.schema.impl.active;
 
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.SchemaAtPositionCache;
 import com.booking.replication.augmenter.model.schema.TableSchema;
 
-import com.booking.replication.augmenter.schema.SchemaUtil;
+import com.booking.replication.augmenter.schema.SchemaManager;
+import com.booking.replication.augmenter.schema.impl.SchemaUtil;
 import com.booking.replication.supplier.model.TableMapRawEventData;
 import com.mysql.jdbc.Driver;
 

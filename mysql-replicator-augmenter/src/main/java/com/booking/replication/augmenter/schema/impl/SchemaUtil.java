@@ -1,11 +1,11 @@
-package com.booking.replication.augmenter.schema;
+package com.booking.replication.augmenter.schema.impl;
 
-import com.booking.replication.augmenter.ActiveSchemaManager;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.DataType;
 import com.booking.replication.augmenter.model.schema.FullTableName;
 import com.booking.replication.augmenter.model.schema.TableSchema;
 
+import com.booking.replication.augmenter.schema.impl.active.ActiveSchemaManager;
 import com.booking.replication.supplier.model.TableMapRawEventData;
 import com.github.shyiko.mysql.binlog.event.TableMapEventMetadata;
 import com.github.shyiko.mysql.binlog.event.deserialization.ColumnType;
@@ -24,8 +24,6 @@ import java.util.regex.Pattern;
 import javax.sql.DataSource;
 
 public class SchemaUtil {
-
-    private static final int VARCHAR_MAXIMUM_LENGTH = 65535;
 
     public static TableSchema computeTableSchemaFromBinlogMetadata(
             String schema,
@@ -80,7 +78,7 @@ public class SchemaUtil {
                     dataType,
 
                     // Column Type
-                    (isUnsigned == true) ? "unsigned" : "",
+                    (isUnsigned == true) ? (dataType.getCode() + " unsigned") : dataType.getCode(),
 
                     isNullable,
 
@@ -143,16 +141,19 @@ public class SchemaUtil {
 
                     charsetIdIndex++;
 
-                    columnSchema
-                            .setCollation(String.valueOf(columnCollationId)) // TODO: lookup table for collation name
-                            .setCharMaxLength(VARCHAR_MAXIMUM_LENGTH);       // TODO: remove this field in future versions
-                                                                             // In extra metadata there is no max char length,
-                                                                             // but for the time being keeping it for compatibility
-                                                                             // with active schema implementation
+                    // TODO: lookup table for collation name
+                    columnSchema.setCollation(String.valueOf(columnCollationId));
+
+                    // In extra metadata there is no max char length.
+                    // The way this is handled later in the decoder is
+                    // to use the actual char length of the field.
+                    columnSchema.setCharMaxLength(null);
+
                     break;
 
                 case ENUM:
                 case SET:
+                    // TODO: get enumSetValueList
                     List<Integer> enumAndSetCharsets = tableMapEventMetadata.getEnumAndSetColumnCharsets();
                     if (enumAndSetCharsets != null) {
                         if (enumAndSetCharsets.size() <= enumAndSetCharsetIdIndex) {

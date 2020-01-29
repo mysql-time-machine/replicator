@@ -57,23 +57,24 @@ public class MysqlTypeDeserializer {
         boolean isUnsigned  = columnType.contains("unsigned");
 
         switch (dataType) {
-            case BINARY:
-            case VARBINARY: {
+            case BINARY: {
                 byte[] bytes = (byte[]) cellValue;
-
-                if (bytes.length == columnSchema.getCharMaxLength()) {
+                if (columnSchema.getCharMaxLength() == null) {
                     return DatatypeConverter.printHexBinary(bytes);
                 } else {
-                    byte[] bytesWithPadding = new byte[columnSchema.getCharMaxLength()];
-
-                    for (int i = 0; i < bytesWithPadding.length; ++i) {
-                        bytesWithPadding[i] = (i < bytes.length) ? bytes[i] : 0;
+                    if (bytes.length == columnSchema.getCharMaxLength()) {
+                        return DatatypeConverter.printHexBinary(bytes);
+                    } else {
+                        // Add 00 padding
+                        byte[] bytesWithPadding = new byte[columnSchema.getCharMaxLength()];
+                        for (int i = 0; i < bytesWithPadding.length; ++i) {
+                            bytesWithPadding[i] = (i < bytes.length) ? bytes[i] : 0;
+                        }
+                        return DatatypeConverter.printHexBinary(bytesWithPadding);
                     }
-
-                    return DatatypeConverter.printHexBinary(bytesWithPadding);
                 }
             }
-
+            case VARBINARY:
             case TINYBLOB:
             case MEDIUMBLOB:
             case BLOB:

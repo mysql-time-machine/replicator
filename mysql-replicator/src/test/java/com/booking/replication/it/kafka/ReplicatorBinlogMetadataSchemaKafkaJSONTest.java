@@ -155,7 +155,12 @@ public class ReplicatorBinlogMetadataSchemaKafkaJSONTest {
 
                                     if (isMarkedRow) {
                                         for (String key : row.getValues().keySet()) {
+
+                                            System.out.println("getting colVal for key: " + key);
+
                                             String colVal = row.getValues().get(key).toString();
+
+                                            System.out.println("got colVal => " + colVal);
 
                                             switch (key) {
                                                 case "name":

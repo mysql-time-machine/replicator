@@ -1,9 +1,10 @@
-package com.booking.replication.augmenter.schema;
+package com.booking.replication.augmenter.schema.impl.metadata;
 
-import com.booking.replication.augmenter.SchemaManager;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.SchemaAtPositionCache;
 import com.booking.replication.augmenter.model.schema.TableSchema;
+import com.booking.replication.augmenter.schema.SchemaManager;
+import com.booking.replication.augmenter.schema.impl.SchemaUtil;
 import com.booking.replication.supplier.model.TableMapRawEventData;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

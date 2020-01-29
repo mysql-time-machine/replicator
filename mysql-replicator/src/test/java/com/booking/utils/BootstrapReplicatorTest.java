@@ -3,7 +3,7 @@ package com.booking.utils;
 
 import com.booking.replication.applier.kafka.KafkaApplier;
 import com.booking.replication.applier.schema.registry.BCachedSchemaRegistryClient;
-import com.booking.replication.augmenter.ActiveSchemaManager;
+import com.booking.replication.augmenter.schema.impl.active.ActiveSchemaManager;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.commons.conf.MySQLConfiguration;
 import com.booking.replication.commons.services.ServicesControl;
@@ -15,7 +15,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.testcontainers.containers.Network;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 

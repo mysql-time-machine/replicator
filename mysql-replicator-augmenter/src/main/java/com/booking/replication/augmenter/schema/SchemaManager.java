@@ -1,4 +1,4 @@
-package com.booking.replication.augmenter;
+package com.booking.replication.augmenter.schema;
 
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.TableSchema;

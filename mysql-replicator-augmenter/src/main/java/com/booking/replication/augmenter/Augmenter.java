@@ -5,10 +5,11 @@ import com.booking.replication.augmenter.model.event.AugmentedEventData;
 import com.booking.replication.augmenter.model.event.AugmentedEventHeader;
 import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
-import com.booking.replication.augmenter.model.schema.SchemaAtPositionCache;
 import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
 import com.booking.replication.augmenter.model.schema.TableSchema;
-import com.booking.replication.augmenter.schema.BinlogMetadataSchemaManager;
+import com.booking.replication.augmenter.schema.impl.active.ActiveSchemaManager;
+import com.booking.replication.augmenter.schema.impl.metadata.BinlogMetadataSchemaManager;
+import com.booking.replication.augmenter.schema.SchemaManager;
 import com.booking.replication.commons.checkpoint.ForceRewindException;
 import com.booking.replication.commons.metrics.Metrics;
 

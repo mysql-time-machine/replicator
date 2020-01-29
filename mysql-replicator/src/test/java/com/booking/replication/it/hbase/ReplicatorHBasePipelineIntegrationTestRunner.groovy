@@ -6,10 +6,9 @@ import com.booking.replication.applier.Partitioner
 import com.booking.replication.applier.Seeker
 import com.booking.replication.applier.hbase.HBaseApplier
 import com.booking.replication.applier.hbase.StorageConfig
-import com.booking.replication.augmenter.ActiveSchemaManager
+import com.booking.replication.augmenter.schema.impl.active.ActiveSchemaManager
 import com.booking.replication.augmenter.Augmenter
 import com.booking.replication.augmenter.AugmenterContext
-import com.booking.replication.augmenter.AugmenterFilter
 import com.booking.replication.checkpoint.CheckpointApplier
 import com.booking.replication.commons.conf.MySQLConfiguration
 import com.booking.replication.commons.services.ServicesControl

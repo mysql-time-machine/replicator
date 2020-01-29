@@ -12,6 +12,7 @@ import com.booking.replication.augmenter.model.schema.SchemaAtPositionCache;
 import com.booking.replication.augmenter.model.schema.SchemaSnapshot;
 import com.booking.replication.augmenter.model.schema.SchemaTransitionSequence;
 import com.booking.replication.augmenter.model.schema.TableSchema;
+import com.booking.replication.augmenter.schema.SchemaManager;
 import com.booking.replication.commons.checkpoint.Binlog;
 import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.booking.replication.commons.checkpoint.GTID;

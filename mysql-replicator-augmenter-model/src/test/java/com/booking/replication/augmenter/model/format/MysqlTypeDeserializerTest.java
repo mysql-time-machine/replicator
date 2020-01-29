@@ -15,6 +15,9 @@ public class MysqlTypeDeserializerTest {
 
     @Test
     public void testBinaryType() {
+
+        // Do 00 padding for binary type (keeping it consistent with the way
+        // MySQL stores binary value
         ColumnSchema schema = new ColumnSchema("code", DataType.BINARY, "binary(10)", true, false, Optional.empty());
         schema.setCharMaxLength(10);
 
@@ -40,6 +43,37 @@ public class MysqlTypeDeserializerTest {
     }
 
     @Test
+    public void testBinaryTypeNoSizeInfo() {
+        ColumnSchema schema = new ColumnSchema("code", DataType.BINARY, "binary", true, false, Optional.empty());
+        schema.setCharMaxLength(null);
+
+        byte[] testByteArr;
+        String expected;
+        Object actual;
+
+        // Note: no padding is done when size is not specified. This is the
+        // case when using additional binlog metadata to get schema information
+        // since this metadata is lacking the information on the size of binary/varbinary
+        // field
+        {
+            testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
+
+            expected    = "6F72616E6765";
+
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
+            expected    = "4F72616E6765";
+
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema);
+            assertEquals(expected, actual);
+        }
+    }
+
+    @Test
     public void testVarBinaryType() {
         ColumnSchema schema = new ColumnSchema("code", DataType.VARBINARY, "binary(10)", true, false, Optional.empty());
         schema.setCharMaxLength(10);
@@ -48,9 +82,11 @@ public class MysqlTypeDeserializerTest {
         String expected;
         Object actual;
 
+        // No 00 padding for varbinary type (keeping it consitent with the way
+        // MySQL stores varbinary.
         {
             testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
-            expected    = "6F72616E676500000000";
+            expected    = "6F72616E6765";
 
             actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema);
             assertEquals(expected, actual);
@@ -58,7 +94,37 @@ public class MysqlTypeDeserializerTest {
 
         {
             testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
-            expected    = "4F72616E676500000000";
+            expected    = "4F72616E6765";
+
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema);
+            assertEquals(expected, actual);
+        }
+    }
+
+
+    @Test
+    public void testVarBinaryTypeNoLengthInfo() {
+        // This is the case when using additional binlog metadata to get
+        // schema information since this metadata is lacking the information
+        // on the size of binary/varbinary field
+        ColumnSchema schema = new ColumnSchema("code", DataType.VARBINARY, "binary", true, false, Optional.empty());
+        schema.setCharMaxLength(null);
+
+        byte[] testByteArr;
+        String expected;
+        Object actual;
+
+        {
+            testByteArr = new byte[] {111, 114, 97, 110, 103, 101};
+            expected    = "6F72616E6765";
+
+            actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema);
+            assertEquals(expected, actual);
+        }
+
+        {
+            testByteArr = new byte[] {79, 114, 97, 110, 103, 101};
+            expected    = "4F72616E6765";
 
             actual = MysqlTypeDeserializer.convertToObject(testByteArr, schema);
             assertEquals(expected, actual);

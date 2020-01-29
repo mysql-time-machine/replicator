@@ -141,6 +141,8 @@ public class ReplicatorBinlogMetadataSchemaKafkaJSONTest {
 
                             if (h.getEventType().equals(AugmentedEventType.INSERT)) {
 
+                                System.out.println("got INSERT");
+
                                 WriteRowsAugmentedEventData augmentedEventData = MAPPER.readValue(record.value(), WriteRowsAugmentedEventData.class);
 
                                 for (AugmentedRow row : augmentedEventData.getRows()) {
@@ -149,6 +151,7 @@ public class ReplicatorBinlogMetadataSchemaKafkaJSONTest {
                                         if (key.equals("id")) {
                                             if (row.getValues().get(key).toString().equals("2")) {
                                                 isMarkedRow = true;
+                                                System.out.println("Marked ===");
                                             }
                                         }
                                     }
@@ -203,6 +206,7 @@ public class ReplicatorBinlogMetadataSchemaKafkaJSONTest {
                             }
                         }
                     }
+                    consumed = true;
                 }
             }
             replicator.stop();

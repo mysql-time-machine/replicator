@@ -110,6 +110,10 @@ public class ColumnSchema implements Cloneable, Serializable {
         return enumOrSetValueList;
     }
 
+    public void setEnumOrSetValueList(Optional<List<String>> enumOrSetValueList) {
+        this.enumOrSetValueList = enumOrSetValueList;
+    }
+
     public ColumnSchema deepCopy() {
 
         ColumnSchema schema = new ColumnSchema(

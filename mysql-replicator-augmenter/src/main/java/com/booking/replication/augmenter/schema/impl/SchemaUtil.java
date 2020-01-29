@@ -152,39 +152,21 @@ public class SchemaUtil {
                     break;
 
                 case ENUM:
-                case SET:
-                    // TODO: get enumSetValueList
-                    List<Integer> enumAndSetCharsets = tableMapEventMetadata.getEnumAndSetColumnCharsets();
-                    if (enumAndSetCharsets != null) {
-                        if (enumAndSetCharsets.size() <= enumAndSetCharsetIdIndex) {
-                            // column specific collations depleted, use default charset/collation
-                            if (tableMapEventMetadata.getEnumAndSetDefaultCharset() != null) {
-                                columnCollationId = tableMapEventMetadata.getEnumAndSetDefaultCharset().getDefaultCharsetCollation();
-                            }
-                            if (columnCollationId == null) {
-                                System.out.println("Cannot determine default enum/set charset, defaulting to binary for columnIndex #" + columnIndex);
-                                columnCollationId = 63; // binary
-                            }
-                        } else {
-                            columnCollationId = enumAndSetCharsets.get(enumAndSetCharsetIdIndex);
-                            if (columnCollationId == null) {
-                                // this should never happen
-                                throw new RuntimeException(
-                                        "columnCollationId is null for { enumAndSetCharsetIdIndex: " +
-                                                enumAndSetCharsetIdIndex +
-                                                " , charsetList:  " +
-                                                enumAndSetCharsets.toString() +
-                                                " }"
-                                );
-                            }
-                        }
-                    }
+                    List<String> enumStrValues = Arrays.asList(tableMapEventMetadata.getEnumStrValues().get(0));
+                    columnSchema.setEnumOrSetValueList(Optional.of(enumStrValues));
+                    columnCollationId = getColumnCollationId(tableMapEventMetadata, columnIndex, enumAndSetCharsetIdIndex);
+                    // TODO: lookup table for collation name (currently its just collation id number code)
+                    columnSchema.setCollation(String.valueOf(columnCollationId));
+                    enumAndSetCharsetIdIndex++;
+                    break;
 
+                case SET:
+                    List<String> setStrValues = Arrays.asList(tableMapEventMetadata.getSetStrValues().get(0));
+                    columnSchema.setEnumOrSetValueList(Optional.of(setStrValues));
+                    columnCollationId = getColumnCollationId(tableMapEventMetadata, columnIndex, enumAndSetCharsetIdIndex);
                     // TODO: lookup table for collation name
                     columnSchema.setCollation(String.valueOf(columnCollationId));
-
                     enumAndSetCharsetIdIndex++;
-
                     break;
 
                 default:
@@ -194,7 +176,7 @@ public class SchemaUtil {
 
             // TODO: remove this field in future versions
             // In extra metadata there is no default value
-            // but keeping here for compatibility with active schema implementation
+            // but keeping it here for compatibility with active schema implementation
             columnSchema.setDefaultValue("NA");
 
             columnSchemaList.add(columnSchema);
@@ -208,6 +190,36 @@ public class SchemaUtil {
                         columnSchemaList,
                         "NA"
                 );
+    }
+
+    private static Integer getColumnCollationId(TableMapEventMetadata tableMapEventMetadata, int columnIndex, int enumAndSetCharsetIdIndex) {
+        Integer columnCollationId = null;
+        List<Integer> enumAndSetCharsets = tableMapEventMetadata.getEnumAndSetColumnCharsets();
+        if (enumAndSetCharsets != null) {
+            if (enumAndSetCharsets.size() <= enumAndSetCharsetIdIndex) {
+                // column specific collations depleted, use default charset/collation
+                if (tableMapEventMetadata.getEnumAndSetDefaultCharset() != null) {
+                    columnCollationId = tableMapEventMetadata.getEnumAndSetDefaultCharset().getDefaultCharsetCollation();
+                }
+                if (columnCollationId == null) {
+                    System.out.println("Cannot determine default enum/set charset, defaulting to binary for columnIndex #" + columnIndex);
+                    columnCollationId = 63; // binary
+                }
+            } else {
+                columnCollationId = enumAndSetCharsets.get(enumAndSetCharsetIdIndex);
+                if (columnCollationId == null) {
+                    // this should never happen
+                    throw new RuntimeException(
+                            "columnCollationId is null for { enumAndSetCharsetIdIndex: " +
+                                    enumAndSetCharsetIdIndex +
+                                    " , charsetList:  " +
+                                    enumAndSetCharsets.toString() +
+                                    " }"
+                    );
+                }
+            }
+        }
+        return columnCollationId;
     }
 
     private static boolean isColumnUnsigned(TableMapRawEventData tableMapEventData, int columnIndex, BitSet signedBits) {

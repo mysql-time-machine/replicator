@@ -64,24 +64,24 @@ class ValidationTestImpl implements ReplicatorHBasePipelineIntegrationTest {
 
     @Override
     Object getExpectedState() {
-        return (int) (TOTAL_DMLS/(Integer.parseInt(ReplicatorHBasePipelineIntegrationTestRunner.VALIDATION_THROTTLE_ONE_EVERY)))
+        return (int) (TOTAL_DMLS/(Integer.parseInt(ReplicatorHBasePipelineIntegrationSpec.VALIDATION_THROTTLE_ONE_EVERY)))
     }
 
     @Override
     Object getActualState() throws IOException {
 
         Map<String, Object> kafkaConfiguration = new HashMap<>();
-        kafkaConfiguration.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, ReplicatorHBasePipelineIntegrationTestRunner.VALIDATION_BROKER);
+        kafkaConfiguration.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, ReplicatorHBasePipelineIntegrationSpec.VALIDATION_BROKER);
         kafkaConfiguration.put(ConsumerConfig.GROUP_ID_CONFIG, VALIDATION_CONSUMER_GROUP);
         kafkaConfiguration.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         kafkaConfiguration.put("enable.auto.commit", "false");
         kafkaConfiguration.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         kafkaConfiguration.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        // println(sprintf("---------[Getting actual state from Kafka Topic %s]---------", ReplicatorHBasePipelineIntegrationTestRunner.VALIDATION_TOPIC))
+        println(sprintf("---------[Getting actual state from Kafka Topic %s]---------", ReplicatorHBasePipelineIntegrationSpec.VALIDATION_TOPIC))
         int messagesToValidate = 0
         try {
             Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(kafkaConfiguration)
-            consumer.subscribe(Collections.singleton(ReplicatorHBasePipelineIntegrationTestRunner.VALIDATION_TOPIC));
+            consumer.subscribe(Collections.singleton(ReplicatorHBasePipelineIntegrationSpec.VALIDATION_TOPIC));
 
             final int stopTryingAfter = 10; int zeroRecordsFound = 0;
             while (true) {
@@ -97,7 +97,7 @@ class ValidationTestImpl implements ReplicatorHBasePipelineIntegrationTest {
                 consumer.commitSync();
             }
             consumer.close();
-            System.out.println("Total records found in " + ReplicatorHBasePipelineIntegrationTestRunner.VALIDATION_TOPIC + " = " + messagesToValidate.toString());
+            System.out.println("Total records found in " + ReplicatorHBasePipelineIntegrationSpec.VALIDATION_TOPIC + " = " + messagesToValidate.toString());
         } catch (Exception e){
             println(e)
         } finally {

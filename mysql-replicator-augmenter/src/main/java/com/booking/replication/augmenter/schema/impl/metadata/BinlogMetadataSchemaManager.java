@@ -41,7 +41,7 @@ public class BinlogMetadataSchemaManager implements SchemaManager {
                 ts.getColumnSchemas().stream().forEach(cs -> {
                         String message = "computed schema for { columnName: " + cs.getName() +
                                 ", columnType: " + cs.getColumnType() +
-                                ", collation: " + cs.getCollation() + " }";
+                                ", collation: " + cs.getCollationCode() + " }";
                         System.out.println(message);
                 });
                 return ts;

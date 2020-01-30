@@ -86,14 +86,13 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     @Shared public static final String  BIGTABLE_INSTANCE = getBigTableInstance()
 
     @Shared private TESTS = [
-//            new TableWhiteListTest(),
-//            new TableNameMergeFilterTestImpl(),
-            new TransmitInsertsTestImpl()
-//,
-//            new MicrosecondValidationTestImpl(),
-//            new LongTransactionTestImpl(),
+            new TableWhiteListTest(),
+            new TableNameMergeFilterTestImpl(),
+            new TransmitInsertsTestImpl(),
+            new MicrosecondValidationTestImpl(),
+            new LongTransactionTestImpl(),
 //            new PayloadTableTestImpl(),
-//            new SplitTransactionTestImpl()
+            new SplitTransactionTestImpl()
     ]
 
     @Shared ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS)

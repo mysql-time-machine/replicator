@@ -6,9 +6,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.swing.text.html.Option;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,7 +19,7 @@ public class ColumnSchema implements Cloneable, Serializable {
     private String name;
     private String columnType;
     private String valueDefault;
-    private String collation;
+    private String collationCode;
 
     private DataType dataType;
 
@@ -64,8 +62,8 @@ public class ColumnSchema implements Cloneable, Serializable {
         return this;
     }
 
-    public ColumnSchema setCollation(String collation) {
-        this.collation  = collation;
+    public ColumnSchema setCollationCode(String collationCode) {
+        this.collationCode = collationCode;
         return this;
     }
 
@@ -90,8 +88,8 @@ public class ColumnSchema implements Cloneable, Serializable {
         this.columnType = columnType;
     }
 
-    public String getCollation() {
-        return collation;
+    public String getCollationCode() {
+        return collationCode;
     }
 
     public boolean isNullable() {
@@ -131,7 +129,7 @@ public class ColumnSchema implements Cloneable, Serializable {
 
         schema.setDefaultValue(this.valueDefault)
                 .setCharMaxLength(this.charMaxLength)
-                .setCollation(this.collation);
+                .setCollationCode(this.collationCode);
 
         return schema;
     }

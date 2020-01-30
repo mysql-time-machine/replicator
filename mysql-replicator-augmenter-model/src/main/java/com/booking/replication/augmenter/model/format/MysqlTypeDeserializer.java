@@ -51,7 +51,14 @@ public class MysqlTypeDeserializer {
             return null;
         }
 
-        String collation    = columnSchema.getCollation();
+        // TODO: if active_schema: collation = columnSchema.getCollationCode()
+        String collation;
+        if (columnSchema.getCollationCode() != null) {
+            Integer collationId = Integer.valueOf(columnSchema.getCollationCode());
+            collation = MySQLCollation.byCode(collationId).name();
+        } else {
+            collation = "";
+        }
         String columnType   = columnSchema.getColumnType();
         DataType dataType   = columnSchema.getDataType();
 
@@ -90,7 +97,6 @@ public class MysqlTypeDeserializer {
             case MEDIUMTEXT:
             case TINYTEXT: {
                 byte[] bytes = (byte[]) cellValue;
-
                 if (collation.contains("latin1")) {
                     return new String(bytes, StandardCharsets.ISO_8859_1);
                 } else {

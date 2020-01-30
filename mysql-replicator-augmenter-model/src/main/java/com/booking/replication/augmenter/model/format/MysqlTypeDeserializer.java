@@ -54,6 +54,7 @@ public class MysqlTypeDeserializer {
         String collation    = columnSchema.getCollation();
         String columnType   = columnSchema.getColumnType();
         DataType dataType   = columnSchema.getDataType();
+
         boolean isUnsigned  = columnType.contains("unsigned");
 
         switch (dataType) {

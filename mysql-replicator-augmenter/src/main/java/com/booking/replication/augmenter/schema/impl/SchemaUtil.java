@@ -42,7 +42,7 @@ public class SchemaUtil {
         int columnIndex = 0;
 
         int charsetIdIndex = 0;
-        int signedColumnIndex = 0;
+        int unsignedColumnIndex = 0;
 
         int enumAndSetCharsetIdIndex = 0;
 
@@ -65,8 +65,6 @@ public class SchemaUtil {
 
             DataType dataType = facadeColumnTypeCodeRemap(tableMapEventData, columnIndex);
 
-            boolean isUnsigned = isColumnUnsigned(tableMapEventData, columnIndex, signedBits);
-
             boolean isPrimary = pkColumnIndexes.contains(columnIndex) ? true : false;
 
             ColumnSchema columnSchema = new ColumnSchema(
@@ -78,7 +76,7 @@ public class SchemaUtil {
                     dataType,
 
                     // Column Type
-                    (isUnsigned == true) ? (dataType.getCode() + " unsigned") : dataType.getCode(),
+                    dataType.getCode(),
 
                     isNullable,
 
@@ -99,6 +97,20 @@ public class SchemaUtil {
             //       column indexes, so we need to maintain a separate charsetIdIndex
             Integer columnCollationId = null;
             switch (dataType) {
+
+                case TINYINT:
+                case SMALLINT:
+                case MEDIUMINT:
+                case INT:
+                case BIGINT:
+
+                    boolean isUnsigned = isColumnUnsigned(tableMapEventData, columnIndex, signedBits, unsignedColumnIndex);
+
+                    unsignedColumnIndex++;
+
+                    String columnType = (isUnsigned == true) ? (dataType.getCode() + " unsigned") : dataType.getCode();
+                    columnSchema.setColumnType(columnType);
+                    break;
 
                 case VARCHAR:
                 case CHAR:
@@ -222,9 +234,13 @@ public class SchemaUtil {
         return columnCollationId;
     }
 
-    private static boolean isColumnUnsigned(TableMapRawEventData tableMapEventData, int columnIndex, BitSet signedBits) {
-        // TODO: implement logic
-        return true;
+    private static boolean isColumnUnsigned(TableMapRawEventData tableMapEventData, int columnIndex, BitSet signedBits, int unsignedIndex) {
+        if (unsignedIndex > signedBits.size()) {
+            throw  new RuntimeException("Error in logic. Unsigned index => " + unsignedIndex + ", signedBits.size() => " + signedBits.size());
+        }
+
+        boolean unsigned = signedBits.get(unsignedIndex);
+        return unsigned;
     }
 
     private static DataType facadeColumnTypeCodeRemap(TableMapRawEventData tableMapEventData, int columnIndex) {

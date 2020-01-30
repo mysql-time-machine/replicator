@@ -86,6 +86,10 @@ public class ColumnSchema implements Cloneable, Serializable {
         return this.columnType;
     }
 
+    public void setColumnType(String columnType) {
+        this.columnType = columnType;
+    }
+
     public String getCollation() {
         return collation;
     }

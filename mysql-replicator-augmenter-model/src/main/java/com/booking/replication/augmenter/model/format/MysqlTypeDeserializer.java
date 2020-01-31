@@ -51,14 +51,7 @@ public class MysqlTypeDeserializer {
             return null;
         }
 
-        // TODO: if active_schema: collation = columnSchema.getCollationCode()
-        String collation;
-        if (columnSchema.getCollationCode() != null) {
-            Integer collationId = Integer.valueOf(columnSchema.getCollationCode());
-            collation = MySQLCollation.byCode(collationId).name();
-        } else {
-            collation = "";
-        }
+        String collation = columnSchema.getCollation();
         String columnType   = columnSchema.getColumnType();
         DataType dataType   = columnSchema.getDataType();
 

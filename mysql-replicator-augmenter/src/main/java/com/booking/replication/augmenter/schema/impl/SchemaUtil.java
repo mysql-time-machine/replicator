@@ -1,5 +1,6 @@
 package com.booking.replication.augmenter.schema.impl;
 
+import com.booking.replication.augmenter.model.format.MySQLCollation;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.DataType;
 import com.booking.replication.augmenter.model.schema.FullTableName;
@@ -96,6 +97,7 @@ public class SchemaUtil {
             //       in case there are non-char/non-text columns in the table, the indexes will be different than
             //       column indexes, so we need to maintain a separate charsetIdIndex
             Integer columnCollationId = null;
+            String columnCollation = "";
             switch (dataType) {
 
                 case TINYINT:
@@ -153,7 +155,8 @@ public class SchemaUtil {
                     }
 
                     // TODO: lookup table for collation name
-                    columnSchema.setCollationCode(String.valueOf(columnCollationId));
+                    columnCollation = MySQLCollation.byCode(columnCollationId).name();
+                    columnSchema.setCollation(columnCollation);
 
                     charsetIdIndex++;
 
@@ -168,8 +171,8 @@ public class SchemaUtil {
                     List<String> enumStrValues = Arrays.asList(tableMapEventMetadata.getEnumStrValues().get(0));
                     columnSchema.setEnumOrSetValueList(Optional.of(enumStrValues));
                     columnCollationId = getColumnCollationIdForEnumAndSet(tableMapEventMetadata, columnIndex, enumAndSetCharsetIdIndex);
-                    // TODO: lookup table for collation name (currently its just collation id number code)
-                    columnSchema.setCollationCode(String.valueOf(columnCollationId));
+                    columnCollation = MySQLCollation.byCode(columnCollationId).name();
+                    columnSchema.setCollation(columnCollation);
                     enumAndSetCharsetIdIndex++;
                     break;
 
@@ -177,8 +180,8 @@ public class SchemaUtil {
                     List<String> setStrValues = Arrays.asList(tableMapEventMetadata.getSetStrValues().get(0));
                     columnSchema.setEnumOrSetValueList(Optional.of(setStrValues));
                     columnCollationId = getColumnCollationIdForEnumAndSet(tableMapEventMetadata, columnIndex, enumAndSetCharsetIdIndex);
-                    // TODO: lookup table for collation name
-                    columnSchema.setCollationCode(String.valueOf(columnCollationId));
+                    columnCollation = MySQLCollation.byCode(columnCollationId).name();
+                    columnSchema.setCollation(columnCollation);
                     enumAndSetCharsetIdIndex++;
                     break;
 
@@ -435,7 +438,7 @@ public class SchemaUtil {
                 );
 
                 columnSchema
-                        .setCollationCode(resultSet.getString("COLLATION_NAME"))
+                        .setCollation(resultSet.getString("COLLATION_NAME"))
                         .setDefaultValue(resultSet.getString("COLUMN_DEFAULT"))
                         .setCharMaxLength(resultSet.getInt("CHARACTER_MAXIMUM_LENGTH"));
 

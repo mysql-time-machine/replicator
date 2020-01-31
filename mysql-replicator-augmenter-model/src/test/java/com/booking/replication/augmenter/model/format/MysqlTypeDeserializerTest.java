@@ -202,7 +202,7 @@ public class MysqlTypeDeserializerTest {
     @Test
     public void testCharTypeLatinCharacterSet() {
         ColumnSchema schema = new ColumnSchema("name", DataType.CHAR, "char(30)", true, false, Optional.empty());
-        schema.setCollationCode("latin1_swedish_ci");
+        schema.setCollation("latin1_swedish_ci");
 
         byte[] testByteArr;
         String expected;
@@ -252,7 +252,7 @@ public class MysqlTypeDeserializerTest {
     @Test
     public void testCharTypeUtf8CharacterSet() {
         ColumnSchema schema = new ColumnSchema("name", DataType.CHAR, "char(30)", true,  false, Optional.empty());
-        schema.setCollationCode("utf8_general_ci");
+        schema.setCollation("utf8_general_ci");
 
         byte[] testByteArr;
         String expected;
@@ -310,7 +310,7 @@ public class MysqlTypeDeserializerTest {
     @Test
     public void testVarcharTypeLatinCharacterSet() {
         ColumnSchema schema = new ColumnSchema("name", DataType.VARCHAR, "varchar(30)", true, false, Optional.empty());
-        schema.setCollationCode("latin1_swedish_ci");
+        schema.setCollation("latin1_swedish_ci");
 
         byte[] testByteArr;
         String expected;
@@ -360,7 +360,7 @@ public class MysqlTypeDeserializerTest {
     @Test
     public void testVarcharTypeUtf8CharacterSet() {
         ColumnSchema schema = new ColumnSchema("name", DataType.VARCHAR, "varchar(30)", true, false, Optional.empty());
-        schema.setCollationCode("utf8_general_ci");
+        schema.setCollation("utf8_general_ci");
 
         byte[] testByteArr;
         String expected;
@@ -418,7 +418,7 @@ public class MysqlTypeDeserializerTest {
     @Test
     public void testTextTypeLatinCharacterSet() {
         ColumnSchema schema = new ColumnSchema("name", DataType.TEXT, "text", true, false, Optional.empty());
-        schema.setCollationCode("latin1_swedish_ci");
+        schema.setCollation("latin1_swedish_ci");
 
         byte[] testByteArr;
         String expected;
@@ -468,7 +468,7 @@ public class MysqlTypeDeserializerTest {
     @Test
     public void testTextTypeUtf8CharacterSet() {
         ColumnSchema schema = new ColumnSchema("name", DataType.TEXT, "text", true, false, Optional.empty());
-        schema.setCollationCode("utf8_general_ci");
+        schema.setCollation("utf8_general_ci");
 
         byte[] testByteArr;
         String expected;
@@ -526,7 +526,7 @@ public class MysqlTypeDeserializerTest {
     @Test
     public void testMediumTextTypeLatinCharacterSet() {
         ColumnSchema schema = new ColumnSchema("name", DataType.MEDIUMTEXT, "mediumtext", true, false, Optional.empty());
-        schema.setCollationCode("latin1_swedish_ci");
+        schema.setCollation("latin1_swedish_ci");
 
         byte[] testByteArr;
         String expected;
@@ -576,7 +576,7 @@ public class MysqlTypeDeserializerTest {
     @Test
     public void testMediumTextTypeUtf8CharacterSet() {
         ColumnSchema schema = new ColumnSchema("name", DataType.MEDIUMTEXT, "mediumtext", true, false, Optional.empty());
-        schema.setCollationCode("utf8_general_ci");
+        schema.setCollation("utf8_general_ci");
 
         byte[] testByteArr;
         String expected;
@@ -634,7 +634,7 @@ public class MysqlTypeDeserializerTest {
     @Test
     public void testTinyTextTypeLatinCharacterSet() {
         ColumnSchema schema = new ColumnSchema("name", DataType.TINYTEXT, "tinytext", true, false, Optional.empty());
-        schema.setCollationCode("latin1_swedish_ci");
+        schema.setCollation("latin1_swedish_ci");
 
         byte[] testByteArr;
         String expected;
@@ -684,7 +684,7 @@ public class MysqlTypeDeserializerTest {
     @Test
     public void testTinyTextTypeUtf8CharacterSet() {
         ColumnSchema schema = new ColumnSchema("name", DataType.TINYTEXT, "tinytext", true, false, Optional.empty());
-        schema.setCollationCode("utf8_general_ci");
+        schema.setCollation("utf8_general_ci");
 
         byte[] testByteArr;
         String expected;

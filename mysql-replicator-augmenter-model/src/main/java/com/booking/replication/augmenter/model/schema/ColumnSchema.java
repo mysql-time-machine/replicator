@@ -19,7 +19,7 @@ public class ColumnSchema implements Cloneable, Serializable {
     private String name;
     private String columnType;
     private String valueDefault;
-    private String collationCode;
+    private String collation;
 
     private DataType dataType;
 
@@ -62,8 +62,8 @@ public class ColumnSchema implements Cloneable, Serializable {
         return this;
     }
 
-    public ColumnSchema setCollationCode(String collationCode) {
-        this.collationCode = collationCode;
+    public ColumnSchema setCollation(String collation) {
+        this.collation = collation;
         return this;
     }
 
@@ -88,8 +88,8 @@ public class ColumnSchema implements Cloneable, Serializable {
         this.columnType = columnType;
     }
 
-    public String getCollationCode() {
-        return collationCode;
+    public String getCollation() {
+        return collation;
     }
 
     public boolean isNullable() {
@@ -129,7 +129,7 @@ public class ColumnSchema implements Cloneable, Serializable {
 
         schema.setDefaultValue(this.valueDefault)
                 .setCharMaxLength(this.charMaxLength)
-                .setCollationCode(this.collationCode);
+                .setCollation(this.collation);
 
         return schema;
     }

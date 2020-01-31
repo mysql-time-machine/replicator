@@ -91,7 +91,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
             new TransmitInsertsTestImpl(),
             new MicrosecondValidationTestImpl(),
             new LongTransactionTestImpl(),
-//            new PayloadTableTestImpl(),
+            new PayloadTableTestImpl(),
             new SplitTransactionTestImpl()
     ]
 

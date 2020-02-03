@@ -1,5 +1,6 @@
 package com.booking.replication.it.hbase.impl
 
+import com.booking.replication.augmenter.Augmenter
 import com.booking.replication.augmenter.model.AugmenterModel
 import com.booking.replication.it.hbase.ReplicatorHBasePipelineIntegrationTest
 import com.booking.replication.commons.services.ServicesControl
@@ -94,10 +95,35 @@ class PayloadTableTestImpl implements ReplicatorHBasePipelineIntegrationTest {
 
     @Override
     Object getExpectedState() {
-        return ["d:event_id|aabbcc}{d:server_role|admin}{d:strange_int|7",
+
+        if (ReplicatorHBasePipelineIntegrationTestRunner.AUGMENTER_TYPE.equals(Augmenter.SchemaType.ACTIVE.name())) {
+            return [
+                "d:event_id|aabbcc}{d:server_role|admin}{d:strange_int|7",
                 "d:event_id|aabbdd}{d:server_role|client}{d:strange_int|17",
                 "tdiff|100"
-        ]
+            ]
+        }
+
+        if (ReplicatorHBasePipelineIntegrationTestRunner.AUGMENTER_TYPE.equals(Augmenter.SchemaType.BINLOG_METADATA.name())) {
+            // Both CHAR and BINARY mysql types are tagged as STRING type in the
+            // binlog, so we lose precise information about the type.
+            //
+            //  https://dev.mysql.com/doc/internals/en/com-query-response.html#column-type
+            //
+            // Here we give priority to BINARY and treat CHAR as BINARY, meaning
+            // that CHAR MySQL fields will be hexified.
+            // For this test:
+            //      hexified: aabbcc => 616162626363
+            //      hexified: aabbdd => 616162626464
+            return [
+                    "d:event_id|616162626363}{d:server_role|admin}{d:strange_int|7",
+                    "d:event_id|616162626464}{d:server_role|client}{d:strange_int|17",
+                    "tdiff|100"
+            ]
+        }
+
+        throw new RuntimeException("Unknown augmenter type")
+
     }
 
     @Override

@@ -85,14 +85,18 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     @Shared public static final String BIGTABLE_PROJECT = getBigTableProject()
     @Shared public static final String  BIGTABLE_INSTANCE = getBigTableInstance()
 
+
+    @Shared public static final String AUGMENTER_TYPE = Augmenter.SchemaType.ACTIVE.name();
+//    @Shared public static final String AUGMENTER_TYPE = Augmenter.SchemaType.BINLOG_METADATA.name();
+
     @Shared private TESTS = [
-            new TableWhiteListTest(),
-            new TableNameMergeFilterTestImpl(),
-            new TransmitInsertsTestImpl(),
-            new MicrosecondValidationTestImpl(),
-            new LongTransactionTestImpl(),
-            new PayloadTableTestImpl(),
-            new SplitTransactionTestImpl()
+//            new TableWhiteListTest(),
+//            new TableNameMergeFilterTestImpl(),
+//            new TransmitInsertsTestImpl(),
+//            new MicrosecondValidationTestImpl(),
+//            new LongTransactionTestImpl(),
+            new PayloadTableTestImpl()//,
+//            new SplitTransactionTestImpl()
     ]
 
     @Shared ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS)
@@ -457,7 +461,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         configuration.put(BinaryLogSupplier.Configuration.MYSQL_PASSWORD, MYSQL_PASSWORD)
 
         // SchemaManager Manager Configuration
-        configuration.put(Augmenter.Configuration.SCHEMA_TYPE, Augmenter.SchemaType.BINLOG_METADATA.name());
+        configuration.put(Augmenter.Configuration.SCHEMA_TYPE, AUGMENTER_TYPE);
 //        configuration.put(Augmenter.Configuration.SCHEMA_TYPE, Augmenter.SchemaType.ACTIVE.name())
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_HOSTNAME, mysqlActiveSchema.getHost())
         configuration.put(ActiveSchemaManager.Configuration.MYSQL_PORT, String.valueOf(mysqlActiveSchema.getPort()))

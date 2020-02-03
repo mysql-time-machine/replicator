@@ -58,7 +58,7 @@ public class SchemaUtil {
             //  Ref Read:
             //        - https://github.com/shyiko/mysql-binlog-connector-java/blob/682a17af38d0382902d5f18040182d2d793cc055/src/main/java/com/github/shyiko/mysql/binlog/event/deserialization/TableMapEventMetadataDeserializer.java
             //        - https://dev.mysql.com/doc/dev/mysql-server/latest/classbinary__log_1_1Table__map__event.html#a1b84e5b226c76eaf9c0df8ed03ba1393aed5533f760899bd3476ea3d14df8d35c
-            //        - https://dev.mysql.com/doc/dev/mysql-server/latest/classbinary__log_1_1Table__map__event.html#a1b84e5b226c76eaf9c0df8ed03ba1393a7779ea099ef4de159d1e0211a1d7c427
+            //        - https://dev.mysql.com/doc/dev/mysql-server/latest/classbinarybinary__log_1_1Table__map__event.html#a1b84e5b226c76eaf9c0df8ed03ba1393a7779ea099ef4de159d1e0211a1d7c427
             //        - https://dev.mysql.com/doc/dev/mysql-server/latest/namespacebinary__log.html#a10ab62a4112af1703ce26b7009aa2865
 
             // A sequence of column indexes that make up primary key
@@ -347,8 +347,15 @@ public class SchemaUtil {
             case VAR_STRING:
                 return DataType.byCode("VARCHAR");
             case STRING:
-                return DataType.byCode("CHAR");
-
+                // Both CHAR and BINARY mysql types are tagged as STRING type in the
+                // binlog, so we lose precise information about the type.
+                //
+                //  https://dev.mysql.com/doc/internals/en/com-query-response.html#column-type
+                //
+                // Here we give priority to BINARY and treat CHAR as BINARY, meaning
+                // that CHAR MySQL fields will be hexified.
+                // TODO: make this configurable option.
+                return DataType.byCode("BINARY");
 
             case GEOMETRY:
                 return DataType.byCode("GEOMETRY");

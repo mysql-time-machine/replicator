@@ -890,7 +890,7 @@ public class AugmenterContext implements Closeable {
         try {
             deserializeCellValues = EventDeserializer.getDeserializeCellValues(eventType, columnSchemas, includedColumns, row, cache);
         } catch (Exception e) {
-            LOG.error("Error while deserialize row: EventType: " + eventType + " table: " + this.getEventTableFromSchemaCache() + ", row: " + Arrays.toString(row.getAfter().get()), e);
+            LOG.error("Error while deserialize row: EventType: " + eventType + " table: " + this.getEventTableFromSchemaCache() + ", row: " + row.toString(), e);
             throw e;
         }
 

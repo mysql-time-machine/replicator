@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.booking.replication</groupId>
         <artifactId>replicator</artifactId>
-        <version>0.16.0-rc2-SNAPSHOT</version>
+        <version>0.16.0-rc3-SNAPSHOT</version>
     </parent>
     <artifactId>mysql-replicator-applier</artifactId>
     <name>mysql-replicator-applier</name>
@@ -58,12 +58,12 @@
                 <dependency>
                     <groupId>com.google.protobuf</groupId>
                     <artifactId>protobuf-java</artifactId>
-                    <version>3.6.0</version>
+                    <version>3.11.1</version>
                 </dependency>
                 <dependency>
                     <groupId>com.google.guava</groupId>
                     <artifactId>guava</artifactId>
-                    <version>26.0-jre</version>
+                    <version>28.1-jre</version>
                 </dependency>
                 <dependency>
                     <groupId>com.google.cloud.bigtable</groupId>

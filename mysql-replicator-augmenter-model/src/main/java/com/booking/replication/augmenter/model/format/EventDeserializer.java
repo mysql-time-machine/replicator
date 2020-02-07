@@ -27,6 +27,13 @@ public class EventDeserializer {
         Map<String, Object> deserializeCellValues = new HashMap<>();
 
         if (columns != null) {
+            // require binlog_row_image=full at all times
+            // if during replication this config is changed, this condition will
+            // detect this and replicator will exit.
+            if (includedColumns.length() != columns.size()) {
+                throw new RuntimeException("Severe environment error: there is a mismatch between the number of columns received and the schema cache, this can be caused in the event that replication began in the middle of an OSC or similar, or more severely in the event that binlog_row_image variable is not set to FULL. Data integrity cannot be guaranteed, discontinuing replication. includedColumns.length() = " + includedColumns.length() + ", columns.size() = " + columns.size());
+            }
+
             switch (eventType) {
                 case INSERT:
                 case DELETE: {
@@ -64,13 +71,6 @@ public class EventDeserializer {
                                                    BitSet includedColumns,
                                                    Map<String, String[]> cache,
                                                    Serializable[] rowByteSlices) {
-        // require binlog_row_image=full at all times
-        // if during replication this config is changed, this condition will
-        // detect this and replicator will exit.
-        if (includedColumns.length() != columns.size()) {
-            throw new RuntimeException("Severe environment error: binlog_row_image variable is not set to FULL. Cannot continue replication. includedColumns.length() = " + includedColumns.length() + ", columns.size() = " + columns.size());
-        }
-
         for (int columnIndex = 0, rowIndex = 0; columnIndex < columns.size() && rowIndex < rowByteSlices.length; columnIndex++) {
 
             if (includedColumns.get(columnIndex)) {

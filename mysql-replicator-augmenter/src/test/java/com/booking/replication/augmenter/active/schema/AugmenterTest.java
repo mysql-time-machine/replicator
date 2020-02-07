@@ -1,6 +1,7 @@
 package com.booking.replication.augmenter.active.schema;
 
 import com.booking.replication.augmenter.ActiveSchemaHelpers;
+import com.booking.replication.augmenter.AugmenterContext;
 import com.booking.replication.augmenter.AugmenterFilter;
 import com.booking.replication.augmenter.filters.TableNameMergePatternFilter;
 import org.junit.Test;
@@ -8,6 +9,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import static org.junit.Assert.*;
 
@@ -16,7 +18,7 @@ public class AugmenterTest {
     @Test
     public void testAugmenterFilter()  {
 
-               String TABLE_NAME = "MyTable_201912";
+        String TABLE_NAME = "MyTable_201912";
 
         String AUGMENTER_FILTER_TYPE = "TABLE_MERGE_PATTERN";
         String AUGMENTER_FILTER_CONFIGURATION = "([_][12]\\d{3}(0[1-9]|1[0-2]))";
@@ -66,7 +68,6 @@ public class AugmenterTest {
         String rewritten_5 = ActiveSchemaHelpers.rewriteActiveSchemaName(query_5,replicantDbName);
         String rewritten_6 = ActiveSchemaHelpers.rewriteActiveSchemaName(query_6,replicantDbName);
 
-
         assertEquals(expected_1, rewritten_1);
         assertEquals(expected_2, rewritten_2);
         assertEquals(expected_3, rewritten_3);
@@ -74,5 +75,30 @@ public class AugmenterTest {
         assertEquals(expected_5, rewritten_5);
         assertEquals(expected_6, rewritten_6);
 
+    }
+
+    @Test
+    public void renameMultiSchemaPattern() {
+
+        String replicatedSchema_1 = "test";
+        String query_1 = "RENAME TABLE `test1` TO `a_second_test`.`test1_old_rename`, `a_second_test`.test1_new TO `test1`;";
+        Pattern renameMultiSchemaPattern_1 = Pattern.compile(AugmenterContext.RENAME_MULTISCHEMA_PATTERN, Pattern.CASE_INSENSITIVE);
+        boolean shouldProcess_1 = ActiveSchemaHelpers.getShouldProcess(query_1, renameMultiSchemaPattern_1, replicatedSchema_1);
+
+        assertTrue("Should not process cross db renames", shouldProcess_1 == false);
+
+        String replicatedSchema_2 = "test";
+        String query_2 = "rename table a_second_test.test1 to test1_other_db;";
+        Pattern renameMultiSchemaPattern_2 = Pattern.compile(AugmenterContext.RENAME_MULTISCHEMA_PATTERN, Pattern.CASE_INSENSITIVE);
+        boolean shouldProcess_2 = ActiveSchemaHelpers.getShouldProcess(query_2, renameMultiSchemaPattern_2, replicatedSchema_2);
+
+        assertTrue("Should not process cross db renames", shouldProcess_2 == false);
+
+        String replicatedSchema_3 = "test";
+        String query_3 = "rename table test.test1 to test1_old;";
+        Pattern renameMultiSchemaPattern_3 = Pattern.compile(AugmenterContext.RENAME_MULTISCHEMA_PATTERN, Pattern.CASE_INSENSITIVE);
+        boolean shouldProcess_3 = ActiveSchemaHelpers.getShouldProcess(query_3, renameMultiSchemaPattern_3, replicatedSchema_3);
+
+        assertTrue("Should not process cross db renames", shouldProcess_3 == true);
     }
 }

@@ -149,6 +149,26 @@ public class ColumnSchema implements Cloneable, Serializable {
         return key.equalsIgnoreCase("PRI");
     }
 
+    @Override
+    public String toString() {
+        return "ColumnSchema{" +
+                "name='" + name + '\'' +
+                ", columnType='" + columnType + '\'' +
+                ", key='" + key + '\'' +
+                ", valueDefault='" + valueDefault + '\'' +
+                ", extra='" + extra + '\'' +
+                ", collation='" + collation + '\'' +
+                ", dataType=" + dataType +
+                ", charMaxLength=" + charMaxLength +
+                ", charOctetLength=" + charOctetLength +
+                ", numericPrecision=" + numericPrecision +
+                ", numericScale=" + numericScale +
+                ", dateTimePrecision=" + dateTimePrecision +
+                ", isNullable=" + isNullable +
+                ", primary=" + primary +
+                '}';
+    }
+
     public ColumnSchema deepCopy() {
         try {
             return (ColumnSchema) this.clone();

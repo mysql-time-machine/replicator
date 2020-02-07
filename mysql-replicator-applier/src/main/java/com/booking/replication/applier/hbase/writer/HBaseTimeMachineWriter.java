@@ -12,11 +12,7 @@ import com.booking.replication.commons.metrics.Metrics;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.client.Admin;
-import org.apache.hadoop.hbase.client.Connection;
-import org.apache.hadoop.hbase.client.ConnectionFactory;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.client.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -251,9 +247,13 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
 
             long nrMutations = putList.size();
 
-            Table table = connection.getTable(TableName.valueOf(tableName));
-            table.put(putList);
-            table.close();
+            BufferedMutator mutator = connection.getBufferedMutator(TableName.valueOf(tableName));
+            mutator.mutate(putList);
+            mutator.flush();
+            mutator.close();
+//            Table table = connection.getTable(TableName.valueOf(tableName));
+//            table.put(putList);
+//            table.close();
 
             for (HBaseApplierMutationGenerator.PutMutation mutation : tableMutations){
                 if (validationService != null) validationService.registerValidationTask(mutation.getTransactionUUID(), mutation.getSourceRowUri(), mutation.getTargetRowUri());

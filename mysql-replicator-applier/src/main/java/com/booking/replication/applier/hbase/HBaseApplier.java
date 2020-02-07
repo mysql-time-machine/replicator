@@ -36,7 +36,7 @@ public class HBaseApplier implements Applier {
     private static final Logger LOG = LogManager.getLogger(HBaseApplier.class);
 
     private static final int DEFAULT_FLUSH_BUFFER_SIZE        = 1000;
-    private static final int DEFAULT_BUFFER_FLUSH_TIME_LIMIT  = 30;
+    private static final int DEFAULT_BUFFER_FLUSH_TIME_LIMIT  = 30000;
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

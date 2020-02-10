@@ -3,6 +3,7 @@ package com.booking.replication.augmenter;
 import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.augmenter.model.event.QueryAugmentedEventDataOperationType;
 import com.booking.replication.augmenter.model.event.QueryAugmentedEventDataType;
+import com.booking.replication.augmenter.model.event.format.avro.EventDataPresenterAvro;
 import com.booking.replication.augmenter.model.format.EventDeserializer;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.augmenter.model.row.RowBeforeAfter;
@@ -30,6 +31,7 @@ import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 
 import com.codahale.metrics.MetricRegistry;
 
+import org.apache.avro.Schema;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -661,7 +663,6 @@ public class AugmenterContext implements Closeable {
                         schemaPositionCacheAfter
                 );
                 schemaSnapshot.set(newSchemaSnapshot);
-
 
             } else {
                 LOG.info("Unrecognised query type: " + query);

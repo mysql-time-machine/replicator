@@ -41,18 +41,25 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class KafkaApplier implements Applier {
-    private static final Logger LOG = LogManager.getLogger(KafkaApplier.class);
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final Logger LOG = LogManager.getLogger(KafkaApplier.class);
 
     private final String dataFormat;
 
     private KafkaAvroSerializer kafkaAvroSerializer;
+
     private SchemaRegistryClient schemaRegistryClient;
 
     private final String metricBase;
 
-    private Set<String> includeInColumns = new HashSet<>();
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+    {
+        Set<String> includeInColumns = new HashSet<>();
+        Collections.addAll(includeInColumns, "name", "columnType", "key", "valueDefault", "collation", "nullable");
+        SimpleFilterProvider filterProvider = new SimpleFilterProvider();
+        filterProvider.addFilter("column", SimpleBeanPropertyFilter.filterOutAllExcept(includeInColumns));
+        MAPPER.setFilterProvider(filterProvider);
+    }
 
     public interface Configuration {
         String TOPIC                = "kafka.topic";
@@ -107,8 +114,6 @@ public class KafkaApplier implements Applier {
 
         this.metricBase = MetricRegistry.name(this.metrics.basePath());
 
-        this.setupColumnsFilter(configuration);
-
         METRIC_APPLIER_DELAY = MetricRegistry.name(
                 String.valueOf(configuration.getOrDefault(Metrics.Configuration.BASE_PATH, "")),
                 "applier","kafka","delay"
@@ -122,22 +127,6 @@ public class KafkaApplier implements Applier {
             }
         });
 
-    }
-
-    private void setupColumnsFilter(Map<String, Object> configuration) {
-
-        this.includeInColumns.add("name");
-        this.includeInColumns.add("columnType");
-
-        this.includeInColumns.addAll(this.getAsSet(configuration.get(Configuration.INCLUDE_IN_COLUMNS)));
-
-        LOG.info("Adding " + this.includeInColumns.toString() + " fields in metadata.columns.");
-
-        SimpleFilterProvider filterProvider = new SimpleFilterProvider();
-
-        filterProvider.addFilter("column", SimpleBeanPropertyFilter.filterOutAllExcept(this.includeInColumns));
-
-        MAPPER.setFilterProvider(filterProvider);
     }
 
     private Producer<byte[], byte[]> getProducer() {

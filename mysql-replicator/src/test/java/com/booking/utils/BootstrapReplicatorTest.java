@@ -96,7 +96,7 @@ public class BootstrapReplicatorTest {
         bootstrapReplicator.run(inProgress);
 
         BCachedSchemaRegistryClient scClient = new BCachedSchemaRegistryClient(schemaRegistryUrl, 100);
-        Assert.assertTrue(scClient.getAllSubjects().contains("bigdata-replicator-organisms-value"));
+        Assert.assertTrue(scClient.getAllSubjects().contains("replicator-replicator-organisms-value"));
     }
 
     @AfterClass

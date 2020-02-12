@@ -62,10 +62,10 @@ public class AugmentedEventHeader implements Serializable {
 
     public String schemaKey() {
         if (eventType == AugmentedEventType.QUERY) {
-            return "bigdata-ddl-schema";
+            return "replicator-ddl-schema";
         }
 
-        return String.format("bigdata-%s-%s", databaseName, tableName);
+        return String.format("replicator-%s-%s", databaseName, tableName);
     }
 
     public String headerString() {

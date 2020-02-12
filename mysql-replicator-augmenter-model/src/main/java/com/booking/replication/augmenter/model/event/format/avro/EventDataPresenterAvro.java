@@ -107,7 +107,8 @@ public class EventDataPresenterAvro {
 
     }
 
-    public List<GenericRecord> convertAugumentedEventDataToAvro() throws IOException {
+    public List<GenericRecord> convertAugmentedEventDataToAvro() throws IOException {
+
         if (this.skipRow) {
             return new ArrayList<>();
         }

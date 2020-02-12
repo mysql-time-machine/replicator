@@ -147,11 +147,15 @@ public class KafkaApplier implements Applier {
 
             try {
                 for (AugmentedEvent event : events) {
-                    handleIncompatibleSchemaChange(event);
+
+//                    handleIncompatibleSchemaChange(event);
+
                     int partition = this.partitioner.apply(event, this.totalPartitions);
                     List<GenericRecord> records = event.dataToAvro();
+
                     int numRows = records.size();
                     for (GenericRecord row : records) {
+
                         //todo: use value.subject.name.strategy
                         try {
                             this.kafkaAvroSerializer.register(event.getHeader().schemaKey() + "-value", row.getSchema());
@@ -161,6 +165,7 @@ public class KafkaApplier implements Applier {
                         }
                         byte[] serialized;
                         try {
+                            System.out.println(event.toJSON());
                             serialized = this.kafkaAvroSerializer.serialize(event.getHeader().schemaKey(), row);
                         } catch (SerializationException e) {
                             throw new IOException("Error serializing data: event header: " + event.getHeader().toString()

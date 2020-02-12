@@ -88,7 +88,7 @@ public class BootstrapReplicator {
                 }
 
                 Schema avroSchema = EventDataPresenterAvro.createAvroSchema(true, true, new FullTableName(binlogSchema, replicantTableName), columnSchemas);
-                String schemaKey = String.format("bigdata-%s-%s-value", binlogSchema, replicantTableName);
+                String schemaKey = String.format("replicator-%s-%s-value", binlogSchema, replicantTableName);
                 LOG.info("Registering " + schemaKey + " in schemaregistry.");
                 schemaRegistryClient.register(schemaKey, avroSchema);
             }

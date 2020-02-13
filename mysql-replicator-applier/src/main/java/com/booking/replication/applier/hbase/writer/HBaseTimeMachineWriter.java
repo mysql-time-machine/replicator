@@ -43,6 +43,7 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
     HBaseApplierMutationGenerator mutationGenerator;
     private final boolean dryRun;
     private final ValidationService validationService;
+    private final String payloadTableName;
 
     Connection connection;
     Admin admin;
@@ -56,6 +57,8 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
             throws IOException, NoSuchAlgorithmException {
 
         this.validationService = validationService;
+
+        this.payloadTableName = (String) configuration.get(HBaseApplier.Configuration.PAYLOAD_TABLE_NAME);
 
         this.metrics = Metrics.getInstance(configuration);
 
@@ -256,7 +259,9 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
 //            table.close();
 
             for (HBaseApplierMutationGenerator.PutMutation mutation : tableMutations){
-                if (validationService != null) validationService.registerValidationTask(mutation.getTransactionUUID(), mutation.getSourceRowUri(), mutation.getTargetRowUri());
+                if (validationService != null && !tableName.equalsIgnoreCase(payloadTableName)) {
+                    validationService.registerValidationTask(mutation.getTransactionUUID(), mutation.getSourceRowUri(), mutation.getTargetRowUri());
+                }
             }
 
             long timeEnd = System.currentTimeMillis();

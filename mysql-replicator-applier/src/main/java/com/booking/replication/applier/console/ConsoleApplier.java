@@ -18,6 +18,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class ConsoleApplier implements Applier {
     private static final Logger LOG = LogManager.getLogger(ConsoleApplier.class);
@@ -25,9 +26,12 @@ public class ConsoleApplier implements Applier {
 
     private Set<String> includeInColumns = new HashSet<>();
 
+    private final AtomicLong eventsApplied = new AtomicLong();
+
     @SuppressWarnings("unused")
     public ConsoleApplier(Map<String, Object> configuration) {
         this.setupColumnsFilter(configuration);
+        eventsApplied.set(0);
     }
 
     private void setupColumnsFilter(Map<String, Object> configuration) {
@@ -47,13 +51,17 @@ public class ConsoleApplier implements Applier {
     public Boolean apply(Collection<AugmentedEvent> events) {
         try {
             for (AugmentedEvent event : events) {
-                ConsoleApplier.LOG.info(ConsoleApplier.MAPPER.writeValueAsString(event));
-            }
+                String json = ConsoleApplier.MAPPER.writeValueAsString(event);
+                long ea = eventsApplied.incrementAndGet();
+                if (ea % 10000 == 0) {
+                    ConsoleApplier.LOG.info("Processed " + ea + " events so far" );
+                    // ConsoleApplier.LOG.info(json);
+                }
 
+            }
             return true;
         } catch (JsonProcessingException exception) {
             ConsoleApplier.LOG.error("error converting to json", exception);
-
             return false;
         }
     }

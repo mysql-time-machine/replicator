@@ -18,7 +18,7 @@ public class GtidSetAlgebra {
         this.gtidSetToCheckpoint = new TreeMap<>();
     }
 
-    public synchronized Checkpoint getSafeCheckpoint(List<Checkpoint> checkpointsSeenWithGtidSet) {
+    public Checkpoint getSafeCheckpoint(List<Checkpoint> checkpointsSeenWithGtidSet) {
 
         Checkpoint safeCheckpoint;
 
@@ -29,18 +29,30 @@ public class GtidSetAlgebra {
         }
 
         Map<String, Set<Long>> filteredGTIDSets = getSafeGTIDSetForApplierCommitedTransactions();
-
         Map<String, String> last = extractFinalRanges(filteredGTIDSets);
-
         String safeGTIDSet = sortGTIDSet(getSafeGTIDSet(last));
 
-        safeCheckpoint = new Checkpoint(
-                gtidSetToCheckpoint.get(safeGTIDSet).getTimestamp(),
-                gtidSetToCheckpoint.get(safeGTIDSet).getServerId(),
-                gtidSetToCheckpoint.get(safeGTIDSet).getGtid(),
-                gtidSetToCheckpoint.get(safeGTIDSet).getBinlog(),
-                gtidSetToCheckpoint.get(safeGTIDSet).getGtidSet()
-        );
+        if (gtidSetToCheckpoint.get(safeGTIDSet) == null && safeGTIDSet != null) {
+            // GTIDSets does not contain a GTIDSet which is equal to the intersection of all GTIDSets members
+            // Generate new checkpoint
+            safeCheckpoint = new Checkpoint(
+                    safeGTIDSet
+            );
+
+            // since we don't know exact timestamp use minimal
+            safeCheckpoint.setTimestamp(
+                    gtidSetToCheckpoint.values().stream().map(c -> c.getTimestamp()).mapToLong(t -> t).min().getAsLong()
+            );
+
+        } else { // reuse checkpoint data
+            safeCheckpoint = new Checkpoint(
+                    gtidSetToCheckpoint.get(safeGTIDSet).getTimestamp(),
+                    gtidSetToCheckpoint.get(safeGTIDSet).getServerId(),
+                    gtidSetToCheckpoint.get(safeGTIDSet).getGtid(),
+                    gtidSetToCheckpoint.get(safeGTIDSet).getBinlog(),
+                    gtidSetToCheckpoint.get(safeGTIDSet).getGtidSet()
+            );
+        }
 
         serverTransactionUpperLimitToRange.clear();
         serverTransactionUpperLimits.clear();

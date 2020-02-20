@@ -247,7 +247,7 @@ public class Replicator {
                         throw new RuntimeException("Impossible case!");
                     }
                 } else {
-                    LOG.info("Checkpoint startup mode: loading safe checkpoint from zookeeper");
+                    LOG.info("Checkpoint startup mode: attempting to load safe checkpoint from zookeeper.");
 
                     from = this.seeker.seek(
                         this.loadSafeCheckpoint()

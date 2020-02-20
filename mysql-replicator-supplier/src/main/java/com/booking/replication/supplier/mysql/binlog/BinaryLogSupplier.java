@@ -40,6 +40,7 @@ public class BinaryLogSupplier implements Supplier {
         String OVERRIDE_CHECKPOINT_START_POSITION   = "override.checkpoint.start.position";
         String BINLOG_START_FILENAME                = "supplier.binlog.start.filename";
         String BINLOG_START_POSITION                = "supplier.binlog.start.position";
+        String BINLOG_FALLBACK                      = "supplier.binlog.fallback.gtid.purged";
     }
 
     private final AtomicBoolean running;
@@ -52,6 +53,7 @@ public class BinaryLogSupplier implements Supplier {
     private final String password;
     private final PositionType positionType;
     private final Boolean positionOverride;
+    private final Boolean fallbackToPurged;
     private final AtomicReference<String> binlogClientGTIDSet;
 
     private ExecutorService executor;
@@ -67,6 +69,7 @@ public class BinaryLogSupplier implements Supplier {
         Object password         = configuration.get(Configuration.MYSQL_PASSWORD);
         Object positionType     = configuration.getOrDefault(Configuration.POSITION_TYPE, PositionType.GTID);
         Object positionOverride = configuration.getOrDefault(Configuration.OVERRIDE_CHECKPOINT_START_POSITION, false);
+        Object fallbackToPurged = configuration.getOrDefault(Configuration.BINLOG_FALLBACK,false);
 
         Objects.requireNonNull(hostname, String.format("Configuration required: %s", Configuration.MYSQL_HOSTNAME));
         Objects.requireNonNull(schema, String.format("Configuration required: %s", Configuration.MYSQL_SCHEMA));
@@ -83,6 +86,7 @@ public class BinaryLogSupplier implements Supplier {
         this.positionType           = PositionType.valueOf(positionType.toString());
         this.positionOverride       = (Boolean) positionOverride;
         this.binlogClientGTIDSet    = new AtomicReference<>();
+        this.fallbackToPurged       = (Boolean) fallbackToPurged;
     }
 
     @SuppressWarnings("unchecked")
@@ -197,6 +201,7 @@ public class BinaryLogSupplier implements Supplier {
                     }
 
                     this.client.setServerId(new Random().nextLong() );
+                    this.client.setGtidSetFallbackToPurged(this.fallbackToPurged);
 
                     if (checkpoint != null) {
                         if (checkpoint.getGtidSet() != null && !checkpoint.getGtidSet().equals("")) {
@@ -222,6 +227,13 @@ public class BinaryLogSupplier implements Supplier {
                             );
                             this.connected.set(true);
                         }
+                    } else if ( checkpoint == null && this.fallbackToPurged ) {
+                        LOG.info("Attempting to start binlog Client without GTID info, with GtidSetFallbackToPurged to true.");
+                        // .setGtidSet("") is called in order to force BinaryLogClient into GTID mode
+                        this.client.setGtidSet("");
+                        this.binlogClientGTIDSet.set("");
+                        this.client.connect();
+                        this.connected.set(true);
                     } else {
                         throw new RuntimeException("No startup checkpoint provided.");
                     }

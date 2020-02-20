@@ -6,9 +6,12 @@ import com.booking.replication.applier.Partitioner;
 import com.booking.replication.applier.Seeker;
 import com.booking.replication.applier.kafka.KafkaApplier;
 import com.booking.replication.applier.kafka.KafkaSeeker;
+import com.booking.replication.applier.message.format.avro.AvroUtils;
+import com.booking.replication.applier.message.format.avro.schema.registry.BCachedSchemaRegistryClient;
 import com.booking.replication.augmenter.ActiveSchemaManager;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.augmenter.AugmenterContext;
+import com.booking.replication.augmenter.model.event.AugmentedEventHeader;
 import com.booking.replication.checkpoint.CheckpointApplier;
 import com.booking.replication.commons.conf.MySQLConfiguration;
 import com.booking.replication.commons.services.ServicesControl;
@@ -19,6 +22,7 @@ import com.booking.replication.coordinator.ZookeeperCoordinator;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mysql.jdbc.Driver;
 
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
@@ -51,6 +55,7 @@ import org.junit.Test;
 import org.testcontainers.containers.Network;
 
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.sql.Connection;
 
 import java.sql.Statement;
@@ -144,22 +149,35 @@ public class ReplicatorKafkaAvroTest {
 
         String schemaRegistryUrl = (String) this.getConfiguration().get(KafkaApplier.Configuration.SCHEMA_REGISTRY_URL);
         kafkaConfiguration.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl);
-        CachedSchemaRegistryClient client = new CachedSchemaRegistryClient(schemaRegistryUrl, 1000);
-        KafkaAvroDeserializer kafkaAvroDeserializer = new KafkaAvroDeserializer(client);
+        BCachedSchemaRegistryClient schemaRegistryClient = new BCachedSchemaRegistryClient(schemaRegistryUrl, 1000);
+        KafkaAvroDeserializer kafkaAvroDeserializer = new KafkaAvroDeserializer(schemaRegistryClient);
 
         try (Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(kafkaConfiguration, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
+
             consumer.subscribe(Collections.singleton(ReplicatorKafkaAvroTest.KAFKA_REPLICATOR_TOPIC_NAME));
 
             boolean consumed = false;
 
+            ObjectMapper MAPPER = new ObjectMapper();
             while (!consumed) {
 
                 for (ConsumerRecord<byte[], byte[]> record : consumer.poll(1000L)) {
+
+                    // TODO: add schema for header and serialize header to avro as well
+                    AugmentedEventHeader h = MAPPER.readValue(record.key(), AugmentedEventHeader.class);
+                    byte[] schemaIdBytes = record.headers().lastHeader("schemaId").value();
+                    ByteBuffer wrapped = ByteBuffer.wrap(schemaIdBytes);
+                    int schemaId = wrapped.getInt();
+                    Schema schema = schemaRegistryClient.getById(schemaId);
+
+                    AvroUtils.deserializeAvroBlob(record.value(),schema);
+                    // TODO: get avro schema from schema registry based on table name & query type
                     GenericRecord deserialize = (GenericRecord) kafkaAvroDeserializer.deserialize("", record.value());
                     System.out.println(deserialize.toString());
                     System.out.println(new String(record.key()));
                     consumed = true;
                 }
+
             }
         }
 

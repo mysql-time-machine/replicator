@@ -3,6 +3,7 @@ package com.booking.replication.augmenter.model.row;
 import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.commons.util.CaseInsensitiveMap;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.apache.avro.Schema;
 
 import java.util.List;
 import java.util.Map;
@@ -133,6 +134,7 @@ public class AugmentedRow {
     public String getValueAsString(String column) {
         return getValueAsString(column, null);
     }
+
     public String getValueAsString(String column, String key) {
 
         Object value = null;
@@ -153,6 +155,7 @@ public class AugmentedRow {
         if (value == null) {
             return NULL_STRING;
         } else {
+            // TODO: use proper stringification
             return value.toString();
         }
     }

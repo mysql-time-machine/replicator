@@ -15,6 +15,7 @@ import com.booking.replication.augmenter.model.event.WriteRowsAugmentedEventData
 import com.booking.replication.augmenter.model.format.EventDeserializer;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
+import com.booking.replication.augmenter.model.schema.DataType;
 import com.booking.replication.augmenter.model.schema.FullTableName;
 import com.booking.replication.augmenter.model.schema.TableSchema;
 
@@ -23,17 +24,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 
+import org.apache.avro.io.BinaryEncoder;
+import org.apache.avro.io.DatumWriter;
+import org.apache.avro.io.EncoderFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public class EventDataPresenterAvro {
     private static final Logger LOG = LogManager.getLogger(EventDataPresenterAvro.class);
@@ -106,6 +108,9 @@ public class EventDataPresenterAvro {
         }
 
     }
+    public AvroMessageKey convertAugumentedEventHeaderToAvro() {
+        return new AvroMessageKey(eventTable.getName(), eventTable.getDb(), this.eventType, this.header.getTimestamp());
+    }
 
     public List<GenericRecord> convertAugmentedEventDataToAvro() throws IOException {
 
@@ -124,13 +129,27 @@ public class EventDataPresenterAvro {
                 return Collections.singletonList(rec);
             }
             ArrayList<GenericRecord> records = new ArrayList<>();
+
             for (AugmentedRow row : rows) {
+
                 final GenericRecord rec = new GenericData.Record(avroSchema);
 
+                // TODO: extend schema to support before and after state
                 String key = (row.getEventType() == AugmentedEventType.UPDATE) ? EventDeserializer.Constants.VALUE_AFTER : null ;
 
                 for (String column : row.getValues().keySet()) {
-                    rec.put(column, row.getValueAsString(column, key));
+                    // TODO: proper field-type mapping instead of string
+                    // rec.put(column, row.getValueAsString(column, key));
+                    Object fieldValue = row.getValues().get(column);
+                    if (fieldValue instanceof Map) {
+                        Map<String, Object> map = (Map<String, Object>) fieldValue;
+                        if (map.containsKey(key)) {
+                            fieldValue = map.get(key);
+                        } else {
+                            fieldValue = null;
+                        }
+                    }
+                    rec.put(column, fieldValue);
                 }
 
                 if (ADD_META_FILEDS) {
@@ -151,19 +170,20 @@ public class EventDataPresenterAvro {
     }
 
     public static Schema createAvroSchema(boolean addMetaFields, boolean convertBinToHex, FullTableName eventTable, Collection<ColumnSchema> columns) {
+
         String tableName = eventTable.getName();
 
         final SchemaBuilder.FieldAssembler<Schema> builder = SchemaBuilder.record(tableName).namespace(eventTable.getDb()).fields();
-        /**
-         * Some missing Avro types - Decimal, Date types. May need some additional work.
-         */
+
+        // TODO: Missing Avro types - Decimal, Date types.
+        // TODO: Make structure consistent with JSON output
         for (ColumnSchema col : columns) {
-
             String columnName = col.getName();
-
             String colType = col.getColumnType();
-            if (colType.startsWith("boolean")) {
 
+            // TODO: switch case
+            // TODO: proper types instead addStringField everywhere
+            if (colType.startsWith("boolean")) {
                 // mysql stores it as tinyint
                 addIntField(columnName, col.getValueDefault(), builder);
             } else if (colType.startsWith("tinyint")
@@ -172,11 +192,12 @@ public class EventDataPresenterAvro {
                 addIntField(columnName, col.getValueDefault(), builder);
             } else if (colType.startsWith("int") || colType.startsWith("integer")) {
                 if (colType.contains("unsigned")) {
-                    addLongField(columnName, col.getValueDefault(), builder);
+                    addStringField(columnName, col.getValueDefault(), builder);
                 } else {
                     addIntField(columnName, col.getValueDefault(), builder);
                 }
             } else if (colType.startsWith("bigint")) {
+
                 // Check the precision of the BIGINT. Some databases allow arbitrary precision (> 19), but Avro won't handle that.
                 // If the precision > 19 (or is negative), use a string for the type, otherwise use a long. The object(s) will be converted
                 // to strings as necessary

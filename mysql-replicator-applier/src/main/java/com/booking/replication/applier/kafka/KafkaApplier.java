@@ -2,7 +2,8 @@ package com.booking.replication.applier.kafka;
 
 import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.Partitioner;
-import com.booking.replication.applier.schema.registry.BCachedSchemaRegistryClient;
+import com.booking.replication.applier.message.format.avro.AvroUtils;
+import com.booking.replication.applier.message.format.avro.schema.registry.BCachedSchemaRegistryClient;
 import com.booking.replication.applier.validation.ValidationService;
 import com.booking.replication.augmenter.model.event.*;
 import com.booking.replication.commons.map.MapFilter;
@@ -21,12 +22,14 @@ import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientExcept
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.errors.InvalidPartitionsException;
 import org.apache.kafka.common.errors.SerializationException;
+import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
@@ -36,6 +39,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -105,9 +109,8 @@ public class KafkaApplier implements Applier {
         if (Objects.equals(dataFormat, MessageFormat.AVRO)) {
             Object schemaRegistryUrlConfig = configuration.get(Configuration.SCHEMA_REGISTRY_URL);
             Objects.requireNonNull(schemaRegistryUrlConfig, String.format("Configuration required: %s", Configuration.SCHEMA_REGISTRY_URL));
-
             this.schemaRegistryClient = new BCachedSchemaRegistryClient(String.valueOf(schemaRegistryUrlConfig), 2000);
-            this.kafkaAvroSerializer  = new KafkaAvroSerializer(this.schemaRegistryClient);
+            //this.kafkaAvroSerializer  = new KafkaAvroSerializer(this.schemaRegistryClient);
         }
 
         Objects.requireNonNull(topic, String.format("Configuration required: %s", Configuration.TOPIC));
@@ -146,37 +149,44 @@ public class KafkaApplier implements Applier {
         if (Objects.equals(this.dataFormat, MessageFormat.AVRO)) {
 
             try {
+
                 for (AugmentedEvent event : events) {
 
-//                    handleIncompatibleSchemaChange(event);
+                    // handleIncompatibleSchemaChange(event);
 
                     int partition = this.partitioner.apply(event, this.totalPartitions);
                     List<GenericRecord> records = event.dataToAvro();
 
                     int numRows = records.size();
-                    for (GenericRecord row : records) {
-
-                        //todo: use value.subject.name.strategy
+                    for (GenericRecord genericRecord : records) {
+                        int schemaId;
                         try {
-                            this.kafkaAvroSerializer.register(event.getHeader().schemaKey() + "-value", row.getSchema());
+                            schemaId = this.schemaRegistryClient.register(event.getHeader().schemaKey() + "-value", genericRecord.getSchema());
+                            //this.kafkaAvroSerializer.register(event.getHeader().schemaKey() + "-value", genericRecord.getSchema());
                         } catch (RestClientException e) {
-                            LOG.error("Could not register schema fore event : " + new String(event.toJSON()) + "schema: " + row.getSchema().toString(), e);
-                            throw new IllegalStateException("Could not register schema " + new String(event.toJSON()) + "schema: " + row.getSchema().toString(), e);
+                            throw new IllegalStateException("Could not register schema " + new String(event.toJSON()) + "schema: " + genericRecord.getSchema().toString(), e);
                         }
                         byte[] serialized;
                         try {
-                            System.out.println(event.toJSON());
-                            serialized = this.kafkaAvroSerializer.serialize(event.getHeader().schemaKey(), row);
+                            System.out.println("trying to serialize event: " + event.toJSON());
+                            serialized = AvroUtils.serializeAvroGenericRecord(genericRecord);
                         } catch (SerializationException e) {
-                            throw new IOException("Error serializing data: event header: " + event.getHeader().toString()
-                                    + ", Event json: " + new String(event.toJSON()), e);
+                            throw new IOException("Error serializing data: event header: " +
+                                    event.getHeader().toString() +
+                                    ", Event json: " +
+                                    new String(event.toJSON()), e
+                            );
                         }
+
+                        List<Header> headers = new ArrayList<>();
+                        headers.add(new RecordHeader("schemaId",  ByteBuffer.allocate(4).putInt(schemaId).array()));
+
                         ProducerRecord<byte[], byte[]> record = new ProducerRecord<>(
                                 this.topic,
                                 partition,
                                 KafkaApplier.MAPPER.writeValueAsBytes(event.getHeader()),
                                 serialized,
-                                new RecordHeaders().add(new RecordHeader("meta", event.getHeader().headerString().getBytes()))
+                                headers
                         );
 
                         this.producers.computeIfAbsent(

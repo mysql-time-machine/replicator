@@ -2,7 +2,7 @@ package com.booking.utils;
 
 
 import com.booking.replication.applier.kafka.KafkaApplier;
-import com.booking.replication.applier.schema.registry.BCachedSchemaRegistryClient;
+import com.booking.replication.applier.message.format.avro.schema.registry.BCachedSchemaRegistryClient;
 import com.booking.replication.augmenter.ActiveSchemaManager;
 import com.booking.replication.augmenter.Augmenter;
 import com.booking.replication.commons.conf.MySQLConfiguration;

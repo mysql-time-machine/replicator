@@ -152,7 +152,7 @@ public class KafkaApplier implements Applier {
 
                 for (AugmentedEvent event : events) {
 
-                    // handleIncompatibleSchemaChange(event);
+                    handleIncompatibleSchemaChange(event);
 
                     int partition = this.partitioner.apply(event, this.totalPartitions);
                     List<GenericRecord> records = event.dataToAvro();

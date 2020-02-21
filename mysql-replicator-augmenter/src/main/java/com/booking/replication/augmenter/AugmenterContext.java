@@ -3,7 +3,6 @@ package com.booking.replication.augmenter;
 import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.augmenter.model.event.QueryAugmentedEventDataOperationType;
 import com.booking.replication.augmenter.model.event.QueryAugmentedEventDataType;
-import com.booking.replication.augmenter.model.event.format.avro.EventDataPresenterAvro;
 import com.booking.replication.augmenter.model.format.EventDeserializer;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.augmenter.model.row.RowBeforeAfter;
@@ -31,7 +30,6 @@ import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 
 import com.codahale.metrics.MetricRegistry;
 
-import org.apache.avro.Schema;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -852,7 +850,7 @@ public class AugmenterContext implements Closeable {
 
             Collection<AugmentedRow> augmentedRows = new ArrayList<>();
             List<ColumnSchema> columns = this.schemaManager.listColumns(eventTable.getName());
-            Map<String, String[]> cache = this.getCache(columns);
+            Map<String, String[]> cache = this.getEnumSetValueCache(columns);
 
             for (RowBeforeAfter row : rows) {
 
@@ -887,9 +885,9 @@ public class AugmenterContext implements Closeable {
             Map<String, String[]> cache,
             FullTableName eventTable
     ) {
-        Map<String, Object> deserializeCellValues ;
+        Map<String, Object> deserialisedCellValues ;
         try {
-            deserializeCellValues = EventDeserializer.getDeserializeCellValues(eventType, columnSchemas, includedColumns, row, cache);
+            deserialisedCellValues = EventDeserializer.getDeserializeCellValues(eventType, columnSchemas, includedColumns, row, cache);
         } catch (Exception e) {
             LOG.error("Error while deserialize row: EventType: " + eventType + " table: " + this.getEventTableFromSchemaCache() + ", row: " + Arrays.toString(row.getAfter().get()), e);
             throw e;
@@ -903,13 +901,13 @@ public class AugmenterContext implements Closeable {
         AugmentedRow augmentedRow = new AugmentedRow(
                 eventType, schemaName, tableName,
                 commitTimestamp, transactionUUID, transactionXid,
-                primaryKeyColumns, deserializeCellValues
+                primaryKeyColumns, deserialisedCellValues
         );
 
         return augmentedRow;
     }
 
-    private Map<String, String[]> getCache(List<ColumnSchema> columns) {
+    private Map<String, String[]> getEnumSetValueCache(List<ColumnSchema> columns) {
         Matcher matcher;
         Map<String, String[]> cache = new HashMap<>();
 

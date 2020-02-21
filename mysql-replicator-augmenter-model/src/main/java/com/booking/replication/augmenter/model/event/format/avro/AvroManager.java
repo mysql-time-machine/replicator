@@ -15,7 +15,6 @@ import com.booking.replication.augmenter.model.event.WriteRowsAugmentedEventData
 import com.booking.replication.augmenter.model.format.EventDeserializer;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
-import com.booking.replication.augmenter.model.schema.DataType;
 import com.booking.replication.augmenter.model.schema.FullTableName;
 import com.booking.replication.augmenter.model.schema.TableSchema;
 
@@ -24,21 +23,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
-import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 
-import org.apache.avro.io.BinaryEncoder;
-import org.apache.avro.io.DatumWriter;
-import org.apache.avro.io.EncoderFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.*;
 
-public class EventDataPresenterAvro {
-    private static final Logger LOG = LogManager.getLogger(EventDataPresenterAvro.class);
+public class AvroManager {
+    private static final Logger LOG = LogManager.getLogger(AvroManager.class);
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -55,7 +49,7 @@ public class EventDataPresenterAvro {
 
     private boolean isCompatibleSchemaChange;
 
-    public EventDataPresenterAvro(AugmentedEvent event) {
+    public AvroManager(AugmentedEvent event) {
         this.init(event.getHeader(), event.getData());
     }
 
@@ -138,8 +132,6 @@ public class EventDataPresenterAvro {
                 String key = (row.getEventType() == AugmentedEventType.UPDATE) ? EventDeserializer.Constants.VALUE_AFTER : null ;
 
                 for (String column : row.getValues().keySet()) {
-                    // TODO: proper field-type mapping instead of string
-                    // rec.put(column, row.getValueAsString(column, key));
                     Object fieldValue = row.getValues().get(column);
                     if (fieldValue instanceof Map) {
                         Map<String, Object> map = (Map<String, Object>) fieldValue;
@@ -173,7 +165,11 @@ public class EventDataPresenterAvro {
 
         String tableName = eventTable.getName();
 
-        final SchemaBuilder.FieldAssembler<Schema> builder = SchemaBuilder.record(tableName).namespace(eventTable.getDb()).fields();
+        final SchemaBuilder.FieldAssembler<Schema> builder =
+                SchemaBuilder
+                        .record(tableName)
+                        .namespace(eventTable.getDb())
+                        .fields();
 
         // TODO: Missing Avro types - Decimal, Date types.
         // TODO: Make structure consistent with JSON output
@@ -182,7 +178,6 @@ public class EventDataPresenterAvro {
             String colType = col.getColumnType();
 
             // TODO: switch case
-            // TODO: proper types instead addStringField everywhere
             if (colType.startsWith("boolean")) {
                 // mysql stores it as tinyint
                 addIntField(columnName, col.getValueDefault(), builder);
@@ -197,11 +192,9 @@ public class EventDataPresenterAvro {
                     addIntField(columnName, col.getValueDefault(), builder);
                 }
             } else if (colType.startsWith("bigint")) {
-
                 // Check the precision of the BIGINT. Some databases allow arbitrary precision (> 19), but Avro won't handle that.
                 // If the precision > 19 (or is negative), use a string for the type, otherwise use a long. The object(s) will be converted
                 // to strings as necessary
-
                 if (colType.contains("unsigned")) {
                     addStringField(columnName, col.getValueDefault(), builder);
                 } else {
@@ -224,7 +217,16 @@ public class EventDataPresenterAvro {
                 if (convertBinToHex) {
                     addStringField(columnName, col.getValueDefault(), builder);
                 } else {
-                    builder.name(columnName).type().unionOf().nullBuilder().endNull().and().bytesType().endUnion().noDefault();
+                    builder
+                            .name(columnName)
+                            .type()
+                            .unionOf()
+                            .nullBuilder()
+                            .endNull()
+                            .and()
+                            .bytesType()
+                            .endUnion()
+                            .noDefault();
                 }
             } else if (colType.contains("bit")) {
                 addStringField(columnName, col.getValueDefault(), builder);

@@ -57,7 +57,6 @@ public class DataAugmenter {
                         this.context.getEventTableFromSchemaCache(writeRowsRawEventData.getTableId()),
                         this.context.getIncludedColumns(writeRowsRawEventData.getIncludedColumns()),
                         columns,
-
                         this.context.computeAugmentedEventRows(
                                 AugmentedEventType.INSERT,
                                 eventHeader.getTimestamp(),

@@ -1,6 +1,6 @@
 package com.booking.replication.augmenter.model.event;
 
-import com.booking.replication.augmenter.model.event.format.avro.AvroManager;
+import com.booking.replication.augmenter.model.event.format.avro.AugmentedEventAvroWrapper;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -55,7 +55,7 @@ public class AugmentedEvent implements Serializable {
 
 
     public List<GenericRecord> dataToAvro() throws IOException {
-        AvroManager eventDataPresenterAvro = new AvroManager(this);
+        AugmentedEventAvroWrapper eventDataPresenterAvro = new AugmentedEventAvroWrapper(this);
         return eventDataPresenterAvro.convertAugmentedEventDataToAvro();
     }
 

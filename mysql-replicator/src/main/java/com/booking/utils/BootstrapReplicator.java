@@ -4,7 +4,7 @@ import com.booking.replication.applier.kafka.KafkaApplier;
 import com.booking.replication.applier.message.format.avro.schema.registry.BCachedSchemaRegistryClient;
 import com.booking.replication.augmenter.ActiveSchemaManager;
 import com.booking.replication.augmenter.Augmenter;
-import com.booking.replication.augmenter.model.event.format.avro.AvroManager;
+import com.booking.replication.augmenter.model.event.format.avro.AugmentedEventAvroWrapper;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
 import com.booking.replication.augmenter.model.schema.FullTableName;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
@@ -87,7 +87,7 @@ public class BootstrapReplicator {
                     continue;
                 }
 
-                Schema avroSchema = AvroManager.createAvroSchema(true, true, new FullTableName(binlogSchema, replicantTableName), columnSchemas);
+                Schema avroSchema = AugmentedEventAvroWrapper.createAvroSchema(true, true, new FullTableName(binlogSchema, replicantTableName), columnSchemas);
                 String schemaKey = String.format("replicator-%s-%s-value", binlogSchema, replicantTableName);
                 LOG.info("Registering " + schemaKey + " in schemaregistry.");
                 schemaRegistryClient.register(schemaKey, avroSchema);

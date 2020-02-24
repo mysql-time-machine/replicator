@@ -31,8 +31,9 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.util.*;
 
-public class AvroManager {
-    private static final Logger LOG = LogManager.getLogger(AvroManager.class);
+public class AugmentedEventAvroWrapper {
+
+    private static final Logger LOG = LogManager.getLogger(AugmentedEventAvroWrapper.class);
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -49,7 +50,7 @@ public class AvroManager {
 
     private boolean isCompatibleSchemaChange;
 
-    public AvroManager(AugmentedEvent event) {
+    public AugmentedEventAvroWrapper(AugmentedEvent event) {
         this.init(event.getHeader(), event.getData());
     }
 

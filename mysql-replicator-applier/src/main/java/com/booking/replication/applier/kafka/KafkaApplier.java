@@ -22,7 +22,6 @@ import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientExcept
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -31,7 +30,6 @@ import org.apache.kafka.common.errors.InvalidPartitionsException;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeader;
-import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 
 import org.apache.logging.log4j.LogManager;
@@ -169,7 +167,7 @@ public class KafkaApplier implements Applier {
                         byte[] serialized;
                         try {
                             System.out.println("trying to serialize event: " + event.toJSON());
-                            serialized = AvroUtils.serializeAvroGenericRecord(genericRecord, schemaId);
+                            serialized = AvroUtils.serializeAvroGenericRecordWithSchemaIdPrepend(genericRecord, schemaId);
                         } catch (SerializationException e) {
                             throw new IOException("Error serializing data: event header: " +
                                     event.getHeader().toString() +

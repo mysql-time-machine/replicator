@@ -10,23 +10,19 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.List;
 
 import org.apache.avro.io.EncoderFactory;
-
-import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumReader;
-import scala.Mutable;
 import scala.collection.mutable.MutableList;
-import com.google.common.primitives.Bytes;
 
 public class AvroUtils {
 
-    public static byte[] serializeAvroGenericRecord(GenericRecord genericRecord, Integer schemaId) throws IOException {
+    static int MAGIC_BYTE = 0;
+
+
+    public static byte[] serializeAvroGenericRecordWithSchemaIdPrepend(GenericRecord genericRecord, Integer schemaId) throws IOException {
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-
-        int MAGIC_BYTE = 0;
 
         outputStream.write(MAGIC_BYTE);
         outputStream.write(ByteBuffer.allocate(4).putInt(schemaId).array());
@@ -34,7 +30,6 @@ public class AvroUtils {
         BinaryEncoder encoder = EncoderFactory.get().binaryEncoder(outputStream, null);
 
         DatumWriter<GenericRecord> datumWriter = new GenericDatumWriter<>(genericRecord.getSchema());
-
 
         datumWriter.write(genericRecord, encoder);
 

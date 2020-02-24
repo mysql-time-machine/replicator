@@ -13,10 +13,8 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.jetbrains.annotations.NotNull;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.testcontainers.shaded.com.google.common.collect.Multiset;
 
 import java.io.IOException;
 import java.util.*;
@@ -26,17 +24,17 @@ import static org.junit.Assert.*;
 public class AvroTest {
 
     // id => schema (in this dummy registry versions are covered by different ids)
-    private static Map<Integer, Schema> schemaRegistry;
+    private static Map<Integer, Schema> dummySchemaRegistry;
 
     @BeforeClass
     public static void setupDummySchemaRegistry() {
-        schemaRegistry = new HashMap<>();
+        dummySchemaRegistry = new HashMap<>();
     }
 
     @Test
     public void testDefaultValuesInGeneratedAvroSchema() throws Exception {
 
-        AvroManager dataPresenter = new AvroManager(new AugmentedEvent());
+        AugmentedEventAvroWrapper dataPresenter = new AugmentedEventAvroWrapper(new AugmentedEvent());
 
         List<ColumnSchema> columns = getColumnSchemaList();
 
@@ -54,8 +52,7 @@ public class AvroTest {
     }
 
     private Integer registerAndGetSchemaId(Schema schema) {
-        // TODO:
-        schemaRegistry.put(1, schema);
+        dummySchemaRegistry.put(1, schema);
         return 1;
     }
 
@@ -64,11 +61,10 @@ public class AvroTest {
 
         AugmentedEvent augmentedEvent = getAugmentedEvent();
 
-        AvroManager avroManager = new AvroManager(augmentedEvent);
+        AugmentedEventAvroWrapper avroManager = new AugmentedEventAvroWrapper(augmentedEvent);
         List<GenericRecord> records =  avroManager.convertAugmentedEventDataToAvro();
 
         records.stream().forEach(rec -> {
-
 
             Schema schema = rec.getSchema();
             Integer schemaId = registerAndGetSchemaId(schema);
@@ -81,13 +77,16 @@ public class AvroTest {
 
                 System.out.println("in => " + rec.get("col1") + ";" + rec.get("col2") + ";" + rec.get("col3"));
 
-                byte[] blob = AvroUtils.serializeAvroGenericRecord(rec, schemaId);
+                byte[] avroBlob = AvroUtils.serializeAvroGenericRecordWithSchemaIdPrepend(rec, schemaId);
 
-                SerializedEvent serializedEvent = AvroUtils.extractSerializedEvent(blob);
+                SerializedEvent serializedEvent = AvroUtils.extractSerializedEvent(avroBlob);
 
-                Schema retrievedSchema = schemaRegistry.get(schemaId);
+                Schema retrievedSchema = dummySchemaRegistry.get(serializedEvent.getSchemaId());
 
-                GenericRecord back = AvroUtils.deserializeAvroBlob(serializedEvent.getEventDataAvroBlob(), retrievedSchema);
+                GenericRecord back = AvroUtils.deserializeAvroBlob(
+                        serializedEvent.getEventDataAvroBlob(),
+                        retrievedSchema
+                );
 
                 System.out.println("out => " + back.get("col1") + ";" + back.get("col2") + ";" + back.get("col3"));
 
@@ -99,8 +98,6 @@ public class AvroTest {
                 e.printStackTrace();
             }
         });
-
-
     }
 
     @NotNull

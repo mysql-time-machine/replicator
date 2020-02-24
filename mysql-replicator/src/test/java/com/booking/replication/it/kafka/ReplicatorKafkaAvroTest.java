@@ -7,6 +7,7 @@ import com.booking.replication.applier.Seeker;
 import com.booking.replication.applier.kafka.KafkaApplier;
 import com.booking.replication.applier.kafka.KafkaSeeker;
 import com.booking.replication.applier.message.format.avro.AvroUtils;
+import com.booking.replication.applier.message.format.avro.SerializedEvent;
 import com.booking.replication.applier.message.format.avro.schema.registry.BCachedSchemaRegistryClient;
 import com.booking.replication.augmenter.ActiveSchemaManager;
 import com.booking.replication.augmenter.Augmenter;
@@ -150,7 +151,6 @@ public class ReplicatorKafkaAvroTest {
         String schemaRegistryUrl = (String) this.getConfiguration().get(KafkaApplier.Configuration.SCHEMA_REGISTRY_URL);
         kafkaConfiguration.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl);
         BCachedSchemaRegistryClient schemaRegistryClient = new BCachedSchemaRegistryClient(schemaRegistryUrl, 1000);
-        KafkaAvroDeserializer kafkaAvroDeserializer = new KafkaAvroDeserializer(schemaRegistryClient);
 
         try (Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(kafkaConfiguration, new ByteArrayDeserializer(), new ByteArrayDeserializer())) {
 
@@ -163,18 +163,15 @@ public class ReplicatorKafkaAvroTest {
 
                 for (ConsumerRecord<byte[], byte[]> record : consumer.poll(1000L)) {
 
-                    // TODO: add schema for header and serialize header to avro as well
-                    AugmentedEventHeader h = MAPPER.readValue(record.key(), AugmentedEventHeader.class);
-                    byte[] schemaIdBytes = record.headers().lastHeader("schemaId").value();
-                    ByteBuffer wrapped = ByteBuffer.wrap(schemaIdBytes);
-                    int schemaId = wrapped.getInt();
+                    SerializedEvent se = AvroUtils.extractSerializedEvent(record.value());
+                    Integer schemaId = se.getSchemaId();
                     Schema schema = schemaRegistryClient.getById(schemaId);
 
-                    AvroUtils.deserializeAvroBlob(record.value(),schema);
-                    // TODO: get avro schema from schema registry based on table name & query type
-                    GenericRecord deserialize = (GenericRecord) kafkaAvroDeserializer.deserialize("", record.value());
-                    System.out.println(deserialize.toString());
-                    System.out.println(new String(record.key()));
+                    byte[] avroBlob = se.getEventDataAvroBlob();
+                    GenericRecord deserialized = AvroUtils.deserializeAvroBlob(avroBlob,schema);
+
+                    System.out.println(deserialized.toString());
+
                     consumed = true;
                 }
 

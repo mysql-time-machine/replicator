@@ -191,7 +191,7 @@ public class AugmentedEventAvroWrapper {
                 if (colType.contains("unsigned")) {
                     addStringField(columnName, col.getValueDefault(), builder);
                 } else {
-                    addIntField(columnName, col.getValueDefault(), builder);
+                    addLongField(columnName, col.getValueDefault(), builder);
                 }
             } else if (colType.startsWith("bigint")) {
                 // Check the precision of the BIGINT. Some databases allow arbitrary precision (> 19), but Avro won't handle that.

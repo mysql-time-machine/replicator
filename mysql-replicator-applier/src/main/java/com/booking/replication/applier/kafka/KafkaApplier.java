@@ -153,10 +153,12 @@ public class KafkaApplier implements Applier {
                     handleIncompatibleSchemaChange(event);
 
                     int partition = this.partitioner.apply(event, this.totalPartitions);
+
                     List<GenericRecord> records = event.dataToAvro();
 
                     int numRows = records.size();
                     for (GenericRecord genericRecord : records) {
+
                         int schemaId;
                         try {
                             schemaId = this.schemaRegistryClient.register(event.getHeader().schemaKey() + "-value", genericRecord.getSchema());
@@ -164,9 +166,9 @@ public class KafkaApplier implements Applier {
                         } catch (RestClientException e) {
                             throw new IllegalStateException("Could not register schema " + new String(event.toJSON()) + "schema: " + genericRecord.getSchema().toString(), e);
                         }
+
                         byte[] serialized;
                         try {
-                            System.out.println("trying to serialize event: " + event.toJSON());
                             serialized = AvroUtils.serializeAvroGenericRecordWithSchemaIdPrepend(genericRecord, schemaId);
                         } catch (SerializationException e) {
                             throw new IOException("Error serializing data: event header: " +
@@ -176,15 +178,15 @@ public class KafkaApplier implements Applier {
                             );
                         }
 
-                        List<Header> headers = new ArrayList<>();
-                        headers.add(new RecordHeader("schemaId",  ByteBuffer.allocate(4).putInt(schemaId).array()));
+//                        List<Header> headers = new ArrayList<>();
+//                        headers.add(new RecordHeader("schemaId",  ByteBuffer.allocate(4).putInt(schemaId).array()));
 
                         ProducerRecord<byte[], byte[]> record = new ProducerRecord<>(
                                 this.topic,
                                 partition,
                                 KafkaApplier.MAPPER.writeValueAsBytes(event.getHeader()),
-                                serialized,
-                                headers
+                                serialized//,
+//                                headers
                         );
 
                         this.producers.computeIfAbsent(
@@ -270,7 +272,7 @@ public class KafkaApplier implements Applier {
 
             GenericRecord genericRecord = genericRecords.get(0);
             try {
-                Schema schema = new Schema.Parser().parse((String) genericRecord.get("schema"));
+                Schema schema = genericRecord.getSchema();////new Schema.Parser().parse((String) genericRecord.get("schema"));
                 String subject = event.getHeader().schemaKey() + "-value";
                 boolean testCompatibility = this.schemaRegistryClient.testCompatibility(subject, schema);
 

@@ -1,6 +1,7 @@
 package com.booking.replication.augmenter.model.event.format.avro;
 
 import com.booking.replication.applier.message.format.avro.AvroUtils;
+import com.booking.replication.applier.message.format.avro.SerializedEvent;
 import com.booking.replication.augmenter.model.event.*;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.augmenter.model.schema.ColumnSchema;
@@ -11,7 +12,11 @@ import com.booking.replication.commons.checkpoint.Checkpoint;
 import com.google.common.collect.ImmutableMap;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
+import org.jetbrains.annotations.NotNull;
+import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.testcontainers.shaded.com.google.common.collect.Multiset;
 
 import java.io.IOException;
 import java.util.*;
@@ -19,6 +24,15 @@ import java.util.*;
 import static org.junit.Assert.*;
 
 public class AvroTest {
+
+    // id => schema (in this dummy registry versions are covered by different ids)
+    private static Map<Integer, Schema> schemaRegistry;
+
+    @BeforeClass
+    public static void setupDummySchemaRegistry() {
+        schemaRegistry = new HashMap<>();
+    }
+
     @Test
     public void testDefaultValuesInGeneratedAvroSchema() throws Exception {
 
@@ -39,9 +53,58 @@ public class AvroTest {
 
     }
 
-    @Test
-    public void testAugmentedEventEncoding() throws IOException {
+    private Integer registerAndGetSchemaId(Schema schema) {
+        // TODO:
+        schemaRegistry.put(1, schema);
+        return 1;
+    }
 
+    @Test
+    public void testAugmentedEventEncodeDecode() throws IOException {
+
+        AugmentedEvent augmentedEvent = getAugmentedEvent();
+
+        AvroManager avroManager = new AvroManager(augmentedEvent);
+        List<GenericRecord> records =  avroManager.convertAugmentedEventDataToAvro();
+
+        records.stream().forEach(rec -> {
+
+
+            Schema schema = rec.getSchema();
+            Integer schemaId = registerAndGetSchemaId(schema);
+
+            System.out.println("schema => " + schema);
+
+            String expected = rec.get("col1") + ";" + rec.get("col2") + ";" + rec.get("col3");
+
+            try {
+
+                System.out.println("in => " + rec.get("col1") + ";" + rec.get("col2") + ";" + rec.get("col3"));
+
+                byte[] blob = AvroUtils.serializeAvroGenericRecord(rec, schemaId);
+
+                SerializedEvent serializedEvent = AvroUtils.extractSerializedEvent(blob);
+
+                Schema retrievedSchema = schemaRegistry.get(schemaId);
+
+                GenericRecord back = AvroUtils.deserializeAvroBlob(serializedEvent.getEventDataAvroBlob(), retrievedSchema);
+
+                System.out.println("out => " + back.get("col1") + ";" + back.get("col2") + ";" + back.get("col3"));
+
+                String received = back.get("col1") + ";" + back.get("col2") + ";" + back.get("col3");
+
+                assertEquals("Binary encoding/decoding test", expected, received );
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+
+
+    }
+
+    @NotNull
+    private AugmentedEvent getAugmentedEvent() {
         AugmentedEventHeader augmentedEventHeader = new AugmentedEventHeader(
                 1582286646,
                 new Checkpoint(
@@ -61,26 +124,7 @@ public class AvroTest {
                 getAugmentedEventRows()
         );
 
-        AugmentedEvent augmentedEvent = new AugmentedEvent(augmentedEventHeader, augmentedEventData);
-
-        AvroManager dataPresenter = new AvroManager(augmentedEvent);
-
-        List<GenericRecord> records =  dataPresenter.convertAugmentedEventDataToAvro();
-
-        records.stream().forEach(rec -> {
-
-            Schema schema = rec.getSchema();
-            System.out.println("schema => " + schema);
-            try {
-                byte[] blob = AvroUtils.serializeAvroGenericRecord(rec);
-                GenericRecord back = AvroUtils.deserializeAvroBlob(blob, schema);
-                System.out.println(back.get("col1") + "," + back.get("col2") + back.get("col3"));
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        });
-
-
+        return new AugmentedEvent(augmentedEventHeader, augmentedEventData);
     }
 
 

@@ -37,7 +37,7 @@ public class AvroManager {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private static final boolean CONVERT_BIN_TO_HEX = true;
-    private static final boolean ADD_META_FILEDS = true;
+    private static final boolean ADD_META_FILEDS = false;
 
     private Collection<ColumnSchema> columns;
     private Collection<AugmentedRow> rows;
@@ -102,6 +102,7 @@ public class AvroManager {
         }
 
     }
+
     public AvroMessageKey convertAugumentedEventHeaderToAvro() {
         return new AvroMessageKey(eventTable.getName(), eventTable.getDb(), this.eventType, this.header.getTimestamp());
     }
@@ -230,8 +231,7 @@ public class AvroManager {
                 }
             } else if (colType.contains("bit")) {
                 addStringField(columnName, col.getValueDefault(), builder);
-            } else if (colType.startsWith("decimal")
-                    || colType.startsWith("numeric")) {
+            } else if (colType.startsWith("decimal") || colType.startsWith("numeric")) {
                 //todo: get precision and decide data type
                 addStringField(columnName, col.getValueDefault(), builder);
             } else {

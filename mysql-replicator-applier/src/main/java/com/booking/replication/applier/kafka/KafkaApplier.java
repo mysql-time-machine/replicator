@@ -169,7 +169,7 @@ public class KafkaApplier implements Applier {
                         byte[] serialized;
                         try {
                             System.out.println("trying to serialize event: " + event.toJSON());
-                            serialized = AvroUtils.serializeAvroGenericRecord(genericRecord);
+                            serialized = AvroUtils.serializeAvroGenericRecord(genericRecord, schemaId);
                         } catch (SerializationException e) {
                             throw new IOException("Error serializing data: event header: " +
                                     event.getHeader().toString() +

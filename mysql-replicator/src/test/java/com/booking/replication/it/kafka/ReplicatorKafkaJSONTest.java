@@ -20,6 +20,7 @@ import com.booking.replication.commons.services.ServicesProvider;
 import com.booking.replication.controller.WebServer;
 import com.booking.replication.coordinator.Coordinator;
 import com.booking.replication.coordinator.ZookeeperCoordinator;
+import com.booking.replication.it.util.MySQLRunner;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -51,12 +52,22 @@ import java.util.concurrent.TimeUnit;
 public class ReplicatorKafkaJSONTest {
 
     private static final Logger LOG = LogManager.getLogger(ReplicatorKafkaJSONTest.class);
+    private static final MySQLRunner MYSQL_RUNNER = new MySQLRunner();
 
     private static final String ZOOKEEPER_LEADERSHIP_PATH = "/replicator/leadership";
     private static final String ZOOKEEPER_CHECKPOINT_PATH = "/replicator/checkpoint";
 
     private static final String CHECKPOINT_DEFAULT = "{\"timestamp\": 0, \"serverId\": 1, \"gtid\": null, \"binlog\": {\"filename\": \"binlog.000001\", \"position\": 4}}";
 
+    private static MySQLConfiguration MYSQL_CONFIG = new MySQLConfiguration(
+            ReplicatorKafkaJSONTest.MYSQL_SCHEMA,
+            ReplicatorKafkaJSONTest.MYSQL_USERNAME,
+            ReplicatorKafkaJSONTest.MYSQL_PASSWORD,
+            ReplicatorKafkaJSONTest.MYSQL_CONF_FILE,
+            Collections.singletonList(ReplicatorKafkaJSONTest.MYSQL_INIT_SCRIPT),
+            null,
+            null
+    );
     private static final String MYSQL_SCHEMA = "replicator";
     private static final String MYSQL_ROOT_USERNAME = "root";
     private static final String MYSQL_USERNAME = "replicator";
@@ -83,18 +94,7 @@ public class ReplicatorKafkaJSONTest {
     @BeforeClass
     public static void before() {
         ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS);
-
         ReplicatorKafkaJSONTest.zookeeper = servicesProvider.startZookeeper();
-
-        MySQLConfiguration mySQLConfiguration = new MySQLConfiguration(
-                ReplicatorKafkaJSONTest.MYSQL_SCHEMA,
-                ReplicatorKafkaJSONTest.MYSQL_USERNAME,
-                ReplicatorKafkaJSONTest.MYSQL_PASSWORD,
-                ReplicatorKafkaJSONTest.MYSQL_CONF_FILE,
-                Collections.singletonList(ReplicatorKafkaJSONTest.MYSQL_INIT_SCRIPT),
-                null,
-                null
-        );
 
         MySQLConfiguration mySQLActiveSchemaConfiguration = new MySQLConfiguration(
                 ReplicatorKafkaJSONTest.MYSQL_ACTIVE_SCHEMA,
@@ -106,7 +106,7 @@ public class ReplicatorKafkaJSONTest {
                 null
         );
 
-        ReplicatorKafkaJSONTest.mysqlBinaryLog = servicesProvider.startMySQL(mySQLConfiguration);
+        ReplicatorKafkaJSONTest.mysqlBinaryLog = servicesProvider.startMySQL(MYSQL_CONFIG);
         ReplicatorKafkaJSONTest.mysqlActiveSchema = servicesProvider.startMySQL(mySQLActiveSchemaConfiguration);
         Network network = Network.newNetwork();
         ReplicatorKafkaJSONTest.kafkaZk = servicesProvider.startZookeeper(network, "kafkaZk");
@@ -121,7 +121,7 @@ public class ReplicatorKafkaJSONTest {
 
         File file = new File("src/test/resources/" + ReplicatorKafkaJSONTest.MYSQL_TEST_SCRIPT);
 
-        runMysqlScripts(this.getConfiguration(), file.getAbsolutePath());
+        MYSQL_RUNNER.runMysqlScript( ReplicatorKafkaJSONTest.mysqlBinaryLog, MYSQL_CONFIG, file.getAbsolutePath(), null, true);
 
         replicator.wait(1L, TimeUnit.MINUTES);
 
@@ -209,67 +209,6 @@ public class ReplicatorKafkaJSONTest {
         }
 
         replicator.stop();
-    }
-
-    private boolean runMysqlScripts(Map<String, Object> configuration, String scriptFilePath) {
-        BufferedReader reader;
-        Statement statement;
-        BasicDataSource dataSource = initDatasource(configuration, Driver.class.getName());
-        try (Connection connection = dataSource.getConnection()) {
-            statement = connection.createStatement();
-            reader = new BufferedReader(new FileReader(scriptFilePath));
-            String line;
-            // read script line by line
-            ReplicatorKafkaJSONTest.LOG.info("Executing query from " + scriptFilePath);
-            String s;
-            StringBuilder sb = new StringBuilder();
-
-            FileReader fr = new FileReader(new File(scriptFilePath));
-            BufferedReader br = new BufferedReader(fr);
-            while ((s = br.readLine()) != null) {
-                sb.append(s);
-            }
-            br.close();
-
-            String[] inst = sb.toString().split(";");
-            for (String query : inst) {
-                if (!query.trim().equals("")) {
-                    statement.execute(query);
-                    ReplicatorKafkaJSONTest.LOG.info(query);
-                }
-            }
-            return true;
-        } catch (Exception exception) {
-            ReplicatorKafkaJSONTest.LOG.warn(String.format("error executing query \"%s\": %s", scriptFilePath, exception.getMessage()));
-            return false;
-        }
-
-    }
-
-    private BasicDataSource initDatasource(Map<String, Object> configuration, Object driverClass) {
-        List<String> hostnames = (List<String>) configuration.get(BinaryLogSupplier.Configuration.MYSQL_HOSTNAME);
-        Object port = configuration.getOrDefault(BinaryLogSupplier.Configuration.MYSQL_PORT, "3306");
-        Object schema = configuration.get(BinaryLogSupplier.Configuration.MYSQL_SCHEMA);
-        Object username = configuration.get(BinaryLogSupplier.Configuration.MYSQL_USERNAME);
-        Object password = configuration.get(BinaryLogSupplier.Configuration.MYSQL_PASSWORD);
-
-        Objects.requireNonNull(hostnames, String.format("Configuration required: %s", BinaryLogSupplier.Configuration.MYSQL_HOSTNAME));
-        Objects.requireNonNull(schema, String.format("Configuration required: %s", BinaryLogSupplier.Configuration.MYSQL_SCHEMA));
-        Objects.requireNonNull(username, String.format("Configuration required: %s", BinaryLogSupplier.Configuration.MYSQL_USERNAME));
-        Objects.requireNonNull(password, String.format("Configuration required: %s", BinaryLogSupplier.Configuration.MYSQL_PASSWORD));
-
-        return this.getDataSource(driverClass.toString(), hostnames.get(0), Integer.parseInt(port.toString()), schema.toString(), username.toString(), password.toString());
-    }
-
-    private BasicDataSource getDataSource(String driverClass, String hostname, int port, String schema, String username, String password) {
-        BasicDataSource dataSource = new BasicDataSource();
-
-        dataSource.setDriverClassName(driverClass);
-        dataSource.setUrl(String.format(CONNECTION_URL_FORMAT, hostname, port, schema));
-        dataSource.setUsername(username);
-        dataSource.setPassword(password);
-
-        return dataSource;
     }
 
     private Map<String, Object> getConfiguration() {

@@ -13,10 +13,9 @@ import com.booking.replication.commons.services.ServicesControl;
 import com.booking.replication.commons.services.ServicesProvider;
 import com.booking.replication.controller.WebServer;
 import com.booking.replication.coordinator.Coordinator;
+import com.booking.replication.it.util.MySQLRunner;
 import com.booking.replication.supplier.Supplier;
 import com.booking.replication.supplier.mysql.binlog.BinaryLogSupplier;
-import com.mysql.jdbc.Driver;
-import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.AfterClass;
@@ -25,14 +24,22 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.*;
-import java.sql.Connection;
-import java.sql.Statement;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class ActiveSchemaTest {
 
     private static final Logger LOG = LogManager.getLogger(ActiveSchemaTest.class);
+    private static MySQLConfiguration MYSQL_CONFIG = new MySQLConfiguration(
+            ActiveSchemaTest.MYSQL_SCHEMA,
+            ActiveSchemaTest.MYSQL_USERNAME,
+            ActiveSchemaTest.MYSQL_PASSWORD,
+            ActiveSchemaTest.MYSQL_CONF_FILE,
+            Collections.emptyList(),
+            null,
+            null
+    );
+    private static final MySQLRunner MYSQL_RUNNER = new MySQLRunner();
 
     private static final String ZOOKEEPER_CHECKPOINT_PATH = "/replicator/checkpoint";
 
@@ -55,18 +62,7 @@ public class ActiveSchemaTest {
     public static void before() throws InterruptedException {
         ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS);
 
-        MySQLConfiguration mySQLConfiguration = new MySQLConfiguration(
-                ActiveSchemaTest.MYSQL_SCHEMA,
-                ActiveSchemaTest.MYSQL_USERNAME,
-                ActiveSchemaTest.MYSQL_PASSWORD,
-                ActiveSchemaTest.MYSQL_CONF_FILE,
-                Collections.emptyList(),
-                null,
-                null
-        );
-
-
-        ActiveSchemaTest.mysqlBinaryLog = servicesProvider.startMySQL(mySQLConfiguration);
+        ActiveSchemaTest.mysqlBinaryLog = servicesProvider.startMySQL(MYSQL_CONFIG);
 
         try {
             Thread.sleep(15000L);
@@ -81,72 +77,11 @@ public class ActiveSchemaTest {
 
         File file = new File("src/test/resources/" + ActiveSchemaTest.MYSQL_TEST_SCRIPT);
 
-        runMysqlScripts(this.getConfiguration(), file.getAbsolutePath());
+        MYSQL_RUNNER.runMysqlScript(this.mysqlBinaryLog, this.MYSQL_CONFIG, file.getAbsolutePath(), null, true);
 
-        replicator.wait(1L, TimeUnit.MINUTES);
+        replicator.wait(15L, TimeUnit.SECONDS);
 
         replicator.stop();
-    }
-
-    private boolean runMysqlScripts(Map<String, Object> configuration, String scriptFilePath) {
-        BufferedReader reader;
-        Statement statement;
-        BasicDataSource dataSource = initDatasource(configuration, Driver.class.getName());
-        try (Connection connection = dataSource.getConnection()) {
-            statement = connection.createStatement();
-            reader = new BufferedReader(new FileReader(scriptFilePath));
-            String line;
-            // read script line by line
-            ActiveSchemaTest.LOG.info("Executing query from " + scriptFilePath);
-            String s;
-            StringBuilder sb = new StringBuilder();
-
-            FileReader fr = new FileReader(new File(scriptFilePath));
-            BufferedReader br = new BufferedReader(fr);
-            while ((s = br.readLine()) != null) {
-                sb.append(s);
-            }
-            br.close();
-
-            String[] inst = sb.toString().split(";");
-            for (String query : inst) {
-                if (!query.trim().equals("")) {
-                    statement.execute(query);
-                    ActiveSchemaTest.LOG.info(query);
-                }
-            }
-            return true;
-        } catch (Exception exception) {
-            ActiveSchemaTest.LOG.warn(String.format("error executing query \"%s\": %s", scriptFilePath, exception.getMessage()));
-            return false;
-        }
-
-    }
-
-    private BasicDataSource initDatasource(Map<String, Object> configuration, Object driverClass) {
-        List<String> hostnames = (List<String>) configuration.get(BinaryLogSupplier.Configuration.MYSQL_HOSTNAME);
-        Object port = configuration.getOrDefault(BinaryLogSupplier.Configuration.MYSQL_PORT, "3306");
-        Object schema = configuration.get(BinaryLogSupplier.Configuration.MYSQL_SCHEMA);
-        Object username = configuration.get(BinaryLogSupplier.Configuration.MYSQL_USERNAME);
-        Object password = configuration.get(BinaryLogSupplier.Configuration.MYSQL_PASSWORD);
-
-        Objects.requireNonNull(hostnames, String.format("Configuration required: %s", BinaryLogSupplier.Configuration.MYSQL_HOSTNAME));
-        Objects.requireNonNull(schema, String.format("Configuration required: %s", BinaryLogSupplier.Configuration.MYSQL_SCHEMA));
-        Objects.requireNonNull(username, String.format("Configuration required: %s", BinaryLogSupplier.Configuration.MYSQL_USERNAME));
-        Objects.requireNonNull(password, String.format("Configuration required: %s", BinaryLogSupplier.Configuration.MYSQL_PASSWORD));
-
-        return this.getDataSource(driverClass.toString(), hostnames.get(0), Integer.parseInt(port.toString()), schema.toString(), username.toString(), password.toString());
-    }
-
-    private BasicDataSource getDataSource(String driverClass, String hostname, int port, String schema, String username, String password) {
-        BasicDataSource dataSource = new BasicDataSource();
-
-        dataSource.setDriverClassName(driverClass);
-        dataSource.setUrl(String.format(CONNECTION_URL_FORMAT, hostname, port, schema));
-        dataSource.setUsername(username);
-        dataSource.setPassword(password);
-
-        return dataSource;
     }
 
     private Map<String, Object> getConfiguration() {

@@ -32,8 +32,8 @@ public class MySQLRunner {
             LOG.info("Executing query from " + scriptFilePath);
             String s;
             StringBuilder sb = new StringBuilder();
-
-            FileReader fr = new FileReader(new File(scriptFilePath));
+            File filehandle = new File(scriptFilePath);
+            FileReader fr = new FileReader(filehandle);
             BufferedReader br = new BufferedReader(fr);
             while ((s = br.readLine()) != null) {
                 sb.append(s);
@@ -52,9 +52,8 @@ public class MySQLRunner {
             }
             return true;
         } catch (Exception exception) {
-            LOG.warn(String.format("error executing query \"%s\": %s",
+            throw new RuntimeException(String.format("error executing query \"%s\": %s",
                     scriptFilePath, exception.getMessage()));
-            return false;
         }
 
     }

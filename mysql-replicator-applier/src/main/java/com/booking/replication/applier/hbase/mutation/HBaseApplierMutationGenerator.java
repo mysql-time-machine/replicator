@@ -11,7 +11,7 @@ import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.commons.metrics.Metrics;
 import com.booking.validator.data.source.DataSource;
 import com.booking.validator.data.source.Types;
-import com.booking.validator.data.transformation.Transformation;
+import com.booking.validator.data.source.bigtable.BigtableQueryOptions;
 import com.booking.validator.data.transformation.TransformationTypes;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -36,7 +36,9 @@ public class HBaseApplierMutationGenerator {
 
     private String shardName;
 
-    private HashMap<String, Object> mysqlTransformations;
+    private HashMap<String, Object> sourceTransformations;
+
+    private HashMap<String, Object> targetTransformations;
 
     public class PutMutation {
 
@@ -96,25 +98,20 @@ public class HBaseApplierMutationGenerator {
         }
 
         public DataSource getTargetDataSource() {
-
-            // TODO: config
-            // if (configuration.validationConfig == null) return null;
-            // targetDomain <- configuration.getValidationConfiguration().getTargetDomain();
-            String targetDomain = "hbase-cluster";
+            Object targetDataSource = configuration.getOrDefault(ValidationService.Configuration.VALIDATION_TARGET_DATA_SOURCE, null);
+            String row = null;
+            String cf = null;
             try {
-
-                String dataSource = targetDomain;
-
-                String row = URLEncoder.encode(Bytes.toStringBinary(put.getRow()), "UTF-8");
-
-                String cf = URLEncoder.encode(Bytes.toString(CF), "UTF-8");
-
-                return String.format("hbase://%s/%s?row=%s&cf=%s", dataSource, table, row, cf);
-
+                row = URLEncoder.encode(Bytes.toStringBinary(put.getRow()), "UTF-8");
+                cf = URLEncoder.encode(Bytes.toString(CF), "UTF-8");
             } catch (UnsupportedEncodingException e) {
                 LOGGER.error("UTF-8 not supported?", e);
-                return null;
             }
+            return targetDataSource == null || row == null || cf == null || put.has(CF, Bytes.toBytes("row_status"), Bytes.toBytes("D"))?
+                    null :
+                    new DataSource((String) targetDataSource,
+                                   new BigtableQueryOptions(table, row, cf, targetTransformations));
+
         }
     }
 
@@ -133,13 +130,21 @@ public class HBaseApplierMutationGenerator {
     }
 
     private void initValidationTransformations() {
-        mysqlTransformations = new HashMap<>();
-        mysqlTransformations.put(TransformationTypes.MAP_NULL_COLUMNS.getValue(), "NULL");
-        mysqlTransformations.put(TransformationTypes.TIMESTAMPS_TO_EPOCHS.getValue(), true);
+        sourceTransformations = new HashMap<>();
+        sourceTransformations.put(TransformationTypes.MAP_NULL_COLUMNS.getValue(), "NULL");
+        sourceTransformations.put(TransformationTypes.TIMESTAMPS_TO_EPOCHS.getValue(), true);
+
+        List<String> ignoreColumns = new ArrayList<>();
+        ignoreColumns.add("_replicator_uuid");
+        ignoreColumns.add("_replicator_xid");
+        ignoreColumns.add("_transaction_uuid");
+        ignoreColumns.add("_transaction_xid");
+        targetTransformations = new HashMap<>();
+        targetTransformations.put(TransformationTypes.IGNORE_COLUMNS.getValue(), ignoreColumns);
     }
 
     private void setShardName(Map<String, Object> configuration) {
-        this.shardName = (String) configuration.getOrDefault(ValidationService.Configuration.VALIDATION_DATA_SOURCE_NAME, "");
+        this.shardName = (String) configuration.getOrDefault(ValidationService.Configuration.VALIDATION_SOURCE_DATA_SOURCE, "");
     }
 
     public String getShardName() {
@@ -190,6 +195,7 @@ public class HBaseApplierMutationGenerator {
                         microsecondsTimestamp,
                         Bytes.toBytes(columnValue)
                 );
+
                 this.metrics.getRegistry()
                         .counter("applier.hbase.columns.mutations.count").inc(1L);
                 this.metrics.getRegistry()
@@ -387,12 +393,10 @@ public class HBaseApplierMutationGenerator {
             table = originalTableName;
         }
 
-        HashMap<String, Object> primaryKeys = new HashMap<>();
         String keys  = row.getPrimaryKeyColumns().stream()
                 .map( column -> {
                     try {
                         String value = row.getValueAsString(column, AugmentedEventType.UPDATE == eventType ? EventDeserializer.Constants.VALUE_AFTER : null);
-                        primaryKeys.put(URLEncoder.encode(column,"UTF-8"), URLEncoder.encode(value,"UTF-8"));
                         return URLEncoder.encode(column,"UTF-8") + "=" + URLEncoder.encode(value,"UTF-8");
                     } catch (UnsupportedEncodingException e) {
 
@@ -403,13 +407,6 @@ public class HBaseApplierMutationGenerator {
                     }
                 } )
                 .collect(Collectors.joining("&"));
-
-        String dataSourceName = (String) configuration.getOrDefault(ValidationService.Configuration.VALIDATION_DATA_SOURCE_NAME, sourceDomain);
-        DataSource ds = new DataSource(dataSourceName,
-                                       new MysqQuerylOptions(Types.MYSQL.getValue(),
-                                                             table,
-                                                             primaryKeys,
-                                                             mysqlTransformations));
 
         return String.format("mysql://%s/%s?%s", sourceDomain, table, keys  );
     }
@@ -430,12 +427,12 @@ public class HBaseApplierMutationGenerator {
                 LOGGER.error("Unexpected encoding exception", e);
             }
         });
-        String dataSourceName = (String) configuration.getOrDefault(ValidationService.Configuration.VALIDATION_DATA_SOURCE_NAME, null);
+        String dataSourceName = (String) configuration.getOrDefault(ValidationService.Configuration.VALIDATION_SOURCE_DATA_SOURCE, null);
         return dataSourceName == null ? null : new DataSource(dataSourceName,
                                                               new MysqQuerylOptions(Types.MYSQL.getValue(),
                                                                                     table,
                                                                                     primaryKeys,
-                                                                                    mysqlTransformations));
+                                                                      sourceTransformations));
     }
 
 

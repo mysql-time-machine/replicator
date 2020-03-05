@@ -10,9 +10,11 @@ import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.augmenter.util.AugmentedEventRowExtractor;
 import com.booking.replication.commons.metrics.Metrics;
 
+import com.booking.validator.data.source.DataSource;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -260,7 +262,11 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
 
             for (HBaseApplierMutationGenerator.PutMutation mutation : tableMutations){
                 if (validationService != null && !tableName.equalsIgnoreCase(payloadTableName)) {
-                    validationService.registerValidationTask(mutation.getTransactionUUID(), mutation.getSourceRowUri(), mutation.getTargetRowUri());
+                    DataSource source = mutation.getSourceDataSource();
+                    DataSource target = mutation.getTargetDataSource();
+                    if (source != null && target != null) {
+                        validationService.registerValidationTask(mutation.getTransactionUUID(), source, target);
+                    }
                 }
             }
 

@@ -76,9 +76,8 @@ public class ValidationService {
         static final String VALIDATION_TOPIC = "validation.topic";
         static final String VALIDATION_TAG = "validation.tag";
         static final String VALIDATION_THROTTLE_ONE_EVERY = "validation.throttle_one_every";
-        public static final String VALIDATION_DATA_SOURCE_NAME = "validation.data_source_name";
-        static final String VALIDATION_SOURCE_DOMAIN = "validation.source_domain";
-        static final String VALIDATION_TARGET_DOMAIN = "validation.target_domain";
+        static final String VALIDATION_SOURCE_DATA_SOURCE = "validation.source_data_source";
+        static final String VALIDATION_TARGET_DATA_SOURCE = "validation.target_data_source";
     }
 
     public static ValidationService getInstance(Map<String, Object> configuration) {
@@ -89,10 +88,9 @@ public class ValidationService {
             return null;
         }
         if ( configuration.getOrDefault(Configuration.VALIDATION_BROKER,null) == null
-             || configuration.getOrDefault(Configuration.VALIDATION_SOURCE_DOMAIN,null) == null
-             || configuration.getOrDefault(Configuration.VALIDATION_TARGET_DOMAIN,null) == null
-             || configuration.getOrDefault(Configuration.VALIDATION_TOPIC, null) == null
-             || configuration.getOrDefault(Configuration.VALIDATION_DATA_SOURCE_NAME, null) == null) {
+             || configuration.getOrDefault(Configuration.VALIDATION_SOURCE_DATA_SOURCE,null) == null
+             || configuration.getOrDefault(Configuration.VALIDATION_TARGET_DATA_SOURCE,null) == null
+             || configuration.getOrDefault(Configuration.VALIDATION_TOPIC, null) == null) {
             throw new IllegalArgumentException("Bad validation configuration");
         }
 

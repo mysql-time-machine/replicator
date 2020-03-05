@@ -9,6 +9,10 @@ import com.booking.replication.augmenter.model.event.AugmentedEventType;
 import com.booking.replication.augmenter.model.format.EventDeserializer;
 import com.booking.replication.augmenter.model.row.AugmentedRow;
 import com.booking.replication.commons.metrics.Metrics;
+import com.booking.validator.data.source.DataSource;
+import com.booking.validator.data.source.Types;
+import com.booking.validator.data.transformation.Transformation;
+import com.booking.validator.data.transformation.TransformationTypes;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -19,6 +23,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.*;
 import java.util.stream.Collectors;
+import com.booking.validator.data.source.mysql.MysqQuerylOptions;
 
 /**
  * This class generates HBase mutations and keys
@@ -31,16 +36,20 @@ public class HBaseApplierMutationGenerator {
 
     private String shardName;
 
+    private HashMap<String, Object> mysqlTransformations;
+
     public class PutMutation {
 
         private final Put put;
         private final String table;
         private final String sourceRowUri;
+        private final DataSource sourceDataSource;
         private final String transactionUUID;
 
-        public PutMutation(Put put, String table, String sourceRowUri, String transactionUUID) {
+        public PutMutation(Put put, String table, String sourceRowUri, DataSource sourceDataSource, String transactionUUID) {
             this.put = put;
             this.sourceRowUri = sourceRowUri;
+            this.sourceDataSource = sourceDataSource;
             this.table = table;
             this.transactionUUID = transactionUUID;
         }
@@ -52,6 +61,9 @@ public class HBaseApplierMutationGenerator {
         public String getSourceRowUri() {
             return sourceRowUri;
         }
+        public DataSource getSourceDataSource() {
+            return sourceDataSource;
+        }
 
         public String getTable() {
             return table;
@@ -62,6 +74,28 @@ public class HBaseApplierMutationGenerator {
         }
 
         public String getTargetRowUri() {
+
+            // TODO: config
+            // if (configuration.validationConfig == null) return null;
+            // targetDomain <- configuration.getValidationConfiguration().getTargetDomain();
+            String targetDomain = "hbase-cluster";
+            try {
+
+                String dataSource = targetDomain;
+
+                String row = URLEncoder.encode(Bytes.toStringBinary(put.getRow()), "UTF-8");
+
+                String cf = URLEncoder.encode(Bytes.toString(CF), "UTF-8");
+
+                return String.format("hbase://%s/%s?row=%s&cf=%s", dataSource, table, row, cf);
+
+            } catch (UnsupportedEncodingException e) {
+                LOGGER.error("UTF-8 not supported?", e);
+                return null;
+            }
+        }
+
+        public DataSource getTargetDataSource() {
 
             // TODO: config
             // if (configuration.validationConfig == null) return null;
@@ -95,6 +129,13 @@ public class HBaseApplierMutationGenerator {
         this.configuration = configuration;
         this.metrics = metrics;
         setShardName(this.configuration);
+        initValidationTransformations();
+    }
+
+    private void initValidationTransformations() {
+        mysqlTransformations = new HashMap<>();
+        mysqlTransformations.put(TransformationTypes.MAP_NULL_COLUMNS.getValue(), "NULL");
+        mysqlTransformations.put(TransformationTypes.TIMESTAMPS_TO_EPOCHS.getValue(), true);
     }
 
     private void setShardName(Map<String, Object> configuration) {
@@ -326,6 +367,7 @@ public class HBaseApplierMutationGenerator {
                 put,
                 hbaseTableName,
                 getRowUri(augmentedRow),
+                getSourceDataSource(augmentedRow),
                 augmentedRow.getTransactionUUID()
         );
     }
@@ -345,10 +387,12 @@ public class HBaseApplierMutationGenerator {
             table = originalTableName;
         }
 
+        HashMap<String, Object> primaryKeys = new HashMap<>();
         String keys  = row.getPrimaryKeyColumns().stream()
                 .map( column -> {
                     try {
                         String value = row.getValueAsString(column, AugmentedEventType.UPDATE == eventType ? EventDeserializer.Constants.VALUE_AFTER : null);
+                        primaryKeys.put(URLEncoder.encode(column,"UTF-8"), URLEncoder.encode(value,"UTF-8"));
                         return URLEncoder.encode(column,"UTF-8") + "=" + URLEncoder.encode(value,"UTF-8");
                     } catch (UnsupportedEncodingException e) {
 
@@ -360,7 +404,39 @@ public class HBaseApplierMutationGenerator {
                 } )
                 .collect(Collectors.joining("&"));
 
+        String dataSourceName = (String) configuration.getOrDefault(ValidationService.Configuration.VALIDATION_DATA_SOURCE_NAME, sourceDomain);
+        DataSource ds = new DataSource(dataSourceName,
+                                       new MysqQuerylOptions(Types.MYSQL.getValue(),
+                                                             table,
+                                                             primaryKeys,
+                                                             mysqlTransformations));
+
         return String.format("mysql://%s/%s?%s", sourceDomain, table, keys  );
     }
+
+    private DataSource getSourceDataSource(AugmentedRow row) {
+        AugmentedEventType eventType = row.getEventType();
+        String table = row.getTableName();
+        String originalTableName = row.getOriginalTableName();
+        if (originalTableName != null && !originalTableName.isEmpty()) {
+            table = originalTableName;
+        }
+        HashMap<String, Object> primaryKeys = new HashMap<>();
+        row.getPrimaryKeyColumns().forEach(column->{
+            String value = row.getValueAsString(column, AugmentedEventType.UPDATE == eventType ? EventDeserializer.Constants.VALUE_AFTER : null);
+            try {
+                primaryKeys.put(URLEncoder.encode(column,"UTF-8"), URLEncoder.encode(value,"UTF-8"));
+            } catch (UnsupportedEncodingException e) {
+                LOGGER.error("Unexpected encoding exception", e);
+            }
+        });
+        String dataSourceName = (String) configuration.getOrDefault(ValidationService.Configuration.VALIDATION_DATA_SOURCE_NAME, null);
+        return dataSourceName == null ? null : new DataSource(dataSourceName,
+                                                              new MysqQuerylOptions(Types.MYSQL.getValue(),
+                                                                                    table,
+                                                                                    primaryKeys,
+                                                                                    mysqlTransformations));
+    }
+
 
 }

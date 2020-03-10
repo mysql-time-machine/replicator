@@ -22,8 +22,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.*;
-import com.booking.validator.data.source.mysql.MysqQuerylOptions;
-
+import com.booking.validator.data.source.mysql.MysqlQueryOptions;
 /**
  * This class generates HBase mutations and keys
  */
@@ -364,7 +363,7 @@ public class HBaseApplierMutationGenerator {
         return dataSourceName == null ?
                 null :
                 new DataSource(dataSourceName,
-                               new MysqQuerylOptions(Types.MYSQL.getValue(),
+                               new MysqlQueryOptions(Types.MYSQL.getValue(),
                                                      table,
                                                      primaryKeys,
                                                      getSourceTransformation(row)));

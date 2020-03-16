@@ -254,9 +254,6 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
             mutator.mutate(putList);
             mutator.flush();
             mutator.close();
-//            Table table = connection.getTable(TableName.valueOf(tableName));
-//            table.put(putList);
-//            table.close();
 
             for (HBaseApplierMutationGenerator.PutMutation mutation : tableMutations){
                 if (validationService != null && !tableName.equalsIgnoreCase(payloadTableName)) {

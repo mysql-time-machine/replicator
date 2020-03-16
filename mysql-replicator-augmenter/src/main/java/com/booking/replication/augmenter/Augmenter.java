@@ -39,7 +39,7 @@ public class Augmenter implements Function<RawEvent, Collection<AugmentedEvent>>
             protected SchemaManager newInstance(Map<String, Object> configuration) {
                 return new SchemaManager() {
                     @Override
-                    public boolean execute(String tableName, String query) {
+                    public boolean execute(String tableName, String query, Boolean canFail) {
                         return false;
                     }
 

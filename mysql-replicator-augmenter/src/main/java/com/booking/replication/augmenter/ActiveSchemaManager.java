@@ -199,7 +199,7 @@ public class ActiveSchemaManager implements SchemaManager {
     }
 
     @Override
-    public boolean execute(String tableName, String query) {
+    public boolean execute(String tableName, String query, Boolean canFail) {
 
         LOG.info("Schema change => { tableName => " + tableName + ", query => " +  query + " }");
 
@@ -226,7 +226,12 @@ public class ActiveSchemaManager implements SchemaManager {
             }
             return executed;
         } catch (SQLException exception) {
-            throw new RuntimeException(String.format("Cannot sync ActiveSchema! Error executing query \"%s\": %s", rewrittenQuery, exception.getMessage()));
+            if ( canFail ) {
+                LOG.warn("Error executing DDL statement (marked as canFail): " + exception.getMessage() );
+                return false;
+            } else {
+                throw new RuntimeException(String.format("Cannot sync ActiveSchema! Error executing query \"%s\": %s", rewrittenQuery, exception.getMessage()));
+            }
         }
     }
 

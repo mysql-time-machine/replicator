@@ -629,7 +629,7 @@ public class AugmenterContext implements Closeable {
                     this.createTableBefore.set(null);
                 }
 
-                this.schemaManager.execute(tableName, query);
+                this.schemaManager.execute(tableName, query, isDDLAndIsType(QueryAugmentedEventDataOperationType.DROP));
                 this.schemaCache.get().reloadTableSchema(
                         tableName,
                         this.schemaManager.getComputeTableSchemaLambda()
@@ -669,7 +669,7 @@ public class AugmenterContext implements Closeable {
                 this.columnsBefore.set(null);
                 this.createTableBefore.set(null);
 
-                this.schemaManager.execute(null, query);
+                this.schemaManager.execute(null, query, false);
 
                 this.columnsAfter.set(null);
                 this.createTableAfter.set(null);
@@ -683,6 +683,12 @@ public class AugmenterContext implements Closeable {
         return ((this.queryType.get() == QueryAugmentedEventDataType.DDL_TABLE
                 || this.queryType.get() == QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE )
                 && this.getQueryOperationType() != ddlOpType);
+    }
+
+    private boolean isDDLAndIsType(QueryAugmentedEventDataOperationType ddlOpType) {
+        return ((this.queryType.get() == QueryAugmentedEventDataType.DDL_TABLE
+                || this.queryType.get() == QueryAugmentedEventDataType.DDL_TEMPORARY_TABLE )
+                && this.getQueryOperationType().equals(ddlOpType) );
     }
 
     private boolean shouldAugmentTable(String tableName) {

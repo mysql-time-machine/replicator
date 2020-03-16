@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.function.Function;
 
 public interface SchemaManager extends Closeable {
-    boolean execute(String tableName, String query);
+    boolean execute(String tableName, String query, Boolean canFail);
 
     SchemaAtPositionCache getSchemaAtPositionCache();
 

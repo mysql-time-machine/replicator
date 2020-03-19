@@ -13,10 +13,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.Assert;
+import org.junit.*;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,10 +25,14 @@ public class ValidationServiceTest {
     private static Map<String, Object> configuration;
 
     @BeforeClass
-    public static void Before() {
+    public static void initializeContainer () {
+        ValidationServiceTest.servicesControl = ServicesProvider.build(ServicesProvider.Type.CONTAINERS).startKafka(ValidationServiceTest.TOPIC_NAME, 1, 1);
+    }
+
+    @Before
+    public void cleanConfiguration() {
         configuration = new HashMap<>();
         initConfig();
-        ValidationServiceTest.servicesControl = ServicesProvider.build(ServicesProvider.Type.CONTAINERS).startKafka(ValidationServiceTest.TOPIC_NAME, 1, 1);
     }
 
     public static void initConfig() {
@@ -48,7 +49,6 @@ public class ValidationServiceTest {
     @Test
     public void testValidationServiceCounter() {
         LOG.info("ValidationServiceTest.testValidationServiceCounter() called");
-        initConfig();
         configuration.put(Applier.Configuration.TYPE, "HBASE");
         ValidationService validationService = ValidationService.getInstance(configuration);
         Assert.assertNotNull(validationService);
@@ -59,49 +59,21 @@ public class ValidationServiceTest {
     }
 
     @Test
-    public void testValidationServiceNull() throws IllegalArgumentException {
-        LOG.info("ValidationServiceTest.testValidationServiceNull() called");
-        initConfig();
+    public void testInstantiationWithInvalidApplier() {
+        LOG.info("ValidationServiceTest.testInstantiationWithInvalidApplier() called");
         configuration.put(Applier.Configuration.TYPE, "CONSOLE");
         ValidationService validationService = ValidationService.getInstance(configuration);
-        Assert.assertNull(validationService);
 
-        initConfig();
+        Assert.assertNull(validationService);
+    }
+
+    @Test
+    public void testInstantiationWithoutTopic() {
+        ValidationService validationService = null;
+
         configuration.put(Applier.Configuration.TYPE, "HBASE");
         configuration.remove(ValidationService.Configuration.VALIDATION_TOPIC);
-        try {
-            validationService = ValidationService.getInstance(configuration);
-        } catch(IllegalArgumentException e) {
-            Assert.assertNotNull(e);
-        } finally {
-            Assert.assertNull(validationService);
-        }
 
-        initConfig();
-        configuration.put(Applier.Configuration.TYPE, "HBASE");
-        configuration.remove(ValidationService.Configuration.VALIDATION_BROKER);
-        try {
-            validationService = ValidationService.getInstance(configuration);
-        } catch(IllegalArgumentException e) {
-            Assert.assertNotNull(e);
-        } finally {
-            Assert.assertNull(validationService);
-        }
-
-        initConfig();
-        configuration.put(Applier.Configuration.TYPE, "HBASE");
-        configuration.remove(ValidationService.Configuration.VALIDATION_SOURCE_DOMAIN);
-        try {
-            validationService = ValidationService.getInstance(configuration);
-        } catch(IllegalArgumentException e) {
-            Assert.assertNotNull(e);
-        } finally {
-            Assert.assertNull(validationService);
-        }
-
-        initConfig();
-        configuration.put(Applier.Configuration.TYPE, "HBASE");
-        configuration.remove(ValidationService.Configuration.VALIDATION_TARGET_DOMAIN);
         try {
             validationService = ValidationService.getInstance(configuration);
         } catch(IllegalArgumentException e) {
@@ -112,18 +84,48 @@ public class ValidationServiceTest {
     }
 
     @Test
-    public void testApplierValidations() {
-        initConfig();
-        configuration.put(Applier.Configuration.TYPE, "CONSOLE");
-        ConsoleApplier consoleApplier = (ConsoleApplier) Applier.build(configuration);
-        ValidationService validationServiceConsole = consoleApplier.buildValidationService(configuration);
-        Assert.assertNull(validationServiceConsole);
+    public void testInstantiationWithoutBroker() {
+        ValidationService validationService = null;
 
-        initConfig();
-        configuration.put(Applier.Configuration.TYPE, "COUNT");
-        CountApplier countApplier = (CountApplier) Applier.build(configuration);
-        ValidationService validationServiceCount = countApplier.buildValidationService(configuration);
-        Assert.assertNull(validationServiceCount);
+        configuration.put(Applier.Configuration.TYPE, "HBASE");
+        configuration.remove(ValidationService.Configuration.VALIDATION_BROKER);
+
+        try {
+            validationService = ValidationService.getInstance(configuration);
+        } catch(IllegalArgumentException e) {
+            Assert.assertNotNull(e);
+        } finally {
+            Assert.assertNull(validationService);
+        }
+    }
+
+    @Test
+    public void testInstantiationWithoutSourceDomain() {
+        ValidationService validationService = null;
+
+        configuration.put(Applier.Configuration.TYPE, "HBASE");
+        configuration.remove(ValidationService.Configuration.VALIDATION_SOURCE_DOMAIN);
+        try {
+            validationService = ValidationService.getInstance(configuration);
+        } catch(IllegalArgumentException e) {
+            Assert.assertNotNull(e);
+        } finally {
+            Assert.assertNull(validationService);
+        }
+    }
+
+    @Test
+    public void testInstantiationWithoutTargetDomain() throws IllegalArgumentException {
+        ValidationService validationService = null;
+        configuration.put(Applier.Configuration.TYPE, "HBASE");
+        configuration.remove(ValidationService.Configuration.VALIDATION_TARGET_DOMAIN);
+        try {
+            validationService = ValidationService.getInstance(configuration);
+        } catch(IllegalArgumentException e) {
+            Assert.assertNotNull(e);
+        } finally {
+            Assert.assertNull(validationService);
+        }
     }
 
     @AfterClass

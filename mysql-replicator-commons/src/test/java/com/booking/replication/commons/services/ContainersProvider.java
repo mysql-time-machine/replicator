@@ -308,7 +308,7 @@ public final class ContainersProvider implements ServicesProvider {
                 ContainersProvider.KAFKA_PORT,
                 network,
                 ContainersProvider.KAFKA_STARTUP_WAIT_REGEX,
-                300,
+                1,
                 true,
                 printLogs).withEnv(
                 ContainersProvider.KAFKA_ZOOKEEPER_CONNECT_KEY,

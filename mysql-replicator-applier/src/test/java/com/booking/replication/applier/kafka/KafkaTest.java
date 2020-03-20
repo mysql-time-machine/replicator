@@ -85,7 +85,7 @@ public class KafkaTest {
         }
 
         KafkaTest.lastEvent = KafkaTest.getAugmentedEvent(KafkaTest.events.size());
-        KafkaTest.servicesControl = ServicesProvider.build(ServicesProvider.Type.CONTAINERS).startKafka(KafkaTest.TOPIC_NAME, KafkaTest.TOPIC_PARTITIONS, KafkaTest.TOPIC_REPLICAS);
+        KafkaTest.servicesControl = ServicesProvider.build(ServicesProvider.Type.CONTAINERS).startKafka(KafkaTest.TOPIC_NAME, KafkaTest.TOPIC_PARTITIONS, KafkaTest.TOPIC_REPLICAS, false);
     }
 
     @Test

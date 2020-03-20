@@ -91,7 +91,7 @@ public final class ContainersProvider implements ServicesProvider {
     public ContainersProvider() {
     }
 
-    private GenericContainer<?> getContainer(String image, int port, Network network, String logWaitRegex, int logWaitTimes, boolean matchExposedPort) {
+    private GenericContainer<?> getContainer(String image, int port, Network network, String logWaitRegex, int logWaitTimes, boolean matchExposedPort, boolean printLogs) {
 
         GenericContainer<?> container = new GenericContainer<>(image)
                 .withExposedPorts(port)
@@ -109,10 +109,11 @@ public final class ContainersProvider implements ServicesProvider {
             );
         }
 
-        container.withLogConsumer(outputFrame -> {
-//            System.out.println(image + " " + outputFrame.getUtf8String());
-        });
-
+        if ( printLogs ) {
+            container.withLogConsumer(outputFrame -> {
+                System.out.println(image + " " + outputFrame.getUtf8String().replaceAll("\n",""));
+            });
+        }
 
         return container;
     }
@@ -145,8 +146,8 @@ public final class ContainersProvider implements ServicesProvider {
                 network,
                 ContainersProvider.ZOOKEEPER_STARTUP_WAIT_REGEX,
                 ContainersProvider.ZOOKEEPER_STARTUP_WAIT_TIMES,
-                network == null
-        );
+                network == null,
+                false);
     }
 
     public ServicesControl startCustomTagMySQL(
@@ -164,8 +165,8 @@ public final class ContainersProvider implements ServicesProvider {
                 null,
                 ContainersProvider.MYSQL_STARTUP_WAIT_REGEX,
                 ContainersProvider.MYSQL_STARTUP_WAIT_TIMES,
-                false
-        ).withEnv(ContainersProvider.MYSQL_ROOT_PASSWORD_KEY, password
+                false,
+                false).withEnv(ContainersProvider.MYSQL_ROOT_PASSWORD_KEY, password
         ).withEnv(ContainersProvider.MYSQL_DATABASE_KEY, schema
         ).withEnv(ContainersProvider.MYSQL_USER_KEY, username
         ).withEnv(ContainersProvider.MYSQL_PASSWORD_KEY, password
@@ -262,7 +263,7 @@ public final class ContainersProvider implements ServicesProvider {
                 ContainersProvider.MYSQL_STARTUP_WAIT_REGEX,
                 ContainersProvider.MYSQL_STARTUP_WAIT_TIMES,
                 // Cannot match exposed port in mysql as it can have conflicts
-                false)
+                false, false)
                 .withEnv(envConfigs)
                 .withClasspathResourceMapping(mySQLConfiguration.getConfPath(), ContainersProvider.MYSQL_CONFIGURATION_PATH, BindMode.READ_ONLY
         );
@@ -292,7 +293,7 @@ public final class ContainersProvider implements ServicesProvider {
     }
 
     @Override
-    public ServicesControl startKafka(String topic, int partitions, int replicas) {
+    public ServicesControl startKafka(String topic, int partitions, int replicas, boolean printLogs) {
         Network network = Network.newNetwork();
 
         GenericContainer<?> zookeeper = this.getZookeeper(network, VersionedPipelines.defaultTags.zookeeperTag);
@@ -308,8 +309,8 @@ public final class ContainersProvider implements ServicesProvider {
                 network,
                 ContainersProvider.KAFKA_STARTUP_WAIT_REGEX,
                 partitions,
-                true
-        ).withEnv(
+                true,
+                printLogs).withEnv(
                 ContainersProvider.KAFKA_ZOOKEEPER_CONNECT_KEY,
                 String.format("%s:%d", zookeeper.getContainerInfo().getConfig().getHostName(), ContainersProvider.ZOOKEEPER_PORT)
         ).withEnv(
@@ -351,8 +352,8 @@ public final class ContainersProvider implements ServicesProvider {
                 network,
                 ContainersProvider.KAFKA_STARTUP_WAIT_REGEX,
                 partitions,
-                true
-        ).withEnv(
+                true,
+                false).withEnv(
                 ContainersProvider.KAFKA_ZOOKEEPER_CONNECT_KEY,
                 String.format("%s:%d", "kafkaZk", ContainersProvider.ZOOKEEPER_PORT)
         ).withEnv(
@@ -404,8 +405,8 @@ public final class ContainersProvider implements ServicesProvider {
                 network,
                 ContainersProvider.KAFKA_STARTUP_WAIT_REGEX,
                 partitions,
-                true
-        ).withEnv(
+                true,
+                false).withEnv(
                 ContainersProvider.KAFKA_ZOOKEEPER_CONNECT_KEY,
                 String.format("%s:%d", zookeeper.getContainerInfo().getConfig().getHostName(), ContainersProvider.ZOOKEEPER_PORT)
         ).withEnv(
@@ -446,8 +447,8 @@ public final class ContainersProvider implements ServicesProvider {
                 network,
                 ContainersProvider.SCHEMA_REGISTRY_WAIT_REGEX,
                 1,
-                true
-        ).withEnv(
+                true,
+                false).withEnv(
                 ContainersProvider.SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL_KEY,
                 String.format("%s:%d", "kafkaZk", ContainersProvider.ZOOKEEPER_PORT)
         ).withEnv(

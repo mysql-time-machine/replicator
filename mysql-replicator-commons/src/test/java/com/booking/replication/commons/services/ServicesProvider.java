@@ -29,7 +29,7 @@ public interface ServicesProvider {
 
     ServicesControl startMySQL(MySQLConfiguration mySQLConfiguration);
 
-    ServicesControl startKafka(String topic, int partitions, int replicas);
+    ServicesControl startKafka(String topic, int partitions, int replicas, boolean printLogs);
 
     ServicesControl startKafka(Network network, String topic, int partitions, int replicas, String networkAlias);
 

@@ -1,16 +1,8 @@
 package com.booking.replication.applier.validation;
 
 import com.booking.replication.applier.Applier;
-import com.booking.replication.applier.console.ConsoleApplier;
-import com.booking.replication.applier.count.CountApplier;
-import com.booking.replication.applier.kafka.KafkaApplier;
-import com.booking.replication.commons.metrics.Metrics;
 import com.booking.replication.commons.services.ServicesControl;
 import com.booking.replication.commons.services.ServicesProvider;
-import io.confluent.kafka.serializers.KafkaAvroSerializer;
-import kafka.Kafka;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.*;
@@ -26,7 +18,7 @@ public class ValidationServiceTest {
 
     @BeforeClass
     public static void initializeContainer () {
-        ValidationServiceTest.servicesControl = ServicesProvider.build(ServicesProvider.Type.CONTAINERS).startKafka(ValidationServiceTest.TOPIC_NAME, 1, 1);
+        ValidationServiceTest.servicesControl = ServicesProvider.build(ServicesProvider.Type.CONTAINERS).startKafka(ValidationServiceTest.TOPIC_NAME, 1, 1, true);
     }
 
     @Before

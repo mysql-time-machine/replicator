@@ -6,19 +6,25 @@ import com.booking.replication.commons.services.ServicesProvider;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.*;
+import org.testcontainers.containers.Network;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class ValidationServiceTest {
     private static final Logger LOG = LogManager.getLogger(ValidationServiceTest.class);
-    private static ServicesControl servicesControl;
+    private static ServicesProvider servicesProvider;
+    private static ServicesControl kafka;
+    private static ServicesControl kafkaZk;
     private static String TOPIC_NAME = "replicator_validation";
     private static Map<String, Object> configuration;
 
     @BeforeClass
     public static void initializeContainer () {
-        ValidationServiceTest.servicesControl = ServicesProvider.build(ServicesProvider.Type.CONTAINERS).startKafka(ValidationServiceTest.TOPIC_NAME, 1, 1, true);
+        Network network = Network.newNetwork();
+        ValidationServiceTest.servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS);
+        ValidationServiceTest.kafkaZk = servicesProvider.startZookeeper(network, "kafkaZk");
+        ValidationServiceTest.kafka = servicesProvider.startKafka(network,ValidationServiceTest.TOPIC_NAME, 1,1,"kafka");
     }
 
     @Before
@@ -122,6 +128,7 @@ public class ValidationServiceTest {
 
     @AfterClass
     public static void After() {
-        ValidationServiceTest.servicesControl.close();
+        ValidationServiceTest.kafka.close();
+        ValidationServiceTest.kafkaZk.close();
     }
 }

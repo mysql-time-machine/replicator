@@ -20,6 +20,7 @@ import org.apache.logging.log4j.Logger;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.testcontainers.containers.Network;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -41,7 +42,9 @@ public class KafkaTest {
 
     private static List<AugmentedEvent> events;
     private static AugmentedEvent lastEvent;
-    private static ServicesControl servicesControl;
+    private static ServicesProvider servicesProvider;
+    private static ServicesControl kafkaContainer;
+    private static ServicesControl zkContainer;
 
     private static Checkpoint getCheckpoint(int index) {
         return new Checkpoint(
@@ -84,8 +87,12 @@ public class KafkaTest {
             KafkaTest.events.add(KafkaTest.getAugmentedEvent(index));
         }
 
+        Network network = Network.newNetwork();
+        KafkaTest.servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS);
+        KafkaTest.zkContainer = servicesProvider.startZookeeper(network, "kafkaZk");
+        KafkaTest.kafkaContainer = servicesProvider.startKafka(network,KafkaTest.TOPIC_NAME, KafkaTest.TOPIC_PARTITIONS, KafkaTest.TOPIC_REPLICAS,"kafka");
+
         KafkaTest.lastEvent = KafkaTest.getAugmentedEvent(KafkaTest.events.size());
-        KafkaTest.servicesControl = ServicesProvider.build(ServicesProvider.Type.CONTAINERS).startKafka(KafkaTest.TOPIC_NAME, KafkaTest.TOPIC_PARTITIONS, KafkaTest.TOPIC_REPLICAS, false);
     }
 
     @Test
@@ -95,7 +102,7 @@ public class KafkaTest {
         configuration.put(Applier.Configuration.TYPE, Applier.Type.KAFKA.name());
         configuration.put(KafkaApplier.Configuration.FORMAT, KafkaApplier.MessageFormat.JSON);
         configuration.put(KafkaApplier.Configuration.TOPIC, KafkaTest.TOPIC_NAME);
-        configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.BOOTSTRAP_SERVERS_CONFIG), KafkaTest.servicesControl.getURL());
+        configuration.put(String.format("%s%s", KafkaApplier.Configuration.PRODUCER_PREFIX, ProducerConfig.BOOTSTRAP_SERVERS_CONFIG), KafkaTest.kafkaContainer.getURL());
 
         Metrics.build(configuration, null);
         try (Applier applier = Applier.build(configuration)) {
@@ -109,7 +116,7 @@ public class KafkaTest {
 
         configuration.put(Seeker.Configuration.TYPE, Seeker.Type.KAFKA.name());
         configuration.put(KafkaSeeker.Configuration.TOPIC, KafkaTest.TOPIC_NAME);
-        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG), KafkaTest.servicesControl.getURL());
+        configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG), KafkaTest.kafkaContainer.getURL());
         configuration.put(String.format("%s%s", KafkaSeeker.Configuration.CONSUMER_PREFIX, ConsumerConfig.GROUP_ID_CONFIG), KafkaTest.GROUP_ID);
 
         Metrics.build(configuration, null);
@@ -123,6 +130,7 @@ public class KafkaTest {
 
     @AfterClass
     public static void after() {
-        KafkaTest.servicesControl.close();
+        KafkaTest.zkContainer.close();
+        KafkaTest.kafkaContainer.close();
     }
 }

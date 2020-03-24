@@ -3,17 +3,11 @@ package com.booking.replication.applier.validation;
 import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.console.ConsoleApplier;
 import com.booking.replication.applier.count.CountApplier;
-import com.booking.replication.applier.kafka.KafkaApplier;
-import com.booking.replication.commons.metrics.Metrics;
 import com.booking.replication.commons.services.ServicesControl;
 import com.booking.replication.commons.services.ServicesProvider;
 import com.booking.validator.data.source.DataSource;
 import com.booking.validator.data.source.Types;
 import com.booking.validator.data.source.constant.ConstantQueryOptions;
-import io.confluent.kafka.serializers.KafkaAvroSerializer;
-import kafka.Kafka;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.AfterClass;
@@ -21,6 +15,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.Assert;
 
+import java.io.IOException;
+import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -35,6 +31,35 @@ public class ValidationServiceTest {
         configuration = new HashMap<>();
         initConfig();
         ValidationServiceTest.servicesControl = ServicesProvider.build(ServicesProvider.Type.CONTAINERS).startKafka(ValidationServiceTest.TOPIC_NAME, 1, 1);
+        waitForKafka();
+    }
+    private static boolean isPortInUse(String host, int port) {
+        // Assume no connection is possible.
+        boolean result = false;
+        try {
+            (new Socket(host, port)).close();
+            result = true;
+        }
+        catch(IOException e) {
+            // Could not connect.
+        }
+        return result;
+    }
+    public static void waitForKafka() {
+        boolean scanning=true;
+        while(scanning)
+        {
+            if(isPortInUse("localhost", 9092)) {
+                scanning=false;
+            } else {
+                System.out.println("Couldn't connect to kafka. Trying again in 2s.");
+                try {
+                    Thread.sleep(2000);//2 seconds
+                } catch(InterruptedException ie){
+                    ie.printStackTrace();
+                }
+            }
+        }
     }
 
     public static void initConfig() {
@@ -54,7 +79,7 @@ public class ValidationServiceTest {
         configuration.put(Applier.Configuration.TYPE, "HBASE");
         ValidationService validationService = ValidationService.getInstance(configuration);
         Assert.assertNotNull(validationService);
-        DataSource dummy = new DataSource("constant", new ConstantQueryOptions(Types.CONSTANT.getValue(), null, null));
+        DataSource dummy = new DataSource("constant", new ConstantQueryOptions(Types.CONSTANT.getValue(), new HashMap<String, Object>(){{put("a", 1);}}, null));
         for (int i=0; i<10; i++){
             validationService.registerValidationTask("sample-id-"+ i, dummy, dummy);
         }

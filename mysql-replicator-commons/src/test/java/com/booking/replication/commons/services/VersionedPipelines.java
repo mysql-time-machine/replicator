@@ -16,7 +16,7 @@ public final class VersionedPipelines {
                      "mysql:5.6.38",
                      "mysql:5.6.38",
                      "harisekhon/hbase-dev:1.3",
-                     "wurstmeister/kafka:latest",
+                     "wurstmeister/kafka:2.11-1.1.1",
                      "zookeeper:latest",
                      "confluentinc/cp-schema-registry:latest"
              ),
@@ -24,7 +24,7 @@ public final class VersionedPipelines {
                      "mysql:5.7.22",
                      "mysql:5.7.22",
                      "harisekhon/hbase-dev:1.3",
-                     "wurstmeister/kafka:latest",
+                     "wurstmeister/kafka:2.11-1.1.1",
                      "zookeeper:latest",
                      "confluentinc/cp-schema-registry:latest"
              ),
@@ -32,7 +32,7 @@ public final class VersionedPipelines {
                      "mysql:8.0.11",
                      "mysql:8.0.11",
                      "harisekhon/hbase-dev:1.3",
-                     "wurstmeister/kafka:latest",
+                     "wurstmeister/kafka:2.11-1.1.1",
                      "zookeeper:latest",
                      "confluentinc/cp-schema-registry:latest"
              )

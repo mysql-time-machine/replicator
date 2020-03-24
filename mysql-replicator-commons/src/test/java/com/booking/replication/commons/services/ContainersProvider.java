@@ -22,7 +22,7 @@ public final class ContainersProvider implements ServicesProvider {
 
 //    // Tags
 //    private static final String MYSQL_DOCKER_IMAGE_DEFAULT = "mysql:5.6.38";
-//    private static final String KAFKA_DOCKER_IMAGE_DEFAULT = "wurstmeister/kafka:latest";
+//    private static final String KAFKA_DOCKER_IMAGE_DEFAULT = "wurstmeister/kafka:2.11-1.1.1";
 //    private static final String ZOOKEEPER_DOCKER_IMAGE_DEFAULT = "zookeeper:latest";
 //    private static final String HBASE_DOCKER_IMAGE_DEFAULT = "harisekhon/hbase-dev:1.3";
 

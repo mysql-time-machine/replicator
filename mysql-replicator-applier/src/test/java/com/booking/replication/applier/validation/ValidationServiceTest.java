@@ -30,8 +30,8 @@ public class ValidationServiceTest {
     public static void Before() {
         configuration = new HashMap<>();
         initConfig();
+        waitForKafkaPorts();
         ValidationServiceTest.servicesControl = ServicesProvider.build(ServicesProvider.Type.CONTAINERS).startKafka(ValidationServiceTest.TOPIC_NAME, 1, 1);
-        waitForKafka();
     }
     private static boolean isPortInUse(String host, int port) {
         // Assume no connection is possible.
@@ -45,14 +45,14 @@ public class ValidationServiceTest {
         }
         return result;
     }
-    public static void waitForKafka() {
+    public static void waitForKafkaPorts() {
         boolean scanning=true;
         while(scanning)
         {
-            if(isPortInUse("localhost", 9092)) {
+            if(!isPortInUse("localhost", 9092)) {
                 scanning=false;
             } else {
-                System.out.println("Couldn't connect to kafka. Trying again in 2s.");
+                System.out.println("Kafka port already in use. Waiting for 2s.");
                 try {
                     Thread.sleep(2000);//2 seconds
                 } catch(InterruptedException ie){

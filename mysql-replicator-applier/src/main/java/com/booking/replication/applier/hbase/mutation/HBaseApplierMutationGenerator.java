@@ -340,11 +340,7 @@ public class HBaseApplierMutationGenerator {
 
     private DataSource getSourceDataSource(AugmentedRow row, List<String> updatedColumns) {
         AugmentedEventType eventType = row.getEventType();
-        String table = row.getTableName();
-        String originalTableName = row.getOriginalTableName();
-        if (originalTableName != null && !originalTableName.isEmpty()) {
-            table = originalTableName;
-        }
+        String table = row.getOriginalTableName();
         HashMap<String, Object> primaryKeys = new HashMap<>();
         row.getPrimaryKeyColumns().forEach(column->{
             String value = row.getValueAsString(column, AugmentedEventType.UPDATE == eventType ? EventDeserializer.Constants.VALUE_AFTER : null);
@@ -355,7 +351,7 @@ public class HBaseApplierMutationGenerator {
             }
         });
         String dataSourceName = (String) configuration.getOrDefault(ValidationService.Configuration.VALIDATION_SOURCE_DATA_SOURCE, null);
-        return dataSourceName == null || updatedColumns.size() == 0?
+        return dataSourceName == null || updatedColumns.size() == 0 || table == null || table.isEmpty() ?
                 null :
                 new DataSource(dataSourceName,
                                new MysqlQueryOptions(Types.MYSQL.getValue(),
@@ -374,7 +370,7 @@ public class HBaseApplierMutationGenerator {
         } catch (UnsupportedEncodingException e) {
             LOGGER.error("UTF-8 not supported?", e);
         }
-        return targetDataSource == null || row == null || cf == null || put.has(CF, Bytes.toBytes("row_status"), Bytes.toBytes("D")) ||  updatedColumns.size() == 0?
+        return targetDataSource == null || row == null || cf == null || put.has(CF, Bytes.toBytes("row_status"), Bytes.toBytes("D")) ||  updatedColumns.size() == 0 ?
                 null :
                 new DataSource((String) targetDataSource,
                                new BigtableQueryOptions(table,

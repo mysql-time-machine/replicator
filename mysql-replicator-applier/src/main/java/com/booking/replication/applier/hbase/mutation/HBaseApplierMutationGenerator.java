@@ -82,29 +82,23 @@ public class HBaseApplierMutationGenerator {
         this.metrics = metrics;
         setShardName(this.configuration);
     }
-    private static HashMap<String, Object> getSourceTransformation(AugmentedRow row) {
-        List<String> keepColumns = new ArrayList<>();
-        row.getValues().keySet().forEach(columnName->keepColumns.add(columnName));
-
+    private static HashMap<String, Object> getSourceTransformation(AugmentedRow row, List<String> updatedColumns) {
         HashMap<String, Object> sourceTransformations = new HashMap<>();
         sourceTransformations.put(TransformationTypes.MAP_NULL_COLUMNS.getValue(), "NULL");
         sourceTransformations.put(TransformationTypes.TIMESTAMPS_TO_EPOCHS.getValue(), true);
-        sourceTransformations.put(TransformationTypes.KEEP_COLUMNS.getValue(), keepColumns);
+        sourceTransformations.put(TransformationTypes.KEEP_COLUMNS.getValue(), updatedColumns);
         return sourceTransformations;
     }
-    private static HashMap<String, Object> getTargetTransformations(AugmentedRow row) {
-        List<String> ignoreColumns = new ArrayList<>();
+    private static HashMap<String, Object> getTargetTransformations(AugmentedRow row, List<String> updatedColumns) {
+        /*List<String> ignoreColumns = new ArrayList<>();
         ignoreColumns.add("_replicator_uuid");
         ignoreColumns.add("_replicator_xid");
         ignoreColumns.add("_transaction_uuid");
-        ignoreColumns.add("_transaction_xid");
-
-        List<String> keepColumns = new ArrayList<>();
-        row.getValues().keySet().forEach(columnName->keepColumns.add(columnName));
+        ignoreColumns.add("_transaction_xid");*/
 
         HashMap<String, Object> targetTransformations = new HashMap<>();
-        targetTransformations.put(TransformationTypes.IGNORE_COLUMNS.getValue(), ignoreColumns);
-        targetTransformations.put(TransformationTypes.KEEP_COLUMNS.getValue(), keepColumns);
+        // targetTransformations.put(TransformationTypes.IGNORE_COLUMNS.getValue(), ignoreColumns);
+        targetTransformations.put(TransformationTypes.KEEP_COLUMNS.getValue(), updatedColumns);
         return targetTransformations;
     }
 
@@ -144,7 +138,7 @@ public class HBaseApplierMutationGenerator {
         Put put = new Put(Bytes.toBytes(hbaseRowID));
         String uuid = augmentedRow.getTransactionUUID();
         Long xid = augmentedRow.getTransactionXid();
-
+        List<String> updatedColumns = new ArrayList<>();
         Long microsecondsTimestamp = augmentedRow.getRowMicrosecondTimestamp();
 
         switch (augmentedRow.getEventType()) {
@@ -212,7 +206,7 @@ public class HBaseApplierMutationGenerator {
                                     ((valueBefore != null) && (valueAfter == null))
                                     ||
                                     (!valueAfter.equals(valueBefore))) {
-
+                        updatedColumns.add(columnName);
                         columnValue = valueAfter;
                         put.addColumn(
                                 CF,
@@ -274,6 +268,7 @@ public class HBaseApplierMutationGenerator {
                 String columnValue;
 
                 for (String columnName : augmentedRow.getValues().keySet()) {
+                    updatedColumns.add(columnName);
                     columnValue = augmentedRow.getValueAsString(columnName);
                     if (columnValue == null) {
                         columnValue = "NULL";
@@ -337,13 +332,13 @@ public class HBaseApplierMutationGenerator {
         return new PutMutation(
                 put,
                 hbaseTableName,
-                getSourceDataSource(augmentedRow),
-                getTargetDataSource(augmentedRow, put, hbaseTableName),
+                getSourceDataSource(augmentedRow, updatedColumns),
+                getTargetDataSource(augmentedRow, put, hbaseTableName, updatedColumns),
                 augmentedRow.getTransactionUUID()
         );
     }
 
-    private DataSource getSourceDataSource(AugmentedRow row) {
+    private DataSource getSourceDataSource(AugmentedRow row, List<String> updatedColumns) {
         AugmentedEventType eventType = row.getEventType();
         String table = row.getTableName();
         String originalTableName = row.getOriginalTableName();
@@ -360,16 +355,16 @@ public class HBaseApplierMutationGenerator {
             }
         });
         String dataSourceName = (String) configuration.getOrDefault(ValidationService.Configuration.VALIDATION_SOURCE_DATA_SOURCE, null);
-        return dataSourceName == null ?
+        return dataSourceName == null || updatedColumns.size() == 0?
                 null :
                 new DataSource(dataSourceName,
                                new MysqlQueryOptions(Types.MYSQL.getValue(),
                                                      table,
                                                      primaryKeys,
-                                                     getSourceTransformation(row)));
+                                                     getSourceTransformation(row, updatedColumns)));
     }
 
-    public DataSource getTargetDataSource(AugmentedRow augmentedRow, Put put, String table) {
+    public DataSource getTargetDataSource(AugmentedRow augmentedRow, Put put, String table, List<String> updatedColumns) {
         Object targetDataSource = configuration.getOrDefault(ValidationService.Configuration.VALIDATION_TARGET_DATA_SOURCE, null);
         String row = null;
         String cf = null;
@@ -379,12 +374,12 @@ public class HBaseApplierMutationGenerator {
         } catch (UnsupportedEncodingException e) {
             LOGGER.error("UTF-8 not supported?", e);
         }
-        return targetDataSource == null || row == null || cf == null || put.has(CF, Bytes.toBytes("row_status"), Bytes.toBytes("D")) ?
+        return targetDataSource == null || row == null || cf == null || put.has(CF, Bytes.toBytes("row_status"), Bytes.toBytes("D")) ||  updatedColumns.size() == 0?
                 null :
                 new DataSource((String) targetDataSource,
                                new BigtableQueryOptions(table,
                                                         row,
                                                         cf,
-                                                        getTargetTransformations(augmentedRow)));
+                                                        getTargetTransformations(augmentedRow, updatedColumns)));
     }
 }

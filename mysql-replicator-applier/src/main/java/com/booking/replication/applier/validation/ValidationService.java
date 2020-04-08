@@ -4,7 +4,6 @@ import com.booking.replication.applier.Applier;
 import com.booking.replication.commons.metrics.Metrics;
 import com.booking.validator.data.source.DataSource;
 import com.booking.validator.task.Task;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
@@ -27,7 +26,6 @@ public class ValidationService {
     private static final Logger LOGGER = LoggerFactory.getLogger(ValidationService.class);
 
     public static class Configuration {
-        public Configuration() {}
         public static final String VALIDATION_BROKER = "validation.broker";
         public static final String VALIDATION_TOPIC = "validation.topic";
         public static final String VALIDATION_TAG = "validation.tag";
@@ -68,7 +66,6 @@ public class ValidationService {
     private final Producer<String, String> producer;
     private final String topic;
     private final String tag;
-    private final ObjectMapper mapper = new ObjectMapper();
     private final Metrics<?> metrics;
 
     public ValidationService(Producer<String, String> producer, String topic, String tag, long throttleOnePerEvery, Metrics<?> metrics) {

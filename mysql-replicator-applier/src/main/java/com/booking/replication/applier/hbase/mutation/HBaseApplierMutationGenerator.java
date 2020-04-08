@@ -34,6 +34,8 @@ public class HBaseApplierMutationGenerator {
 
     private String shardName;
 
+    private final String UTF8 = "UTF-8";
+
     public class PutMutation {
 
         private final Put put;
@@ -82,22 +84,15 @@ public class HBaseApplierMutationGenerator {
         this.metrics = metrics;
         setShardName(this.configuration);
     }
-    private static HashMap<String, Object> getSourceTransformation(AugmentedRow row, List<String> updatedColumns) {
+    private static HashMap<String, Object> getSourceTransformation(List<String> updatedColumns) {
         HashMap<String, Object> sourceTransformations = new HashMap<>();
         sourceTransformations.put(TransformationTypes.MAP_NULL_COLUMNS.getValue(), "NULL");
         sourceTransformations.put(TransformationTypes.TIMESTAMPS_TO_EPOCHS.getValue(), true);
         sourceTransformations.put(TransformationTypes.KEEP_COLUMNS.getValue(), updatedColumns);
         return sourceTransformations;
     }
-    private static HashMap<String, Object> getTargetTransformations(AugmentedRow row, List<String> updatedColumns) {
-        /*List<String> ignoreColumns = new ArrayList<>();
-        ignoreColumns.add("_replicator_uuid");
-        ignoreColumns.add("_replicator_xid");
-        ignoreColumns.add("_transaction_uuid");
-        ignoreColumns.add("_transaction_xid");*/
-
+    private static HashMap<String, Object> getTargetTransformations(List<String> updatedColumns) {
         HashMap<String, Object> targetTransformations = new HashMap<>();
-        // targetTransformations.put(TransformationTypes.IGNORE_COLUMNS.getValue(), ignoreColumns);
         targetTransformations.put(TransformationTypes.KEEP_COLUMNS.getValue(), updatedColumns);
         return targetTransformations;
     }
@@ -345,19 +340,19 @@ public class HBaseApplierMutationGenerator {
         row.getPrimaryKeyColumns().forEach(column->{
             String value = row.getValueAsString(column, AugmentedEventType.UPDATE == eventType ? EventDeserializer.Constants.VALUE_AFTER : null);
             try {
-                primaryKeys.put(URLEncoder.encode(column,"UTF-8"), URLEncoder.encode(value,"UTF-8"));
+                primaryKeys.put(URLEncoder.encode(column,UTF8), URLEncoder.encode(value,UTF8));
             } catch (UnsupportedEncodingException e) {
                 LOGGER.error("Unexpected encoding exception", e);
             }
         });
         String dataSourceName = (String) configuration.getOrDefault(ValidationService.Configuration.VALIDATION_SOURCE_DATA_SOURCE, null);
-        return dataSourceName == null || updatedColumns.size() == 0 || table == null || table.isEmpty() ?
+        return dataSourceName == null || updatedColumns.isEmpty() || table == null || table.isEmpty() ?
                 null :
                 new DataSource(dataSourceName,
                                new MysqlQueryOptions(Types.MYSQL.getValue(),
                                                      table,
                                                      primaryKeys,
-                                                     getSourceTransformation(row, updatedColumns)));
+                                                     getSourceTransformation(updatedColumns)));
     }
 
     public DataSource getTargetDataSource(AugmentedRow augmentedRow, Put put, String table, List<String> updatedColumns) {
@@ -365,17 +360,17 @@ public class HBaseApplierMutationGenerator {
         String row = null;
         String cf = null;
         try {
-            row = URLEncoder.encode(Bytes.toStringBinary(put.getRow()), "UTF-8");
-            cf = URLEncoder.encode(Bytes.toString(CF), "UTF-8");
+            row = URLEncoder.encode(Bytes.toStringBinary(put.getRow()), UTF8);
+            cf = URLEncoder.encode(Bytes.toString(CF), UTF8);
         } catch (UnsupportedEncodingException e) {
             LOGGER.error("UTF-8 not supported?", e);
         }
-        return targetDataSource == null || row == null || cf == null || put.has(CF, Bytes.toBytes("row_status"), Bytes.toBytes("D")) ||  updatedColumns.size() == 0 ?
+        return targetDataSource == null || row == null || cf == null || put.has(CF, Bytes.toBytes("row_status"), Bytes.toBytes("D")) ||  updatedColumns.isEmpty() ?
                 null :
                 new DataSource((String) targetDataSource,
                                new BigtableQueryOptions(table,
                                                         row,
                                                         cf,
-                                                        getTargetTransformations(augmentedRow, updatedColumns)));
+                                                        getTargetTransformations(updatedColumns)));
     }
 }

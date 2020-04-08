@@ -15,8 +15,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.Assert;
 
-import java.io.IOException;
-import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -30,36 +28,7 @@ public class ValidationServiceTest {
     public static void Before() {
         configuration = new HashMap<>();
         initConfig();
-        waitForKafkaPorts();
         ValidationServiceTest.servicesControl = ServicesProvider.build(ServicesProvider.Type.CONTAINERS).startKafka(ValidationServiceTest.TOPIC_NAME, 1, 1);
-    }
-    private static boolean isPortInUse(String host, int port) {
-        // Assume no connection is possible.
-        boolean result = false;
-        try {
-            (new Socket(host, port)).close();
-            result = true;
-        }
-        catch(IOException e) {
-            // Could not connect.
-        }
-        return result;
-    }
-    public static void waitForKafkaPorts() {
-        boolean scanning=true;
-        while(scanning)
-        {
-            if(!isPortInUse("localhost", 9092)) {
-                scanning=false;
-            } else {
-                System.out.println("Kafka port already in use. Waiting for 2s.");
-                try {
-                    Thread.sleep(2000);//2 seconds
-                } catch(InterruptedException ie){
-                    ie.printStackTrace();
-                }
-            }
-        }
     }
 
     public static void initConfig() {

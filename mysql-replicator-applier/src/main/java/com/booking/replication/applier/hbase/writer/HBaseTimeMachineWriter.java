@@ -14,7 +14,6 @@ import com.booking.validator.data.source.DataSource;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -256,18 +255,15 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
             mutator.mutate(putList);
             mutator.flush();
             mutator.close();
-//            Table table = connection.getTable(TableName.valueOf(tableName));
-//            table.put(putList);
-//            table.close();
 
-            for (HBaseApplierMutationGenerator.PutMutation mutation : tableMutations){
-                if (validationService != null && !tableName.equalsIgnoreCase(payloadTableName)) {
+            if (validationService != null && !tableName.equalsIgnoreCase(payloadTableName)){
+                tableMutations.forEach(mutation->{
                     DataSource source = mutation.getSourceDataSource();
                     DataSource target = mutation.getTargetDataSource();
-                    if (source != null && target != null) {
+                    if (source != null  && target != null) {
                         validationService.registerValidationTask(mutation.getTransactionUUID(), source, target);
                     }
-                }
+                });
             }
 
             long timeEnd = System.currentTimeMillis();

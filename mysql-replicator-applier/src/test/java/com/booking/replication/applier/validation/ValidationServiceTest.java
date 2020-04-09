@@ -3,14 +3,11 @@ package com.booking.replication.applier.validation;
 import com.booking.replication.applier.Applier;
 import com.booking.replication.applier.console.ConsoleApplier;
 import com.booking.replication.applier.count.CountApplier;
-import com.booking.replication.applier.kafka.KafkaApplier;
-import com.booking.replication.commons.metrics.Metrics;
 import com.booking.replication.commons.services.ServicesControl;
 import com.booking.replication.commons.services.ServicesProvider;
-import io.confluent.kafka.serializers.KafkaAvroSerializer;
-import kafka.Kafka;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.serialization.ByteArraySerializer;
+import com.booking.validator.data.source.DataSource;
+import com.booking.validator.data.source.Types;
+import com.booking.validator.data.source.constant.ConstantQueryOptions;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.AfterClass;
@@ -38,11 +35,10 @@ public class ValidationServiceTest {
         configuration.put(Applier.Configuration.TYPE, "HBASE");
         configuration.put(ValidationService.Configuration.VALIDATION_BROKER, "localhost:9092");
         configuration.put(ValidationService.Configuration.VALIDATION_THROTTLE_ONE_EVERY, "2");
-        configuration.put(ValidationService.Configuration.VALIDATION_DATA_SOURCE_NAME, "shard1");
         configuration.put(ValidationService.Configuration.VALIDATION_TOPIC, "replicator_validation");
         configuration.put(ValidationService.Configuration.VALIDATION_TAG, "test_hbase");
-        configuration.put(ValidationService.Configuration.VALIDATION_SOURCE_DOMAIN, "mysql-schema");
-        configuration.put(ValidationService.Configuration.VALIDATION_TARGET_DOMAIN, "hbase-cluster");
+        configuration.put(ValidationService.Configuration.VALIDATION_SOURCE_DATA_SOURCE, "av1msql");
+        configuration.put(ValidationService.Configuration.VALIDATION_TARGET_DATA_SOURCE, "avbigtable");
     }
 
     @Test
@@ -52,8 +48,9 @@ public class ValidationServiceTest {
         configuration.put(Applier.Configuration.TYPE, "HBASE");
         ValidationService validationService = ValidationService.getInstance(configuration);
         Assert.assertNotNull(validationService);
+        DataSource dummy = new DataSource("constant", new ConstantQueryOptions(Types.CONSTANT.getValue(), new HashMap<String, Object>(){{put("a", 1);}}, null));
         for (int i=0; i<10; i++){
-            validationService.registerValidationTask("sample-id-"+ i, "mysql://","hbase://");
+            validationService.registerValidationTask("sample-id-"+ i, dummy, dummy);
         }
         Assert.assertEquals(10L, validationService.getValidationTaskCounter());
     }
@@ -90,7 +87,7 @@ public class ValidationServiceTest {
 
         initConfig();
         configuration.put(Applier.Configuration.TYPE, "HBASE");
-        configuration.remove(ValidationService.Configuration.VALIDATION_SOURCE_DOMAIN);
+        configuration.remove(ValidationService.Configuration.VALIDATION_SOURCE_DATA_SOURCE);
         try {
             validationService = ValidationService.getInstance(configuration);
         } catch(IllegalArgumentException e) {
@@ -101,7 +98,7 @@ public class ValidationServiceTest {
 
         initConfig();
         configuration.put(Applier.Configuration.TYPE, "HBASE");
-        configuration.remove(ValidationService.Configuration.VALIDATION_TARGET_DOMAIN);
+        configuration.remove(ValidationService.Configuration.VALIDATION_TARGET_DATA_SOURCE);
         try {
             validationService = ValidationService.getInstance(configuration);
         } catch(IllegalArgumentException e) {

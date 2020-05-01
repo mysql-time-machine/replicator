@@ -87,6 +87,8 @@ public abstract class Metrics<CloseableReporter extends Closeable & Reporter> im
         return registry;
     }
 
+    public String getFullName (String name) { return MetricRegistry.name(basePath,name); }
+
     public void incrementCounter(String name, long val) {
         this.registry.counter(name).inc(val);
     }
@@ -97,7 +99,7 @@ public abstract class Metrics<CloseableReporter extends Closeable & Reporter> im
 
     public <T extends Metric> T register(String name, T metric) {
 
-        final String fullName = MetricRegistry.name(basePath, name);
+        final String fullName = getFullName(name);
 
         if (this.registry.remove(fullName)) {
             LOG.warn(String.format("Metric %s already registered.", fullName));

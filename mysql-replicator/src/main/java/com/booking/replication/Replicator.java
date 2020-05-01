@@ -130,8 +130,6 @@ public class Replicator {
                 safeCheckpoint -> this.lastSafeCheckpoint.set(safeCheckpoint.getTimestamp())
         );
 
-        this.metrics.register(METRIC_COORDINATOR_DELAY, (Gauge<Long>) () -> (System.currentTimeMillis() - this.lastSafeCheckpoint.get()) / 1000);
-
         // --------------------------------------------------------------------
         // Setup streams/pipelines:
         //
@@ -253,9 +251,10 @@ public class Replicator {
                         this.loadSafeCheckpoint()
                     );
                 }
+                this.metrics.register(METRIC_COORDINATOR_DELAY, (Gauge<Long>) () -> (System.currentTimeMillis() - this.lastSafeCheckpoint.get()) / 1000);
+                Replicator.LOG.info("Beginning to track coordinator delay from this instance");
 
                 this.supplier.start(from);
-
                 Replicator.LOG.info("replicator started");
             } catch (IOException | InterruptedException exception) {
                 exceptionHandle.accept(exception);
@@ -265,6 +264,9 @@ public class Replicator {
         this.coordinator.onLeadershipLose(() -> {
             try {
                 Replicator.LOG.info("stopping replicator");
+
+                Replicator.LOG.info("stopping coordinator delay metric publishing");
+                this.metrics.getRegistry().remove( this.metrics.getFullName(METRIC_COORDINATOR_DELAY) );
 
                 Replicator.LOG.info("stopping supplier");
                 this.supplier.stop();

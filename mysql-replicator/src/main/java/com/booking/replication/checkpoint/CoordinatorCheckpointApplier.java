@@ -60,7 +60,10 @@ public class CoordinatorCheckpointApplier implements CheckpointApplier {
 
             int currentSize = checkpointsSeenWithGtidSet.size();
 
-            LOG.info("Checkpoints seen in last " + period + "ms, [total/valid]: " + checkpointsSeenSoFar.size() + "/" + checkpointsSeenWithGtidSet.size());
+            if ( checkpointsSeenSoFar.size() > 0 ) {
+                // Unnecessary to write this out in the event that no checkpoints were seen, it just creates noise
+                LOG.info("Checkpoints seen in last " + period + "ms, [total/valid]: " + checkpointsSeenSoFar.size() + "/" + checkpointsSeenWithGtidSet.size());
+            }
 
             if (currentSize > 0) {
 

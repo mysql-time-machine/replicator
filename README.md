@@ -162,3 +162,4 @@ limitations under the License.
 [Known Vulnerabilities]:https://snyk.io/test/github/mysql-time-machine/replicator
 [license]:LICENSE
 [license img]:https://img.shields.io/badge/license-Apache%202-blue.svg
+

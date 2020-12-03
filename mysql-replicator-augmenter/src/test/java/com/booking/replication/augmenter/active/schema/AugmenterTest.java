@@ -77,6 +77,14 @@ public class AugmenterTest {
 
     }
 
+    @Test public void testTimestampDefaultReplacement() {
+        String q_1 = "CREATE TABLE `t1` (`id` int(10) unsigned NOT NULL AUTO_INCREMENT, `ts_thingy` timestamp NOT NULL DEFAULT '1970-01-01 00:00:01')";
+        String expected_1 = "CREATE TABLE `t1` (`id` int(10) unsigned NOT NULL AUTO_INCREMENT, `ts_thingy` timestamp NOT NULL DEFAULT '1970-01-01 01:00:01')";
+
+        String rewritten_1 = ActiveSchemaHelpers.fixTimestampDefault(q_1);
+        assertEquals(expected_1, rewritten_1);
+    }
+
     @Test
     public void renameMultiSchemaPattern() {
 

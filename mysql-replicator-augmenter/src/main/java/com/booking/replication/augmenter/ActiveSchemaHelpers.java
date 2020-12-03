@@ -33,6 +33,7 @@ public class ActiveSchemaHelpers {
             if ( fallbackToReplicant ) {
                 createTableIfNotExists(tableName, activeSchemaConnection, replicantDataSource);
             }
+            LOG.info(String.format("getting schema for %s and table %s", schemaName, tableName));
 
             Statement statementActiveSchemaListColumns      = activeSchemaConnection.createStatement();
             Statement statementActiveSchemaShowCreateTable  = activeSchemaConnection.createStatement();
@@ -167,6 +168,13 @@ public class ActiveSchemaHelpers {
 
         LOG.info("Rewritten => { in => " + query + ", out => " + rewritenQuery + " }");
 
+        return rewritenQuery;
+    }
+
+    public static String fixTimestampDefault(String query) {
+        String pattern = "timestamp NOT NULL DEFAULT '1970-01-01 00:00:01'";
+        String replacement = "timestamp NOT NULL DEFAULT '1970-01-01 01:00:01'";
+        String rewritenQuery = query.replaceAll(pattern, replacement);
         return rewritenQuery;
     }
 

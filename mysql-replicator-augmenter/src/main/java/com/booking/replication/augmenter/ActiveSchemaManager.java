@@ -215,6 +215,7 @@ public class ActiveSchemaManager implements SchemaManager {
             String replicantSchemaName = getReplicantSchema(configuration);
 
             rewrittenQuery = ActiveSchemaHelpers.rewriteActiveSchemaName(query, replicantSchemaName);
+            rewrittenQuery = ActiveSchemaHelpers.fixTimestampDefault(rewrittenQuery);
 
             boolean executed = statement.execute(rewrittenQuery);
 

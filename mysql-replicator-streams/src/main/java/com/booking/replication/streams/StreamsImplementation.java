@@ -81,7 +81,7 @@ public final class StreamsImplementation<Input, Output> implements Streams<Input
             this.dataSupplierFn = (task) -> {
                 while (true) {
                     int size = StreamsImplementation.this.queues[task].size();
-                    if (size > 9000) {
+                    if (size > 9000 && size % 100 == 0 ) {
                         LOG.warn("Queues are getting big. Queue #" + task + " size: " + size);
                     }
                     try {

@@ -23,7 +23,7 @@
         <sparkWebServer.version>2.7.2</sparkWebServer.version>
 
         <junit.version>4.12</junit.version>
-        <testcontainers.version>1.8.0</testcontainers.version>
+        <testcontainers.version>1.15.0-rc2</testcontainers.version>
         <log4j1.version>1.2.17</log4j1.version>
         <log4j2.version>2.11.0</log4j2.version>
         <slf4j.version>1.7.25</slf4j.version>
@@ -157,9 +157,9 @@
                 <version>${mysql-connector.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.github.shyiko</groupId>
+                <groupId>com.zendesk</groupId>
                 <artifactId>mysql-binlog-connector-java</artifactId>
-                <version>${mysql-binlog-connector.version}</version>
+                <version>0.23.2</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.commons</groupId>

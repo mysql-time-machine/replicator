@@ -1,4 +1,5 @@
 #!/bin/bash
+# Has this actually been used?
 if [ "$1" = "debug" ]
 then
     DEBUG="-agentlib:jdwp=transport=dt_socket,server=y,address=4321,suspend=y"

@@ -41,7 +41,7 @@ public class ActiveSchemaManager implements SchemaManager {
 
     private static final String DEFAULT_MYSQL_DRIVER_CLASS = Driver.class.getName();
 
-    private static final String CONNECTION_URL_FORMAT = "jdbc:mysql://%s:%d/%s";
+    private static final String CONNECTION_URL_FORMAT = "jdbc:mysql://%s:%d/%s?serverTimezone=Europe/Amsterdam";
     private static final String BARE_CONNECTION_URL_FORMAT = "jdbc:mysql://%s:%d";
 
     public static final String SHOW_CREATE_TABLE_SQL = "SHOW CREATE TABLE %s";

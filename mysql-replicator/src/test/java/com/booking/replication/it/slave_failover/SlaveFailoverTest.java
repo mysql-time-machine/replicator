@@ -83,7 +83,7 @@ public class SlaveFailoverTest {
 
     private static final ImmutableMap<AugmentedEventType, Long> expectedSlave2Counts = ImmutableMap.of(
             AugmentedEventType.DELETE, 2L,
-            AugmentedEventType.INSERT, 1L,
+            AugmentedEventType.INSERT, 3L,
             AugmentedEventType.UPDATE, 4L
     );
 

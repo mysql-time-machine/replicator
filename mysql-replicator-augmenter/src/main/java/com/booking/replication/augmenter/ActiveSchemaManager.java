@@ -50,7 +50,7 @@ public class ActiveSchemaManager implements SchemaManager {
             + "COLUMN_KEY, COLUMN_DEFAULT,EXTRA, PRIVILEGES, COLUMN_COMMENT, DATA_TYPE, "
             + "CHARACTER_MAXIMUM_LENGTH, CHARACTER_OCTET_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, DATETIME_PRECISION "
             + " FROM INFORMATION_SCHEMA.COLUMNS "
-            + " WHERE TABLE_SCHEMA  = '%s' AND TABLE_NAME = '%s'";
+            + " WHERE TABLE_SCHEMA  = '%s' AND TABLE_NAME = '%s' ORDER BY ORDINAL_POSITION";
 
     private final BasicDataSource activeSchemaDataSource;
 

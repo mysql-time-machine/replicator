@@ -5,9 +5,9 @@ public final class VersionedPipelines {
      public static final TagCombo defaultTags = new TagCombo(
             "mysql:5.6.38",
             "mysql:5.6.38",
-            "harisekhon/hbase-dev:1.3",
+            "harisekhon/hbase:1.4",
             "wurstmeister/kafka:2.11-1.1.1",
-            "zookeeper:latest",
+            "zookeeper:3.4.14",
              "confluentinc/cp-schema-registry:4.0.1"
      );
 
@@ -17,7 +17,7 @@ public final class VersionedPipelines {
                      "mysql:5.6.38",
                      "harisekhon/hbase-dev:1.3",
                      "wurstmeister/kafka:2.11-1.1.1",
-                     "zookeeper:latest",
+                     "zookeeper:3.4.14",
                      "confluentinc/cp-schema-registry:latest"
              ),
              new TagCombo(
@@ -25,7 +25,7 @@ public final class VersionedPipelines {
                      "mysql:5.7.22",
                      "harisekhon/hbase-dev:1.3",
                      "wurstmeister/kafka:2.11-1.1.1",
-                     "zookeeper:latest",
+                     "zookeeper:3.4.14",
                      "confluentinc/cp-schema-registry:latest"
              ),
              new TagCombo(
@@ -33,7 +33,7 @@ public final class VersionedPipelines {
                      "mysql:8.0.11",
                      "harisekhon/hbase-dev:1.3",
                      "wurstmeister/kafka:2.11-1.1.1",
-                     "zookeeper:latest",
+                     "zookeeper:3.4.14",
                      "confluentinc/cp-schema-registry:latest"
              )
     };

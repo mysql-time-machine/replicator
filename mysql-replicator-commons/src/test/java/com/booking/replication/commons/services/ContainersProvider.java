@@ -20,12 +20,6 @@ public final class ContainersProvider implements ServicesProvider {
 
     private static final Logger LOG = LogManager.getLogger(ContainersProvider.class);
 
-//    // Tags
-//    private static final String MYSQL_DOCKER_IMAGE_DEFAULT = "mysql:5.6.38";
-//    private static final String KAFKA_DOCKER_IMAGE_DEFAULT = "wurstmeister/kafka:latest";
-//    private static final String ZOOKEEPER_DOCKER_IMAGE_DEFAULT = "zookeeper:latest";
-//    private static final String HBASE_DOCKER_IMAGE_DEFAULT = "harisekhon/hbase-dev:1.3";
-
     private static final String ZOOKEEPER_DOCKER_IMAGE_KEY = "docker.image.zookeeper";
     private static final String ZOOKEEPER_STARTUP_WAIT_REGEX = ".*binding to port.*\\n";
     private static final int ZOOKEEPER_STARTUP_WAIT_TIMES = 1;
@@ -73,7 +67,7 @@ public final class ContainersProvider implements ServicesProvider {
     //
     // 127.0.0.1       HBASE_HOST
     //
-    // The reason why we need this is that zookeeperTag stores the host names for
+    // The reason why we need this is that zookeeper stores the host names for
     // master and region servers and these names need to be /etc/hosts in order
     // to be able to talk to hbase in container. This means either dynamically
     // adding container id/hostname to /etc/hosts when tests are running, or
@@ -81,11 +75,9 @@ public final class ContainersProvider implements ServicesProvider {
     // sudo access, it is simpler to edit it only once.
     private static final String HBASE_HOST_NAME = "HBASE_HOST";
     private static final String HBASE_CONTAINER_NAME = "HBASE_CONTAINER";
-
-
     private static final int HBASE_ZK_PORT = 2181;
     private static final int HBASE_MASTER_PORT = 16000;
-    private static final int HBASE_REGION_SERVER_PORT = 16201;
+    private static final int HBASE_REGION_SERVER_PORT = 16020;
 
     // TODO: implement separate classes for different container types (Kafka, Zookeeper, Hbase, MySQL)
     public ContainersProvider() {
@@ -117,6 +109,38 @@ public final class ContainersProvider implements ServicesProvider {
         return container;
     }
 
+    @Override
+    public ServicesControl startHbase() {
+
+        Network network = Network.newNetwork();
+        // in term this works: docker run   dajobe/hbase
+        GenericContainer<?> hbase =
+                this.getContainerHBase(
+                        VersionedPipelines.defaultTags.hbase,
+                        network,
+                        "",
+                        0,
+                        true
+                );
+
+        hbase.start();
+
+        return new ServicesControl() {
+            @Override
+            public GenericContainer<?> getContainer() { return hbase; }
+
+            @Override
+            public void close() {
+                hbase.stop();
+            }
+
+            @Override
+            public int getPort() {
+                return hbase.getMappedPort(ContainersProvider.HBASE_ZK_PORT);
+            }
+        };
+    }
+
     private GenericContainer<?> getContainerHBase(String image, Network network, String logWaitRegex, int logWaitTimes, boolean matchExposedPort) {
 
         FixedHostPortGenericContainer<?> container = new FixedHostPortGenericContainer<>(image);
@@ -125,8 +149,10 @@ public final class ContainersProvider implements ServicesProvider {
         container.withNetworkAliases("hbase_alias");
 
         container.withFixedExposedPort(HBASE_ZK_PORT, HBASE_ZK_PORT);
-        container.withFixedExposedPort(16201, HBASE_REGION_SERVER_PORT);
         container.withFixedExposedPort(16000, HBASE_MASTER_PORT);
+        container.withFixedExposedPort(16020, HBASE_REGION_SERVER_PORT);
+
+
 
         container.withCreateContainerCmdModifier(cmd -> cmd.withName(HBASE_CONTAINER_NAME));
         container.withCreateContainerCmdModifier(cmd -> cmd.withHostName(HBASE_HOST_NAME));
@@ -473,34 +499,5 @@ public final class ContainersProvider implements ServicesProvider {
         };
     }
 
-    @Override
-    public ServicesControl startHbase() {
 
-        Network network = Network.newNetwork();
-
-        GenericContainer<?> hbase = this.getContainerHBase(
-                VersionedPipelines.defaultTags.hbase,
-                network,
-                "",
-                0,
-                true
-        );
-
-        hbase.start();
-
-        return new ServicesControl() {
-            @Override
-            public GenericContainer<?> getContainer() { return hbase; }
-
-            @Override
-            public void close() {
-                hbase.stop();
-            }
-
-            @Override
-            public int getPort() {
-                return hbase.getMappedPort(ContainersProvider.HBASE_ZK_PORT);
-            }
-        };
-    }
 }

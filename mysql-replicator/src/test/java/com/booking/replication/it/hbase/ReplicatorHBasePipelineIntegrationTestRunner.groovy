@@ -98,15 +98,15 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
     // Temporarily disabling all HBase tests till HBase docker connectivity issues are resolved
     @Shared private TESTS = [
-//              new DummyTestImpl()
-//            new ValidationTestImpl(),
-//            new TableWhiteListTest(),
-//            new TableNameMergeFilterTestImpl(),
-            new TransmitInsertsTestImpl()
-//            new MicrosecondValidationTestImpl(),
-//            new LongTransactionTestImpl(),
-//            new PayloadTableTestImpl(),
-//            new SplitTransactionTestImpl(),
+//            new DummyTestImpl()
+              new ValidationTestImpl(),
+              new TransmitInsertsTestImpl(),
+              new TableWhiteListTest(),
+              new TableNameMergeFilterTestImpl(),
+              new MicrosecondValidationTestImpl(),
+              new LongTransactionTestImpl(),
+              new PayloadTableTestImpl(),
+              new SplitTransactionTestImpl(),
     ]
 
     @Shared ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS)
@@ -114,6 +114,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     @Shared Network network = Network.newNetwork()
 
     @Shared  ServicesControl zookeeper = servicesProvider.startZookeeper(network, "replicatorZK")
+
     @Shared  ServicesControl mysqlBinaryLog = servicesProvider.startMySQL(
             new MySQLConfiguration(
                     MYSQL_SCHEMA,
@@ -139,13 +140,13 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
                     null
             )
     )
+
+    @Shared ServicesControl kafkaZk = servicesProvider.startZookeeper(network, "kafkaZk");
+
+    @Shared
+    public ServicesControl kafka = servicesProvider.startKafka(network, VALIDATION_TOPIC, 1, 1, "kafka");
+
     @Shared ServicesControl hbase = servicesProvider.startHbase()
-
-//    @Shared ServicesControl kafkaZk = servicesProvider.startZookeeper(network, "kafkaZk");
-
-//    @Shared
-//    public ServicesControl kafka = servicesProvider.startKafka(network, VALIDATION_TOPIC, 1, 1, "kafka");
-
 
     @Shared  Replicator replicator
 
@@ -205,8 +206,8 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         mysqlBinaryLog.close()
         mysqlActiveSchema.close()
         zookeeper.close()
-//        kafka.close()
-//        kafkaZk.close()
+        kafka.close()
+        kafkaZk.close()
 
         LOG.info("pipeline stopped")
 

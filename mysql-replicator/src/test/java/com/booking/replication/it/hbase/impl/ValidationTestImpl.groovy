@@ -76,7 +76,7 @@ class ValidationTestImpl implements ReplicatorHBasePipelineIntegrationTest {
         kafkaConfiguration.put("enable.auto.commit", "false");
         kafkaConfiguration.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         kafkaConfiguration.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        // println(sprintf("---------[Getting actual state from Kafka Topic %s]---------", ReplicatorHBasePipelineIntegrationTestRunner.VALIDATION_TOPIC))
+        println(sprintf("---------[Getting actual state from Kafka Topic %s]---------", ReplicatorHBasePipelineIntegrationTestRunner.VALIDATION_TOPIC))
         int messagesToValidate = 0
         try {
             Consumer<byte[], byte[]> consumer = new KafkaConsumer<>(kafkaConfiguration)

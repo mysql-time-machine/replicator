@@ -98,15 +98,15 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
     // Temporarily disabling all HBase tests till HBase docker connectivity issues are resolved
     @Shared private TESTS = [
-              new DummyTestImpl()
-//            new ValidationTestImpl(),
-//            new TableWhiteListTest(),
-//            new TableNameMergeFilterTestImpl(),
-//            new TransmitInsertsTestImpl(),
-//            new MicrosecondValidationTestImpl(),
-//            new LongTransactionTestImpl(),
-//            new PayloadTableTestImpl(),
-//            new SplitTransactionTestImpl(),
+//            new DummyTestImpl()
+              new ValidationTestImpl(),
+              new TransmitInsertsTestImpl(),
+              new TableWhiteListTest(),
+              new TableNameMergeFilterTestImpl(),
+              new MicrosecondValidationTestImpl(),
+              new LongTransactionTestImpl(),
+              new PayloadTableTestImpl(),
+              new SplitTransactionTestImpl(),
     ]
 
     @Shared ServicesProvider servicesProvider = ServicesProvider.build(ServicesProvider.Type.CONTAINERS)
@@ -114,6 +114,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     @Shared Network network = Network.newNetwork()
 
     @Shared  ServicesControl zookeeper = servicesProvider.startZookeeper(network, "replicatorZK")
+
     @Shared  ServicesControl mysqlBinaryLog = servicesProvider.startMySQL(
             new MySQLConfiguration(
                     MYSQL_SCHEMA,
@@ -139,12 +140,13 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
                     null
             )
     )
-    @Shared ServicesControl hbase = servicesProvider.startHbase()
 
     @Shared ServicesControl kafkaZk = servicesProvider.startZookeeper(network, "kafkaZk");
+
     @Shared
     public ServicesControl kafka = servicesProvider.startKafka(network, VALIDATION_TOPIC, 1, 1, "kafka");
 
+    @Shared ServicesControl hbase = servicesProvider.startHbase()
 
     @Shared  Replicator replicator
 
@@ -193,7 +195,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         LOG.info("env: BIGTABLE_PROJECT => " + BIGTABLE_PROJECT)
         LOG.info("env: BIGTABLE_INSTANCE => " + BIGTABLE_INSTANCE)
 
-        // verifyThatEnvIsReady()
+         verifyThatEnvIsReady()
 
     }
 
@@ -248,21 +250,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     }
 
     private void verifyThatEnvIsReady() {
-        // Active SchemaManager
         int counter = 60
-        while (counter > 0) {
-            Thread.sleep(1000)
-            if (activeSchemaIsReady()) {
-                LOG.info("ActiveSchemaManager container is ready.")
-                break
-            }
-            counter--
-        }
-
-        if (counter <= 0) {
-            throw new RuntimeException("Test environment [Active Schema] not available")
-        }
-
         // HBase
         counter = 60
         while (counter > 0) {
@@ -276,6 +264,20 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
 
         if (counter <= 0) {
             throw new RuntimeException("Test environment [HBase] not available")
+        }
+        // Active SchemaManager
+
+        while (counter > 0) {
+            Thread.sleep(1000)
+            if (activeSchemaIsReady()) {
+                LOG.info("ActiveSchemaManager container is ready.")
+                break
+            }
+            counter--
+        }
+
+        if (counter <= 0) {
+            throw new RuntimeException("Test environment [Active Schema] not available")
         }
 
     }

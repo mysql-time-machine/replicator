@@ -257,13 +257,20 @@ public class HBaseTimeMachineWriter implements HBaseApplierWriter {
             mutator.close();
 
             if (validationService != null && !tableName.equalsIgnoreCase(payloadTableName)){
-                tableMutations.forEach(mutation->{
+                for (HBaseApplierMutationGenerator.PutMutation mutation : tableMutations ) {
                     DataSource source = mutation.getSourceDataSource();
                     DataSource target = mutation.getTargetDataSource();
                     if (source != null  && target != null) {
                         validationService.registerValidationTask(mutation.getTransactionUUID(), source, target);
                     }
-                });
+                }
+//                tableMutations.forEach(mutation->{
+//                    DataSource source = mutation.getSourceDataSource();
+//                    DataSource target = mutation.getTargetDataSource();
+//                    if (source != null  && target != null) {
+//                        validationService.registerValidationTask(mutation.getTransactionUUID(), source, target);
+//                    }
+//                });
             }
 
             long timeEnd = System.currentTimeMillis();

@@ -53,7 +53,7 @@ public class TableNameMergePatternFilter implements AugmenterFilter {
                         // override
                         metadata.getEventTable().setName(rewrittenName);
                         writeEv.getRows().stream().forEach(au -> au.setTableName(rewrittenName));
-                        writeEv.getRows().stream().forEach(au -> au.setOriginalTableName(originalName));
+                        //writeEv.getRows().stream().forEach(au -> au.setOriginalTableName(originalName));
                     }
                     if (ev.getHeader().getEventType() == AugmentedEventType.UPDATE) {
                         UpdateRowsAugmentedEventData updateEv = ((UpdateRowsAugmentedEventData) ev.getData());
@@ -63,7 +63,7 @@ public class TableNameMergePatternFilter implements AugmenterFilter {
                         // override
                         metadata.getEventTable().setName(rewrittenName);
                         updateEv.getRows().stream().forEach(au -> au.setTableName(rewrittenName));
-                        updateEv.getRows().stream().forEach(au -> au.setOriginalTableName(originalName));
+                        //updateEv.getRows().stream().forEach(au -> au.setOriginalTableName(originalName));
                     }
                     if (ev.getHeader().getEventType() == AugmentedEventType.DELETE) {
                         DeleteRowsAugmentedEventData deleteEv = ((DeleteRowsAugmentedEventData) ev.getData());
@@ -74,7 +74,7 @@ public class TableNameMergePatternFilter implements AugmenterFilter {
                         // override
                         metadata.getEventTable().setName(rewrittenName);
                         deleteEv.getRows().stream().forEach(au -> au.setTableName(rewrittenName));
-                        deleteEv.getRows().stream().forEach(au -> au.setOriginalTableName(originalName));
+                       // deleteEv.getRows().stream().forEach(au -> au.setOriginalTableName(originalName));
                     }
                     return ev;
                 })

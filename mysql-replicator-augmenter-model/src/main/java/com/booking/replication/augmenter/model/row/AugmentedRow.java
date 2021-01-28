@@ -57,7 +57,13 @@ public class AugmentedRow {
         this.eventType          = eventType;
         this.values             = values;
         this.tableSchema        = schemaName;
+
+        // target table name (start the same as source, but can be rewritten if configured to use name rewrite)
         this.tableName          = tableName;
+
+        // source table name
+        // TODO: make immutable
+        this.originalTableName =  tableName;
     }
 
     public void setTransactionSequenceNumber(Long transactionSequenceNumber) {

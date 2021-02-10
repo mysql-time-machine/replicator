@@ -1,8 +1,10 @@
 package com.booking.replication.commons.services;
 
 import com.booking.replication.commons.conf.MySQLConfiguration;
+import com.github.dockerjava.api.model.ExposedPort;
 import com.github.dockerjava.api.model.PortBinding;
 
+import com.github.dockerjava.api.model.Ports;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -11,7 +13,14 @@ import org.testcontainers.containers.FixedHostPortGenericContainer;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.images.AbstractImagePullPolicy;
+import org.testcontainers.images.ImageData;
+import org.testcontainers.images.PullPolicy;
+import org.testcontainers.images.builder.ImageFromDockerfile;
+import org.testcontainers.utility.DockerImageName;
 
+import java.io.File;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -113,7 +122,7 @@ public final class ContainersProvider implements ServicesProvider {
     public ServicesControl startHbase() {
 
         Network network = Network.newNetwork();
-        // in term this works: docker run   dajobe/hbase
+
         GenericContainer<?> hbase =
                 this.getContainerHBase(
                         VersionedPipelines.defaultTags.hbase,
@@ -143,16 +152,21 @@ public final class ContainersProvider implements ServicesProvider {
 
     private GenericContainer<?> getContainerHBase(String image, Network network, String logWaitRegex, int logWaitTimes, boolean matchExposedPort) {
 
-        FixedHostPortGenericContainer<?> container = new FixedHostPortGenericContainer<>(image);
+        ImageFromDockerfile img = new ImageFromDockerfile(VersionedPipelines.defaultTags.hbase)
+                .withFileFromPath(
+                        ".",
+                        new File("src/test/resources/hbase-docker/").toPath()
+                );
 
-        container.withNetwork(network);
-        container.withNetworkAliases("hbase_alias");
-
-        container.withFixedExposedPort(HBASE_ZK_PORT, HBASE_ZK_PORT);
-        container.withFixedExposedPort(16000, HBASE_MASTER_PORT);
-        container.withFixedExposedPort(16020, HBASE_REGION_SERVER_PORT);
-
-
+        GenericContainer<?> container =
+                new GenericContainer<>(img)
+                        .withNetwork(network)
+                        .withNetworkAliases("hbase")
+                        .withCreateContainerCmdModifier(cmd -> cmd.withPortBindings(
+                                new PortBinding(Ports.Binding.bindPort(HBASE_ZK_PORT), new ExposedPort(HBASE_ZK_PORT)),
+                                new PortBinding(Ports.Binding.bindPort(16000), new ExposedPort(HBASE_MASTER_PORT)),
+                                new PortBinding(Ports.Binding.bindPort(16020), new ExposedPort(HBASE_REGION_SERVER_PORT))
+                        ));
 
         container.withCreateContainerCmdModifier(cmd -> cmd.withName(HBASE_CONTAINER_NAME));
         container.withCreateContainerCmdModifier(cmd -> cmd.withHostName(HBASE_HOST_NAME));

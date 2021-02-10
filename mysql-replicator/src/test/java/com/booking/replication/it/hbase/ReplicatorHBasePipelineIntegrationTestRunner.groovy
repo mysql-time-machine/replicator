@@ -39,8 +39,10 @@ import org.apache.hadoop.hbase.util.Bytes
 import org.testcontainers.containers.Network
 
 import org.apache.logging.log4j.Logger
-import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.LogManager
+import org.testcontainers.images.builder.ImageFromDockerfile
 
+import java.nio.file.Path
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.sql.Statement
@@ -188,7 +190,6 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     }
 
     void setupSpec() throws Exception {
-
         LOG.info("env: HBASE_TARGET_NAMESPACE => " + HBASE_TARGET_NAMESPACE)
         LOG.info("env: HBASE_SCHEMA_HISTORY_NAMESPACE => " + HBASE_SCHEMA_HISTORY_NAMESPACE)
         LOG.info("env: STORAGE_TYPE => " + STORAGE_TYPE)

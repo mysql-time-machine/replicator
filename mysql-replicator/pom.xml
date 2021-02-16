@@ -193,10 +193,9 @@
         <plugins>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.7.0</version><!-- 3.1 is the minimum -->
-                <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                <version>3.8.0</version><!-- 3.1 is the minimum -->
+		<configuration>
+		    <release>11</release>
                     <compilerId>groovy-eclipse-compiler</compilerId>
                 </configuration>
                 <dependencies>

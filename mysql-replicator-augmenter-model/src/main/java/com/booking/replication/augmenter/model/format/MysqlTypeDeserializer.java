@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.TimeZone;
 import java.util.stream.IntStream;
 
-import javax.xml.bind.DatatypeConverter;
+import jakarta.xml.bind.DatatypeConverter;
 
 public class MysqlTypeDeserializer {
 

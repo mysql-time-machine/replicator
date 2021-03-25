@@ -480,10 +480,21 @@ public class AugmenterContext implements Closeable {
                 LOG.info("Skipping DDL TABLE event due to mismatching schemas. Next LOG.info line contains the relevant query");
             }
 
-            LOG.info("Table DDL Encountered: { db => " + queryRawEventData.getDatabase() + ", sql => " + queryRawEventData.getSQL());
             shouldProcess = shouldProcess && ( queryRawEventData.getDatabase().equals(replicatedSchema) );
             String eventType = matcher.group(2).toUpperCase();
             String tableName = matcher.group(4);
+
+            if (tableName.startsWith("`") && tableName.endsWith("`")) {
+                tableName = tableName.substring(1, tableName.length() -1);
+            }
+
+            if (shouldProcess) {
+                shouldProcess    = this.shouldAugmentTable(tableName);
+                if (!shouldProcess) {
+                    LOG.info("Skipping DDL event as the table is part of exclude list. The query is : " + queryRawEventData.getSQL());
+                }
+            }
+
             this.updateCommons(
                     shouldProcess,
                     QueryAugmentedEventDataType.DDL_TABLE,

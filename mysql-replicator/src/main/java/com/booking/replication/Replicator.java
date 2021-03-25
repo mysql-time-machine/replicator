@@ -187,7 +187,18 @@ public class Replicator {
                                 .counter("streams.partitioner.event.apply.success").inc(1L);
                     }
                     for (Collection<AugmentedEvent> splitEvents : splitEventsMap.values()) {
-                        this.destinationStream.push(splitEvents);
+                        try {
+                            this.destinationStream.push(splitEvents);
+                        }catch (IllegalStateException ex) {
+                            LOG.error("IllegalStateException occurred. Going to sleep for 5 seconds", ex);
+                            try {
+                                Thread.sleep(5000);
+                            } catch (InterruptedException e) {
+                                LOG.error(e.getMessage(), e);
+                            }finally {
+                                throw ex;
+                            }
+                        }
                     }
                     return true;
                 }).build();

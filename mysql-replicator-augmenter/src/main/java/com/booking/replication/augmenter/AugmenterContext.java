@@ -484,6 +484,11 @@ public class AugmenterContext implements Closeable {
             String eventType = matcher.group(2).toUpperCase();
             String tableName = matcher.group(4);
 
+            // If the tableName contains a period it has both a schema and table name
+            if ( tableName.indexOf(".") != -1 ) {
+                tableName = tableName.split("\\.")[1];
+            }
+
             if (tableName.startsWith("`") && tableName.endsWith("`")) {
                 tableName = tableName.substring(1, tableName.length() -1);
             }
@@ -491,7 +496,7 @@ public class AugmenterContext implements Closeable {
             if (shouldProcess) {
                 shouldProcess    = this.shouldAugmentTable(tableName);
                 if (!shouldProcess) {
-                    LOG.info("Skipping DDL event as the table is part of exclude list. The query is : " + queryRawEventData.getSQL());
+                    LOG.info("Skipping DDL event as the table (" + tableName + ") is part of exclude list. The query is : " + queryRawEventData.getSQL());
                 }
             }
 

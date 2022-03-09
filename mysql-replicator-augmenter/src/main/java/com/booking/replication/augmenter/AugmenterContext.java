@@ -486,7 +486,14 @@ public class AugmenterContext implements Closeable {
 
             // If the tableName contains a period it has both a schema and table name
             if ( tableName.indexOf(".") != -1 ) {
-                tableName = tableName.split("\\.")[1];
+                String[] matches = tableName.split("\\.");
+                String schema = matches[0].replaceAll("`","");
+                if ( !schema.equals(replicatedSchema) ) {
+                    LOG.info("Skipping DDL TABLE event due to affected table schema (" + schema + ") not matching replicatedSchema (" + replicatedSchema + "), while the getDatabase() ("+ queryRawEventData.getDatabase() + ") schema *DOES* match replicatedSchema");
+                    shouldProcess = false;
+                } else {
+                    tableName = matches[1];
+                }
             }
 
             if (tableName.startsWith("`") && tableName.endsWith("`")) {

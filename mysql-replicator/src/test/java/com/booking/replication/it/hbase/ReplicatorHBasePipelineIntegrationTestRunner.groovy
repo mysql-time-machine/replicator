@@ -99,7 +99,7 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
     // Temporarily disabling all HBase tests till HBase docker connectivity issues are resolved
     @Shared private TESTS = [
 //            new DummyTestImpl()
-              new ValidationTestImpl(),
+//              new ValidationTestImpl(),
               new TransmitInsertsTestImpl(),
               new TableWhiteListTest(),
               new TableNameMergeFilterTestImpl(),
@@ -536,12 +536,12 @@ class ReplicatorHBasePipelineIntegrationTestRunner extends Specification {
         configuration.put(StorageConfig.Configuration.BIGTABLE_PROJECT_ID, BIGTABLE_PROJECT)
 
         // Validator Specifics
-        configuration.put(ValidationService.Configuration.VALIDATION_BROKER, "localhost:9092")
-        configuration.put(ValidationService.Configuration.VALIDATION_THROTTLE_ONE_EVERY, "100")
-        configuration.put(ValidationService.Configuration.VALIDATION_SOURCE_DATA_SOURCE, "mysql")
-        configuration.put(ValidationService.Configuration.VALIDATION_TARGET_DATA_SOURCE, "hbase")
-        configuration.put(ValidationService.Configuration.VALIDATION_TOPIC, "replicator_validation")
-        configuration.put(ValidationService.Configuration.VALIDATION_TAG, "test_hbase")
+//        configuration.put(ValidationService.Configuration.VALIDATION_BROKER, "localhost:9092")
+//        configuration.put(ValidationService.Configuration.VALIDATION_THROTTLE_ONE_EVERY, "100")
+//        configuration.put(ValidationService.Configuration.VALIDATION_SOURCE_DATA_SOURCE, "mysql")
+//        configuration.put(ValidationService.Configuration.VALIDATION_TARGET_DATA_SOURCE, "hbase")
+//        configuration.put(ValidationService.Configuration.VALIDATION_TOPIC, "replicator_validation")
+//        configuration.put(ValidationService.Configuration.VALIDATION_TAG, "test_hbase")
 
 
         return configuration

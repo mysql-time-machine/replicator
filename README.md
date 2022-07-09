@@ -154,6 +154,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
+
 [Build Status]:https://travis-ci.org/mysql-time-machine/replicator
 [Build Status img]:https://travis-ci.org/mysql-time-machine/replicator.svg?branch=master
 [Coverage Status]:https://codecov.io/gh/mysql-time-machine/replicator
@@ -162,3 +163,4 @@ limitations under the License.
 [Known Vulnerabilities]:https://snyk.io/test/github/mysql-time-machine/replicator
 [license]:LICENSE
 [license img]:https://img.shields.io/badge/license-Apache%202-blue.svg
+

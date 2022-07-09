@@ -132,7 +132,7 @@ public class MysqlTypeDeserializer {
                 case TIMESTAMP: {
                     Long timestamp = (Long) cellValue;
 
-                    ZoneId zoneId = ZonedDateTime.now().getZone();
+                    ZoneId zoneId = ZoneId.of("UTC");
                     LocalDateTime aLDT = Instant.ofEpochMilli(timestamp).atZone(zoneId).toLocalDateTime();
 
                     Integer offset = ZonedDateTime.from(aLDT.atZone(zoneId)).getOffset().getTotalSeconds();
